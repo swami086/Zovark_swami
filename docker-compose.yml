@@ -20,6 +20,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf
     ports:
       - "5432:5432"
     healthcheck:
@@ -30,8 +33,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: '0.5'
+          memory: 2G
+          cpus: '1.0'
     restart: unless-stopped
     networks:
       - hydra-internal
@@ -50,6 +53,39 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  # ─── CONNECTION POOLER ──────────────────────────────
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: hydra-pgbouncer
+    environment:
+      DATABASE_URL: postgres://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      POOL_MODE: transaction
+      AUTH_TYPE: plain
+      MAX_CLIENT_CONN: 400
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 20
+      RESERVE_POOL_TIMEOUT: 3
+      MAX_DB_CONNECTIONS: 50
+      SERVER_IDLE_TIMEOUT: 300
+      QUERY_TIMEOUT: 30
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -245,10 +281,12 @@ services:
       dockerfile: Dockerfile
     # No container_name — allows docker compose --scale worker=N
     environment:
-      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      # Workers go through PgBouncer (transaction pooling)
+      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@pgbouncer:5432/hydra
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_URL=http://litellm:4000/v1/chat/completions
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
+      - REDIS_URL=redis://redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
       - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-fast}
       - PYTHONUNBUFFERED=1

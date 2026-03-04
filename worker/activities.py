@@ -747,6 +747,18 @@ async def render_skill_template(data: dict) -> str:
     return rendered
 
 @activity.defn
+async def check_rate_limit_activity(data: dict) -> bool:
+    """Check if tenant is under rate limit. Returns True if OK."""
+    from redis_client import check_rate_limit
+    return check_rate_limit(data["tenant_id"], data["max_concurrent"])
+
+@activity.defn
+async def decrement_active_activity(tenant_id: str) -> None:
+    """Decrement active count for tenant."""
+    from redis_client import decrement_active
+    decrement_active(tenant_id)
+
+@activity.defn
 async def write_investigation_memory(memory_data: dict) -> None:
     try:
         litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")

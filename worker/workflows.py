@@ -8,7 +8,8 @@ with workflow.unsafe.imports_passed_through():
         update_task_status, log_audit, record_usage,
         save_investigation_step, check_followup_needed, generate_followup_code,
         check_requires_approval, create_approval_request, update_approval_request,
-        retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template
+        retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template,
+        check_rate_limit_activity, decrement_active_activity
     )
 
 MAX_STEPS = 3
@@ -34,7 +35,27 @@ class ExecuteTaskWorkflow:
         
         tenant_id = task_data.get("tenant_id")
         task_type = task_data.get("task_type", "log_analysis").lower().replace(" ", "_")
-        
+
+        # Rate limit check (default 10 concurrent per tenant)
+        max_concurrent = 10  # TODO: read from tenants table when available
+        rate_ok = await workflow.execute_activity(
+            check_rate_limit_activity,
+            {"tenant_id": tenant_id, "max_concurrent": max_concurrent},
+            schedule_to_close_timeout=timedelta(seconds=10)
+        )
+        if not rate_ok:
+            return await self._fail_task(task_id, tenant_id, f"Rate limited: tenant has {max_concurrent}/{max_concurrent} concurrent investigations")
+
+        try:
+            return await self._run_investigation(task_id, tenant_id, task_type, task_data)
+        finally:
+            await workflow.execute_activity(
+                decrement_active_activity,
+                tenant_id,
+                schedule_to_close_timeout=timedelta(seconds=10)
+            )
+
+    async def _run_investigation(self, task_id, tenant_id, task_type, task_data):
         await workflow.execute_activity(
             log_audit,
             {
