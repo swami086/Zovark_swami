@@ -1,0 +1,861 @@
+{
+  "timestamp": "2026-03-04T16:05:48.724553",
+  "config": {
+    "concurrency": 50,
+    "total": 100,
+    "ramp_up": 15
+  },
+  "summary": {
+    "total": 100,
+    "successful": 71,
+    "failed": 29,
+    "error_rate": 28.999999999999996,
+    "p50_s": 14.047,
+    "p95_s": 35.041,
+    "p99_s": 64.619,
+    "max_s": 64.619,
+    "throughput_per_min": 9.856735678224439,
+    "total_time_s": 432.19176602363586
+  },
+  "worker_distribution": {
+    "15bbe4679385-1-kkc4": 58,
+    "9342178bfbab-1-vca5": 35,
+    "3702f37123cf-1-snuq": 29,
+    "8b7aad5b5e72-1-e4mb": 27,
+    "ae4198d2d022-1-9fex": 27,
+    "d4eba8319827-1-155p": 6,
+    "fbdb7519e4b2-1-wu6z": 5,
+    "4a6abb22d745-1-x0gc": 3,
+    "63ed4beaa667-1-1xcm": 1,
+    "266cbd2fa9ff-1-cf6u": 1
+  },
+  "skill_stats": {
+    "brute_force": {
+      "count": 20,
+      "avg_s": 13.286266666666666,
+      "failed": 5
+    },
+    "ransomware": {
+      "count": 20,
+      "avg_s": 6.147916666666667,
+      "failed": 8
+    },
+    "lateral_movement": {
+      "count": 20,
+      "avg_s": 14.529153846153847,
+      "failed": 7
+    },
+    "c2": {
+      "count": 20,
+      "avg_s": 26.913400000000003,
+      "failed": 5
+    },
+    "phishing": {
+      "count": 20,
+      "avg_s": 20.4260625,
+      "failed": 4
+    }
+  },
+  "raw_results": [
+    {
+      "task_num": 1,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4051,
+      "task_id": "039f163f-3df1-4c3b-a1c5-362ef3d7c26e",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 0,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 10118,
+      "task_id": "7c72fb92-f1fe-4ce5-9252-b19bc9110798",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 6,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4039,
+      "task_id": "54c3ac57-1c6b-4996-b8b6-bd6a958907f8",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 2,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 12053,
+      "task_id": "2c974d6e-2e28-402a-a4bf-2d209f06ee84",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 4,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 10036,
+      "task_id": "4d454eb7-e0ce-4d6a-b518-540c8f03f7b4",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 5,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 10036,
+      "task_id": "a80ecf42-fbba-4286-8834-98bb824398d2",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 7,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 10064,
+      "task_id": "3849be87-c980-4774-8fa4-a57698d8eded",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 3,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 20049,
+      "task_id": "349d417f-bc87-47d3-9912-1b11fbf6014d",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 11,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4041,
+      "task_id": "bd3781d5-9ac1-4adb-97c8-2158ba77e045",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 10,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 8034,
+      "task_id": "9eff698b-86e7-431b-9463-5a129a2a3cb3",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 8,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 14038,
+      "task_id": "9a22b3fb-bae4-4ec2-ba0a-46b8971d9f39",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 9,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 12051,
+      "task_id": "5d09c488-7635-4fa9-be9e-1e690b636ccd",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 12,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 12079,
+      "task_id": "347e9be3-efb3-41ff-8213-1dbe426e57ba",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 16,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4032,
+      "task_id": "20f5af12-b188-41e5-b62a-fcd3d6de652f",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 13,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 18055,
+      "task_id": "bd0a5409-f987-448b-9154-0147a319aea3",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 14,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 14044,
+      "task_id": "34335a2a-2db6-46ff-b1d6-f8902e19d405",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 15,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 10030,
+      "task_id": "bd6b2f5f-c0e3-4889-8bcd-f683d190707d",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 17,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 10055,
+      "task_id": "315c85d2-1a4b-44b6-b7fa-bc59364ab46a",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 19,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 14047,
+      "task_id": "057207f6-08cf-43e4-b302-aba7a34a353e",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 20,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 10042,
+      "task_id": "d45cfca6-0ef0-499a-80b9-076c50b94969",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 21,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4035,
+      "task_id": "cb132e9d-4910-4eae-94b8-daf972959eb0",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 18,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 22068,
+      "task_id": "97ff476c-6c28-44be-b404-ec9e80d1b5c0",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 22,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 10051,
+      "task_id": "f82bc579-a563-44df-ae12-1e50b973bce7",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 24,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 10049,
+      "task_id": "4bb04e16-b5e4-42be-9e63-f9e75f52538f",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 23,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 20067,
+      "task_id": "481a4c91-25ee-4053-b07d-613fa19e4995",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 25,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 8038,
+      "task_id": "b2702e8e-d2c3-4c6a-be52-7feba121115d",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 26,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4055,
+      "task_id": "2600482f-642a-4e1c-82df-8b406455b097",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 27,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 16130,
+      "task_id": "7235b460-3854-4a98-86fb-5b53f9e61a31",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 29,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 14065,
+      "task_id": "291c9248-c06a-499e-89f2-abea8f8a9b9d",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 28,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 24107,
+      "task_id": "7a637cf7-7cdd-42ae-b014-69843af1f16b",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 30,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 10084,
+      "task_id": "14094aa0-0949-4c73-9b17-91a6727bfd92",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 31,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 2024,
+      "task_id": "93cf0157-f22b-4b23-b80f-a45f4ce354bb",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 32,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 16079,
+      "task_id": "f72d6c85-66cd-4ff2-83c9-3c7014aae334",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 34,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 10031,
+      "task_id": "0e2b4480-38c2-4c58-9679-242816e4d55c",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 33,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 24075,
+      "task_id": "6d343dde-c93d-46cb-bc6b-63247030ee54",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 35,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 10042,
+      "task_id": "886476ab-e9c6-4501-a961-f2d68e179fc9",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 36,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4034,
+      "task_id": "e62ff388-3d60-4890-81dc-5621db8e41ba",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 37,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 10071,
+      "task_id": "b5e752df-15bf-4192-b336-3679866d78a1",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 39,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 14056,
+      "task_id": "3936cc7f-3244-4ebc-8a27-4ddaa65f7210",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 38,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 28082,
+      "task_id": "cea33042-1903-4bcb-b3d1-9179fc36af09",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 40,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 8059,
+      "task_id": "f06de0d9-819d-41e6-ba9e-97b014f310da",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 41,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4044,
+      "task_id": "ecfde839-ec6d-4fb9-b940-6851c53ec04c",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 42,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 10052,
+      "task_id": "06d126a6-e4a9-44c5-8c12-e06c7204516d",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 43,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 24075,
+      "task_id": "925e9c6b-f68e-4b98-ac67-8043f8cbbf5a",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 44,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 12046,
+      "task_id": "24549e49-411c-4255-8604-0593fa8d14c6",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 45,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 8036,
+      "task_id": "1af42e67-5bbf-4cc2-89ab-574c8b04a493",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 46,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 4039,
+      "task_id": "83418b9c-89fe-4303-ae9a-b948f01a10eb",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 47,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 10047,
+      "task_id": "6e36b4d3-debd-4805-9b15-8a6590faf72b",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 85,
+      "skill": "brute_force",
+      "status": "failed",
+      "time_ms": 4474,
+      "task_id": "5f852e58-551a-4b98-9b6b-e9159d54ba4c",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 93,
+      "skill": "c2",
+      "status": "failed",
+      "time_ms": 4641,
+      "task_id": "12026a8e-b0d4-4269-8b7f-9e3016d3f26e",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 72,
+      "skill": "lateral_movement",
+      "status": "failed",
+      "time_ms": 4835,
+      "task_id": "faeea548-c2e9-4988-8a19-e4d46f76dd11",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 97,
+      "skill": "lateral_movement",
+      "status": "failed",
+      "time_ms": 4843,
+      "task_id": "0cb38acf-8027-41b2-ac33-e6bc90ace728",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 95,
+      "skill": "brute_force",
+      "status": "failed",
+      "time_ms": 4878,
+      "task_id": "872f84db-80f8-4127-a099-df65007b827f",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 86,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 4914,
+      "task_id": "3bec4cdb-e600-495e-b783-f4b32e3ed7c0",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 77,
+      "skill": "lateral_movement",
+      "status": "failed",
+      "time_ms": 5137,
+      "task_id": "aec20681-9c5e-4525-a73b-d316c143d894",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 51,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 6449,
+      "task_id": "f1a122fb-50f9-4999-8b96-17d389aa2576",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 61,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 6445,
+      "task_id": "8bc3196b-42ba-4a11-adf6-ddc18237420e",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 62,
+      "skill": "lateral_movement",
+      "status": "failed",
+      "time_ms": 6480,
+      "task_id": "7da75ecc-2078-4c11-bbcd-fc9949469097",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 70,
+      "skill": "brute_force",
+      "status": "failed",
+      "time_ms": 6753,
+      "task_id": "b866d245-e74c-4188-9670-756f0e8f6bb9",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 90,
+      "skill": "brute_force",
+      "status": "failed",
+      "time_ms": 6813,
+      "task_id": "2379d814-0000-47de-aaa9-11eeda2edf5c",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 89,
+      "skill": "phishing",
+      "status": "failed",
+      "time_ms": 6861,
+      "task_id": "3217bd8b-9aa4-459d-b69c-12b230d0149d",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 88,
+      "skill": "c2",
+      "status": "failed",
+      "time_ms": 6879,
+      "task_id": "4bcbb2b0-a80f-4cc7-9a8f-5731efc5cf11",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 67,
+      "skill": "lateral_movement",
+      "status": "failed",
+      "time_ms": 6951,
+      "task_id": "638851e6-0c60-4550-99d2-954985e4e58c",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 91,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 6968,
+      "task_id": "dd59f906-71de-4ed3-9743-c0ed60f4305d",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 78,
+      "skill": "c2",
+      "status": "failed",
+      "time_ms": 7003,
+      "task_id": "dac2634e-2226-4f6a-ae6a-c5c198418791",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 80,
+      "skill": "brute_force",
+      "status": "failed",
+      "time_ms": 7007,
+      "task_id": "f6baea65-7075-4b2e-a661-01b3094c0507",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 71,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 7013,
+      "task_id": "9c2d79b4-555e-4769-9dac-e4cb454b6aaa",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 84,
+      "skill": "phishing",
+      "status": "failed",
+      "time_ms": 7043,
+      "task_id": "8ed22e27-5c72-4bfc-8fe7-33a4e68e9b3d",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 76,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 7066,
+      "task_id": "8fb408ed-596d-4399-a115-d4fa10263e7d",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 96,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 7136,
+      "task_id": "ccc0cbd9-d247-4b04-8a98-09ec36e349bc",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 92,
+      "skill": "lateral_movement",
+      "status": "failed",
+      "time_ms": 7143,
+      "task_id": "82d1c246-9c77-4b98-ab38-cace495d4a2c",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 87,
+      "skill": "lateral_movement",
+      "status": "failed",
+      "time_ms": 7158,
+      "task_id": "a1c320eb-4dff-4de7-b36a-dbec49c56c0d",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 81,
+      "skill": "ransomware",
+      "status": "failed",
+      "time_ms": 7268,
+      "task_id": "4fad71fc-39e2-4c8e-9bda-569641c6ec29",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 98,
+      "skill": "c2",
+      "status": "failed",
+      "time_ms": 4267,
+      "task_id": "bc53a977-8bfe-4bcd-ad3c-3b1086041e63",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 79,
+      "skill": "phishing",
+      "status": "failed",
+      "time_ms": 9058,
+      "task_id": "671e34c3-3f70-4ef1-ac49-b7ee54b47406",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 83,
+      "skill": "c2",
+      "status": "failed",
+      "time_ms": 9071,
+      "task_id": "4f43fc5e-1ea2-4bb1-abc6-55fae27851a9",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 99,
+      "skill": "phishing",
+      "status": "failed",
+      "time_ms": 6384,
+      "task_id": "4c2cd8bf-197b-4339-9cba-d5f9aa799a41",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 66,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 16875,
+      "task_id": "40c07ef9-dc3c-45f3-82fa-c0bab5a3be2d",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 48,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 32109,
+      "task_id": "2c368d54-f71b-4e96-8e55-63d31d05965c",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 55,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 18437,
+      "task_id": "1ab1858f-2904-4c21-99c5-7874105ff7ef",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 56,
+      "skill": "ransomware",
+      "status": "completed",
+      "time_ms": 18506,
+      "task_id": "e6b4de17-f6c6-45f9-b5b9-bcd45b1f5438",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 75,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 18661,
+      "task_id": "879e1b74-cd22-4efe-a0e1-4c058bb5e489",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 49,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 20168,
+      "task_id": "c63b28ad-ec39-4af7-a0df-1a8bfddba4db",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 57,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 20551,
+      "task_id": "97576973-b28c-4306-9a81-8244b118dccb",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 65,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 20756,
+      "task_id": "f8d23024-22bc-4d65-94f3-f39bed032282",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 74,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 22676,
+      "task_id": "10b52892-27d1-49ac-b554-5c87a2fed024",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 50,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 24228,
+      "task_id": "c5a39eb7-e298-46d0-8cd0-7877d159f6c7",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 59,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 24463,
+      "task_id": "4546938b-9da4-4752-a585-a0b8788e931f",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 69,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 24468,
+      "task_id": "4a7f5a01-6514-4c7a-9612-e1e91b8b6b99",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 52,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 24540,
+      "task_id": "d26672e4-4fd9-4d77-9473-8ef96217b3ab",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 60,
+      "skill": "brute_force",
+      "status": "completed",
+      "time_ms": 24693,
+      "task_id": "df5f9cb2-48d9-4a22-aba4-6d0ca5918582",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 94,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 24957,
+      "task_id": "fa784675-302e-44bb-9bd3-c074ce48627a",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 82,
+      "skill": "lateral_movement",
+      "status": "completed",
+      "time_ms": 27107,
+      "task_id": "9ebcb9f3-9e02-4da8-a3a2-2d0decf6c8c1",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 68,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 28516,
+      "task_id": "cfd01966-038d-45ee-9e5c-27cead7a0dfa",
+      "worker_id": "3702f37123cf-1-snuq"
+    },
+    {
+      "task_num": 53,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 34533,
+      "task_id": "81315349-e25d-4250-a612-f9053cc4a238",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 58,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 34562,
+      "task_id": "e0c44cfd-a975-4e92-b12b-9e156a253eda",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    },
+    {
+      "task_num": 64,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 35041,
+      "task_id": "892168b4-9bb7-48ea-9b4d-cb4a0f3c81cc",
+      "worker_id": "ae4198d2d022-1-9fex"
+    },
+    {
+      "task_num": 63,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 38528,
+      "task_id": "afb04356-1d5a-4950-be59-462684f54e8c",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 73,
+      "skill": "c2",
+      "status": "completed",
+      "time_ms": 40837,
+      "task_id": "32a46926-cfd1-4e0d-804f-4a0232e3f6a0",
+      "worker_id": "15bbe4679385-1-kkc4"
+    },
+    {
+      "task_num": 54,
+      "skill": "phishing",
+      "status": "completed",
+      "time_ms": 64619,
+      "task_id": "568dd54c-b776-403e-be67-07ab1e1b97be",
+      "worker_id": "8b7aad5b5e72-1-e4mb"
+    }
+  ]
+}

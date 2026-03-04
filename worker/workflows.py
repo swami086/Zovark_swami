@@ -36,8 +36,8 @@ class ExecuteTaskWorkflow:
         tenant_id = task_data.get("tenant_id")
         task_type = task_data.get("task_type", "log_analysis").lower().replace(" ", "_")
 
-        # Rate limit check (default 10 concurrent per tenant)
-        max_concurrent = 10  # TODO: read from tenants table when available
+        # Rate limit check (default 50 concurrent per tenant)
+        max_concurrent = 50  # TODO: read from tenants table when available
         rate_ok = await workflow.execute_activity(
             check_rate_limit_activity,
             {"tenant_id": tenant_id, "max_concurrent": max_concurrent},
