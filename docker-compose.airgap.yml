@@ -1,0 +1,176 @@
+# ============================================================
+# HYDRA Air-Gap Deployment Compose Override
+# Usage: docker compose -f docker-compose.airgap.yml up -d
+# ============================================================
+
+services:
+
+  # ─── DATABASE ─────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hydra-postgres
+    environment:
+      POSTGRES_USER: hydra
+      POSTGRES_PASSWORD: hydra
+      POSTGRES_DB: hydra
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hydra -d hydra"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── CACHE ────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: hydra-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── WORKFLOW ENGINE ──────────────────────────────────
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    container_name: hydra-temporal
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=hydra
+      - POSTGRES_PWD=hydra
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/7233'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── LOCAL LLM (Ollama) ──────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hydra-ollama
+    volumes:
+      - ./ollama_volume:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── EMBEDDING SERVER ────────────────────────────────
+  embedding-server:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: hydra-embedding
+    environment:
+      - MODEL_ID=BAAI/bge-base-en-v1.5
+    volumes:
+      - ./embedding_volume:/data
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── LLM GATEWAY ─────────────────────────────────────
+  litellm:
+    image: hydra-litellm:latest
+    container_name: hydra-litellm
+    command: --config /app/config.yaml --port 4000
+    environment:
+      - LITELLM_MASTER_KEY=sk-hydra-local
+      - DATABASE_URL=postgresql://hydra:hydra@postgres:5432/hydra
+      - OPENROUTER_API_KEY=not-needed
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4000/health/liveliness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── API ──────────────────────────────────────────────
+  api:
+    image: hydra-mvp-api:latest
+    container_name: hydra-api
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+      - DATABASE_URL=postgresql://hydra:hydra@postgres:5432/hydra
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LITELLM_MASTER_KEY=sk-hydra-local
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - HYDRA_DEPLOYMENT_MODE=airgap
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── WORKER ──────────────────────────────────────────
+  worker:
+    image: hydra-mvp-worker:latest
+    container_name: hydra-worker
+    environment:
+      - DATABASE_URL=postgresql://hydra:hydra@postgres:5432/hydra
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LITELLM_URL=http://litellm:4000/v1/chat/completions
+      - LITELLM_MASTER_KEY=sk-hydra-local
+      - HYDRA_LLM_MODEL=hydra-local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      temporal:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+  # ─── DASHBOARD ────────────────────────────────────────
+  dashboard:
+    image: hydra-mvp-dashboard:latest
+    container_name: hydra-dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - hydra-net
+
+networks:
+  hydra-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

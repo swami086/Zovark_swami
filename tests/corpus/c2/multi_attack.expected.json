@@ -1,0 +1,31 @@
+{
+    "expected_findings": [
+        {
+            "type": "c2"
+        }
+    ],
+    "expected_risk_score_range": [
+        0,
+        10
+    ],
+    "expected_iocs": {
+        "ips": [],
+        "min_ip_count": 2
+    },
+    "expected_finding_count_range": [
+        1,
+        5
+    ],
+    "must_contain_keywords": [
+        "c2",
+        "beacon"
+    ],
+    "risk_score_range": [
+        40,
+        100
+    ],
+    "finding_count_range": [
+        2,
+        10
+    ]
+}

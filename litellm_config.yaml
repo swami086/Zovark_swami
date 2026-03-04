@@ -1,0 +1,21 @@
+model_list:
+  - model_name: fast
+    litellm_params:
+      model: openrouter/google/gemini-2.0-flash-001
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: hydra-cloud
+    litellm_params:
+      model: openrouter/google/gemini-2.0-flash-001
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: hydra-local
+    litellm_params:
+      model: ollama/mistral:7b-instruct-v0.3-q4_K_M
+      api_base: http://ollama:11434
+  - model_name: embed
+    litellm_params:
+      model: huggingface/BAAI/bge-base-en-v1.5
+      api_base: http://embedding-server:80
+      mode: embedding
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

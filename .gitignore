@@ -1,0 +1,5 @@
+.env
+local_models/
+node_modules/
+__pycache__/
+*.pyc

@@ -1,0 +1,43 @@
+{
+    "expected_findings": [
+        {
+            "type": "brute_force",
+            "source_ip": "203.0.113.50",
+            "target_account": "admin",
+            "compromised": false
+        },
+        {
+            "type": "brute_force",
+            "source_ip": "203.0.113.60",
+            "target_account": "root",
+            "compromised": false
+        }
+    ],
+    "expected_risk_score_range": [
+        30,
+        50
+    ],
+    "expected_iocs": {
+        "ips": [
+            "203.0.113.50",
+            "203.0.113.60"
+        ],
+        "min_ip_count": 2
+    },
+    "expected_finding_count_range": [
+        1,
+        5
+    ],
+    "must_contain_keywords": [
+        "brute force",
+        "multiple"
+    ],
+    "risk_score_range": [
+        40,
+        100
+    ],
+    "finding_count_range": [
+        2,
+        10
+    ]
+}

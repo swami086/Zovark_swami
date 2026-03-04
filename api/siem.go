@@ -1,0 +1,522 @@
+package main
+
+import (
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"go.temporal.io/sdk/client"
+)
+
+// ============================================================
+// WEBHOOK RECEIVER
+// ============================================================
+
+func webhookAlertHandler(c *gin.Context) {
+	sourceID := c.Param("source_id")
+
+	// 1. Look up the log_source
+	var tenantID, sourceType, sourceName string
+	var connConfig map[string]interface{}
+	var isActive bool
+
+	err := dbPool.QueryRow(c.Request.Context(),
+		"SELECT tenant_id, source_type, name, connection_config, is_active FROM log_sources WHERE id = $1",
+		sourceID,
+	).Scan(&tenantID, &sourceType, &sourceName, &connConfig, &isActive)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unknown source"})
+		return
+	}
+	if !isActive {
+		c.JSON(http.StatusForbidden, gin.H{"error": "source is deactivated"})
+		return
+	}
+
+	// 2. Read body
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+
+	// 3. HMAC-SHA256 validation (if secret configured)
+	if secret, ok := connConfig["webhook_secret"].(string); ok && secret != "" {
+		sig := c.GetHeader("X-Webhook-Signature")
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write(body)
+		expected := hex.EncodeToString(mac.Sum(nil))
+		if sig != expected {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid webhook signature"})
+			return
+		}
+	}
+
+	// 4. Parse payload
+	var payload map[string]interface{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON payload"})
+		return
+	}
+
+	// 5. Auto-detect SIEM format and normalize
+	normalized := normalizeSIEMAlert(payload)
+
+	// 6. Insert into siem_alerts
+	alertID := uuid.New().String()
+	autoInvestigate := false
+	if ai, ok := connConfig["auto_investigate"].(bool); ok {
+		autoInvestigate = ai
+	}
+
+	rawJSON, _ := json.Marshal(payload)
+	normJSON, _ := json.Marshal(normalized)
+
+	_, err = dbPool.Exec(c.Request.Context(),
+		`INSERT INTO siem_alerts (id, tenant_id, log_source_id, alert_name, severity, source_ip, dest_ip, rule_name, raw_event, normalized_event, status, auto_investigate)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'new', $11)`,
+		alertID, tenantID, sourceID,
+		normalized["alert_name"], normalized["severity"],
+		normalized["source_ip"], normalized["dest_ip"],
+		normalized["rule_name"],
+		rawJSON, normJSON,
+		autoInvestigate,
+	)
+	if err != nil {
+		log.Printf("Failed to insert siem_alert: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store alert"})
+		return
+	}
+
+	// 7. Update log_source: last_event_at, event_count++
+	_, _ = dbPool.Exec(c.Request.Context(),
+		"UPDATE log_sources SET last_event_at = NOW(), event_count = event_count + 1, updated_at = NOW() WHERE id = $1",
+		sourceID,
+	)
+
+	// 8. Auto-investigate if configured
+	var investigationID *string
+	if autoInvestigate {
+		taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, normalized)
+		if err != nil {
+			log.Printf("Auto-investigate failed for alert %s: %v", alertID, err)
+		} else {
+			investigationID = &taskID
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"alert_id":         alertID,
+		"investigation_id": investigationID,
+		"status":           "received",
+	})
+}
+
+func normalizeSIEMAlert(payload map[string]interface{}) map[string]interface{} {
+	norm := map[string]interface{}{
+		"alert_name": "Unknown Alert",
+		"severity":   "medium",
+		"source_ip":  "",
+		"dest_ip":    "",
+		"rule_name":  "",
+	}
+
+	// Splunk format: has "result" or "search_name"
+	if _, ok := payload["search_name"]; ok {
+		norm["alert_name"] = payload["search_name"]
+		if result, ok := payload["result"].(map[string]interface{}); ok {
+			if v, ok := result["src_ip"]; ok {
+				norm["source_ip"] = v
+			}
+			if v, ok := result["dest_ip"]; ok {
+				norm["dest_ip"] = v
+			}
+			if v, ok := result["severity"]; ok {
+				norm["severity"] = v
+			}
+			if v, ok := result["rule"]; ok {
+				norm["rule_name"] = v
+			}
+		}
+		return norm
+	}
+
+	// Elastic format: has "kibana" or "rule" with "id"
+	if ruleObj, ok := payload["rule"].(map[string]interface{}); ok {
+		if _, hasID := ruleObj["id"]; hasID {
+			if name, ok := ruleObj["name"]; ok {
+				norm["alert_name"] = name
+			}
+			if sev, ok := ruleObj["severity"]; ok {
+				norm["severity"] = sev
+			}
+			norm["rule_name"] = ruleObj["name"]
+
+			if kibana, ok := payload["kibana"].(map[string]interface{}); ok {
+				if alert, ok := kibana["alert"].(map[string]interface{}); ok {
+					if origEvent, ok := alert["original_event"].(map[string]interface{}); ok {
+						if v, ok := origEvent["source_ip"]; ok {
+							norm["source_ip"] = v
+						}
+						if v, ok := origEvent["dest_ip"]; ok {
+							norm["dest_ip"] = v
+						}
+					}
+				}
+			}
+			return norm
+		}
+	}
+
+	// Generic format: direct fields
+	if v, ok := payload["alert_name"]; ok {
+		norm["alert_name"] = v
+	}
+	if v, ok := payload["severity"]; ok {
+		norm["severity"] = v
+	}
+	if v, ok := payload["source_ip"]; ok {
+		norm["source_ip"] = v
+	}
+	if v, ok := payload["dest_ip"]; ok {
+		norm["dest_ip"] = v
+	}
+	if v, ok := payload["rule_name"]; ok {
+		norm["rule_name"] = v
+	}
+
+	return norm
+}
+
+func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normalized map[string]interface{}) (string, error) {
+	// Map severity to task type
+	taskType := "log_analysis"
+	if sev, ok := normalized["severity"].(string); ok {
+		switch sev {
+		case "critical", "high":
+			taskType = "incident_response"
+		case "medium":
+			taskType = "threat_hunt"
+		}
+	}
+
+	alertName := fmt.Sprintf("%v", normalized["alert_name"])
+	sourceIP := fmt.Sprintf("%v", normalized["source_ip"])
+	destIP := fmt.Sprintf("%v", normalized["dest_ip"])
+	ruleName := fmt.Sprintf("%v", normalized["rule_name"])
+	severity := fmt.Sprintf("%v", normalized["severity"])
+
+	prompt := fmt.Sprintf(
+		"Investigate SIEM alert: %s. Source: %s, Dest: %s. Rule: %s. Severity: %s.",
+		alertName, sourceIP, destIP, ruleName, severity,
+	)
+
+	taskID := uuid.New().String()
+
+	input := map[string]interface{}{
+		"prompt":         prompt,
+		"siem_alert_id":  alertID,
+		"siem_event":     normalized,
+	}
+
+	_, err := dbPool.Exec(ctx,
+		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+		taskID, tenantID, taskType, input, "pending", time.Now(),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create task: %w", err)
+	}
+
+	// Start Temporal workflow
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        "task-" + taskID,
+		TaskQueue: "hydra-tasks",
+	}
+
+	_, err = tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow", map[string]interface{}{
+		"task_type": taskType,
+		"input":     input,
+	})
+	if err != nil {
+		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
+		return "", fmt.Errorf("failed to start workflow: %w", err)
+	}
+
+	// Link the alert to the investigation
+	_, _ = dbPool.Exec(ctx,
+		"UPDATE siem_alerts SET task_id = $1, status = 'investigating' WHERE id = $2",
+		taskID, alertID,
+	)
+
+	// Audit log
+	_, _ = dbPool.Exec(ctx,
+		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
+		tenantID, "auto_investigate", "siem_alert", alertID,
+		fmt.Sprintf(`{"task_id": "%s", "alert_name": "%s"}`, taskID, alertName),
+	)
+
+	return taskID, nil
+}
+
+// ============================================================
+// LOG SOURCES CRUD
+// ============================================================
+
+func listLogSourcesHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
+	rows, err := dbPool.Query(c.Request.Context(),
+		"SELECT id, name, source_type, connection_config, is_active, last_event_at, event_count, created_at FROM log_sources WHERE tenant_id = $1 ORDER BY created_at DESC",
+		tenantID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query log sources"})
+		return
+	}
+	defer rows.Close()
+
+	var sources []map[string]interface{}
+	for rows.Next() {
+		var id, name, sourceType string
+		var connConfig map[string]interface{}
+		var isActive bool
+		var lastEventAt *time.Time
+		var eventCount int
+		var createdAt time.Time
+
+		if err := rows.Scan(&id, &name, &sourceType, &connConfig, &isActive, &lastEventAt, &eventCount, &createdAt); err != nil {
+			log.Printf("Error scanning log source row: %v", err)
+			continue
+		}
+
+		source := map[string]interface{}{
+			"id":                id,
+			"name":              name,
+			"source_type":       sourceType,
+			"connection_config": connConfig,
+			"is_active":         isActive,
+			"last_event_at":     lastEventAt,
+			"event_count":       eventCount,
+			"created_at":        createdAt,
+			"webhook_url":       fmt.Sprintf("/api/v1/webhooks/%s/alert", id),
+		}
+		sources = append(sources, source)
+	}
+
+	if sources == nil {
+		sources = []map[string]interface{}{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"sources": sources, "count": len(sources)})
+}
+
+func createLogSourceHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+	userID := c.MustGet("user_id").(string)
+
+	var req struct {
+		Name             string                 `json:"name" binding:"required"`
+		SourceType       string                 `json:"source_type" binding:"required"`
+		ConnectionConfig map[string]interface{} `json:"connection_config"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.ConnectionConfig == nil {
+		req.ConnectionConfig = map[string]interface{}{}
+	}
+
+	sourceID := uuid.New().String()
+	configJSON, _ := json.Marshal(req.ConnectionConfig)
+
+	_, err := dbPool.Exec(c.Request.Context(),
+		"INSERT INTO log_sources (id, tenant_id, name, source_type, connection_config, created_by) VALUES ($1, $2, $3, $4, $5, $6)",
+		sourceID, tenantID, req.Name, req.SourceType, configJSON, userID,
+	)
+	if err != nil {
+		log.Printf("Failed to create log source: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create log source"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":          sourceID,
+		"name":        req.Name,
+		"source_type": req.SourceType,
+		"webhook_url": fmt.Sprintf("/api/v1/webhooks/%s/alert", sourceID),
+		"is_active":   true,
+	})
+}
+
+func updateLogSourceHandler(c *gin.Context) {
+	sourceID := c.Param("id")
+	tenantID := c.MustGet("tenant_id").(string)
+
+	var req struct {
+		Name             *string                `json:"name"`
+		ConnectionConfig map[string]interface{} `json:"connection_config"`
+		IsActive         *bool                  `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify ownership
+	var exists bool
+	_ = dbPool.QueryRow(c.Request.Context(),
+		"SELECT EXISTS(SELECT 1 FROM log_sources WHERE id = $1 AND tenant_id = $2)", sourceID, tenantID,
+	).Scan(&exists)
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "source not found"})
+		return
+	}
+
+	if req.Name != nil {
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE log_sources SET name = $1, updated_at = NOW() WHERE id = $2", *req.Name, sourceID)
+	}
+	if req.ConnectionConfig != nil {
+		configJSON, _ := json.Marshal(req.ConnectionConfig)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE log_sources SET connection_config = $1, updated_at = NOW() WHERE id = $2", configJSON, sourceID)
+	}
+	if req.IsActive != nil {
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE log_sources SET is_active = $1, updated_at = NOW() WHERE id = $2", *req.IsActive, sourceID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "updated"})
+}
+
+func deleteLogSourceHandler(c *gin.Context) {
+	sourceID := c.Param("id")
+	tenantID := c.MustGet("tenant_id").(string)
+
+	result, err := dbPool.Exec(c.Request.Context(),
+		"UPDATE log_sources SET is_active = false, updated_at = NOW() WHERE id = $1 AND tenant_id = $2",
+		sourceID, tenantID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to deactivate source"})
+		return
+	}
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "source not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "deactivated"})
+}
+
+// ============================================================
+// SIEM ALERTS LIST
+// ============================================================
+
+func listSIEMalertsHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
+	query := `SELECT id, log_source_id, task_id, alert_name, severity, source_ip, dest_ip, rule_name, status, auto_investigate, created_at
+		FROM siem_alerts WHERE tenant_id = $1`
+	args := []interface{}{tenantID}
+	argN := 2
+
+	if status := c.Query("status"); status != "" {
+		query += fmt.Sprintf(" AND status = $%d", argN)
+		args = append(args, status)
+		argN++
+	}
+	if sourceID := c.Query("source_id"); sourceID != "" {
+		query += fmt.Sprintf(" AND log_source_id = $%d", argN)
+		args = append(args, sourceID)
+		argN++
+	}
+
+	query += " ORDER BY created_at DESC LIMIT 50"
+
+	rows, err := dbPool.Query(c.Request.Context(), query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query alerts"})
+		return
+	}
+	defer rows.Close()
+
+	var alerts []map[string]interface{}
+	for rows.Next() {
+		var id, logSourceID, alertName, status string
+		var taskID, severity, sourceIP, destIP, ruleName *string
+		var autoInvestigate bool
+		var createdAt time.Time
+
+		if err := rows.Scan(&id, &logSourceID, &taskID, &alertName, &severity, &sourceIP, &destIP, &ruleName, &status, &autoInvestigate, &createdAt); err != nil {
+			log.Printf("Error scanning alert row: %v", err)
+			continue
+		}
+
+		alert := map[string]interface{}{
+			"id":               id,
+			"log_source_id":    logSourceID,
+			"task_id":          taskID,
+			"alert_name":       alertName,
+			"severity":         severity,
+			"source_ip":        sourceIP,
+			"dest_ip":          destIP,
+			"rule_name":        ruleName,
+			"status":           status,
+			"auto_investigate": autoInvestigate,
+			"created_at":       createdAt,
+		}
+		alerts = append(alerts, alert)
+	}
+
+	if alerts == nil {
+		alerts = []map[string]interface{}{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"alerts": alerts, "count": len(alerts)})
+}
+
+// Investigate a specific alert (manually triggered from UI)
+func investigateAlertHandler(c *gin.Context) {
+	alertID := c.Param("id")
+	tenantID := c.MustGet("tenant_id").(string)
+
+	// Get the alert
+	var alertName, severity, status string
+	var sourceIP, destIP, ruleName *string
+	var normEvent map[string]interface{}
+
+	err := dbPool.QueryRow(c.Request.Context(),
+		"SELECT alert_name, severity, source_ip, dest_ip, rule_name, normalized_event, status FROM siem_alerts WHERE id = $1 AND tenant_id = $2",
+		alertID, tenantID,
+	).Scan(&alertName, &severity, &sourceIP, &destIP, &ruleName, &normEvent, &status)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
+		return
+	}
+
+	if status != "new" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "alert already being investigated or resolved"})
+		return
+	}
+
+	taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, normEvent)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start investigation"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"alert_id":         alertID,
+		"investigation_id": taskID,
+		"status":           "investigating",
+	})
+}

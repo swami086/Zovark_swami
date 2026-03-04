@@ -1,0 +1,23 @@
+{
+    "expected_findings": [
+        {
+            "type": "ransomware"
+        }
+    ],
+    "expected_risk_score_range": [
+        30,
+        100
+    ],
+    "expected_iocs": {
+        "ips": [],
+        "min_ip_count": 0
+    },
+    "expected_finding_count_range": [
+        1,
+        5
+    ],
+    "must_contain_keywords": [
+        "rename",
+        "isolate"
+    ]
+}

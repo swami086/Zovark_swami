@@ -1,0 +1,301 @@
+# ============================================================
+# PROJECT HYDRA — MVP Docker Compose Stack v1.1.1 (RTX 3050 4GB)
+# Model: Qwen2.5-1.5B-Instruct-AWQ (chat) + nomic-embed-text (embed)
+# VRAM: 0.40 chat + 0.15 embed = ~2.2GB of 4GB
+# 6 errors from v1.0 fixed — see HYDRA_CORRECTED_WALKTHROUGH.md
+# Boot: docker compose up -d
+# Verify: docker compose ps (all services healthy)
+# ============================================================
+
+services:
+
+  # ─── DATABASE ─────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hydra-postgres
+    environment:
+      POSTGRES_USER: hydra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hydra_dev_2026}
+      POSTGRES_DB: hydra
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hydra -d hydra"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  # ─── CACHE / WORKING MEMORY ──────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: hydra-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  # ─── WORKFLOW ENGINE ─────────────────────────────────
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    container_name: hydra-temporal
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=hydra
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-hydra_dev_2026}
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    volumes:
+      - ./temporal-config:/etc/temporal/config/dynamicconfig:ro
+    ports:
+      - "7233:7233"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  temporal-ui:
+    image: temporalio/ui:2.26.2
+    container_name: hydra-temporal-ui
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8080:8080"
+    depends_on:
+      temporal:
+        condition: service_started
+    profiles: ["debug"]
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+
+  # ─── LLM GATEWAY ────────────────────────────────────
+  litellm:
+    # FIX #4: wrong registry + 37 versions behind → official optimized image
+    image: docker.litellm.ai/berriai/litellm-database:main-stable
+    container_name: hydra-litellm
+    command: --config /app/config.yaml --port 4000
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # FIX #5: /health doesn't exist → /health/liveliness
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  # ─── OBJECT STORAGE ─────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: hydra-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-hydra}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-hydra_dev_2026}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    profiles: ["storage"]
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  # ─── EMBEDDING SERVER ─────────────────────────────────
+  embedding-server:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: hydra-embedding
+    environment:
+      - MODEL_ID=BAAI/bge-base-en-v1.5
+    ports:
+      - "8081:80"
+    networks:
+      - hydra-internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+    restart: unless-stopped
+
+  # ─── OBSERVABILITY (lightweight for Week 1) ──────────
+  # Full Prometheus + Grafana added in Week 6
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: hydra-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  # ─── LOCAL LLM (Air-Gap) ──────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hydra-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    ports:
+      - "11434:11434"
+    profiles:
+      - airgap
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: hydra-api
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
+      - JWT_SECRET=${JWT_SECRET:-hydra-jwt-secret-dev-2026}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+      litellm:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: hydra-worker
+    environment:
+      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LITELLM_URL=http://litellm:4000/v1/chat/completions
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
+      - HOST_SANDBOX_DIR=${PWD}/sandbox
+      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-fast}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./sandbox:/app/sandbox:ro
+    depends_on:
+      temporal:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      litellm:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: hydra-dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    networks:
+      - hydra-internal
+
+# ─── NETWORKS ──────────────────────────────────────────
+networks:
+  hydra-internal:
+    driver: bridge
+
+# ─── VOLUMES ───────────────────────────────────────────
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  ollama_data:

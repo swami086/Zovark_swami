@@ -1,0 +1,38 @@
+# ============================================================
+# PROJECT HYDRA — LiteLLM Configuration
+# Save as: ~/hydra-mvp/litellm_config.yaml
+# ============================================================
+# Cross-checks:
+#   - "fast" model_name matches vllm-chat --served-model-name fast
+#   - "embed" model_name matches vllm-embed --served-model-name embed
+#   - api_base uses Docker service names (vllm-chat, vllm-embed)
+#   - Ports match: vllm-chat:8000, vllm-embed:8001
+# ============================================================
+
+general_settings:
+  master_key: sk-hydra-dev-2026
+  database_url: os.environ/DATABASE_URL
+  disable_spend_logs: false
+
+model_list:
+  - model_name: fast
+    litellm_params:
+      model: openai/fast
+      api_base: http://vllm-chat:8000/v1
+      api_key: sk-no-key-required
+      max_tokens: 2048
+      stream: true
+      timeout: 120
+
+  - model_name: embed
+    litellm_params:
+      model: openai/embed
+      api_base: http://vllm-embed:8001/v1
+      api_key: sk-no-key-required
+      mode: embedding
+
+litellm_settings:
+  num_retries: 2
+  request_timeout: 120
+  fallbacks: []
+  set_verbose: false
