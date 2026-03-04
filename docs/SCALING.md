@@ -163,3 +163,43 @@ See `k8s/` directory for:
 - Deployment manifests with HPA (Horizontal Pod Autoscaler)
 - NetworkPolicy for service isolation
 - Kustomize overlays for dev/staging/prod
+
+### Manifest Summary (28 files, 23 resources)
+
+| Service    | Resources                          |
+|------------|-------------------------------------|
+| Worker     | Deployment + HPA (2-50) + NetworkPolicy |
+| API        | Deployment + HPA (2-10) + Service   |
+| Postgres   | StatefulSet + PVC + ConfigMap + 3 Services |
+| PgBouncer  | Deployment + Service                |
+| Redis      | Deployment + Service                |
+| Temporal   | Deployment + Service                |
+| LiteLLM    | Deployment + Service + ConfigMap    |
+| Dashboard  | Deployment + Service                |
+
+### NetworkPolicy (Worker Zero-Trust)
+
+| Direction | Target       | Port  | Status  |
+|-----------|-------------|-------|---------|
+| Egress    | PgBouncer   | 5432  | ALLOWED |
+| Egress    | Temporal    | 7233  | ALLOWED |
+| Egress    | Redis       | 6379  | ALLOWED |
+| Egress    | LiteLLM     | 4000  | ALLOWED |
+| Egress    | kube-dns    | 53    | ALLOWED |
+| Egress    | All other   | *     | BLOCKED |
+| Ingress   | All         | *     | BLOCKED |
+
+### K8s Load Test Results
+
+**Status**: K8s cluster not available on dev machine. Manifests validated with `kustomize build` (all 3 overlays render cleanly). Deploy and test when cluster is provisioned.
+
+### Overlays
+
+| Setting          | Dev    | Production | Air-Gap |
+|------------------|--------|------------|---------|
+| Worker replicas  | 1      | 4          | 2       |
+| Worker HPA max   | 4      | 50         | 50      |
+| API replicas     | 1      | 2          | 2       |
+| Postgres memory  | 512Mi  | 4Gi        | 2Gi     |
+| Image registry   | local  | local      | internal-registry.local:5000 |
+| LLM backend      | OpenRouter | OpenRouter | Ollama |
