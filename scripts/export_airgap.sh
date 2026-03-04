@@ -108,7 +108,7 @@ echo "Waiting for services to start (60 seconds)..."
 sleep 60
 
 echo "Seeding threat intelligence skills..."
-docker exec hydra-worker python /app/scripts/seed_skills.py
+docker exec $(docker ps --filter "name=worker" --format "{{.Names}}" | head -1) python /app/scripts/seed_skills.py
 
 echo ""
 echo "=== HYDRA Installation Complete ==="

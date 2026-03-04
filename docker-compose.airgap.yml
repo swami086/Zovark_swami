@@ -137,7 +137,7 @@ services:
   # ─── WORKER ──────────────────────────────────────────
   worker:
     image: hydra-mvp-worker:latest
-    container_name: hydra-worker
+    # No container_name — allows docker compose --scale worker=N
     environment:
       - DATABASE_URL=postgresql://hydra:hydra@postgres:5432/hydra
       - TEMPORAL_ADDRESS=temporal:7233
