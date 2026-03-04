@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: hydra
+  labels:
+    app: hydra
+    component: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: hydra
+    component: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-read
+  namespace: hydra
+  labels:
+    app: hydra
+    component: postgres
+    role: read
+  annotations:
+    description: "Read-only endpoint. Points to primary now; change selector to role=replica when read replica is added."
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: hydra
+    component: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: hydra
+  labels:
+    app: hydra
+    component: postgres
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: hydra
+    component: postgres

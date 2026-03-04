@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hydra-worker
+  namespace: hydra
+  labels:
+    app: hydra
+    component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hydra
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: hydra
+        component: worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: hydra-mvp-worker:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hydra-db-credentials
+                  key: pgbouncer-url
+            - name: TEMPORAL_ADDRESS
+              value: "temporal:7233"
+            - name: LITELLM_URL
+              value: "http://litellm:4000/v1/chat/completions"
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hydra-api-secrets
+                  key: litellm-master-key
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+            - name: HYDRA_LLM_MODEL
+              value: "fast"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import temporalio; print('ok')"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import temporalio; print('ok')"
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 10

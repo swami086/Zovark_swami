@@ -3,3 +3,4 @@ local_models/
 node_modules/
 __pycache__/
 *.pyc
+k8s/**/secrets.yaml

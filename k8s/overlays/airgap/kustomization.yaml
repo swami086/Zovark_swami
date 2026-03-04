@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: pgvector/pgvector
+    newName: internal-registry.local:5000/hydra/pgvector
+    newTag: pg16
+  - name: edoburu/pgbouncer
+    newName: internal-registry.local:5000/hydra/pgbouncer
+    newTag: latest
+  - name: redis
+    newName: internal-registry.local:5000/hydra/redis
+    newTag: 7-alpine
+  - name: temporalio/auto-setup
+    newName: internal-registry.local:5000/hydra/temporal-auto-setup
+    newTag: "1.24.2"
+  - name: docker.litellm.ai/berriai/litellm-database
+    newName: internal-registry.local:5000/hydra/litellm-database
+    newTag: main-stable
+  - name: hydra-mvp-worker
+    newName: internal-registry.local:5000/hydra/worker
+    newTag: latest
+  - name: hydra-mvp-api
+    newName: internal-registry.local:5000/hydra/api
+    newTag: latest
+  - name: hydra-mvp-dashboard
+    newName: internal-registry.local:5000/hydra/dashboard
+    newTag: latest
+
+patches:
+  # LiteLLM: switch to local Ollama endpoint
+  - target:
+      kind: ConfigMap
+      name: litellm-config
+    patch: |
+      - op: replace
+        path: /data/config.yaml
+        value: |
+          model_list:
+            - model_name: fast
+              litellm_params:
+                model: ollama/qwen2.5:1.5b
+                api_base: http://ollama:11434
+            - model_name: embed
+              litellm_params:
+                model: ollama/nomic-embed-text
+                api_base: http://ollama:11434
+          litellm_settings:
+            drop_params: true
+            request_timeout: 120

@@ -1,0 +1,59 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  # Worker: 1 replica for dev
+  - target:
+      kind: Deployment
+      name: hydra-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # Worker HPA: min 1, max 4 for dev
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: hydra-worker-hpa
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 4
+  # API: 1 replica for dev
+  - target:
+      kind: Deployment
+      name: hydra-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # API HPA: min 1, max 4 for dev
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: hydra-api-hpa
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 4
+  # Postgres: reduced resources for dev
+  - target:
+      kind: StatefulSet
+      name: postgres
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi

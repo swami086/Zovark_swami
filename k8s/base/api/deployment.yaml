@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hydra-api
+  namespace: hydra
+  labels:
+    app: hydra
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hydra
+      component: api
+  template:
+    metadata:
+      labels:
+        app: hydra
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: hydra-mvp-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+              name: http
+          env:
+            - name: PORT
+              value: "8090"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hydra-db-credentials
+                  key: direct-url
+            - name: TEMPORAL_ADDRESS
+              value: "temporal:7233"
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hydra-api-secrets
+                  key: litellm-master-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hydra-api-secrets
+                  key: jwt-secret
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 10

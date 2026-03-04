@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: hydra
+  labels:
+    app: hydra
+    component: litellm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4000
+      targetPort: 4000
+      name: http
+  selector:
+    app: hydra
+    component: litellm

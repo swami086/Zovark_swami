@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: hydra
+  labels:
+    app: hydra
+    component: postgres
+data:
+  postgresql.conf: |
+    listen_addresses = '*'
+    port = 5432
+    max_connections = 200
+    shared_buffers = 1GB
+    effective_cache_size = 3GB
+    maintenance_work_mem = 256MB
+    work_mem = 16MB
+    wal_level = replica
+    max_wal_senders = 5
+    max_replication_slots = 5
+    synchronous_commit = off
+    checkpoint_completion_target = 0.9
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    password_encryption = md5
+    log_min_duration_statement = 500
+    log_statement = 'ddl'
+    autovacuum = on
+    autovacuum_max_workers = 3
+    autovacuum_naptime = 30s
+    autovacuum_vacuum_threshold = 50
+    autovacuum_analyze_threshold = 50
+  pg_hba.conf: |
+    local   all   all                 trust
+    host    all   all   127.0.0.1/32  trust
+    host    all   all   ::1/128       trust
+    host    all   all   all           md5
