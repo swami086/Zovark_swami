@@ -13,6 +13,14 @@ import re
 sys.path.append("/app")
 from sandbox.ast_prefilter import is_safe_python_code
 
+def _get_worker_id():
+    """Get worker_id from main module (lazy import to avoid circular)."""
+    try:
+        from main import WORKER_ID
+        return WORKER_ID
+    except Exception:
+        return None
+
 def get_db_connection():
     db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
     return psycopg2.connect(db_url)
@@ -230,23 +238,25 @@ async def execute_code(code: str) -> dict:
 @activity.defn
 async def update_task_status(task_update: dict) -> None:
     conn = get_db_connection()
+    worker_id = _get_worker_id()
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                UPDATE agent_tasks 
-                SET status = %s, output = %s, error_message = %s, 
+                UPDATE agent_tasks
+                SET status = %s, output = %s, error_message = %s,
                     tokens_used_input = %s, tokens_used_output = %s, execution_ms = %s,
-                    severity = %s,
+                    severity = %s, worker_id = COALESCE(%s, worker_id),
                     completed_at = NOW()
                 WHERE id = %s
             """, (
-                task_update["status"], 
-                json.dumps(task_update.get("output", {})), 
-                task_update.get("error_message", None), 
-                task_update.get("tokens_input", 0), 
-                task_update.get("tokens_output", 0), 
-                task_update.get("execution_ms", 0), 
+                task_update["status"],
+                json.dumps(task_update.get("output", {})),
+                task_update.get("error_message", None),
+                task_update.get("tokens_input", 0),
+                task_update.get("tokens_output", 0),
+                task_update.get("execution_ms", 0),
                 task_update.get("severity", None),
+                worker_id,
                 task_update["task_id"]
             ))
         conn.commit()
