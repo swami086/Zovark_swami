@@ -25,6 +25,10 @@ def get_db_connection():
     db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
     return psycopg2.connect(db_url)
 
+def _sync_commit(cur):
+    """Enable synchronous commit for this transaction (critical writes)."""
+    cur.execute("SET LOCAL synchronous_commit = on")
+
 @activity.defn
 async def fetch_task(task_id: str) -> dict:
     conn = get_db_connection()
@@ -133,7 +137,9 @@ async def generate_code(task_data: dict) -> dict:
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": augmented_prompt}
-        ]
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4096
     }
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -208,8 +214,10 @@ async def execute_code(code: str) -> dict:
 
     cmd = [
         "docker", "run", "--rm", "-i", "--network=none", "--read-only",
-        "--tmpfs", "/tmp:size=50m", "--workdir", "/tmp", "--cpus=0.5", "--memory=256m",
-        "--pids-limit=50", "--security-opt=no-new-privileges",
+        "--tmpfs", "/tmp:size=64m,noexec,nosuid", "--workdir", "/tmp",
+        "--cpus=0.5", "--memory=512m", "--memory-swap=512m",
+        "--pids-limit=64", "--cap-drop=ALL",
+        "--security-opt=no-new-privileges",
         f"--security-opt", f"seccomp={seccomp_path}",
         "python:3.11-slim", "python"
     ]
@@ -268,6 +276,7 @@ async def log_audit(audit_data: dict) -> None:
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
+            _sync_commit(cur)
             cur.execute("""
                 INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details)
                 VALUES (%s, %s, %s, %s, %s)
@@ -279,6 +288,31 @@ async def log_audit(audit_data: dict) -> None:
                 json.dumps(audit_data.get("details", {}))
             ))
         conn.commit()
+    finally:
+        conn.close()
+
+@activity.defn
+async def log_audit_event(event_data: dict) -> None:
+    """Insert structured audit event into audit_events table."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            _sync_commit(cur)
+            cur.execute("""
+                INSERT INTO audit_events (tenant_id, event_type, actor_id, actor_type, resource_type, resource_id, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                event_data["tenant_id"],
+                event_data["event_type"],
+                event_data.get("actor_id"),
+                event_data.get("actor_type", "worker"),
+                event_data.get("resource_type"),
+                event_data.get("resource_id"),
+                json.dumps(event_data.get("metadata", {}))
+            ))
+        conn.commit()
+    except Exception as e:
+        print(f"log_audit_event non-fatal error: {e}")
     finally:
         conn.close()
 
@@ -308,6 +342,7 @@ async def save_investigation_step(step_data: dict) -> None:
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
+            _sync_commit(cur)
             cur.execute("""
                 INSERT INTO public.investigation_steps (task_id, step_number, step_type, summary_prompt, generated_code, output, status, tokens_used_input, tokens_used_output, execution_ms, execution_mode, parameters_used, completed_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
@@ -518,6 +553,7 @@ async def create_approval_request(request_data: dict) -> str:
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
+            _sync_commit(cur)
             cur.execute("""
                 INSERT INTO approval_requests (task_id, step_number, risk_level, action_summary, generated_code)
                 VALUES (%s, %s, %s, %s, %s)
@@ -541,6 +577,7 @@ async def update_approval_request(update_data: dict) -> None:
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
+            _sync_commit(cur)
             cur.execute("""
                 UPDATE approval_requests 
                 SET status = %s, decided_at = NOW(), decided_by = %s, decision_comment = %s
@@ -804,8 +841,9 @@ async def write_investigation_memory(memory_data: dict) -> None:
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
+                _sync_commit(cur)
                 cur.execute("""
-                    INSERT INTO investigation_memory 
+                    INSERT INTO investigation_memory
                     (tenant_id, task_id, skill_used_id, threat_type, memory_summary, key_findings, key_iocs, risk_score, embedding)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
                 """, (

@@ -69,7 +69,7 @@ services:
     environment:
       DATABASE_URL: postgres://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
       POOL_MODE: transaction
-      AUTH_TYPE: plain
+      AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: 400
       DEFAULT_POOL_SIZE: 25
       MIN_POOL_SIZE: 5
@@ -255,12 +255,12 @@ services:
       - "8090:8090"
     environment:
       - PORT=8090
-      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@pgbouncer:5432/hydra
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
       - JWT_SECRET=${JWT_SECRET:-hydra-jwt-secret-dev-2026}
     depends_on:
-      postgres:
+      pgbouncer:
         condition: service_healthy
       temporal:
         condition: service_started
