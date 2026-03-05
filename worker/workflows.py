@@ -5,14 +5,26 @@ from temporalio import workflow
 with workflow.unsafe.imports_passed_through():
     from activities import (
         fetch_task, generate_code, validate_code, execute_code,
-        update_task_status, log_audit, record_usage,
+        update_task_status, log_audit, log_audit_event, record_usage,
         save_investigation_step, check_followup_needed, generate_followup_code,
         check_requires_approval, create_approval_request, update_approval_request,
         retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template,
         check_rate_limit_activity, decrement_active_activity
     )
+    from entity_graph import extract_entities, write_entity_graph, embed_investigation
 
 MAX_STEPS = 3
+
+def _verdict_from_severity(severity: str) -> str:
+    """Map severity level to investigation verdict."""
+    mapping = {
+        "critical": "true_positive",
+        "high": "true_positive",
+        "medium": "suspicious",
+        "low": "benign",
+        "informational": "benign",
+    }
+    return mapping.get(severity, "inconclusive")
 
 @workflow.defn
 class ExecuteTaskWorkflow:
@@ -66,7 +78,19 @@ class ExecuteTaskWorkflow:
             },
             schedule_to_close_timeout=timedelta(seconds=10)
         )
-        
+        await workflow.execute_activity(
+            log_audit_event,
+            {
+                "tenant_id": tenant_id,
+                "event_type": "investigation_started",
+                "actor_type": "system",
+                "resource_type": "task",
+                "resource_id": task_id,
+                "metadata": {"task_type": task_type}
+            },
+            schedule_to_close_timeout=timedelta(seconds=10)
+        )
+
         # --- SKILLS RAG RETRIEVAL ---
         skill_used_id = None
         skill_template = None
@@ -339,7 +363,19 @@ If something has worked in past investigations for this threat type, apply those
                     },
                     schedule_to_close_timeout=timedelta(seconds=10)
                 )
-                
+                await workflow.execute_activity(
+                    log_audit_event,
+                    {
+                        "tenant_id": tenant_id,
+                        "event_type": "approval_requested",
+                        "actor_type": "system",
+                        "resource_type": "task",
+                        "resource_id": task_id,
+                        "metadata": {"approval_id": approval_id, "risk_level": approval_check["risk_level"]}
+                    },
+                    schedule_to_close_timeout=timedelta(seconds=10)
+                )
+
                 # Wait for approval signal (24 hour timeout)
                 self._approval_decision = None
                 try:
@@ -389,6 +425,19 @@ If something has worked in past investigations for this threat type, apply those
                             "resource_type": "task",
                             "resource_id": task_id,
                             "details": {"comment": comment}
+                        },
+                        schedule_to_close_timeout=timedelta(seconds=10)
+                    )
+                    await workflow.execute_activity(
+                        log_audit_event,
+                        {
+                            "tenant_id": tenant_id,
+                            "event_type": "approval_denied",
+                            "actor_id": self._approval_decision.get("decided_by"),
+                            "actor_type": "user",
+                            "resource_type": "task",
+                            "resource_id": task_id,
+                            "metadata": {"comment": comment}
                         },
                         schedule_to_close_timeout=timedelta(seconds=10)
                     )
@@ -445,7 +494,20 @@ If something has worked in past investigations for this threat type, apply those
                     },
                     schedule_to_close_timeout=timedelta(seconds=10)
                 )
-                
+                await workflow.execute_activity(
+                    log_audit_event,
+                    {
+                        "tenant_id": tenant_id,
+                        "event_type": "approval_granted",
+                        "actor_id": self._approval_decision.get("decided_by"),
+                        "actor_type": "user",
+                        "resource_type": "task",
+                        "resource_id": task_id,
+                        "metadata": {"comment": self._approval_decision.get("comment", "Approved")}
+                    },
+                    schedule_to_close_timeout=timedelta(seconds=10)
+                )
+
                 # Update task status back to executing
                 await workflow.execute_activity(
                     update_task_status,
@@ -529,6 +591,19 @@ If something has worked in past investigations for this threat type, apply those
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
             
+            await workflow.execute_activity(
+                log_audit_event,
+                {
+                    "tenant_id": tenant_id,
+                    "event_type": "code_executed",
+                    "actor_type": "worker",
+                    "resource_type": "task",
+                    "resource_id": task_id,
+                    "metadata": {"step_number": step_num, "status": step_status}
+                },
+                schedule_to_close_timeout=timedelta(seconds=10)
+            )
+
             # Accumulate totals
             total_tokens_input += step_tokens_in
             total_tokens_output += step_tokens_out
@@ -635,7 +710,19 @@ If something has worked in past investigations for this threat type, apply those
             },
             schedule_to_close_timeout=timedelta(seconds=10)
         )
-        
+        await workflow.execute_activity(
+            log_audit_event,
+            {
+                "tenant_id": tenant_id,
+                "event_type": "investigation_completed",
+                "actor_type": "system",
+                "resource_type": "task",
+                "resource_id": task_id,
+                "metadata": {"steps": completed_steps, "severity": severity}
+            },
+            schedule_to_close_timeout=timedelta(seconds=10)
+        )
+
         # --- WRITE INVESTIGATION MEMORY ---
         try:
             await workflow.execute_activity(
@@ -652,7 +739,79 @@ If something has worked in past investigations for this threat type, apply those
         except Exception as e:
             workflow.logger.info(f"Memory write failed non-fatally: {str(e)}")
             pass
-        
+
+        # --- ENTITY GRAPH + INVESTIGATION EMBEDDING (Sprint 1G) ---
+        try:
+            # 1. Extract entities from investigation output
+            entity_result = await workflow.execute_activity(
+                extract_entities,
+                {
+                    "investigation_output": final_stdout,
+                    "task_type": task_type,
+                    "tenant_id": tenant_id,
+                    "task_id": task_id
+                },
+                schedule_to_close_timeout=timedelta(minutes=2)
+            )
+
+            # 2. Embed investigation + create investigations row
+            inv_risk_score = previous_risk_score or 0
+            inv_confidence = min(inv_risk_score / 100.0, 1.0) if inv_risk_score else 0.5
+            verdict = _verdict_from_severity(severity)
+
+            embed_result = await workflow.execute_activity(
+                embed_investigation,
+                {
+                    "tenant_id": tenant_id,
+                    "task_id": task_id,
+                    "summary": final_stdout[:2000],
+                    "verdict": verdict,
+                    "risk_score": inv_risk_score,
+                    "confidence": inv_confidence,
+                    "attack_techniques": [],
+                    "skill_id": skill_used_id,
+                    "model_id": "fast",
+                    "prompt_version": "1g",
+                    "source": "production",
+                    "task_type": task_type
+                },
+                schedule_to_close_timeout=timedelta(minutes=1)
+            )
+
+            investigation_id = embed_result.get("investigation_id")
+
+            # 3. Write entity graph (entities, observations, edges)
+            if entity_result.get("entities") and investigation_id:
+                await workflow.execute_activity(
+                    write_entity_graph,
+                    {
+                        "tenant_id": tenant_id,
+                        "task_id": task_id,
+                        "investigation_id": investigation_id,
+                        "entities": entity_result["entities"],
+                        "edges": entity_result.get("edges", [])
+                    },
+                    schedule_to_close_timeout=timedelta(minutes=1)
+                )
+                await workflow.execute_activity(
+                    log_audit_event,
+                    {
+                        "tenant_id": tenant_id,
+                        "event_type": "entity_extracted",
+                        "actor_type": "system",
+                        "resource_type": "investigation",
+                        "resource_id": investigation_id,
+                        "metadata": {
+                            "entity_count": len(entity_result["entities"]),
+                            "edge_count": len(entity_result.get("edges", []))
+                        }
+                    },
+                    schedule_to_close_timeout=timedelta(seconds=10)
+                )
+        except Exception as e:
+            workflow.logger.info(f"Entity graph pipeline failed non-fatally: {str(e)}")
+            pass
+
         return {"status": "completed", "steps": completed_steps}
 
     async def _fail_task(self, task_id: str, tenant_id: str, reason: str, tokens_input=0, tokens_output=0, exec_ms=0):

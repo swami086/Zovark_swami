@@ -8,7 +8,8 @@ from temporalio.worker import Worker
 import psycopg2
 
 from workflows import ExecuteTaskWorkflow
-from activities import fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity
+from activities import fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity
+from entity_graph import extract_entities, write_entity_graph, embed_investigation
 
 # Worker identity — read from env (K8s pod name) or generate
 def _generate_worker_id():
@@ -38,7 +39,7 @@ async def main():
         client,
         task_queue="hydra-tasks",
         workflows=[ExecuteTaskWorkflow],
-        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity],
+        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, extract_entities, write_entity_graph, embed_investigation],
     )
     print(f"Worker {WORKER_ID} starting on task queue hydra-tasks")
     await worker.run()

@@ -1,6 +1,6 @@
 -- Hydra MVP Database Schema
--- Version: 1.1.1
--- 14 tables, 1 view, 14 indexes, 2 append-only enforcement rules
+-- Version: 1.2.0
+-- 21 tables (14 base + 3 new + 4 entity graph), 1 view, append-only enforcement
 
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -27,6 +27,7 @@ CREATE TABLE users (
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
     display_name VARCHAR(255),
+    password_hash TEXT,
     role VARCHAR(20) NOT NULL DEFAULT 'analyst' CHECK (role IN ('admin', 'analyst', 'viewer')),
     external_auth_id VARCHAR(255),
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -77,6 +78,7 @@ CREATE TABLE agent_skills (
     follow_up_chain JSONB,
     embedding vector(768),
     keywords TEXT[],
+    parameters JSONB,
     times_used INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -96,7 +98,7 @@ CREATE TABLE agent_tasks (
     task_type VARCHAR(100) NOT NULL,
     input JSONB NOT NULL DEFAULT '{}',
     output JSONB,
-    status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'planning', 'approved', 'executing', 'completed', 'failed', 'cancelled')),
+    status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'planning', 'approved', 'executing', 'completed', 'failed', 'cancelled', 'awaiting_approval', 'rejected')),
     error_message TEXT,
     workflow_id VARCHAR(255),
     workflow_run_id VARCHAR(255),
@@ -105,6 +107,8 @@ CREATE TABLE agent_tasks (
     tokens_used_output INTEGER NOT NULL DEFAULT 0,
     execution_ms INTEGER,
     sandbox_container_id VARCHAR(255),
+    severity VARCHAR(20),
+    worker_id VARCHAR(255),
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -165,9 +169,9 @@ CREATE TABLE agent_memory_episodic (
 
 CREATE TABLE usage_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id),
-    task_id UUID REFERENCES agent_tasks(id),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    task_id UUID REFERENCES agent_tasks(id) ON DELETE SET NULL,
     record_type VARCHAR(50) NOT NULL CHECK (record_type IN ('llm_call', 'embedding', 'skill_exec', 'storage')),
     model_name VARCHAR(100),
     tokens_input INTEGER NOT NULL DEFAULT 0,
@@ -184,8 +188,8 @@ CREATE TABLE usage_records (
 
 CREATE TABLE agent_audit_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(100) NOT NULL,
     resource_type VARCHAR(100) NOT NULL,
     resource_id UUID,
@@ -262,6 +266,66 @@ CREATE TABLE siem_alerts (
 );
 
 -- ============================================================
+-- INVESTIGATION STEPS
+-- ============================================================
+
+CREATE TABLE investigation_steps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    task_id UUID NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,
+    step_number INTEGER NOT NULL,
+    step_type VARCHAR(50) NOT NULL DEFAULT 'analysis',
+    summary_prompt TEXT,
+    generated_code TEXT,
+    output TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    tokens_used_input INTEGER DEFAULT 0,
+    tokens_used_output INTEGER DEFAULT 0,
+    execution_ms INTEGER DEFAULT 0,
+    execution_mode VARCHAR(20) DEFAULT 'sandbox',
+    parameters_used JSONB,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(task_id, step_number)
+);
+
+-- ============================================================
+-- APPROVAL REQUESTS
+-- ============================================================
+
+CREATE TABLE approval_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    task_id UUID NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,
+    step_number INTEGER NOT NULL,
+    risk_level VARCHAR(20) NOT NULL DEFAULT 'medium',
+    action_summary TEXT,
+    generated_code TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    decided_at TIMESTAMPTZ,
+    decided_by UUID REFERENCES users(id),
+    decision_comment TEXT
+);
+
+-- ============================================================
+-- PLAYBOOKS
+-- ============================================================
+
+CREATE TABLE playbooks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    icon VARCHAR(50),
+    task_type VARCHAR(100) NOT NULL,
+    is_template BOOLEAN NOT NULL DEFAULT false,
+    system_prompt_override TEXT,
+    steps JSONB NOT NULL DEFAULT '[]',
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 
@@ -290,6 +354,10 @@ CREATE INDEX idx_siem_alerts_tenant ON siem_alerts(tenant_id);
 CREATE INDEX idx_siem_alerts_status ON siem_alerts(status);
 CREATE INDEX idx_siem_alerts_source ON siem_alerts(log_source_id);
 CREATE INDEX idx_siem_alerts_created ON siem_alerts(created_at DESC);
+CREATE INDEX idx_investigation_steps_task ON investigation_steps(task_id);
+CREATE INDEX idx_approval_requests_task ON approval_requests(task_id);
+CREATE INDEX idx_approval_requests_status ON approval_requests(status);
+CREATE INDEX idx_playbooks_tenant ON playbooks(tenant_id);
 
 -- Vector similarity index for episodic memory
 CREATE INDEX idx_memory_embedding ON agent_memory_episodic
@@ -343,3 +411,196 @@ GROUP BY t.id, tn.name;
 INSERT INTO tenants (name, slug, tier) VALUES
     ('Hydra Dev', 'hydra-dev', 'enterprise')
 ON CONFLICT (slug) DO NOTHING;
+
+-- ============================================================
+-- ENTITY GRAPH (Sprint 1G)
+-- ============================================================
+
+-- Investigations (partitioned by month)
+CREATE TABLE investigations (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    task_id UUID NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,
+    alert_source VARCHAR(255),
+    alert_type VARCHAR(100),
+    skill_id UUID REFERENCES agent_skills(id),
+    skill_version INTEGER,
+    attack_techniques TEXT[],
+    verdict VARCHAR(20) CHECK (verdict IN (
+        'true_positive', 'false_positive', 'benign', 'suspicious', 'inconclusive'
+    )),
+    risk_score INTEGER CHECK (risk_score >= 0 AND risk_score <= 100),
+    confidence NUMERIC(3,2) CHECK (confidence >= 0.0 AND confidence <= 1.0),
+    timeline JSONB,
+    summary TEXT,
+    summary_embedding vector(768),
+    model_id VARCHAR(100),
+    model_version VARCHAR(100),
+    prompt_version VARCHAR(50),
+    analyst_feedback JSONB,
+    source VARCHAR(20) NOT NULL DEFAULT 'production' CHECK (source IN (
+        'production', 'bootstrap', 'synthetic'
+    )),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE investigations_2026_01 PARTITION OF investigations
+    FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+CREATE TABLE investigations_2026_02 PARTITION OF investigations
+    FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+CREATE TABLE investigations_2026_03 PARTITION OF investigations
+    FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
+CREATE TABLE investigations_2026_04 PARTITION OF investigations
+    FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
+CREATE TABLE investigations_2026_05 PARTITION OF investigations
+    FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+CREATE TABLE investigations_2026_06 PARTITION OF investigations
+    FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
+CREATE TABLE investigations_2026_07 PARTITION OF investigations
+    FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+CREATE TABLE investigations_2026_08 PARTITION OF investigations
+    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+CREATE TABLE investigations_2026_09 PARTITION OF investigations
+    FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+CREATE TABLE investigations_2026_10 PARTITION OF investigations
+    FOR VALUES FROM ('2026-10-01') TO ('2026-11-01');
+CREATE TABLE investigations_2026_11 PARTITION OF investigations
+    FOR VALUES FROM ('2026-11-01') TO ('2026-12-01');
+CREATE TABLE investigations_2026_12 PARTITION OF investigations
+    FOR VALUES FROM ('2026-12-01') TO ('2027-01-01');
+CREATE TABLE investigations_default PARTITION OF investigations DEFAULT;
+
+CREATE INDEX idx_investigations_attack_techniques
+    ON investigations USING GIN (attack_techniques);
+CREATE INDEX idx_investigations_verdict_source
+    ON investigations (verdict, source);
+CREATE INDEX idx_investigations_risk_score
+    ON investigations (risk_score DESC);
+CREATE INDEX idx_investigations_created_at
+    ON investigations (created_at);
+CREATE INDEX idx_investigations_tenant
+    ON investigations (tenant_id);
+CREATE INDEX idx_investigations_task
+    ON investigations (task_id);
+CREATE INDEX idx_investigations_summary_embedding
+    ON investigations USING ivfflat (summary_embedding vector_cosine_ops) WITH (lists = 100);
+
+-- Entities (normalized IOCs with cross-tenant dedup)
+CREATE TABLE entities (
+    id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    entity_hash VARCHAR(64) NOT NULL,
+    entity_type VARCHAR(20) NOT NULL CHECK (entity_type IN (
+        'ip', 'domain', 'file_hash', 'url', 'user', 'device', 'process', 'email'
+    )),
+    value TEXT NOT NULL,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    threat_score INTEGER DEFAULT 0 CHECK (threat_score >= 0 AND threat_score <= 100),
+    observation_count INTEGER DEFAULT 1,
+    tenant_count INTEGER DEFAULT 1,
+    metadata JSONB DEFAULT '{}',
+    UNIQUE(entity_hash, tenant_id)
+);
+
+CREATE INDEX idx_entities_type_threat ON entities (entity_type, threat_score DESC);
+CREATE INDEX idx_entities_last_seen ON entities (last_seen DESC);
+CREATE INDEX idx_entities_tenant ON entities (tenant_id);
+CREATE INDEX idx_entities_hash ON entities (entity_hash);
+
+-- Entity edges (relationships between entities)
+CREATE TABLE entity_edges (
+    id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    source_entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    target_entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    edge_type VARCHAR(30) NOT NULL CHECK (edge_type IN (
+        'communicates_with', 'resolved_to', 'logged_into',
+        'executed', 'downloaded', 'contains', 'parent_of',
+        'accessed', 'sent_to', 'received_from', 'associated_with'
+    )),
+    investigation_id UUID,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    mitre_technique VARCHAR(20),
+    confidence NUMERIC(3,2) DEFAULT 0.5 CHECK (confidence >= 0.0 AND confidence <= 1.0),
+    observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    metadata JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_entity_edges_source_type ON entity_edges (source_entity_id, edge_type);
+CREATE INDEX idx_entity_edges_target ON entity_edges (target_entity_id);
+CREATE INDEX idx_entity_edges_investigation ON entity_edges (investigation_id);
+CREATE INDEX idx_entity_edges_tenant ON entity_edges (tenant_id);
+CREATE INDEX idx_entity_edges_mitre ON entity_edges (mitre_technique) WHERE mitre_technique IS NOT NULL;
+
+-- Entity observations (entity sightings per investigation)
+CREATE TABLE entity_observations (
+    id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    investigation_id UUID,
+    role VARCHAR(20) NOT NULL CHECK (role IN (
+        'source', 'destination', 'attacker', 'victim',
+        'indicator', 'artifact', 'infrastructure', 'target'
+    )),
+    context TEXT,
+    mitre_technique VARCHAR(20),
+    observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_entity_observations_entity ON entity_observations (entity_id);
+CREATE INDEX idx_entity_observations_investigation ON entity_observations (investigation_id);
+CREATE INDEX idx_entity_observations_role ON entity_observations (role);
+CREATE INDEX idx_entity_observations_mitre ON entity_observations (mitre_technique) WHERE mitre_technique IS NOT NULL;
+
+-- ============================================================
+-- AUDIT EVENTS (Structured, partitioned, append-only)
+-- Sprint 1E-4
+-- ============================================================
+
+CREATE TABLE audit_events (
+    id BIGSERIAL,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    event_type VARCHAR(50) NOT NULL CHECK (event_type IN (
+        'investigation_started', 'investigation_completed', 'code_executed',
+        'approval_requested', 'approval_granted', 'approval_denied', 'approval_timeout',
+        'entity_extracted', 'detection_generated', 'user_login', 'user_registered'
+    )),
+    actor_id UUID,
+    actor_type VARCHAR(20) CHECK (actor_type IN ('user', 'worker', 'system')),
+    resource_type VARCHAR(50),
+    resource_id UUID,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE audit_events_2026_01 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+CREATE TABLE audit_events_2026_02 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+CREATE TABLE audit_events_2026_03 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
+CREATE TABLE audit_events_2026_04 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
+CREATE TABLE audit_events_2026_05 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+CREATE TABLE audit_events_2026_06 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
+CREATE TABLE audit_events_2026_07 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+CREATE TABLE audit_events_2026_08 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+CREATE TABLE audit_events_2026_09 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+CREATE TABLE audit_events_2026_10 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-10-01') TO ('2026-11-01');
+CREATE TABLE audit_events_2026_11 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-11-01') TO ('2026-12-01');
+CREATE TABLE audit_events_2026_12 PARTITION OF audit_events
+    FOR VALUES FROM ('2026-12-01') TO ('2027-01-01');
+CREATE TABLE audit_events_default PARTITION OF audit_events DEFAULT;
+
+CREATE INDEX idx_audit_events_tenant ON audit_events (tenant_id);
+CREATE INDEX idx_audit_events_type ON audit_events (event_type);
+CREATE INDEX idx_audit_events_created ON audit_events (created_at);
+CREATE INDEX idx_audit_events_resource ON audit_events (resource_type, resource_id);
