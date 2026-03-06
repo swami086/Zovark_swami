@@ -55,15 +55,14 @@ class ExecuteTaskWorkflow:
         tenant_id = task_data.get("tenant_id")
         task_type = task_data.get("task_type", "log_analysis").lower().replace(" ", "_")
 
-        # Lease-based rate limit check (default 50 concurrent per tenant)
-        max_concurrent = 50  # TODO: read from tenants table when available
+        # Lease-based rate limit check (reads max_concurrent from tenants table)
         rate_ok = await workflow.execute_activity(
             check_rate_limit_activity,
-            {"tenant_id": tenant_id, "task_id": task_id, "max_concurrent": max_concurrent},
+            {"tenant_id": tenant_id, "task_id": task_id},
             schedule_to_close_timeout=timedelta(seconds=10)
         )
         if not rate_ok:
-            return await self._fail_task(task_id, tenant_id, f"Rate limited: tenant has {max_concurrent}/{max_concurrent} concurrent investigations")
+            return await self._fail_task(task_id, tenant_id, "Rate limited: tenant at maximum concurrent investigations")
 
         try:
             return await self._run_investigation(task_id, tenant_id, task_type, task_data)

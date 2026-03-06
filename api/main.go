@@ -98,6 +98,10 @@ func main() {
 		api.POST("/tasks/upload", requireRole("admin", "analyst"), uploadTaskHandler)
 		api.POST("/siem-alerts/:id/investigate", requireRole("admin", "analyst"), investigateAlertHandler)
 
+		// Webhook endpoints (authenticated)
+		api.GET("/webhooks/endpoints", listWebhookEndpointsHandler)
+		api.GET("/webhooks/deliveries", listWebhookDeliveriesHandler)
+
 		// Admin only
 		api.GET("/approvals/pending", requireRole("admin"), getPendingApprovalsHandler)
 		api.POST("/approvals/:id/decide", requireRole("admin"), decideApprovalHandler)
@@ -107,6 +111,17 @@ func main() {
 		api.POST("/log-sources", requireRole("admin"), createLogSourceHandler)
 		api.PUT("/log-sources/:id", requireRole("admin"), updateLogSourceHandler)
 		api.DELETE("/log-sources/:id", requireRole("admin"), deleteLogSourceHandler)
+
+		// Tenant management (admin only)
+		api.GET("/tenants", requireRole("admin"), listTenantsHandler)
+		api.GET("/tenants/:id", requireRole("admin"), getTenantHandler)
+		api.POST("/tenants", requireRole("admin"), createTenantHandler)
+		api.PUT("/tenants/:id", requireRole("admin"), updateTenantHandler)
+
+		// Webhook endpoint management (admin only)
+		api.POST("/webhooks/endpoints", requireRole("admin"), createWebhookEndpointHandler)
+		api.PUT("/webhooks/endpoints/:id", requireRole("admin"), updateWebhookEndpointHandler)
+		api.DELETE("/webhooks/endpoints/:id", requireRole("admin"), deleteWebhookEndpointHandler)
 	}
 
 	// Start server

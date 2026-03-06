@@ -848,12 +848,24 @@ async def render_skill_template(data: dict) -> str:
 
 @activity.defn
 async def check_rate_limit_activity(data: dict) -> bool:
-    """Acquire a lease for this task. Returns True if OK, False if rate limited."""
+    """Acquire a lease for this task. Returns True if OK, False if rate limited.
+    Reads max_concurrent from tenants table if not provided."""
     from rate_limiter import acquire_lease
     tenant_id = data["tenant_id"]
     task_id = data.get("task_id", "unknown")
     worker_id = _get_worker_id()
-    max_concurrent = data.get("max_concurrent", 50)
+    max_concurrent = data.get("max_concurrent")
+    if max_concurrent is None:
+        try:
+            conn = _get_db()
+            cur = conn.cursor()
+            cur.execute("SELECT max_concurrent FROM tenants WHERE id = %s", (tenant_id,))
+            row = cur.fetchone()
+            max_concurrent = row[0] if row and row[0] else 50
+            cur.close()
+            conn.close()
+        except Exception:
+            max_concurrent = 50
     return acquire_lease(tenant_id, task_id, worker_id, max_concurrent)
 
 @activity.defn
