@@ -9,6 +9,7 @@ TTL: 60 seconds (heartbeat every 20s extends it)
 
 import os
 import redis
+import logger
 
 _redis_conn = None
 
@@ -82,13 +83,13 @@ def acquire_lease(tenant_id: str, task_id: str, worker_id: str, max_concurrent: 
         result = r.evalsha(_acquire_sha, 2, lease_key, active_key, worker_id, ttl, max_concurrent, task_id)
         acquired = bool(result)
         if acquired:
-            print(f"Lease acquired: tenant={tenant_id} task={task_id} worker={worker_id}")
+            logger.info("Lease acquired", tenant_id=tenant_id, task_id=task_id, worker_id=worker_id)
         else:
-            print(f"Lease denied (rate limited): tenant={tenant_id} active>={max_concurrent}")
+            logger.warn("Lease denied (rate limited)", tenant_id=tenant_id, max_concurrent=max_concurrent)
         return acquired
     except redis.RedisError as e:
         # Fail open — allow the task if Redis is down
-        print(f"rate_limiter: Redis unavailable, failing open: {e}")
+        logger.warn("Redis unavailable, failing open", error=str(e))
         return True
 
 
@@ -100,9 +101,9 @@ def release_lease(tenant_id: str, task_id: str) -> None:
         lease_key = _lease_key(tenant_id, task_id)
         active_key = _active_set_key(tenant_id)
         r.evalsha(_release_sha, 2, lease_key, active_key, task_id)
-        print(f"Lease released: tenant={tenant_id} task={task_id}")
+        logger.info("Lease released", tenant_id=tenant_id, task_id=task_id)
     except redis.RedisError as e:
-        print(f"rate_limiter: Redis unavailable on release (non-fatal): {e}")
+        logger.warn("Redis unavailable on release", error=str(e))
 
 
 def heartbeat_lease(tenant_id: str, task_id: str, ttl: int = 60) -> None:
@@ -112,7 +113,7 @@ def heartbeat_lease(tenant_id: str, task_id: str, ttl: int = 60) -> None:
         lease_key = _lease_key(tenant_id, task_id)
         r.expire(lease_key, ttl)
     except redis.RedisError as e:
-        print(f"rate_limiter: heartbeat failed (non-fatal): {e}")
+        logger.warn("Lease heartbeat failed", error=str(e))
 
 
 def get_active_count(tenant_id: str) -> int:
@@ -121,7 +122,7 @@ def get_active_count(tenant_id: str) -> int:
         r = _get_redis()
         return r.scard(_active_set_key(tenant_id))
     except redis.RedisError as e:
-        print(f"rate_limiter: count failed (non-fatal): {e}")
+        logger.warn("Active count failed", error=str(e))
         return 0
 
 

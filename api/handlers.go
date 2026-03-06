@@ -56,9 +56,10 @@ func healthCheckHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  "ok",
-		"version": "0.8.0",
-		"mode":    deploymentMode,
+		"status":         "ok",
+		"version":        "1.0.0",
+		"uptime_seconds": int(time.Since(startTime).Seconds()),
+		"mode":           deploymentMode,
 		"llm_provider":      llmProvider,
 		"llm_model":         llmModel,
 		"embedding_provider": "HuggingFace TEI (Local)",

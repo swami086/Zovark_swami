@@ -1,6 +1,7 @@
 # ============================================================
-# PROJECT HYDRA — LiteLLM Configuration
-# Save as: ~/hydra-mvp/litellm_config.yaml
+# PROJECT HYDRA — LiteLLM Configuration (LOCAL GPU variant)
+# NOT ACTIVE — for use when vLLM containers are running locally.
+# Active config is litellm_config.yaml (uses OpenRouter cloud).
 # ============================================================
 # Cross-checks:
 #   - "fast" model_name matches vllm-chat --served-model-name fast

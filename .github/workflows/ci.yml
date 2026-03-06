@@ -1,0 +1,106 @@
+name: HYDRA CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install flake8
+      - run: flake8 worker/ --max-line-length=200 --ignore=E501,W503,E402,E722,W504
+
+  test-imports:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: hydra
+          POSTGRES_PASSWORD: hydra_dev_2026
+          POSTGRES_DB: hydra
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgresql://hydra:hydra_dev_2026@localhost:5432/hydra
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r worker/requirements.txt
+      - name: Test core imports
+        run: |
+          cd worker
+          python -c "
+          from model_config import get_tier_config, ACTIVITY_TIER_MAP
+          from prompt_registry import get_version, prompt_count
+          from rate_limiter import acquire_lease, release_lease
+          from entity_normalize import normalize_entity, compute_entity_hash
+          from context_manager import truncate_for_model
+          from llm_logger import log_llm_call
+          from security.injection_detector import scan_for_injection
+          from security.prompt_sanitizer import wrap_untrusted_data
+          from detection.pattern_miner import mine_attack_patterns
+          from detection.sigma_generator import generate_sigma_rule
+          from detection.rule_validator import validate_sigma_rule
+          from response.actions import ACTION_REGISTRY, ResponseAction
+          print('All core imports OK')
+          "
+      - name: Test entity normalization
+        run: |
+          cd worker
+          python -c "
+          from entity_normalize import normalize_entity
+          assert normalize_entity('ip', '192.168.001.100') == '192.168.1.100'
+          assert normalize_entity('ip', '010.000.001.001') == '10.0.1.1'
+          assert normalize_entity('domain', 'WWW.EXAMPLE.COM') == 'example.com'
+          print('Normalization tests passed')
+          "
+
+  validate-migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: hydra
+          POSTGRES_PASSWORD: hydra_dev_2026
+          POSTGRES_DB: hydra
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply init.sql
+        run: PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f init.sql
+      - name: Apply all migrations
+        run: |
+          for f in migrations/*.sql; do
+            echo "Applying $f..."
+            PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f "$f"
+          done
+      - name: Verify key tables exist
+        run: |
+          PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -c "
+            SELECT tablename FROM pg_tables WHERE schemaname='public'
+            AND tablename IN ('tenants','investigations','entities','detection_candidates','response_playbooks','llm_call_log')
+            ORDER BY tablename;
+          "
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+      - run: docker compose build api worker

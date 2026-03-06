@@ -3,12 +3,14 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 var (
 	appConfig *Config
+	startTime = time.Now()
 )
 
 type Config struct {
