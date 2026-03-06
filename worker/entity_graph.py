@@ -14,6 +14,9 @@ from temporalio import activity
 
 from entity_normalize import normalize_entity, compute_entity_hash
 from prompts.entity_extraction import ENTITY_EXTRACTION_SYSTEM_PROMPT, build_entity_extraction_prompt
+from llm_logger import log_llm_call
+from prompt_registry import get_version
+from model_config import get_tier_config
 
 
 def _get_db():
@@ -108,7 +111,8 @@ async def extract_entities(data: dict) -> dict:
     """
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
     api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
-    llm_model = os.environ.get("HYDRA_LLM_MODEL", "fast")
+    tier_config = get_tier_config("extract_entities")
+    llm_model = tier_config["model"]
 
     investigation_output = data.get("investigation_output", "")
     task_type = data.get("task_type", "unknown")
@@ -119,6 +123,7 @@ async def extract_entities(data: dict) -> dict:
     usage_tokens = {"prompt_tokens": 0, "completion_tokens": 0}
     entities = []
     edges = []
+    llm_status = "success"
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -131,8 +136,8 @@ async def extract_entities(data: dict) -> dict:
                         {"role": "system", "content": ENTITY_EXTRACTION_SYSTEM_PROMPT},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "temperature": 0.1,
-                    "max_tokens": 1024,
+                    "temperature": tier_config["temperature"],
+                    "max_tokens": tier_config["max_tokens"],
                     "response_format": {"type": "json_object"}
                 }
             )
@@ -152,11 +157,30 @@ async def extract_entities(data: dict) -> dict:
     except (json.JSONDecodeError, KeyError, httpx.HTTPError) as e:
         print(f"Entity extraction LLM failed, falling back to regex: {e}")
         entities = _regex_extract_entities(investigation_output)
+        llm_status = "fallback"
     except Exception as e:
         print(f"Entity extraction unexpected error, falling back to regex: {e}")
         entities = _regex_extract_entities(investigation_output)
+        llm_status = "error"
 
     execution_ms = int((time.time() - start_time) * 1000)
+
+    log_llm_call(
+        activity_name="extract_entities",
+        model_tier=tier_config["tier"],
+        model_id=llm_model,
+        prompt_name="entity_extraction",
+        prompt_version=get_version("entity_extraction"),
+        input_tokens=usage_tokens.get("prompt_tokens", 0),
+        output_tokens=usage_tokens.get("completion_tokens", 0),
+        latency_ms=execution_ms,
+        status=llm_status,
+        temperature=tier_config["temperature"],
+        max_tokens=tier_config["max_tokens"],
+        tenant_id=data.get("tenant_id"),
+        task_id=data.get("task_id"),
+    )
+
     return {
         "entities": entities,
         "edges": edges,

@@ -10,6 +10,9 @@ from temporalio import activity
 
 from bootstrap.mitre_parser import parse_mitre_stix
 from bootstrap.cisa_parser import parse_cisa_kev
+from llm_logger import log_llm_call
+from prompt_registry import get_version
+from model_config import get_tier_config
 
 
 def _get_db():
@@ -162,7 +165,8 @@ async def generate_synthetic_investigation(data: dict) -> dict:
     """
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
     api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
-    llm_model = os.environ.get("HYDRA_LLM_MODEL", "fast")
+    tier_config = get_tier_config("generate_synthetic_investigation")
+    llm_model = tier_config["model"]
 
     source = data.get("source", "mitre")
     source_id = data.get("source_id", "")
@@ -215,8 +219,31 @@ async def generate_synthetic_investigation(data: dict) -> dict:
             usage = result.get("usage", {})
             tokens_used = usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
             investigation_text = result["choices"][0]["message"]["content"].strip()
+
+            log_llm_call(
+                activity_name="generate_synthetic_investigation",
+                model_tier=tier_config["tier"],
+                model_id=llm_model,
+                prompt_name="synthetic_investigation",
+                prompt_version=get_version("synthetic_investigation"),
+                input_tokens=usage.get("prompt_tokens", 0),
+                output_tokens=usage.get("completion_tokens", 0),
+                latency_ms=int((time.time() - start_time) * 1000),
+                temperature=0.8,
+                max_tokens=tier_config["max_tokens"],
+            )
     except Exception as e:
         print(f"LLM call failed for {source_id}: {e}")
+        log_llm_call(
+            activity_name="generate_synthetic_investigation",
+            model_tier=tier_config["tier"],
+            model_id=llm_model,
+            prompt_name="synthetic_investigation",
+            prompt_version=get_version("synthetic_investigation"),
+            latency_ms=int((time.time() - start_time) * 1000),
+            status="error",
+            error_message=str(e),
+        )
         return {"source_id": source_id, "investigation_length": 0, "tokens_used": 0, "error": str(e)}
 
     # Store in bootstrap_corpus

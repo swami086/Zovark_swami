@@ -9,6 +9,10 @@ import subprocess
 import sys
 import re
 
+from llm_logger import log_llm_call
+from prompt_registry import get_version
+from model_config import get_tier_config
+
 # Add the /app level to path so we can import sandbox.ast_prefilter
 sys.path.append("/app")
 from sandbox.ast_prefilter import is_safe_python_code
@@ -129,8 +133,10 @@ async def generate_code(task_data: dict) -> dict:
     else:
         augmented_prompt = prompt + "\n\nCRITICAL CONSTRAINTS FOR THIS SCRIPT:\n1. You MUST define a multi-line string variable containing mock mock file data instead of trying to open files.\n2. You MUST define a hardcoded mock dictionary for any web request output instead of fetching it.\n3. You MUST use 'urllib.request' if you ever need networking.\n4. You MUST hardcode user choices instead of using an input function."
 
-    # LLM model selection — defaults to 'fast' (cloud), set HYDRA_LLM_MODEL=hydra-local for air-gap
-    llm_model = os.environ.get("HYDRA_LLM_MODEL", "fast")
+    # Model tiering
+    tier_config = get_tier_config("generate_code")
+    llm_model = tier_config["model"]
+    prompt_name = "code_generation_with_logs" if log_data else "code_generation_mock"
 
     payload = {
         "model": llm_model,
@@ -139,21 +145,38 @@ async def generate_code(task_data: dict) -> dict:
             {"role": "user", "content": augmented_prompt}
         ],
         "temperature": 0.7,
-        "max_tokens": 4096
+        "max_tokens": tier_config["max_tokens"],
     }
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    
+
     start_time = time.time()
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(litellm_url, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
-        
+
     execution_ms = int((time.time() - start_time) * 1000)
-    
+
+    # Log LLM call
+    usage = result.get("usage", {})
+    log_llm_call(
+        activity_name="generate_code",
+        model_tier=tier_config["tier"],
+        model_id=llm_model,
+        prompt_name=prompt_name,
+        prompt_version=get_version(prompt_name),
+        input_tokens=usage.get("prompt_tokens", 0),
+        output_tokens=usage.get("completion_tokens", 0),
+        latency_ms=execution_ms,
+        temperature=0.7,
+        max_tokens=tier_config["max_tokens"],
+        tenant_id=task_data.get("tenant_id"),
+        task_id=task_data.get("task_id"),
+    )
+
     code = result["choices"][0]["message"]["content"].strip()
     if code.startswith("```python"):
         code = code[9:]
@@ -442,26 +465,48 @@ async def generate_followup_code(task_data: dict) -> dict:
         "5. Hardcode all data inline."
     )
     
+    tier_config = get_tier_config("generate_followup_code")
+    followup_model = tier_config["model"]
+
     payload = {
-        "model": "fast",
+        "model": followup_model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
-        ]
+        ],
+        "temperature": 0.7,
+        "max_tokens": tier_config["max_tokens"],
     }
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    
+
     start_time = time.time()
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(litellm_url, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
-    
+
     execution_ms = int((time.time() - start_time) * 1000)
-    
+
+    # Log LLM call
+    usage = result.get("usage", {})
+    log_llm_call(
+        activity_name="generate_followup_code",
+        model_tier=tier_config["tier"],
+        model_id=followup_model,
+        prompt_name="code_generation_followup",
+        prompt_version=get_version("code_generation_followup"),
+        input_tokens=usage.get("prompt_tokens", 0),
+        output_tokens=usage.get("completion_tokens", 0),
+        latency_ms=execution_ms,
+        temperature=0.7,
+        max_tokens=tier_config["max_tokens"],
+        tenant_id=task_data.get("tenant_id"),
+        task_id=task_data.get("task_id"),
+    )
+
     code = result["choices"][0]["message"]["content"].strip()
     if code.startswith("```python"):
         code = code[9:]
@@ -469,13 +514,13 @@ async def generate_followup_code(task_data: dict) -> dict:
         code = code[3:]
     if code.endswith("```"):
         code = code[:-3]
-    
+
     # Post-generation code scrubber
     code = code.replace("import requests", "import urllib.request as urllib2")
     code = code.replace("requests.get", "urllib2.urlopen")
     code = code.replace("input(", "print('Mocking input for: ' + ")
     code = re.sub(r'\bopen\([\'"](?!\/tmp\/)(.*?)[\'"]', r'open("/tmp/\1"', code)
-    
+
     mock_requests = """
 class MockResponse:
     def __init__(self, json_data, status_code=200):
@@ -687,25 +732,26 @@ async def fill_skill_parameters(data: dict) -> dict:
     
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
     api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
-    model_name = os.environ.get("HYDRA_LLM_MODEL", "hydra-default")
+    tier_config = get_tier_config("fill_skill_parameters")
+    model_name = tier_config["model"]
 
     import time
     start_time = time.time()
-    
+
     skill_params = data.get("skill_params", [])
     prompt = data.get("prompt", "")
     log_data = data.get("log_data", "")
     siem_event = data.get("siem_event", {})
-    
+
     defaults = {p["name"]: p.get("default") for p in skill_params}
-    
+
     try:
         sys_msg = (
             "You are an expert security parameter extractor. Extract parameter values for a Python detection script "
             "based strictly on the provided user prompt. Return ONLY a valid JSON object matching the requested schema. "
             "Do not include markdown blocks, explanations, or any other text. Follow the parameter types strictly."
         )
-        
+
         user_msg = f"Available parameters and their types:\\n{json.dumps(skill_params, indent=2)}\\n\\nUser Prompt:\\n{prompt}\\n\\n"
         if siem_event:
             user_msg += f"Available SIEM Context:\\n{json.dumps(siem_event)}\\n\\n"
@@ -721,17 +767,34 @@ async def fill_skill_parameters(data: dict) -> dict:
                         {"role": "system", "content": sys_msg},
                         {"role": "user", "content": user_msg}
                     ],
-                    "temperature": 0.1,
-                    "max_tokens": 512,
+                    "temperature": tier_config["temperature"],
+                    "max_tokens": tier_config["max_tokens"],
                     "response_format": {"type": "json_object"}
                 }
             )
             resp.raise_for_status()
-            
+
             resp_json = resp.json()
             usage = resp_json.get("usage", {})
             input_tokens = usage.get("prompt_tokens", 0)
             output_tokens = usage.get("completion_tokens", 0)
+
+            fill_ms = int((time.time() - start_time) * 1000)
+            log_llm_call(
+                activity_name="fill_skill_parameters",
+                model_tier=tier_config["tier"],
+                model_id=model_name,
+                prompt_name="parameter_extraction",
+                prompt_version=get_version("parameter_extraction"),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                latency_ms=fill_ms,
+                temperature=tier_config["temperature"],
+                max_tokens=tier_config["max_tokens"],
+                tenant_id=data.get("tenant_id"),
+                task_id=data.get("task_id"),
+            )
+
             content = resp_json["choices"][0]["message"]["content"].strip()
 
             extracted = json.loads(content)

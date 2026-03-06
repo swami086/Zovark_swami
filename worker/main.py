@@ -18,6 +18,7 @@ from intelligence.cross_tenant import refresh_cross_tenant_intel, get_entity_int
 from intelligence.cross_tenant_workflow import CrossTenantRefreshWorkflow, _list_multi_tenant_entities
 from skills.deobfuscation import run_deobfuscation
 from reporting.incident_report import generate_incident_report
+from prompt_init import init_prompts
 
 # Worker identity — read from env (K8s pod name) or generate
 def _generate_worker_id():
@@ -29,6 +30,9 @@ def _generate_worker_id():
 WORKER_ID = os.environ.get("WORKER_ID") or _generate_worker_id()
 
 async def main():
+    # Initialize prompt registry at startup
+    init_prompts()
+
     temporal_address = os.environ.get("TEMPORAL_ADDRESS", "temporal:7233")
     print(f"Worker {WORKER_ID} connecting to Temporal at {temporal_address}...")
     

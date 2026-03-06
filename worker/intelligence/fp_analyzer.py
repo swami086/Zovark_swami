@@ -9,6 +9,9 @@ from psycopg2.extras import RealDictCursor
 from temporalio import activity
 
 from security.prompt_sanitizer import wrap_untrusted_data
+from llm_logger import log_llm_call
+from prompt_registry import get_version
+from model_config import get_tier_config
 
 
 def _get_db():
@@ -33,7 +36,8 @@ async def analyze_false_positive(data: dict) -> dict:
 
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
     api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
-    llm_model = os.environ.get("HYDRA_LLM_MODEL", "fast")
+    tier_config = get_tier_config("analyze_false_positive")
+    llm_model = tier_config["model"]
     tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 
     if not investigation_id or not tenant_id:
@@ -160,6 +164,22 @@ async def analyze_false_positive(data: dict) -> dict:
             )
             resp.raise_for_status()
             result = resp.json()
+
+            usage = result.get("usage", {})
+            log_llm_call(
+                activity_name="analyze_false_positive",
+                model_tier=tier_config["tier"],
+                model_id=llm_model,
+                prompt_name="fp_analysis",
+                prompt_version=get_version("fp_analysis"),
+                input_tokens=usage.get("prompt_tokens", 0),
+                output_tokens=usage.get("completion_tokens", 0),
+                latency_ms=0,
+                temperature=tier_config["temperature"],
+                max_tokens=tier_config["max_tokens"],
+                tenant_id=tenant_id,
+            )
+
             content = result["choices"][0]["message"]["content"].strip()
 
             try:

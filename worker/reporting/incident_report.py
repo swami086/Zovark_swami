@@ -9,6 +9,9 @@ import psycopg2
 from temporalio import activity
 
 from security.prompt_sanitizer import wrap_untrusted_data
+from llm_logger import log_llm_call
+from prompt_registry import get_version
+from model_config import get_tier_config
 
 
 def _get_db():
@@ -102,7 +105,8 @@ async def generate_incident_report(data: dict) -> dict:
     """
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
     api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
-    llm_model = os.environ.get("HYDRA_LLM_MODEL", "fast")
+    tier_config = get_tier_config("generate_incident_report")
+    llm_model = tier_config["model"]
 
     investigation_id = data.get("investigation_id")
     tenant_id = data.get("tenant_id")
@@ -169,6 +173,23 @@ async def generate_incident_report(data: dict) -> dict:
             )
             resp.raise_for_status()
             result = resp.json()
+            report_ms = int((time.time() - start_time) * 1000)
+
+            usage = result.get("usage", {})
+            log_llm_call(
+                activity_name="generate_incident_report",
+                model_tier=tier_config["tier"],
+                model_id=llm_model,
+                prompt_name="incident_report",
+                prompt_version=get_version("incident_report"),
+                input_tokens=usage.get("prompt_tokens", 0),
+                output_tokens=usage.get("completion_tokens", 0),
+                latency_ms=report_ms,
+                temperature=0.3,
+                max_tokens=2048,
+                tenant_id=tenant_id,
+            )
+
             content = result["choices"][0]["message"]["content"].strip()
 
             try:
@@ -188,6 +209,17 @@ async def generate_incident_report(data: dict) -> dict:
 
     except Exception as e:
         print(f"Report LLM call failed: {e}")
+        log_llm_call(
+            activity_name="generate_incident_report",
+            model_tier=tier_config["tier"],
+            model_id=llm_model,
+            prompt_name="incident_report",
+            prompt_version=get_version("incident_report"),
+            latency_ms=int((time.time() - start_time) * 1000),
+            status="error",
+            error_message=str(e),
+            tenant_id=tenant_id,
+        )
         return {"report_id": None, "markdown_length": 0, "pdf_size_bytes": 0, "error": str(e)}
 
     # Build markdown report

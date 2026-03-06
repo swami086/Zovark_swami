@@ -16,7 +16,7 @@ _TRACKING_PARAMS = frozenset({
 
 
 def normalize_ip(value: str) -> str:
-    """Normalize IP address. Handles IPv4, IPv6, defanged [.], port stripping."""
+    """Normalize IP address. Handles IPv4, IPv6, defanged [.], port stripping, leading zeros."""
     v = value.strip()
     # Defang: replace [.] with .
     v = v.replace('[.]', '.').replace('[:]', ':')
@@ -25,6 +25,15 @@ def normalize_ip(value: str) -> str:
     # Strip port suffix for IPv4 (1.2.3.4:8080)
     if ':' in v and '.' in v and v.count(':') == 1:
         v = v.rsplit(':', 1)[0]
+    # Strip leading zeros from IPv4 octets (192.168.001.100 → 192.168.1.100)
+    # ipaddress.ip_address() rejects leading zeros in strict mode
+    if '.' in v and ':' not in v:
+        parts = v.split('.')
+        if len(parts) == 4:
+            try:
+                v = '.'.join(str(int(p)) for p in parts)
+            except ValueError:
+                pass
     try:
         addr = ipaddress.ip_address(v)
         if isinstance(addr, ipaddress.IPv6Address):
