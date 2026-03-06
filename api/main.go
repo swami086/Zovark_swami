@@ -122,6 +122,16 @@ func main() {
 		api.POST("/webhooks/endpoints", requireRole("admin"), createWebhookEndpointHandler)
 		api.PUT("/webhooks/endpoints/:id", requireRole("admin"), updateWebhookEndpointHandler)
 		api.DELETE("/webhooks/endpoints/:id", requireRole("admin"), deleteWebhookEndpointHandler)
+
+		// Model registry (admin only)
+		api.GET("/models", requireRole("admin"), listModelsHandler)
+		api.POST("/models", requireRole("admin"), createModelHandler)
+		api.PUT("/models/:id", requireRole("admin"), updateModelHandler)
+
+		// A/B testing (admin only)
+		api.GET("/models/ab-tests", requireRole("admin"), listABTestsHandler)
+		api.POST("/models/ab-tests", requireRole("admin"), createABTestHandler)
+		api.POST("/models/ab-tests/:id/complete", requireRole("admin"), completeABTestHandler)
 	}
 
 	// Start server
