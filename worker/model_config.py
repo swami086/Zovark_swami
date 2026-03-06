@@ -48,6 +48,7 @@ ACTIVITY_TIER_MAP = {
     "generate_synthetic_investigation": "standard",
     # Reasoning tier
     "analyze_false_positive": "reasoning",
+    "generate_sigma_rule": "reasoning",
 }
 
 

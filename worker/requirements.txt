@@ -6,3 +6,4 @@ pydantic
 redis
 pytest
 reportlab
+pyyaml

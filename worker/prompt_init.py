@@ -141,5 +141,20 @@ def init_prompts():
         "Investigation memory synthesis",
     )
 
+    # --- Sigma Rule Generation ---
+    register_prompt(
+        "sigma_generation",
+        (
+            "You are a detection engineer. Generate a Sigma detection rule in YAML format. "
+            "The rule MUST have these required fields: title, status (test), level (medium/high/critical), "
+            "logsource (with category or product), detection (with selection and condition), description, "
+            "and tags (MITRE ATT&CK technique IDs). "
+            "IMPORTANT: Do NOT include any real tenant-specific data (no real IPs, usernames, hostnames). "
+            "Use generic patterns and field references. "
+            "Output ONLY valid YAML, no markdown fences or explanations."
+        ),
+        "Sigma detection rule generation from attack patterns",
+    )
+
     from prompt_registry import prompt_count as get_count
     print(f"Prompt registry initialized: {get_count()} prompts registered")
