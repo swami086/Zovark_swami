@@ -903,3 +903,21 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint ON webhook_deliveries(endpoint_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_status ON webhook_deliveries(status, next_retry_at) WHERE status IN ('pending', 'retrying');
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_tenant ON webhook_deliveries(tenant_id, created_at DESC);
+
+-- ============================================================
+-- FINE-TUNING PIPELINE (Sprint 3D)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS finetuning_jobs (
+    id VARCHAR(100) PRIMARY KEY,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'exporting', 'scoring', 'evaluating', 'completed', 'failed', 'skipped')),
+    config JSONB DEFAULT '{}',
+    training_examples INT DEFAULT 0,
+    quality_stats JSONB DEFAULT '{}',
+    evaluation_results JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_finetuning_jobs_status ON finetuning_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_finetuning_jobs_created ON finetuning_jobs(created_at DESC);
