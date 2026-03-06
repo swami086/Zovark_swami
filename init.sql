@@ -420,7 +420,7 @@ ON CONFLICT (slug) DO NOTHING;
 CREATE TABLE investigations (
     id UUID NOT NULL DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    task_id UUID NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,
+    task_id UUID REFERENCES agent_tasks(id) ON DELETE CASCADE,
     alert_source VARCHAR(255),
     alert_type VARCHAR(100),
     skill_id UUID REFERENCES agent_skills(id),
@@ -604,3 +604,44 @@ CREATE INDEX idx_audit_events_tenant ON audit_events (tenant_id);
 CREATE INDEX idx_audit_events_type ON audit_events (event_type);
 CREATE INDEX idx_audit_events_created ON audit_events (created_at);
 CREATE INDEX idx_audit_events_resource ON audit_events (resource_type, resource_id);
+
+-- ============================================================
+-- MITRE ATT&CK TECHNIQUES (Sprint 1F)
+-- ============================================================
+
+CREATE TABLE mitre_techniques (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    technique_id VARCHAR(20) NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    tactics TEXT[],
+    platforms TEXT[],
+    data_sources TEXT[],
+    detection TEXT,
+    url TEXT,
+    embedding vector(768),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_mitre_technique_id ON mitre_techniques (technique_id);
+CREATE INDEX idx_mitre_tactics ON mitre_techniques USING GIN (tactics);
+CREATE INDEX idx_mitre_embedding ON mitre_techniques USING ivfflat (embedding vector_cosine_ops) WITH (lists = 50);
+
+-- ============================================================
+-- BOOTSTRAP CORPUS (Sprint 1F)
+-- ============================================================
+
+CREATE TABLE bootstrap_corpus (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    source VARCHAR(20) NOT NULL CHECK (source IN ('mitre', 'cisa', 'synthetic')),
+    source_id VARCHAR(50),
+    title TEXT,
+    description TEXT,
+    generated_investigation TEXT,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'generating', 'completed', 'failed')),
+    entity_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_bootstrap_source ON bootstrap_corpus (source, status);
+CREATE INDEX idx_bootstrap_source_id ON bootstrap_corpus (source_id);
