@@ -169,7 +169,7 @@ async def extract_entities(data: dict) -> dict:
 async def write_entity_graph(data: dict) -> dict:
     """Normalize entities, compute hashes, batch upsert to DB.
 
-    Input: {tenant_id, task_id, investigation_id, entities, edges}
+    Input: {tenant_id, task_id, investigation_id, entities, edges, confidence_source}
     Returns: {entities_upserted, edges_upserted, observations_created}
     """
     tenant_id = data.get("tenant_id")
@@ -177,6 +177,7 @@ async def write_entity_graph(data: dict) -> dict:
     investigation_id = data.get("investigation_id")
     raw_entities = data.get("entities", [])
     raw_edges = data.get("edges", [])
+    confidence_source = data.get("confidence_source", "clean")
 
     entities_upserted = 0
     edges_upserted = 0
@@ -244,17 +245,25 @@ async def write_entity_graph(data: dict) -> dict:
                         role = r["role"] if r["role"] in VALID_ROLES else "indicator"
                         obs_values.append((
                             eid, investigation_id, role,
-                            r.get("context", ""), r.get("mitre_technique")
+                            r.get("context", ""), r.get("mitre_technique"),
+                            confidence_source
                         ))
                 if obs_values:
                     execute_values(
                         cur,
-                        """INSERT INTO entity_observations (entity_id, investigation_id, role, context, mitre_technique)
+                        """INSERT INTO entity_observations (entity_id, investigation_id, role, context, mitre_technique, confidence_source)
                            VALUES %s""",
                         obs_values,
-                        template="(%s, %s, %s, %s, %s)"
+                        template="(%s, %s, %s, %s, %s, %s)"
                     )
                     observations_created = len(obs_values)
+
+                # Flag investigation if injection detected
+                if confidence_source == "injection_detected" and investigation_id:
+                    cur.execute(
+                        "UPDATE investigations SET injection_detected = true WHERE id = %s",
+                        (investigation_id,)
+                    )
 
                 # 4. Resolve and insert edges
                 edge_values = []
@@ -399,6 +408,7 @@ def search_similar_investigations(tenant_id: str, embedding: list, limit: int = 
                 FROM investigations
                 WHERE tenant_id = %s
                   AND summary_embedding IS NOT NULL
+                  AND NOT COALESCE(injection_detected, false)
                 ORDER BY summary_embedding <=> %s::vector
                 LIMIT %s
             """, (embedding, tenant_id, embedding, limit))

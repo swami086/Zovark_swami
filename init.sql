@@ -441,6 +441,7 @@ CREATE TABLE investigations (
     source VARCHAR(20) NOT NULL DEFAULT 'production' CHECK (source IN (
         'production', 'bootstrap', 'synthetic'
     )),
+    injection_detected BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id, created_at)
 ) PARTITION BY RANGE (created_at);
@@ -544,6 +545,7 @@ CREATE TABLE entity_observations (
     )),
     context TEXT,
     mitre_technique VARCHAR(20),
+    confidence_source VARCHAR(20) DEFAULT 'clean' CHECK (confidence_source IN ('clean', 'suspicious', 'injection_detected')),
     observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -551,6 +553,7 @@ CREATE INDEX idx_entity_observations_entity ON entity_observations (entity_id);
 CREATE INDEX idx_entity_observations_investigation ON entity_observations (investigation_id);
 CREATE INDEX idx_entity_observations_role ON entity_observations (role);
 CREATE INDEX idx_entity_observations_mitre ON entity_observations (mitre_technique) WHERE mitre_technique IS NOT NULL;
+CREATE INDEX idx_entity_obs_confidence ON entity_observations(confidence_source);
 
 -- ============================================================
 -- AUDIT EVENTS (Structured, partitioned, append-only)
@@ -645,3 +648,24 @@ CREATE TABLE bootstrap_corpus (
 
 CREATE INDEX idx_bootstrap_source ON bootstrap_corpus (source, status);
 CREATE INDEX idx_bootstrap_source_id ON bootstrap_corpus (source_id);
+
+-- ============================================================
+-- INVESTIGATION REPORTS (Sprint 1L)
+-- ============================================================
+
+CREATE TABLE investigation_reports (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    investigation_id UUID NOT NULL,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    report_format VARCHAR(10) NOT NULL CHECK (report_format IN ('markdown', 'pdf')),
+    executive_summary TEXT,
+    technical_timeline TEXT,
+    remediation_steps TEXT,
+    full_report TEXT,
+    pdf_data BYTEA,
+    generated_by VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_reports_investigation ON investigation_reports(investigation_id);
+CREATE INDEX idx_reports_tenant ON investigation_reports(tenant_id);

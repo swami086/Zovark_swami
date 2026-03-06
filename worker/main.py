@@ -12,6 +12,10 @@ from activities import fetch_task, generate_code, validate_code, execute_code, u
 from entity_graph import extract_entities, write_entity_graph, embed_investigation
 from bootstrap.activities import load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques
 from bootstrap.workflow import BootstrapCorpusWorkflow
+from intelligence.blast_radius import compute_blast_radius
+from intelligence.fp_analyzer import analyze_false_positive
+from skills.deobfuscation import run_deobfuscation
+from reporting.incident_report import generate_incident_report
 
 # Worker identity — read from env (K8s pod name) or generate
 def _generate_worker_id():
@@ -41,7 +45,7 @@ async def main():
         client,
         task_queue="hydra-tasks",
         workflows=[ExecuteTaskWorkflow, BootstrapCorpusWorkflow],
-        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques],
+        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques, compute_blast_radius, analyze_false_positive, run_deobfuscation, generate_incident_report],
     )
     print(f"Worker {WORKER_ID} starting on task queue hydra-tasks")
     await worker.run()

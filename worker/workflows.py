@@ -12,6 +12,11 @@ with workflow.unsafe.imports_passed_through():
         check_rate_limit_activity, decrement_active_activity
     )
     from entity_graph import extract_entities, write_entity_graph, embed_investigation
+    from intelligence.blast_radius import compute_blast_radius
+    from intelligence.fp_analyzer import analyze_false_positive
+    from reporting.incident_report import generate_incident_report
+    from security.injection_detector import scan_for_injection
+    from security.prompt_sanitizer import wrap_untrusted_data
 
 MAX_STEPS = 3
 
@@ -163,6 +168,52 @@ If something has worked in past investigations for this threat type, apply those
             workflow.logger.info(f"Failed to retrieve skill: {str(e)}")
             # Do nothing if it fails, never fail the workflow
         
+        # --- INJECTION DETECTION (Sprint 1L) ---
+        injection_confidence = "clean"
+        try:
+            scan_text = current_prompt + " " + task_data.get("input", {}).get("log_data", "")
+            scan_result = scan_for_injection(scan_text)
+            injection_confidence = scan_result.confidence_source
+            if scan_result.is_suspicious:
+                workflow.logger.info(
+                    f"Injection scan: {scan_result.confidence_source}, "
+                    f"categories={scan_result.matched_patterns}"
+                )
+                await workflow.execute_activity(
+                    log_audit_event,
+                    {
+                        "tenant_id": tenant_id,
+                        "event_type": "injection_detected",
+                        "actor_type": "system",
+                        "resource_type": "task",
+                        "resource_id": task_id,
+                        "metadata": {
+                            "confidence_source": scan_result.confidence_source,
+                            "matched_patterns": scan_result.matched_patterns,
+                            "match_count": len(scan_result.raw_matches),
+                        }
+                    },
+                    schedule_to_close_timeout=timedelta(seconds=10)
+                )
+        except Exception as e:
+            workflow.logger.info(f"Injection scan failed non-fatally: {e}")
+
+        # --- WRAP UNTRUSTED DATA (Sprint 1L) ---
+        try:
+            log_data = task_data.get("input", {}).get("log_data", "")
+            if log_data:
+                wrapped_log, safety_instruction = wrap_untrusted_data(log_data, "telemetry")
+                task_data["input"]["log_data"] = wrapped_log
+                existing_override = task_data.get("input", {}).get("playbook_system_prompt_override", "")
+                if existing_override:
+                    task_data["input"]["playbook_system_prompt_override"] = existing_override + "\n\n" + safety_instruction
+                else:
+                    if "input" not in task_data:
+                        task_data["input"] = {}
+                    task_data["input"]["playbook_system_prompt_override"] = safety_instruction
+        except Exception as e:
+            workflow.logger.info(f"Prompt wrapping failed non-fatally: {e}")
+
         # Accumulators across all steps
         total_tokens_input = 0
         total_tokens_output = 0
@@ -741,6 +792,8 @@ If something has worked in past investigations for this threat type, apply those
             pass
 
         # --- ENTITY GRAPH + INVESTIGATION EMBEDDING (Sprint 1G) ---
+        entity_result = {}
+        investigation_id = None
         try:
             # 1. Extract entities from investigation output
             entity_result = await workflow.execute_activity(
@@ -789,7 +842,8 @@ If something has worked in past investigations for this threat type, apply those
                         "task_id": task_id,
                         "investigation_id": investigation_id,
                         "entities": entity_result["entities"],
-                        "edges": entity_result.get("edges", [])
+                        "edges": entity_result.get("edges", []),
+                        "confidence_source": injection_confidence,
                     },
                     schedule_to_close_timeout=timedelta(minutes=1)
                 )
@@ -810,7 +864,72 @@ If something has worked in past investigations for this threat type, apply those
                 )
         except Exception as e:
             workflow.logger.info(f"Entity graph pipeline failed non-fatally: {str(e)}")
-            pass
+
+        # --- BLAST RADIUS (Sprint 1L) ---
+        blast_radius_result = {}
+        if investigation_id:
+            try:
+                blast_radius_result = await workflow.execute_activity(
+                    compute_blast_radius,
+                    {
+                        "investigation_id": investigation_id,
+                        "tenant_id": tenant_id,
+                        "time_window_hours": 72,
+                        "max_hops": 2,
+                    },
+                    schedule_to_close_timeout=timedelta(minutes=1)
+                )
+                workflow.logger.info(
+                    f"Blast radius: {blast_radius_result.get('total_entities', 0)} entities, "
+                    f"{len(blast_radius_result.get('affected_investigations', []))} related investigations"
+                )
+            except Exception as e:
+                workflow.logger.info(f"Blast radius failed non-fatally: {e}")
+
+        # --- FALSE POSITIVE ANALYSIS (Sprint 1L) ---
+        fp_result = {}
+        if investigation_id:
+            try:
+                fp_result = await workflow.execute_activity(
+                    analyze_false_positive,
+                    {
+                        "investigation_id": investigation_id,
+                        "tenant_id": tenant_id,
+                        "summary": final_stdout[:2000],
+                        "verdict": verdict,
+                        "risk_score": inv_risk_score,
+                        "entities": entity_result.get("entities", []),
+                    },
+                    schedule_to_close_timeout=timedelta(minutes=2)
+                )
+                workflow.logger.info(f"FP analysis: confidence={fp_result.get('confidence', 'N/A')}")
+            except Exception as e:
+                workflow.logger.info(f"FP analysis failed non-fatally: {e}")
+
+        # --- INCIDENT REPORT (Sprint 1L) ---
+        if investigation_id:
+            try:
+                report_result = await workflow.execute_activity(
+                    generate_incident_report,
+                    {
+                        "investigation_id": investigation_id,
+                        "tenant_id": tenant_id,
+                        "summary": final_stdout[:2000],
+                        "entities": entity_result.get("entities", []),
+                        "edges": entity_result.get("edges", []),
+                        "risk_score": inv_risk_score,
+                        "verdict": verdict,
+                        "attack_techniques": [],
+                        "blast_radius": blast_radius_result,
+                    },
+                    schedule_to_close_timeout=timedelta(minutes=3)
+                )
+                workflow.logger.info(
+                    f"Report generated: md={report_result.get('markdown_length', 0)} chars, "
+                    f"pdf={report_result.get('pdf_size_bytes', 0)} bytes"
+                )
+            except Exception as e:
+                workflow.logger.info(f"Report generation failed non-fatally: {e}")
 
         return {"status": "completed", "steps": completed_steps}
 
