@@ -1,0 +1,935 @@
+#!/usr/bin/env node
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import { query, testConnection, closePool } from "./db.js";
+import { apiPost, apiGet, apiHealthCheck, getJwt, API_URL } from "./api.js";
+import { dockerComposeExec, dockerComposeLogs } from "./exec.js";
+
+// ── Self-test mode ──────────────────────────────────────────────
+if (process.argv.includes("--test")) {
+  console.log("hydra-mcp server v1.0.0 — self-test");
+  const dbOk = await testConnection();
+  console.log(`  postgres: ${dbOk ? "ok" : "FAIL"}`);
+  const apiOk = await apiHealthCheck();
+  console.log(`  api:      ${apiOk ? "ok" : "FAIL"}`);
+  console.log("  tools:    7 registered");
+  console.log("  resources: 6 registered");
+  console.log("  prompts:  6 registered");
+  await closePool();
+  process.exit(dbOk ? 0 : 1);
+}
+
+// ── Server setup ────────────────────────────────────────────────
+const server = new McpServer(
+  { name: "hydra-mcp", version: "1.0.0" },
+  { capabilities: { tools: {}, resources: {}, prompts: {} } }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL 1: hydra_submit_alert
+// ═══════════════════════════════════════════════════════════════
+server.tool(
+  "hydra_submit_alert",
+  "Submit a security alert to HYDRA for automated investigation. Returns task_id for tracking.",
+  {
+    alert_type: z
+      .enum([
+        "brute_force",
+        "ransomware",
+        "c2_beacon",
+        "phishing",
+        "log_analysis",
+        "ioc_scan",
+        "code_audit",
+        "incident_response",
+        "threat_hunt",
+      ])
+      .describe("Type of security alert"),
+    prompt: z
+      .string()
+      .describe("Alert description, raw log data, or investigation prompt"),
+    tenant_slug: z.string().default("hydra-dev").describe("Tenant slug"),
+  },
+  async ({ alert_type, prompt, tenant_slug }) => {
+    try {
+      // Map snake_case to API task_type format
+      const typeMap: Record<string, string> = {
+        brute_force: "Log Analysis",
+        ransomware: "Incident Response",
+        c2_beacon: "Threat Hunt",
+        phishing: "Log Analysis",
+        log_analysis: "Log Analysis",
+        ioc_scan: "IOC Scan",
+        code_audit: "Code Audit",
+        incident_response: "Incident Response",
+        threat_hunt: "Threat Hunt",
+      };
+
+      const result = (await apiPost(
+        "/api/v1/tasks",
+        {
+          task_type: typeMap[alert_type] || "Log Analysis",
+          input: { prompt },
+        },
+        tenant_slug
+      )) as { id: string; status: string };
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                task_id: result.id,
+                status: result.status || "pending",
+                message: `Investigation submitted. Track with task_id: ${result.id}`,
+                alert_type,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error submitting alert: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL 2: hydra_get_report
+// ═══════════════════════════════════════════════════════════════
+server.tool(
+  "hydra_get_report",
+  "Fetch an investigation report from HYDRA. Can look up by task_id, investigation_id, or get the latest.",
+  {
+    task_id: z.string().optional().describe("Task UUID"),
+    investigation_id: z.string().optional().describe("Investigation UUID"),
+    latest: z.boolean().default(false).describe("Get most recent investigation"),
+  },
+  async ({ task_id, investigation_id, latest }) => {
+    try {
+      let sql: string;
+      let params: unknown[];
+
+      if (task_id) {
+        sql = `
+          SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
+                 i.summary, i.confidence, i.source,
+                 ir.executive_summary, ir.technical_timeline, ir.remediation_steps,
+                 ir.full_report,
+                 (SELECT count(*) FROM entity_observations eo WHERE eo.investigation_id = i.id) as entity_count
+          FROM investigations i
+          LEFT JOIN investigation_reports ir ON ir.investigation_id = i.id
+          WHERE i.task_id = $1
+          ORDER BY i.created_at DESC LIMIT 1`;
+        params = [task_id];
+      } else if (investigation_id) {
+        sql = `
+          SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
+                 i.summary, i.confidence, i.source,
+                 ir.executive_summary, ir.technical_timeline, ir.remediation_steps,
+                 ir.full_report,
+                 (SELECT count(*) FROM entity_observations eo WHERE eo.investigation_id = i.id) as entity_count
+          FROM investigations i
+          LEFT JOIN investigation_reports ir ON ir.investigation_id = i.id
+          WHERE i.id = $1
+          LIMIT 1`;
+        params = [investigation_id];
+      } else if (latest) {
+        sql = `
+          SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
+                 i.summary, i.confidence, i.source,
+                 ir.executive_summary, ir.technical_timeline, ir.remediation_steps,
+                 ir.full_report,
+                 (SELECT count(*) FROM entity_observations eo WHERE eo.investigation_id = i.id) as entity_count
+          FROM investigations i
+          LEFT JOIN investigation_reports ir ON ir.investigation_id = i.id
+          ORDER BY i.created_at DESC LIMIT 1`;
+        params = [];
+      } else {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "Provide task_id, investigation_id, or set latest=true",
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const result = await query(sql, params);
+      if (result.rows.length === 0) {
+        return {
+          content: [
+            { type: "text" as const, text: "No investigation found." },
+          ],
+        };
+      }
+
+      const row = result.rows[0];
+      const report = {
+        investigation_id: row.id,
+        verdict: row.verdict,
+        risk_score: row.risk_score,
+        confidence: row.confidence,
+        techniques: row.attack_techniques || [],
+        entities_found: parseInt(row.entity_count) || 0,
+        summary: row.summary,
+        executive_summary: row.executive_summary,
+        report_markdown:
+          row.full_report ||
+          [row.executive_summary, row.technical_timeline, row.remediation_steps]
+            .filter(Boolean)
+            .join("\n\n---\n\n") ||
+          row.summary ||
+          "No report generated yet.",
+      };
+
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(report, null, 2) },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL 3: hydra_create_tenant
+// ═══════════════════════════════════════════════════════════════
+server.tool(
+  "hydra_create_tenant",
+  "Onboard a new customer: create tenant, admin user, and return JWT.",
+  {
+    name: z.string().describe("Tenant display name"),
+    slug: z.string().describe("URL-safe slug (lowercase, no spaces)"),
+    admin_email: z.string().describe("Admin email address"),
+    admin_password: z.string().describe("Admin password (min 8 chars)"),
+  },
+  async ({ name, slug, admin_email, admin_password }) => {
+    try {
+      // 1. Create tenant via DB (API requires existing admin JWT)
+      const tenantResult = await query(
+        `INSERT INTO tenants (name, slug, tier) VALUES ($1, $2, 'professional')
+         ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+         RETURNING id::text`,
+        [name, slug]
+      );
+      const tenantId = tenantResult.rows[0].id;
+
+      // 2. Register admin user via API
+      let regOk = true;
+      try {
+        await fetch(`${API_URL}/api/v1/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: admin_email,
+            password: admin_password,
+            display_name: `${name} Admin`,
+            tenant_slug: slug,
+            role: "admin",
+          }),
+        });
+      } catch {
+        regOk = false;
+      }
+
+      // 3. Login to get JWT
+      let jwt = "";
+      try {
+        const loginResp = await fetch(`${API_URL}/api/v1/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: admin_email,
+            password: admin_password,
+          }),
+        });
+        if (loginResp.ok) {
+          const data = (await loginResp.json()) as { token: string };
+          jwt = data.token;
+        }
+      } catch {
+        // JWT not available
+      }
+
+      // 4. Count seeded playbooks
+      const pbResult = await query(
+        "SELECT count(*) as cnt FROM playbooks WHERE tenant_id = $1",
+        [tenantId]
+      );
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                tenant_id: tenantId,
+                slug,
+                registered: regOk,
+                jwt_token: jwt || "(login manually)",
+                playbooks_seeded: parseInt(pbResult.rows[0].cnt) || 0,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL 4: hydra_query
+// ═══════════════════════════════════════════════════════════════
+const WRITE_PATTERN =
+  /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|COPY)\b/i;
+
+server.tool(
+  "hydra_query",
+  "Execute a read-only SQL query against HYDRA's PostgreSQL database. SELECT only — all write operations are blocked.",
+  {
+    sql: z.string().describe("SQL query (SELECT only)"),
+    format: z.enum(["table", "json"]).default("json").describe("Output format"),
+  },
+  async ({ sql: sqlInput, format }) => {
+    try {
+      // Safety check
+      if (WRITE_PATTERN.test(sqlInput)) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "BLOCKED: Only SELECT queries are allowed. Write operations (INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, GRANT, REVOKE, COPY) are forbidden.",
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const result = await query(sqlInput);
+      const columns = result.fields.map((f) => f.name);
+
+      if (format === "table") {
+        // Simple ASCII table
+        const header = columns.join(" | ");
+        const sep = columns.map((c) => "-".repeat(c.length)).join("-+-");
+        const rows = result.rows.map((row) =>
+          columns.map((c) => String(row[c] ?? "NULL")).join(" | ")
+        );
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: [header, sep, ...rows].join("\n") +
+                `\n\n(${result.rowCount} rows)`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                columns,
+                rows: result.rows,
+                row_count: result.rowCount,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Query error: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL 5: hydra_health
+// ═══════════════════════════════════════════════════════════════
+server.tool(
+  "hydra_health",
+  "Check health status of all HYDRA services (API, worker, Postgres, Redis, LiteLLM, Temporal).",
+  {},
+  async () => {
+    const checks: Record<string, string> = {};
+
+    // API
+    checks.api = (await apiHealthCheck()) ? "ok" : "down";
+
+    // Postgres
+    checks.postgres = (await testConnection()) ? "ok" : "down";
+
+    // Worker — check via docker compose
+    try {
+      const { stdout } = await dockerComposeExec("worker", [
+        "python",
+        "-c",
+        "print('ok')",
+      ]);
+      checks.worker = stdout.trim() === "ok" ? "ok" : "down";
+    } catch {
+      checks.worker = "down";
+    }
+
+    // Redis
+    try {
+      const { stdout } = await dockerComposeExec("redis", [
+        "redis-cli",
+        "ping",
+      ]);
+      checks.redis = stdout.trim() === "PONG" ? "ok" : "down";
+    } catch {
+      checks.redis = "down";
+    }
+
+    // LiteLLM
+    try {
+      const resp = await fetch("http://localhost:4000/health/liveliness", {
+        signal: AbortSignal.timeout(5000),
+      });
+      checks.litellm = resp.ok ? "ok" : "down";
+    } catch {
+      checks.litellm = "down";
+    }
+
+    // Temporal
+    try {
+      const { stdout } = await dockerComposeExec(
+        "worker",
+        [
+          "python",
+          "-c",
+          "import asyncio; from temporalio.client import Client; asyncio.run(Client.connect('temporal:7233')); print('ok')",
+        ],
+        10000
+      );
+      checks.temporal = stdout.trim().includes("ok") ? "ok" : "down";
+    } catch {
+      checks.temporal = "down";
+    }
+
+    const upCount = Object.values(checks).filter((v) => v === "ok").length;
+    const total = Object.keys(checks).length;
+    const summary =
+      upCount === total
+        ? `All ${total} services healthy`
+        : `${upCount}/${total} services up — ${Object.entries(checks)
+            .filter(([, v]) => v !== "ok")
+            .map(([k]) => k)
+            .join(", ")} down`;
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({ ...checks, summary }, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL 6: hydra_logs
+// ═══════════════════════════════════════════════════════════════
+server.tool(
+  "hydra_logs",
+  "Tail and filter Docker Compose service logs from HYDRA.",
+  {
+    service: z
+      .enum(["worker", "api", "litellm", "temporal", "postgres", "redis", "all"])
+      .describe("Service name"),
+    lines: z.number().default(50).describe("Number of lines to tail"),
+    filter: z.string().optional().describe("Case-insensitive grep pattern"),
+  },
+  async ({ service, lines, filter }) => {
+    try {
+      const output = await dockerComposeLogs(service, lines, filter);
+      const lineCount = output.split("\n").filter(Boolean).length;
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ logs: output, line_count: lineCount }),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL 7: hydra_trigger_workflow
+// ═══════════════════════════════════════════════════════════════
+server.tool(
+  "hydra_trigger_workflow",
+  "Start a Temporal workflow (investigation, detection, self_healing, cross_tenant, bootstrap, finetuning).",
+  {
+    workflow: z
+      .enum([
+        "detection",
+        "self_healing",
+        "cross_tenant",
+        "bootstrap",
+        "finetuning",
+      ])
+      .describe("Workflow type"),
+    params: z
+      .string()
+      .default("{}")
+      .describe("Workflow parameters as JSON string"),
+    dry_run: z
+      .boolean()
+      .default(true)
+      .describe("Dry run mode (default true for self_healing)"),
+  },
+  async ({ workflow, params: paramsStr, dry_run }) => {
+    const workflowMap: Record<string, string> = {
+      detection: "DetectionGenerationWorkflow",
+      self_healing: "SelfHealingWorkflow",
+      cross_tenant: "CrossTenantRefreshWorkflow",
+      bootstrap: "BootstrapCorpusWorkflow",
+      finetuning: "FineTuningPipelineWorkflow",
+    };
+
+    const wfType = workflowMap[workflow];
+    if (!wfType) {
+      return {
+        content: [
+          { type: "text" as const, text: `Unknown workflow: ${workflow}` },
+        ],
+        isError: true,
+      };
+    }
+
+    let parsedParams: Record<string, unknown> = {};
+    try {
+      parsedParams = JSON.parse(paramsStr || "{}");
+    } catch {
+      // ignore parse errors, use empty params
+    }
+
+    // For self_healing, inject dry_run into params
+    const wfParams =
+      workflow === "self_healing"
+        ? { lookback_minutes: 60, dry_run, ...parsedParams }
+        : { ...parsedParams };
+
+    const wfId = `mcp-${workflow}-${Date.now()}`;
+    const paramsJson = JSON.stringify(wfParams).replace(/'/g, "\\'");
+
+    const pyScript = `
+import asyncio, json
+from temporalio.client import Client
+async def main():
+    c = await Client.connect('temporal:7233')
+    r = await c.execute_workflow('${wfType}', json.loads('${paramsJson}'), id='${wfId}', task_queue='hydra-tasks')
+    print(json.dumps(r))
+asyncio.run(main())
+`.trim();
+
+    try {
+      const { stdout, stderr } = await dockerComposeExec(
+        "worker",
+        ["python", "-c", pyScript],
+        120000
+      );
+
+      let result: unknown;
+      try {
+        result = JSON.parse(stdout.trim());
+      } catch {
+        result = stdout.trim() || stderr.trim();
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              { workflow_id: wfId, workflow_type: wfType, status: "completed", result },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Workflow error: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  RESOURCES — Read-only data endpoints
+// ═══════════════════════════════════════════════════════════════
+
+server.resource(
+  "Recent Investigations",
+  "hydra://investigations/recent",
+  { description: "Last 10 investigations with verdicts and risk scores" },
+  async () => {
+    const result = await query(`
+      SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
+             i.summary, i.source, i.created_at::text
+      FROM investigations i
+      ORDER BY i.created_at DESC LIMIT 10
+    `);
+    return {
+      contents: [
+        {
+          uri: "hydra://investigations/recent",
+          mimeType: "application/json",
+          text: JSON.stringify(result.rows, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+server.resource(
+  "Top Threat Entities",
+  "hydra://entities/top-threats",
+  { description: "Top 20 entities by threat score" },
+  async () => {
+    const result = await query(`
+      SELECT id::text, entity_type, value, threat_score, observation_count,
+             tenant_count, last_seen::text
+      FROM entities
+      WHERE threat_score > 0
+      ORDER BY threat_score DESC, observation_count DESC
+      LIMIT 20
+    `);
+    return {
+      contents: [
+        {
+          uri: "hydra://entities/top-threats",
+          mimeType: "application/json",
+          text: JSON.stringify(result.rows, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+server.resource(
+  "Detection Rules",
+  "hydra://detection/rules",
+  { description: "All active Sigma detection rules" },
+  async () => {
+    const result = await query(`
+      SELECT id::text, technique_id, rule_name, rule_version, status,
+             tp_rate, fp_rate, investigations_matched, created_at::text
+      FROM detection_rules
+      WHERE status = 'active'
+      ORDER BY created_at DESC
+    `);
+    return {
+      contents: [
+        {
+          uri: "hydra://detection/rules",
+          mimeType: "application/json",
+          text: JSON.stringify(result.rows, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+server.resource(
+  "Active Playbooks",
+  "hydra://playbooks/active",
+  { description: "Active SOAR response playbooks" },
+  async () => {
+    const result = await query(`
+      SELECT id::text, name, description, trigger_conditions, enabled,
+             created_at::text
+      FROM response_playbooks
+      WHERE enabled = true
+      ORDER BY name
+    `);
+    return {
+      contents: [
+        {
+          uri: "hydra://playbooks/active",
+          mimeType: "application/json",
+          text: JSON.stringify(result.rows, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+server.resource(
+  "Health Summary",
+  "hydra://health/summary",
+  { description: "Current system health overview" },
+  async () => {
+    const stats = await query(`
+      SELECT
+        (SELECT count(*) FROM agent_tasks) as total_tasks,
+        (SELECT count(*) FROM agent_tasks WHERE status = 'completed') as completed_tasks,
+        (SELECT count(*) FROM agent_tasks WHERE status = 'failed') as failed_tasks,
+        (SELECT count(*) FROM investigations) as total_investigations,
+        (SELECT count(*) FROM entities) as total_entities,
+        (SELECT count(*) FROM detection_rules WHERE status = 'active') as active_rules,
+        (SELECT count(*) FROM self_healing_events) as healing_events
+    `);
+    return {
+      contents: [
+        {
+          uri: "hydra://health/summary",
+          mimeType: "application/json",
+          text: JSON.stringify(stats.rows[0], null, 2),
+        },
+      ],
+    };
+  }
+);
+
+server.resource(
+  "LLM Metrics",
+  "hydra://metrics/llm",
+  { description: "LLM call statistics — cost, latency, token usage" },
+  async () => {
+    const result = await query(`
+      SELECT
+        model_id,
+        activity_name,
+        count(*) as calls,
+        round(avg(latency_ms)) as avg_latency_ms,
+        sum(input_tokens) as total_input_tokens,
+        sum(output_tokens) as total_output_tokens,
+        round(sum(estimated_cost_usd)::numeric, 4) as total_cost_usd
+      FROM llm_call_log
+      GROUP BY model_id, activity_name
+      ORDER BY calls DESC
+    `);
+    return {
+      contents: [
+        {
+          uri: "hydra://metrics/llm",
+          mimeType: "application/json",
+          text: JSON.stringify(result.rows, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  PROMPTS — Pre-built investigation templates
+// ═══════════════════════════════════════════════════════════════
+
+server.prompt(
+  "hydra-investigate-brute-force",
+  "Investigate a brute force attack — submits alert and tracks results",
+  {
+    source_ip: z.string().describe("Attacker source IP"),
+    target_account: z.string().describe("Target account/email"),
+    attempt_count: z.string().default("100").describe("Number of attempts"),
+  },
+  ({ source_ip, target_account, attempt_count }) => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Investigate brute force attack: ${attempt_count} failed login attempts from ${source_ip} targeting ${target_account} in the last 30 minutes. Use hydra_submit_alert with alert_type="brute_force" and this description as the prompt. Then wait 30 seconds and use hydra_get_report with latest=true to get the results.`,
+        },
+      },
+    ],
+  })
+);
+
+server.prompt(
+  "hydra-investigate-ransomware",
+  "Investigate a ransomware incident",
+  {
+    hostname: z.string().describe("Affected hostname"),
+    indicators: z.string().describe("File extensions, ransom note, IOCs"),
+  },
+  ({ hostname, indicators }) => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Investigate ransomware on host ${hostname}. Indicators: ${indicators}. Use hydra_submit_alert with alert_type="ransomware" and this description. Then check the report.`,
+        },
+      },
+    ],
+  })
+);
+
+server.prompt(
+  "hydra-investigate-c2",
+  "Investigate a C2 beacon / command-and-control communication",
+  {
+    beacon_ip: z.string().describe("Suspected C2 IP/domain"),
+    internal_host: z.string().describe("Internal host communicating with C2"),
+  },
+  ({ beacon_ip, internal_host }) => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Investigate suspected C2 beacon: ${internal_host} is communicating with ${beacon_ip} on unusual ports. Use hydra_submit_alert with alert_type="c2_beacon". Then retrieve the report.`,
+        },
+      },
+    ],
+  })
+);
+
+server.prompt(
+  "hydra-daily-health-check",
+  "Run a comprehensive daily health check of the HYDRA platform",
+  () => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Perform a daily HYDRA health check:
+1. Run hydra_health to check all services
+2. Run hydra_trigger_workflow with workflow="self_healing" and dry_run=true to scan for failures
+3. Use hydra_query to get today's investigation stats: SELECT status, count(*) FROM agent_tasks WHERE created_at > NOW() - INTERVAL '24 hours' GROUP BY status
+4. Use hydra_query to check for high-risk entities: SELECT entity_type, value, threat_score FROM entities WHERE threat_score > 70 ORDER BY threat_score DESC LIMIT 10
+5. Summarize the platform state and any issues found.`,
+        },
+      },
+    ],
+  })
+);
+
+server.prompt(
+  "hydra-onboard-customer",
+  "Walk through onboarding a new customer tenant",
+  {
+    company_name: z.string().describe("Company name"),
+    admin_email: z.string().describe("Admin email"),
+  },
+  ({ company_name, admin_email }) => {
+    const slug = company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: `Onboard new customer "${company_name}":
+1. Use hydra_create_tenant with name="${company_name}", slug="${slug}", admin_email="${admin_email}", admin_password="ChangeMeN0w!"
+2. Verify with hydra_query: SELECT id, name, slug, tier FROM tenants WHERE slug='${slug}'
+3. Report the tenant_id and JWT token for API access.`,
+          },
+        },
+      ],
+    };
+  }
+);
+
+server.prompt(
+  "hydra-generate-demo",
+  "Run 3 different investigation types to demo HYDRA capabilities",
+  () => ({
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Generate a HYDRA demo by running 3 investigations:
+1. hydra_submit_alert: alert_type="brute_force", prompt="500 failed SSH login attempts from 203.0.113.50 targeting root@prod-server-01 over 10 minutes"
+2. hydra_submit_alert: alert_type="c2_beacon", prompt="Internal host 10.0.1.42 making periodic HTTPS connections to 185.220.100.252 every 60 seconds, user-agent: Mozilla/4.0"
+3. hydra_submit_alert: alert_type="ransomware", prompt="Files on FILESERVER01 being renamed with .locked extension, ransom note README_RESTORE.txt found in multiple directories"
+Wait 60 seconds, then get all 3 reports with hydra_get_report latest=true for each.
+Compile a summary of all findings, risk scores, and recommendations.`,
+        },
+      },
+    ],
+  })
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  START SERVER
+// ═══════════════════════════════════════════════════════════════
+const transport = new StdioServerTransport();
+await server.connect(transport);
+
+// Cleanup on exit
+process.on("SIGINT", async () => {
+  await closePool();
+  process.exit(0);
+});
+process.on("SIGTERM", async () => {
+  await closePool();
+  process.exit(0);
+});
