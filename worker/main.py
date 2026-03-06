@@ -23,6 +23,12 @@ from detection.rule_validator import validate_sigma_rule
 from detection.workflow import DetectionGenerationWorkflow, _list_candidates_for_generation
 from response.workflow import ResponsePlaybookWorkflow, load_playbook, create_response_execution, update_response_execution, execute_response_action, rollback_response_action, find_matching_playbooks
 from finetuning.workflow import FineTuningPipelineWorkflow, export_finetuning_data, score_training_quality, run_model_evaluation, create_finetuning_job, update_finetuning_job
+from sre.workflow import SelfHealingWorkflow
+from sre.monitor import scan_for_failures
+from sre.diagnose import diagnose_failure
+from sre.patcher import generate_patch
+from sre.tester import test_patch
+from sre.applier import apply_patch
 from prompt_init import init_prompts
 import logger
 
@@ -60,10 +66,10 @@ async def main():
     worker = Worker(
         client,
         task_queue="hydra-tasks",
-        workflows=[ExecuteTaskWorkflow, BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow, DetectionGenerationWorkflow, ResponsePlaybookWorkflow, FineTuningPipelineWorkflow],
-        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques, compute_blast_radius, analyze_false_positive, run_deobfuscation, generate_incident_report, refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score, _list_multi_tenant_entities, mine_attack_patterns, generate_sigma_rule, validate_sigma_rule, _list_candidates_for_generation, load_playbook, create_response_execution, update_response_execution, execute_response_action, rollback_response_action, find_matching_playbooks, export_finetuning_data, score_training_quality, run_model_evaluation, create_finetuning_job, update_finetuning_job],
+        workflows=[ExecuteTaskWorkflow, BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow, DetectionGenerationWorkflow, ResponsePlaybookWorkflow, FineTuningPipelineWorkflow, SelfHealingWorkflow],
+        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques, compute_blast_radius, analyze_false_positive, run_deobfuscation, generate_incident_report, refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score, _list_multi_tenant_entities, mine_attack_patterns, generate_sigma_rule, validate_sigma_rule, _list_candidates_for_generation, load_playbook, create_response_execution, update_response_execution, execute_response_action, rollback_response_action, find_matching_playbooks, export_finetuning_data, score_training_quality, run_model_evaluation, create_finetuning_job, update_finetuning_job, scan_for_failures, diagnose_failure, generate_patch, test_patch, apply_patch],
     )
-    logger.info("Worker starting", task_queue="hydra-tasks", workflows=6, activities=51)
+    logger.info("Worker starting", task_queue="hydra-tasks", workflows=7, activities=56)
     await worker.run()
 
 

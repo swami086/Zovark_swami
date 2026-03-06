@@ -49,6 +49,8 @@ ACTIVITY_TIER_MAP = {
     # Reasoning tier
     "analyze_false_positive": "reasoning",
     "generate_sigma_rule": "reasoning",
+    "diagnose_failure": "reasoning",
+    "generate_patch": "reasoning",
 }
 
 

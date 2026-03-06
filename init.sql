@@ -567,7 +567,9 @@ CREATE TABLE audit_events (
         'investigation_started', 'investigation_completed', 'code_executed',
         'approval_requested', 'approval_granted', 'approval_denied', 'approval_timeout',
         'entity_extracted', 'detection_generated', 'user_login', 'user_registered',
-        'injection_detected', 'cross_tenant_hit', 'threat_score_updated'
+        'injection_detected', 'cross_tenant_hit', 'threat_score_updated',
+        'self_healing_scan', 'self_healing_diagnosis', 'self_healing_patch_applied',
+        'self_healing_patch_failed', 'self_healing_rollback'
     )),
     actor_id UUID,
     actor_type VARCHAR(20) CHECK (actor_type IN ('user', 'worker', 'system')),
@@ -987,3 +989,29 @@ ON CONFLICT (table_name) DO NOTHING;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INT DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+
+-- ============================================================
+-- SELF-HEALING SRE AGENT (Sprint 4A)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS self_healing_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    failure_id TEXT,
+    workflow_id TEXT,
+    activity_name VARCHAR(100),
+    error_category VARCHAR(30) CHECK (error_category IN (
+        'dependency_missing', 'logic_bug', 'llm_malformed', 'resource_exhaustion', 'unknown'
+    )),
+    diagnosis JSONB,
+    patch_type VARCHAR(30),
+    patch_content TEXT,
+    test_result JSONB,
+    applied BOOLEAN DEFAULT false,
+    rolled_back BOOLEAN DEFAULT false,
+    file_path TEXT,
+    backup_path TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_self_healing_created ON self_healing_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_self_healing_category ON self_healing_events(error_category);
