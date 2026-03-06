@@ -332,6 +332,27 @@ services:
     networks:
       - hydra-internal
 
+  temporal-exporter:
+    build:
+      context: ./worker
+    container_name: hydra-temporal-exporter
+    command: python /app/monitoring/temporal_exporter.py
+    environment:
+      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      - TEMPORAL_ADDRESS=temporal:7233
+      - EXPORTER_PORT=9092
+    volumes:
+      - ./monitoring:/app/monitoring:ro
+    ports:
+      - "9092:9092"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
 # ─── NETWORKS ──────────────────────────────────────────
 networks:
   hydra-internal:

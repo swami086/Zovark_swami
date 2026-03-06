@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: hydra-worker-keda
+  namespace: hydra
+spec:
+  scaleTargetRef:
+    name: hydra-worker
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 4
+  maxReplicaCount: 50
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        metricName: hydra_temporal_pending_tasks
+        query: hydra_temporal_pending_tasks{task_queue="hydra-tasks"}
+        threshold: "5"

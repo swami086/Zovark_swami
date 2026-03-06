@@ -848,15 +848,30 @@ async def render_skill_template(data: dict) -> str:
 
 @activity.defn
 async def check_rate_limit_activity(data: dict) -> bool:
-    """Check if tenant is under rate limit. Returns True if OK."""
-    from redis_client import check_rate_limit
-    return check_rate_limit(data["tenant_id"], data["max_concurrent"])
+    """Acquire a lease for this task. Returns True if OK, False if rate limited."""
+    from rate_limiter import acquire_lease
+    tenant_id = data["tenant_id"]
+    task_id = data.get("task_id", "unknown")
+    worker_id = _get_worker_id()
+    max_concurrent = data.get("max_concurrent", 50)
+    return acquire_lease(tenant_id, task_id, worker_id, max_concurrent)
 
 @activity.defn
-async def decrement_active_activity(tenant_id: str) -> None:
-    """Decrement active count for tenant."""
-    from redis_client import decrement_active
-    decrement_active(tenant_id)
+async def decrement_active_activity(data: dict) -> None:
+    """Release the lease for this task."""
+    from rate_limiter import release_lease
+    if isinstance(data, str):
+        # Backwards compat: old callers pass tenant_id as string
+        from redis_client import decrement_active
+        decrement_active(data)
+        return
+    release_lease(data["tenant_id"], data["task_id"])
+
+@activity.defn
+async def heartbeat_lease_activity(data: dict) -> None:
+    """Extend lease TTL. Called between long-running activities."""
+    from rate_limiter import heartbeat_lease
+    heartbeat_lease(data["tenant_id"], data["task_id"])
 
 @activity.defn
 async def write_investigation_memory(memory_data: dict) -> None:

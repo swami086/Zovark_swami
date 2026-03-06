@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - keda-scaledobject.yaml
 
 patches:
   # Worker: 4 replicas in production (HPA will scale)

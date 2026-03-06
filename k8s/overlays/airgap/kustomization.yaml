@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - keda-scaledobject.yaml
 
 images:
   - name: pgvector/pgvector

@@ -9,7 +9,7 @@ with workflow.unsafe.imports_passed_through():
         save_investigation_step, check_followup_needed, generate_followup_code,
         check_requires_approval, create_approval_request, update_approval_request,
         retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template,
-        check_rate_limit_activity, decrement_active_activity
+        check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity
     )
     from entity_graph import extract_entities, write_entity_graph, embed_investigation
     from intelligence.blast_radius import compute_blast_radius
@@ -54,11 +54,11 @@ class ExecuteTaskWorkflow:
         tenant_id = task_data.get("tenant_id")
         task_type = task_data.get("task_type", "log_analysis").lower().replace(" ", "_")
 
-        # Rate limit check (default 50 concurrent per tenant)
+        # Lease-based rate limit check (default 50 concurrent per tenant)
         max_concurrent = 50  # TODO: read from tenants table when available
         rate_ok = await workflow.execute_activity(
             check_rate_limit_activity,
-            {"tenant_id": tenant_id, "max_concurrent": max_concurrent},
+            {"tenant_id": tenant_id, "task_id": task_id, "max_concurrent": max_concurrent},
             schedule_to_close_timeout=timedelta(seconds=10)
         )
         if not rate_ok:
@@ -69,7 +69,7 @@ class ExecuteTaskWorkflow:
         finally:
             await workflow.execute_activity(
                 decrement_active_activity,
-                tenant_id,
+                {"tenant_id": tenant_id, "task_id": task_id},
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
 
@@ -276,6 +276,16 @@ If something has worked in past investigations for this threat type, apply those
                     llm_exec_ms = gen_result["execution_ms"]
                     step_tokens_in = usage.get("prompt_tokens", 0)
                     step_tokens_out = usage.get("completion_tokens", 0)
+
+                    # Heartbeat lease after code generation
+                    try:
+                        await workflow.execute_activity(
+                            heartbeat_lease_activity,
+                            {"tenant_id": tenant_id, "task_id": task_id},
+                            schedule_to_close_timeout=timedelta(seconds=5)
+                        )
+                    except Exception:
+                        pass
                 else:
                     gen_result = await workflow.execute_activity(
                         generate_followup_code,
@@ -607,7 +617,17 @@ If something has worked in past investigations for this threat type, apply those
                 break
             
             step_exec_ms = llm_exec_ms + exec_result["execution_ms"]
-            
+
+            # Heartbeat lease after code execution
+            try:
+                await workflow.execute_activity(
+                    heartbeat_lease_activity,
+                    {"tenant_id": tenant_id, "task_id": task_id},
+                    schedule_to_close_timeout=timedelta(seconds=5)
+                )
+            except Exception:
+                pass
+
             await workflow.execute_activity(
                 record_usage,
                 {
@@ -808,6 +828,16 @@ If something has worked in past investigations for this threat type, apply those
                 },
                 schedule_to_close_timeout=timedelta(minutes=2)
             )
+
+            # Heartbeat lease after entity extraction
+            try:
+                await workflow.execute_activity(
+                    heartbeat_lease_activity,
+                    {"tenant_id": tenant_id, "task_id": task_id},
+                    schedule_to_close_timeout=timedelta(seconds=5)
+                )
+            except Exception:
+                pass
 
             # 2. Embed investigation + create investigations row
             inv_risk_score = previous_risk_score or 0
