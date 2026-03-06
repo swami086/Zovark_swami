@@ -1,0 +1,102 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "PostgreSQL Active Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "pg_stat_activity_count", "legendFormat": "Active Connections" },
+        { "expr": "pg_settings_max_connections", "legendFormat": "Max Connections" }
+      ]
+    },
+    {
+      "title": "PostgreSQL Database Size",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "pg_database_size_bytes{datname=\"hydra\"}", "legendFormat": "DB Size" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      }
+    },
+    {
+      "title": "PostgreSQL Transactions/s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(pg_stat_database_xact_commit{datname=\"hydra\"}[5m])", "legendFormat": "Commits/s" },
+        { "expr": "rate(pg_stat_database_xact_rollback{datname=\"hydra\"}[5m])", "legendFormat": "Rollbacks/s" }
+      ]
+    },
+    {
+      "title": "Redis Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "redis_memory_used_bytes", "legendFormat": "Used" },
+        { "expr": "redis_memory_max_bytes", "legendFormat": "Max" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      }
+    },
+    {
+      "title": "Redis Commands/s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(redis_commands_processed_total[5m])", "legendFormat": "Commands/s" }
+      ]
+    },
+    {
+      "title": "Redis Connected Clients",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "redis_connected_clients", "legendFormat": "Clients" }
+      ]
+    },
+    {
+      "title": "Redis Hit Rate",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total)", "legendFormat": "Hit Rate" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 0.8 }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["hydra", "infrastructure"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "HYDRA — Infrastructure",
+  "uid": "hydra-infrastructure"
+}

@@ -1,0 +1,62 @@
+groups:
+  - name: hydra_alerts
+    rules:
+      # Task queue backing up
+      - alert: HighPendingTasks
+        expr: hydra_temporal_pending_tasks{task_queue="hydra-tasks"} > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High pending task count"
+          description: "{{ $value }} tasks pending in hydra-tasks queue for >5 minutes"
+
+      # Task failures spiking
+      - alert: HighTaskFailureRate
+        expr: hydra_temporal_failed_tasks_1h{task_queue="hydra-tasks"} > 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High task failure rate"
+          description: "{{ $value }} task failures in the last hour"
+
+      # PostgreSQL connection saturation
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_activity_count > 180
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connections approaching limit"
+          description: "{{ $value }} active connections (limit 200)"
+
+      # Redis memory usage
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage above 85%"
+          description: "Redis using {{ $value | humanizePercentage }} of max memory"
+
+      # Worker down
+      - alert: NoActiveWorkers
+        expr: hydra_worker_up == 0 or absent(hydra_worker_up)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No active HYDRA workers"
+          description: "No workers reporting metrics for >2 minutes"
+
+      # LLM latency
+      - alert: HighLLMLatency
+        expr: hydra_worker_llm_request_seconds > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM request latency exceeding 30s"
+          description: "Average LLM request taking {{ $value }}s"

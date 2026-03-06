@@ -1,0 +1,110 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Worker Status",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_up", "legendFormat": "Workers Up" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Total Investigations",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_investigations_total", "legendFormat": "Total" }
+      ]
+    },
+    {
+      "title": "Total Entities",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_entities_total", "legendFormat": "Entities" }
+      ]
+    },
+    {
+      "title": "Sigma Rules",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_sigma_rules_total", "legendFormat": "Sigma Rules" }
+      ]
+    },
+    {
+      "title": "LLM Request Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_llm_request_seconds", "legendFormat": "LLM Duration (s)" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "LLM Tokens Used",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_llm_tokens_total", "legendFormat": "Tokens" }
+      ]
+    },
+    {
+      "title": "Tasks by Verdict",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_verdict_total", "legendFormat": "{{verdict}}" }
+      ]
+    },
+    {
+      "title": "Tasks by Type",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_tasks_by_type", "legendFormat": "{{task_type}}" }
+      ]
+    },
+    {
+      "title": "Active Rate Limit Leases",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hydra_worker_active_leases", "legendFormat": "{{tenant_id}}" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["hydra", "worker"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "HYDRA — Worker Performance",
+  "uid": "hydra-worker"
+}
