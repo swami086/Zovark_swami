@@ -22,6 +22,7 @@ from detection.pattern_miner import mine_attack_patterns
 from detection.sigma_generator import generate_sigma_rule
 from detection.rule_validator import validate_sigma_rule
 from detection.workflow import DetectionGenerationWorkflow, _list_candidates_for_generation
+from response.workflow import ResponsePlaybookWorkflow, load_playbook, create_response_execution, update_response_execution, execute_response_action, rollback_response_action, find_matching_playbooks
 from prompt_init import init_prompts
 
 # Worker identity — read from env (K8s pod name) or generate
@@ -54,8 +55,8 @@ async def main():
     worker = Worker(
         client,
         task_queue="hydra-tasks",
-        workflows=[ExecuteTaskWorkflow, BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow, DetectionGenerationWorkflow],
-        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques, compute_blast_radius, analyze_false_positive, run_deobfuscation, generate_incident_report, refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score, _list_multi_tenant_entities, mine_attack_patterns, generate_sigma_rule, validate_sigma_rule, _list_candidates_for_generation],
+        workflows=[ExecuteTaskWorkflow, BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow, DetectionGenerationWorkflow, ResponsePlaybookWorkflow],
+        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques, compute_blast_radius, analyze_false_positive, run_deobfuscation, generate_incident_report, refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score, _list_multi_tenant_entities, mine_attack_patterns, generate_sigma_rule, validate_sigma_rule, _list_candidates_for_generation, load_playbook, create_response_execution, update_response_execution, execute_response_action, rollback_response_action, find_matching_playbooks],
     )
     print(f"Worker {WORKER_ID} starting on task queue hydra-tasks")
     await worker.run()

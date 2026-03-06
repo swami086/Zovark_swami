@@ -16,6 +16,7 @@ with workflow.unsafe.imports_passed_through():
     from intelligence.fp_analyzer import analyze_false_positive
     from intelligence.cross_tenant import get_entity_intelligence
     from reporting.incident_report import generate_incident_report
+    from response.workflow import ResponsePlaybookWorkflow, find_matching_playbooks
     from security.injection_detector import scan_for_injection
     from security.prompt_sanitizer import wrap_untrusted_data
 
@@ -1000,6 +1001,42 @@ If something has worked in past investigations for this threat type, apply those
                 )
             except Exception as e:
                 workflow.logger.info(f"Report generation failed non-fatally: {e}")
+
+        # --- SOAR RESPONSE AUTO-TRIGGER (Sprint 2B) ---
+        if investigation_id:
+            try:
+                matching_playbooks = await workflow.execute_activity(
+                    find_matching_playbooks,
+                    {
+                        "verdict": verdict,
+                        "risk_score": inv_risk_score,
+                        "tenant_id": tenant_id,
+                    },
+                    schedule_to_close_timeout=timedelta(seconds=15),
+                )
+                for pb in matching_playbooks:
+                    try:
+                        await workflow.execute_child_workflow(
+                            ResponsePlaybookWorkflow.run,
+                            {
+                                "playbook_id": pb["id"],
+                                "investigation_id": investigation_id,
+                                "tenant_id": tenant_id,
+                                "trigger_data": {
+                                    "verdict": verdict,
+                                    "risk_score": inv_risk_score,
+                                    "task_id": task_id,
+                                    "task_type": task_type,
+                                },
+                            },
+                            id=f"response-{pb['id']}-{investigation_id}",
+                            task_queue="hydra-tasks",
+                        )
+                        workflow.logger.info(f"Triggered playbook '{pb.get('name')}' for investigation {investigation_id}")
+                    except Exception as e:
+                        workflow.logger.info(f"Playbook '{pb.get('name')}' trigger failed non-fatally: {e}")
+            except Exception as e:
+                workflow.logger.info(f"Response auto-trigger failed non-fatally: {e}")
 
         return {"status": "completed", "steps": completed_steps}
 
