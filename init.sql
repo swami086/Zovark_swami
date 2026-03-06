@@ -557,7 +557,7 @@ CREATE INDEX idx_entity_obs_confidence ON entity_observations(confidence_source)
 
 -- ============================================================
 -- AUDIT EVENTS (Structured, partitioned, append-only)
--- Sprint 1E-4
+-- Sprint 1E-4, updated Sprint 1K
 -- ============================================================
 
 CREATE TABLE audit_events (
@@ -566,7 +566,8 @@ CREATE TABLE audit_events (
     event_type VARCHAR(50) NOT NULL CHECK (event_type IN (
         'investigation_started', 'investigation_completed', 'code_executed',
         'approval_requested', 'approval_granted', 'approval_denied', 'approval_timeout',
-        'entity_extracted', 'detection_generated', 'user_login', 'user_registered'
+        'entity_extracted', 'detection_generated', 'user_login', 'user_registered',
+        'injection_detected', 'cross_tenant_hit', 'threat_score_updated'
     )),
     actor_id UUID,
     actor_type VARCHAR(20) CHECK (actor_type IN ('user', 'worker', 'system')),
@@ -669,3 +670,41 @@ CREATE TABLE investigation_reports (
 
 CREATE INDEX idx_reports_investigation ON investigation_reports(investigation_id);
 CREATE INDEX idx_reports_tenant ON investigation_reports(tenant_id);
+
+-- ============================================================
+-- CROSS-TENANT INTELLIGENCE (Sprint 1K)
+-- ============================================================
+
+-- Materialized view: entity threat scores aggregated across tenants
+CREATE MATERIALIZED VIEW IF NOT EXISTS cross_tenant_intel AS
+SELECT
+    e.entity_hash,
+    e.entity_type,
+    COUNT(DISTINCT e.tenant_id) as tenant_count,
+    COUNT(DISTINCT eo.investigation_id) as investigation_count,
+    MAX(e.observation_count) as max_observations,
+    MAX(e.threat_score) as max_threat_score,
+    array_agg(DISTINCT e.tenant_id) as tenant_ids,
+    MAX(e.last_seen) as last_seen_globally
+FROM entities e
+JOIN entity_observations eo ON eo.entity_id = e.id
+JOIN investigations i ON i.id = eo.investigation_id
+WHERE NOT COALESCE(i.injection_detected, false)
+GROUP BY e.entity_hash, e.entity_type
+HAVING COUNT(DISTINCT e.tenant_id) >= 2;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cross_tenant_hash ON cross_tenant_intel(entity_hash);
+CREATE INDEX IF NOT EXISTS idx_cross_tenant_type ON cross_tenant_intel(entity_type);
+CREATE INDEX IF NOT EXISTS idx_cross_tenant_tenants ON cross_tenant_intel(tenant_count DESC);
+
+-- Privacy-safe view: strips tenant_ids, only shows aggregate counts
+CREATE OR REPLACE VIEW cross_tenant_public AS
+SELECT
+    entity_hash,
+    entity_type,
+    tenant_count,
+    investigation_count,
+    max_observations,
+    max_threat_score,
+    last_seen_globally
+FROM cross_tenant_intel;

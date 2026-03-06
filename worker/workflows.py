@@ -14,6 +14,7 @@ with workflow.unsafe.imports_passed_through():
     from entity_graph import extract_entities, write_entity_graph, embed_investigation
     from intelligence.blast_radius import compute_blast_radius
     from intelligence.fp_analyzer import analyze_false_positive
+    from intelligence.cross_tenant import get_entity_intelligence
     from reporting.incident_report import generate_incident_report
     from security.injection_detector import scan_for_injection
     from security.prompt_sanitizer import wrap_untrusted_data
@@ -794,6 +795,7 @@ If something has worked in past investigations for this threat type, apply those
         # --- ENTITY GRAPH + INVESTIGATION EMBEDDING (Sprint 1G) ---
         entity_result = {}
         investigation_id = None
+        graph_write_result = {}
         try:
             # 1. Extract entities from investigation output
             entity_result = await workflow.execute_activity(
@@ -834,8 +836,9 @@ If something has worked in past investigations for this threat type, apply those
             investigation_id = embed_result.get("investigation_id")
 
             # 3. Write entity graph (entities, observations, edges)
+            graph_write_result = {}
             if entity_result.get("entities") and investigation_id:
-                await workflow.execute_activity(
+                graph_write_result = await workflow.execute_activity(
                     write_entity_graph,
                     {
                         "tenant_id": tenant_id,
@@ -864,6 +867,42 @@ If something has worked in past investigations for this threat type, apply those
                 )
         except Exception as e:
             workflow.logger.info(f"Entity graph pipeline failed non-fatally: {str(e)}")
+
+        # --- CROSS-TENANT INTELLIGENCE (Sprint 1K) ---
+        cross_tenant_hits = []
+        graph_result_hashes = graph_write_result.get("entity_hashes", [])
+        if graph_result_hashes and investigation_id:
+            try:
+                for ent_hash in graph_result_hashes[:20]:  # cap at 20 lookups
+                    intel = await workflow.execute_activity(
+                        get_entity_intelligence,
+                        {"entity_hash": ent_hash, "tenant_id": tenant_id},
+                        schedule_to_close_timeout=timedelta(seconds=30),
+                    )
+                    if intel.get("tenant_count", 1) >= 2:
+                        cross_tenant_hits.append(intel)
+                if cross_tenant_hits:
+                    await workflow.execute_activity(
+                        log_audit_event,
+                        {
+                            "tenant_id": tenant_id,
+                            "event_type": "cross_tenant_hit",
+                            "actor_type": "system",
+                            "resource_type": "investigation",
+                            "resource_id": investigation_id,
+                            "metadata": {
+                                "hit_count": len(cross_tenant_hits),
+                                "entity_hashes": [h["entity_hash"] for h in cross_tenant_hits[:10]],
+                                "max_tenant_count": max(h.get("tenant_count", 1) for h in cross_tenant_hits),
+                            },
+                        },
+                        schedule_to_close_timeout=timedelta(seconds=10),
+                    )
+                    workflow.logger.info(
+                        f"Cross-tenant: {len(cross_tenant_hits)} entities seen by multiple tenants"
+                    )
+            except Exception as e:
+                workflow.logger.info(f"Cross-tenant intelligence failed non-fatally: {e}")
 
         # --- BLAST RADIUS (Sprint 1L) ---
         blast_radius_result = {}
@@ -899,6 +938,7 @@ If something has worked in past investigations for this threat type, apply those
                         "verdict": verdict,
                         "risk_score": inv_risk_score,
                         "entities": entity_result.get("entities", []),
+                        "cross_tenant_hits": len(cross_tenant_hits),
                     },
                     schedule_to_close_timeout=timedelta(minutes=2)
                 )

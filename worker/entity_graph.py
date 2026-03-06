@@ -182,6 +182,7 @@ async def write_entity_graph(data: dict) -> dict:
     entities_upserted = 0
     edges_upserted = 0
     observations_created = 0
+    entity_hashes = []
 
     try:
         # Normalize, compute hashes, and deduplicate
@@ -204,6 +205,7 @@ async def write_entity_graph(data: dict) -> dict:
             if ehash not in hash_to_entity:
                 hash_to_entity[ehash] = record
         entity_records = list(hash_to_entity.values())
+        entity_hashes = list(hash_to_entity.keys())
 
         if not entity_records:
             return {"entities_upserted": 0, "edges_upserted": 0, "observations_created": 0}
@@ -304,7 +306,8 @@ async def write_entity_graph(data: dict) -> dict:
     return {
         "entities_upserted": entities_upserted,
         "edges_upserted": edges_upserted,
-        "observations_created": observations_created
+        "observations_created": observations_created,
+        "entity_hashes": entity_hashes,
     }
 
 

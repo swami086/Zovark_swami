@@ -14,6 +14,8 @@ from bootstrap.activities import load_mitre_techniques, load_cisa_kev, generate_
 from bootstrap.workflow import BootstrapCorpusWorkflow
 from intelligence.blast_radius import compute_blast_radius
 from intelligence.fp_analyzer import analyze_false_positive
+from intelligence.cross_tenant import refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score
+from intelligence.cross_tenant_workflow import CrossTenantRefreshWorkflow, _list_multi_tenant_entities
 from skills.deobfuscation import run_deobfuscation
 from reporting.incident_report import generate_incident_report
 
@@ -44,8 +46,8 @@ async def main():
     worker = Worker(
         client,
         task_queue="hydra-tasks",
-        workflows=[ExecuteTaskWorkflow, BootstrapCorpusWorkflow],
-        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques, compute_blast_radius, analyze_false_positive, run_deobfuscation, generate_incident_report],
+        workflows=[ExecuteTaskWorkflow, BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow],
+        activities=[fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, extract_entities, write_entity_graph, embed_investigation, load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques, compute_blast_radius, analyze_false_positive, run_deobfuscation, generate_incident_report, refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score, _list_multi_tenant_entities],
     )
     print(f"Worker {WORKER_ID} starting on task queue hydra-tasks")
     await worker.run()

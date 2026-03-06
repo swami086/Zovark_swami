@@ -99,6 +99,13 @@ async def analyze_false_positive(data: dict) -> dict:
     else:
         confidence = 0.40 + (risk_score / 100.0) * 0.20
 
+    # Cross-tenant boost: entities seen by multiple orgs increase confidence
+    cross_tenant_hits = data.get("cross_tenant_hits", 0)
+    if cross_tenant_hits >= 3:
+        confidence += 0.10
+    elif cross_tenant_hits >= 1:
+        confidence += 0.05
+
     confidence = round(min(max(confidence, 0.0), 1.0), 2)
 
     # 4. LLM reasoning chain
