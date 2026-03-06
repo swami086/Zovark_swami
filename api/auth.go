@@ -88,10 +88,19 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 
+	// Check account lockout
+	if checkAccountLocked(req.Email) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "account temporarily locked due to failed login attempts"})
+		return
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		recordFailedLogin(req.Email)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
+
+	recordSuccessfulLogin(req.Email)
 
 	claims := CustomClaims{
 		TenantID: user.TenantID,

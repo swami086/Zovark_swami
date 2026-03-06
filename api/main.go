@@ -60,13 +60,15 @@ func main() {
 
 	// Middlewares
 	router.Use(corsMiddleware())
+	router.Use(securityHeadersMiddleware())
 	router.Use(loggingMiddleware())
 
 	// Public routes
 	router.GET("/health", healthCheckHandler)
 
-	// Public auth routes
+	// Public auth routes (rate limited)
 	auth := router.Group("/api/v1/auth")
+	auth.Use(authRateLimitMiddleware())
 	{
 		auth.POST("/login", loginHandler)
 		auth.POST("/register", registerHandler)
@@ -78,6 +80,7 @@ func main() {
 	// Protected API routes
 	api := router.Group("/api/v1")
 	api.Use(authMiddleware())
+	api.Use(auditMiddleware())
 	{
 		// Anyone authenticated
 		api.GET("/tasks", listTasksHandler)
@@ -132,6 +135,10 @@ func main() {
 		api.GET("/models/ab-tests", requireRole("admin"), listABTestsHandler)
 		api.POST("/models/ab-tests", requireRole("admin"), createABTestHandler)
 		api.POST("/models/ab-tests/:id/complete", requireRole("admin"), completeABTestHandler)
+
+		// Data retention (admin only)
+		api.GET("/retention-policies", requireRole("admin"), listRetentionPoliciesHandler)
+		api.PUT("/retention-policies/:id", requireRole("admin"), updateRetentionPolicyHandler)
 	}
 
 	// Start server

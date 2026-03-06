@@ -960,3 +960,30 @@ CREATE TABLE IF NOT EXISTS model_ab_tests (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ab_tests_status ON model_ab_tests(status);
+
+-- ============================================================
+-- SECURITY & COMPLIANCE (Sprint 3F)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS data_retention_policies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_name VARCHAR(100) NOT NULL UNIQUE,
+    retention_days INT NOT NULL DEFAULT 90,
+    delete_strategy VARCHAR(20) DEFAULT 'soft' CHECK (delete_strategy IN ('soft', 'hard', 'archive')),
+    is_active BOOLEAN DEFAULT true,
+    last_cleanup_at TIMESTAMPTZ,
+    rows_cleaned INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO data_retention_policies (table_name, retention_days, delete_strategy) VALUES
+    ('agent_audit_log', 365, 'archive'),
+    ('webhook_deliveries', 30, 'hard'),
+    ('usage_records', 90, 'hard'),
+    ('investigation_steps', 180, 'archive'),
+    ('siem_alerts', 90, 'soft')
+ON CONFLICT (table_name) DO NOTHING;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INT DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
