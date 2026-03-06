@@ -2,19 +2,20 @@ import subprocess
 import threading
 import sys
 
+
 def enforce_kill_timer(container_name: str, timeout_seconds: int = 30) -> threading.Timer:
     """
-    Kills a Docker container after `timeout_seconds` strictly, regardless of 
+    Kills a Docker container after `timeout_seconds` strictly, regardless of
     what the code inside is doing.
-    
-    This function spawns a daemonized background timer thread that issues a 
-    'docker kill' (SIGKILL) directly to the container so that it cannot delay 
+
+    This function spawns a daemonized background timer thread that issues a
+    'docker kill' (SIGKILL) directly to the container so that it cannot delay
     or trap the termination signal.
     """
     def kill_action():
         print(f"[Timer] 30-second execution limit reached. Force killing container {container_name}...", file=sys.stderr)
         try:
-            # We use 'docker kill' instead of 'docker stop'. 
+            # We use 'docker kill' instead of 'docker stop'.
             # 'docker stop' sends SIGTERM and waits for a grace period.
             # 'docker kill' guarantees immediate SIGKILL.
             subprocess.run(
@@ -34,12 +35,13 @@ def enforce_kill_timer(container_name: str, timeout_seconds: int = 30) -> thread
 
 # --- Usage Example inside the Python Worker ---
 
+
 if __name__ == "__main__":
     sandbox_container_id = "skill_worker_sandbox_1"
-    
+
     # 1. Start the 30-second kill countdown timer
     kill_timer = enforce_kill_timer(sandbox_container_id, timeout_seconds=30)
-    
+
     try:
         # 2. Execute the user's generated code inside the container
         # Note: Depending on your exact worker loop, this could be blocking or non-blocking.
@@ -50,11 +52,11 @@ if __name__ == "__main__":
             text=True
         )
         print("Sandbox Output:", process.stdout)
-        
+
     finally:
         # 3. Always cancel the timer if the execution finishes before 30 seconds
         kill_timer.cancel()
-        
+
         # 4. Enforce cleanup (Optional: remove the container when done)
         subprocess.run(
             ["docker", "rm", "-f", sandbox_container_id],

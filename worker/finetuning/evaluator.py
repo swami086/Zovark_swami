@@ -5,10 +5,8 @@ against reference investigations.
 """
 
 import os
-import json
 import time
 import httpx
-import psycopg2
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")

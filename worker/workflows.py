@@ -22,6 +22,7 @@ with workflow.unsafe.imports_passed_through():
 
 MAX_STEPS = 3
 
+
 def _verdict_from_severity(severity: str) -> str:
     """Map severity level to investigation verdict."""
     mapping = {
@@ -32,6 +33,7 @@ def _verdict_from_severity(severity: str) -> str:
         "informational": "benign",
     }
     return mapping.get(severity, "inconclusive")
+
 
 @workflow.defn
 class ExecuteTaskWorkflow:
@@ -51,7 +53,7 @@ class ExecuteTaskWorkflow:
             task_id,
             schedule_to_close_timeout=timedelta(seconds=10)
         )
-        
+
         tenant_id = task_data.get("tenant_id")
         task_type = task_data.get("task_type", "log_analysis").lower().replace(" ", "_")
 
@@ -102,7 +104,7 @@ class ExecuteTaskWorkflow:
         skill_template = None
         skill_params = []
         current_prompt = task_data.get("input", {}).get("prompt", "")
-        
+
         try:
             retrieved_skill = await workflow.execute_activity(
                 retrieve_skill,
@@ -118,7 +120,7 @@ class ExecuteTaskWorkflow:
                 mitre_tech = retrieved_skill.get("mitre_techniques", [])
                 skill_template = retrieved_skill.get("code_template")
                 skill_params = retrieved_skill.get("parameters", [])
-                
+
                 RagSystemOverride = f"""You are a senior security analyst with access to your organization's investigation knowledge base.
 
 === INVESTIGATION SKILL: {skill_name} ===
@@ -133,7 +135,7 @@ Relevant MITRE ATT&CK Techniques: {mitre_tech}
 
 Follow this methodology when generating your detection script.
 If something has worked in past investigations for this threat type, apply those patterns first."""
-                
+
                 existing_override = task_data.get("input", {}).get("playbook_system_prompt_override", "")
                 if existing_override:
                     task_data["input"]["playbook_system_prompt_override"] = existing_override + "\n\n" + RagSystemOverride
@@ -141,7 +143,7 @@ If something has worked in past investigations for this threat type, apply those
                     if "input" not in task_data:
                         task_data["input"] = {}
                     task_data["input"]["playbook_system_prompt_override"] = RagSystemOverride
-                    
+
                 # Context Window Management
                 current_log_data = task_data.get("input", {}).get("log_data", "")
                 if current_log_data:
@@ -149,7 +151,7 @@ If something has worked in past investigations for this threat type, apply those
                     log_tokens = len(current_log_data.split()) * 1.33
                     prompt_tokens = len(current_prompt.split()) * 1.33
                     total_tokens = skill_tokens + log_tokens + prompt_tokens + 500
-                    
+
                     if total_tokens > 6000:
                         allowed_log_tokens = 6000 - skill_tokens - 500
                         allowed_words = int(allowed_log_tokens / 1.33)
@@ -168,7 +170,7 @@ If something has worked in past investigations for this threat type, apply those
         except Exception as e:
             workflow.logger.info(f"Failed to retrieve skill: {str(e)}")
             # Do nothing if it fails, never fail the workflow
-        
+
         # --- INJECTION DETECTION (Sprint 1L) ---
         injection_confidence = "clean"
         try:
@@ -225,7 +227,7 @@ If something has worked in past investigations for this threat type, apply those
         previous_context = ""
         completed_steps = 0
         previous_risk_score = 0
-        
+
         playbook_steps = task_data.get("input", {}).get("playbook_steps")
         max_loop_steps = min(len(playbook_steps), MAX_STEPS) if playbook_steps else MAX_STEPS
 
@@ -234,7 +236,7 @@ If something has worked in past investigations for this threat type, apply those
                 current_prompt = playbook_steps[step_num - 1]
 
             step_type = "analysis" if step_num == 1 else ("enrichment" if step_num == 2 else "deep_analysis")
-            
+
             # --- GENERATE CODE ---
             is_template = False
             template_params_used = {}
@@ -252,7 +254,7 @@ If something has worked in past investigations for this threat type, apply those
                         schedule_to_close_timeout=timedelta(minutes=5)
                     )
                     template_params_used = fill_result["filled_parameters"]
-                    
+
                     code = await workflow.execute_activity(
                         render_skill_template,
                         {
@@ -322,7 +324,7 @@ If something has worked in past investigations for this threat type, apply those
                 if step_num == 1:
                     return await self._fail_task(task_id, tenant_id, f"Code generation failed: {str(e)}")
                 break
-            
+
             await workflow.execute_activity(
                 record_usage,
                 {
@@ -336,14 +338,14 @@ If something has worked in past investigations for this threat type, apply those
                 },
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
-            
+
             # --- VALIDATE CODE ---
             val_result = await workflow.execute_activity(
                 validate_code,
                 code,
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
-            
+
             if not val_result["is_safe"]:
                 await workflow.execute_activity(
                     save_investigation_step,
@@ -369,7 +371,7 @@ If something has worked in past investigations for this threat type, apply those
                         tokens_input=step_tokens_in, tokens_output=step_tokens_out, exec_ms=llm_exec_ms
                     )
                 break
-            
+
             # --- APPROVAL GATE ---
             approval_check = await workflow.execute_activity(
                 check_requires_approval,
@@ -381,7 +383,7 @@ If something has worked in past investigations for this threat type, apply those
                 },
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
-            
+
             if approval_check["required"]:
                 # Create approval request
                 approval_id = await workflow.execute_activity(
@@ -395,7 +397,7 @@ If something has worked in past investigations for this threat type, apply those
                     },
                     schedule_to_close_timeout=timedelta(seconds=10)
                 )
-                
+
                 # Update task status to awaiting_approval
                 await workflow.execute_activity(
                     update_task_status,
@@ -408,7 +410,7 @@ If something has worked in past investigations for this threat type, apply those
                     },
                     schedule_to_close_timeout=timedelta(seconds=10)
                 )
-                
+
                 await workflow.execute_activity(
                     log_audit,
                     {
@@ -447,7 +449,7 @@ If something has worked in past investigations for this threat type, apply those
                     )
                 except TimeoutError:
                     pass  # Timeout — will be handled below
-                
+
                 if self._approval_decision is None:
                     # Timeout — auto-reject
                     await workflow.execute_activity(
@@ -465,7 +467,7 @@ If something has worked in past investigations for this threat type, apply those
                         tokens_output=total_tokens_output + step_tokens_out,
                         exec_ms=total_exec_ms + llm_exec_ms
                     )
-                
+
                 if not self._approval_decision.get("approved", False):
                     # Rejected
                     comment = self._approval_decision.get("comment", "Rejected by reviewer")
@@ -533,7 +535,7 @@ If something has worked in past investigations for this threat type, apply those
                         schedule_to_close_timeout=timedelta(seconds=10)
                     )
                     return {"status": "rejected", "comment": comment}
-                
+
                 # Approved — continue to execution
                 await workflow.execute_activity(
                     update_approval_request,
@@ -579,10 +581,10 @@ If something has worked in past investigations for this threat type, apply those
                     },
                     schedule_to_close_timeout=timedelta(seconds=10)
                 )
-                
+
                 # Reset for next potential approval
                 self._approval_decision = None
-            
+
             # --- EXECUTE CODE ---
             try:
                 exec_result = await workflow.execute_activity(
@@ -615,7 +617,7 @@ If something has worked in past investigations for this threat type, apply those
                         tokens_input=step_tokens_in, tokens_output=step_tokens_out, exec_ms=llm_exec_ms
                     )
                 break
-            
+
             step_exec_ms = llm_exec_ms + exec_result["execution_ms"]
 
             # Heartbeat lease after code execution
@@ -639,10 +641,10 @@ If something has worked in past investigations for this threat type, apply those
                 },
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
-            
+
             stdout_str = exec_result["stdout"]
             step_status = "completed" if exec_result["status"] == "completed" else "failed"
-            
+
             # --- SAVE STEP IMMEDIATELY (crash recovery) ---
             await workflow.execute_activity(
                 save_investigation_step,
@@ -662,7 +664,7 @@ If something has worked in past investigations for this threat type, apply those
                 },
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
-            
+
             await workflow.execute_activity(
                 log_audit_event,
                 {
@@ -683,7 +685,7 @@ If something has worked in past investigations for this threat type, apply those
             final_stdout = stdout_str
             final_code = code
             completed_steps = step_num
-            
+
             # Extract risk_score for next step's approval check
             try:
                 parsed_out = json.loads(stdout_str)
@@ -693,7 +695,7 @@ If something has worked in past investigations for this threat type, apply those
                         previous_risk_score = int(rs)
             except Exception:
                 pass
-            
+
             if exec_result["status"] == "failed":
                 if step_num == 1:
                     return await self._fail_task(
@@ -701,7 +703,7 @@ If something has worked in past investigations for this threat type, apply those
                         tokens_input=total_tokens_input, tokens_output=total_tokens_output, exec_ms=total_exec_ms
                     )
                 break
-            
+
             # --- CHECK FOR FOLLOW-UP ---
             if playbook_steps:
                 if step_num < max_loop_steps:
@@ -715,13 +717,13 @@ If something has worked in past investigations for this threat type, apply those
                         {"stdout": stdout_str, "previous_prompt": current_prompt},
                         schedule_to_close_timeout=timedelta(seconds=10)
                     )
-                    
+
                     if not followup["needed"]:
                         break
-                    
+
                     previous_context = stdout_str[:2000]
                     current_prompt = followup["prompt"]
-        
+
         # --- DERIVE SEVERITY from final output ---
         severity = None
         try:
@@ -732,25 +734,30 @@ If something has worked in past investigations for this threat type, apply those
                     risk_score = parsed_out["risk_score"]
                 elif "statistics" in parsed_out and isinstance(parsed_out["statistics"], dict) and "risk_score" in parsed_out["statistics"]:
                     risk_score = parsed_out["statistics"]["risk_score"]
-                
+
                 if risk_score is not None:
                     try:
                         risk_score = int(risk_score)
-                        if risk_score >= 80: severity = "critical"
-                        elif risk_score >= 60: severity = "high"
-                        elif risk_score >= 40: severity = "medium"
-                        elif risk_score >= 20: severity = "low"
-                        else: severity = "informational"
+                        if risk_score >= 80:
+                            severity = "critical"
+                        elif risk_score >= 60:
+                            severity = "high"
+                        elif risk_score >= 40:
+                            severity = "medium"
+                        elif risk_score >= 20:
+                            severity = "low"
+                        else:
+                            severity = "informational"
                     except ValueError:
                         pass
-                
+
                 if not severity and "severity" in parsed_out:
                     sev_str = str(parsed_out["severity"]).lower()
                     if sev_str in ["critical", "high", "medium", "low", "informational"]:
                         severity = sev_str
         except Exception:
             pass
-            
+
         if not severity:
             if task_type in ["incident_response", "threat_hunt", "ioc_scan"]:
                 severity = "high"
@@ -770,7 +777,7 @@ If something has worked in past investigations for this threat type, apply those
             },
             schedule_to_close_timeout=timedelta(seconds=10)
         )
-        
+
         await workflow.execute_activity(
             log_audit,
             {
@@ -1052,7 +1059,7 @@ If something has worked in past investigations for this threat type, apply those
             },
             schedule_to_close_timeout=timedelta(seconds=10)
         )
-        
+
         await workflow.execute_activity(
             log_audit,
             {

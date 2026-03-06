@@ -23,6 +23,7 @@ def _get_db():
     db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
     return psycopg2.connect(db_url)
 
+
 def _sync_commit(cur):
     """Enable synchronous commit for this transaction (critical writes)."""
     cur.execute("SET LOCAL synchronous_commit = on")
@@ -197,7 +198,7 @@ async def write_entity_graph(data: dict) -> dict:
     Returns: {entities_upserted, edges_upserted, observations_created}
     """
     tenant_id = data.get("tenant_id")
-    task_id = data.get("task_id")
+    data.get("task_id")
     investigation_id = data.get("investigation_id")
     raw_entities = data.get("entities", [])
     raw_edges = data.get("edges", [])
@@ -344,8 +345,6 @@ async def embed_investigation(data: dict) -> dict:
             prompt_version, source, task_type}
     Returns: {investigation_id, embedding_dim, execution_ms}
     """
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
     tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 
     tenant_id = data.get("tenant_id")

@@ -5,7 +5,7 @@ DON'T strip the payload — an attempted AI subversion IS a threat signal.
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

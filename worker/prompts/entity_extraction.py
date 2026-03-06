@@ -1,7 +1,5 @@
 """LLM prompt template for structured entity extraction from investigation output."""
 
-import json
-
 ENTITY_EXTRACTION_SYSTEM_PROMPT = """You are a security analyst extracting structured threat intelligence entities from investigation output.
 
 Extract ALL observable entities (IOCs) and their relationships from the investigation results.

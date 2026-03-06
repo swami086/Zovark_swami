@@ -15,6 +15,7 @@ FORBIDDEN_FUNCTIONS = {
     'eval', 'exec', '__import__'
 }
 
+
 class SecurityVisitor(ast.NodeVisitor):
     def __init__(self):
         self.safe = True
@@ -38,7 +39,7 @@ class SecurityVisitor(ast.NodeVisitor):
             if base_module in FORBIDDEN_MODULES or node.module in FORBIDDEN_MODULES:
                 self.fail(f"Forbidden import module: {node.module}")
                 return
-        
+
         # Check if importing forbidden attributes mapped from allowed modules (e.g. from os import system)
         for alias in node.names:
             if alias.name in FORBIDDEN_ATTRIBUTES or alias.name in FORBIDDEN_FUNCTIONS or alias.name == '__import__':
@@ -58,18 +59,19 @@ class SecurityVisitor(ast.NodeVisitor):
                 self.fail(f"Forbidden attribute/method call: {node.func.attr}")
                 return
         self.generic_visit(node)
-        
+
     def visit_Name(self, node: ast.Name):
         if node.id in FORBIDDEN_FUNCTIONS or node.id == '__import__':
             self.fail(f"Forbidden name reference: {node.id}")
             return
         self.generic_visit(node)
-        
+
     def visit_Attribute(self, node: ast.Attribute):
         if node.attr in FORBIDDEN_ATTRIBUTES or node.attr in FORBIDDEN_FUNCTIONS or node.attr == '__import__':
             self.fail(f"Forbidden attribute reference: {node.attr}")
             return
         self.generic_visit(node)
+
 
 def is_safe_python_code(code_string: str) -> Tuple[bool, str]:
     """
@@ -80,11 +82,11 @@ def is_safe_python_code(code_string: str) -> Tuple[bool, str]:
         tree = ast.parse(code_string)
     except Exception as e:
         return False, f"Code parsing failed (SyntaxError): {e}"
-        
+
     visitor = SecurityVisitor()
     visitor.visit(tree)
-    
+
     if not visitor.safe:
         return False, visitor.reason
-        
+
     return True, "Safe"

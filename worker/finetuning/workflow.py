@@ -7,7 +7,7 @@ from datetime import timedelta
 from temporalio import activity, workflow
 
 with workflow.unsafe.imports_passed_through():
-    from finetuning.data_export import export_training_data, write_jsonl, compute_quality_score
+    from finetuning.data_export import export_training_data, write_jsonl
     from finetuning.evaluator import evaluate_model
     import psycopg2
 

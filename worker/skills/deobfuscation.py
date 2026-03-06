@@ -1,6 +1,5 @@
 """Sandbox deobfuscation skill — decode base64/hex/PowerShell/URL payloads."""
 
-import os
 import json
 import time
 import subprocess

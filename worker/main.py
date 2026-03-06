@@ -5,7 +5,6 @@ import random
 import string
 from temporalio.client import Client
 from temporalio.worker import Worker
-import psycopg2
 
 from workflows import ExecuteTaskWorkflow
 from activities import fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity
@@ -27,6 +26,7 @@ from finetuning.workflow import FineTuningPipelineWorkflow, export_finetuning_da
 from prompt_init import init_prompts
 import logger
 
+
 # Worker identity — read from env (K8s pod name) or generate
 def _generate_worker_id():
     hostname = socket.gethostname()
@@ -34,8 +34,10 @@ def _generate_worker_id():
     rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
     return f"{hostname}-{pid}-{rand}"
 
+
 WORKER_ID = os.environ.get("WORKER_ID") or _generate_worker_id()
 os.environ["WORKER_ID"] = WORKER_ID  # Make available to logger module
+
 
 async def main():
     # Initialize prompt registry at startup
@@ -54,7 +56,7 @@ async def main():
             await asyncio.sleep(5)
     else:
         raise Exception("Could not connect to Temporal frontend")
-        
+
     worker = Worker(
         client,
         task_queue="hydra-tasks",
@@ -63,6 +65,7 @@ async def main():
     )
     logger.info("Worker starting", task_queue="hydra-tasks", workflows=6, activities=51)
     await worker.run()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

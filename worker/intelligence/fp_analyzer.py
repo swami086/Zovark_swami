@@ -2,7 +2,6 @@
 
 import os
 import json
-import time
 import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor

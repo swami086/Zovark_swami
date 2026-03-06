@@ -5,6 +5,7 @@ import sys
 import time
 import os
 
+
 def log(level, message, **kwargs):
     entry = {
         "ts": time.time(),

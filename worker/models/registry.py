@@ -8,7 +8,6 @@ Supports:
 """
 
 import os
-import json
 import random
 import psycopg2
 import logger

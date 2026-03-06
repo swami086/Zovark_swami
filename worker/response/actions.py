@@ -6,12 +6,9 @@ the action calls the webhook. Otherwise, log-only mode.
 """
 
 import os
-import json
-import time
 import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from temporalio import activity
 
 
 def _get_db():

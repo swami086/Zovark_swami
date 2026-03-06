@@ -165,7 +165,7 @@ async def compute_threat_score(data: dict) -> dict:
     Returns: {entity_id, threat_score, factors}
     """
     entity_id = data.get("entity_id")
-    tenant_id = data.get("tenant_id")
+    data.get("tenant_id")
 
     if not entity_id:
         return {"entity_id": entity_id, "threat_score": 0, "factors": {}, "error": "Missing entity_id"}

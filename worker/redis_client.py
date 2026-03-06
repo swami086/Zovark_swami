@@ -3,6 +3,7 @@ import redis
 
 _redis_conn = None
 
+
 def _get_redis():
     global _redis_conn
     if _redis_conn is None:
@@ -10,10 +11,12 @@ def _get_redis():
         _redis_conn = redis.from_url(url, decode_responses=True)
     return _redis_conn
 
+
 def get_active_count(tenant_id: str) -> int:
     r = _get_redis()
     val = r.get(f"hydra:active:{tenant_id}")
     return int(val) if val else 0
+
 
 def increment_active(tenant_id: str) -> int:
     r = _get_redis()
@@ -21,6 +24,7 @@ def increment_active(tenant_id: str) -> int:
     val = r.incr(key)
     r.expire(key, 3600)  # 1 hour TTL safety net
     return val
+
 
 def decrement_active(tenant_id: str) -> int:
     r = _get_redis()
@@ -31,6 +35,7 @@ def decrement_active(tenant_id: str) -> int:
         r.expire(key, 3600)
         return 0
     return val
+
 
 def check_rate_limit(tenant_id: str, max_concurrent: int) -> bool:
     """Returns True if under limit, False if over."""

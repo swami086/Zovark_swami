@@ -112,7 +112,7 @@ async def generate_incident_report(data: dict) -> dict:
     tenant_id = data.get("tenant_id")
     summary = data.get("summary", "")
     entities = data.get("entities", [])
-    edges = data.get("edges", [])
+    data.get("edges", [])
     risk_score = data.get("risk_score", 0)
     verdict = data.get("verdict", "inconclusive")
     attack_techniques = data.get("attack_techniques", [])

@@ -5,7 +5,6 @@ from attack pattern candidates and MITRE technique descriptions.
 """
 
 import os
-import json
 import time
 import httpx
 import psycopg2
