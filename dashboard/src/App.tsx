@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
-import { Hexagon, LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database } from 'lucide-react';
+import { Hexagon, LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play } from 'lucide-react';
 import { getUser, clearToken, fetchPendingApprovals } from './api/client';
 
 import TaskList from './pages/TaskList';
@@ -11,6 +11,7 @@ import ThreatIntel from './pages/ThreatIntel';
 import LogSources from './pages/LogSources';
 import SettingsPage from './pages/Settings';
 import Login from './pages/Login';
+import DemoPage from './pages/DemoPage';
 import Notifications from './components/Notifications';
 
 const Sidebar = () => {
@@ -37,6 +38,7 @@ const Sidebar = () => {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Investigations', icon: Search, path: '/tasks' },
     ...(user?.role !== 'viewer' ? [{ name: 'New Investigation', icon: PlusCircle, path: '/tasks/new' }] : []),
+    { name: 'Demo', icon: Play, path: '/demo' },
     { name: 'Threat Intel', icon: Shield, path: '/threat-intel', placeholder: true },
     { name: 'Playbooks', icon: BookOpen, path: '/playbooks' },
     { name: 'Log Sources', icon: Database, path: '/log-sources', placeholder: true },
@@ -130,6 +132,8 @@ function App() {
               <Route path="/tasks" element={<ProtectedRoute><TaskList /></ProtectedRoute>} />
               <Route path="/tasks/new" element={<ProtectedRoute><NewTask /></ProtectedRoute>} />
               <Route path="/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
+              <Route path="/demo" element={<ProtectedRoute><DemoPage /></ProtectedRoute>} />
+              <Route path="/demo/:scenario" element={<ProtectedRoute><DemoPage /></ProtectedRoute>} />
               <Route path="/playbooks" element={<ProtectedRoute><Playbooks /></ProtectedRoute>} />
               <Route path="/threat-intel" element={<ProtectedRoute><ThreatIntel /></ProtectedRoute>} />
               <Route path="/log-sources" element={<ProtectedRoute><LogSources /></ProtectedRoute>} />
