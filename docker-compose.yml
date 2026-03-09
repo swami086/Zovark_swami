@@ -148,7 +148,10 @@ services:
     command: --config /app/config.yaml --port 4000
     environment:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./litellm_config.yaml:/app/config.yaml:ro
     ports:
@@ -288,7 +291,7 @@ services:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
       - REDIS_URL=redis://redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
-      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-fast}
+      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-}
       - PYTHONUNBUFFERED=1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

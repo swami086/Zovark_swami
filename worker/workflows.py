@@ -9,7 +9,8 @@ with workflow.unsafe.imports_passed_through():
         save_investigation_step, check_followup_needed, generate_followup_code,
         check_requires_approval, create_approval_request, update_approval_request,
         retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template,
-        check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity
+        check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity,
+        validate_generated_code, enrich_alert_with_memory
     )
     from entity_graph import extract_entities, write_entity_graph, embed_investigation
     from intelligence.blast_radius import compute_blast_radius
@@ -217,6 +218,26 @@ If something has worked in past investigations for this threat type, apply those
         except Exception as e:
             workflow.logger.info(f"Prompt wrapping failed non-fatally: {e}")
 
+        # --- STEP 0: MEMORY ENRICHMENT (Sprint 5) ---
+        memory_context = {}
+        try:
+            memory_context = await workflow.execute_activity(
+                enrich_alert_with_memory,
+                task_data,
+                schedule_to_close_timeout=timedelta(seconds=10)
+            )
+            if memory_context.get('exact_matches') or memory_context.get('similar_entities'):
+                workflow.logger.info(
+                    f"Memory enrichment: {len(memory_context.get('exact_matches', []))} exact, "
+                    f"{len(memory_context.get('similar_entities', []))} similar matches"
+                )
+                # Inject memory context into task_data for code generation prompt
+                if "input" not in task_data:
+                    task_data["input"] = {}
+                task_data["input"]["memory_context"] = memory_context
+        except Exception as e:
+            workflow.logger.info(f"Memory enrichment failed non-fatally: {e}")
+
         # Accumulators across all steps
         total_tokens_input = 0
         total_tokens_output = 0
@@ -371,6 +392,64 @@ If something has worked in past investigations for this threat type, apply those
                         tokens_input=step_tokens_in, tokens_output=step_tokens_out, exec_ms=llm_exec_ms
                     )
                 break
+
+            # --- DRY-RUN VALIDATION GATE (Sprint 5) ---
+            if not is_template:
+                try:
+                    dry_run = await workflow.execute_activity(
+                        validate_generated_code,
+                        code,
+                        schedule_to_close_timeout=timedelta(seconds=15)
+                    )
+                    if not dry_run['passed']:
+                        workflow.logger.info(f"Dry-run failed: {dry_run.get('reason')}. Retrying code gen.")
+                        # One retry with validation feedback
+                        retry_data = dict(task_data)
+                        if "input" not in retry_data:
+                            retry_data["input"] = {}
+                        retry_data["input"]["validation_feedback"] = dry_run['reason']
+                        gen_result2 = await workflow.execute_activity(
+                            generate_code,
+                            retry_data,
+                            schedule_to_close_timeout=timedelta(minutes=5)
+                        )
+                        code = gen_result2["code"]
+                        usage2 = gen_result2["usage"]
+                        step_tokens_in += usage2.get("prompt_tokens", 0)
+                        step_tokens_out += usage2.get("completion_tokens", 0)
+
+                        # Re-validate AST
+                        val_result2 = await workflow.execute_activity(
+                            validate_code,
+                            code,
+                            schedule_to_close_timeout=timedelta(seconds=10)
+                        )
+                        if not val_result2["is_safe"]:
+                            if step_num == 1:
+                                return await self._fail_task(
+                                    task_id, tenant_id,
+                                    f"Security validation failed after retry: {val_result2['reason']}",
+                                    tokens_input=step_tokens_in, tokens_output=step_tokens_out, exec_ms=llm_exec_ms
+                                )
+                            break
+
+                        # Second dry-run
+                        dry_run2 = await workflow.execute_activity(
+                            validate_generated_code,
+                            code,
+                            schedule_to_close_timeout=timedelta(seconds=15)
+                        )
+                        if not dry_run2['passed']:
+                            workflow.logger.info(f"Dry-run failed twice: {dry_run2.get('reason')}")
+                            if step_num == 1:
+                                return await self._fail_task(
+                                    task_id, tenant_id,
+                                    f"Code validation failed twice: {dry_run2['reason']}",
+                                    tokens_input=step_tokens_in, tokens_output=step_tokens_out, exec_ms=llm_exec_ms
+                                )
+                            break
+                except Exception as e:
+                    workflow.logger.info(f"Dry-run gate error (non-fatal): {e}")
 
             # --- APPROVAL GATE ---
             approval_check = await workflow.execute_activity(

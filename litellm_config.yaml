@@ -1,21 +1,89 @@
+# litellm_config.yaml — Sprint 5: Multi-provider fallback chains
+# Previous: all tiers → single OpenRouter/Gemini Flash
+# New: 3 tiers with provider-specific fallback chains
+
 model_list:
-  - model_name: fast
+  # === FAST TIER (entity extraction, skill parameters) ===
+  - model_name: "hydra-fast"
     litellm_params:
-      model: openrouter/google/gemini-2.0-flash-001
-      api_key: os.environ/OPENROUTER_API_KEY
-  - model_name: hydra-cloud
+      model: "groq/llama-3.1-8b-instant"
+      api_key: "os.environ/GROQ_API_KEY"
+      temperature: 0.1
+      max_tokens: 1024
+
+  - model_name: "hydra-fast-fallback"
     litellm_params:
-      model: openrouter/google/gemini-2.0-flash-001
-      api_key: os.environ/OPENROUTER_API_KEY
-  - model_name: hydra-local
+      model: "openrouter/google/gemini-flash-1.5"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      temperature: 0.1
+      max_tokens: 1024
+
+  # === STANDARD TIER (code gen, reports, investigations) ===
+  - model_name: "hydra-standard"
     litellm_params:
-      model: ollama/mistral:7b-instruct-v0.3-q4_K_M
-      api_base: http://ollama:11434
-  - model_name: embed
+      model: "openrouter/google/gemini-pro-1.5"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+      temperature: 0.3
+      max_tokens: 4096
+
+  - model_name: "hydra-standard-fallback"
+    litellm_params:
+      model: "anthropic/claude-sonnet-4-20250514"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+      temperature: 0.3
+      max_tokens: 4096
+
+  - model_name: "hydra-standard-emergency"
+    litellm_params:
+      model: "openai/gpt-4o-mini"
+      api_key: "os.environ/OPENAI_API_KEY"
+      temperature: 0.3
+      max_tokens: 4096
+
+  # === REASONING TIER (FP analysis, sigma rules, diagnosis) ===
+  - model_name: "hydra-reasoning"
+    litellm_params:
+      model: "anthropic/claude-sonnet-4-20250514"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+      temperature: 0.2
+      max_tokens: 4096
+
+  - model_name: "hydra-reasoning-fallback"
+    litellm_params:
+      model: "openai/gpt-4o"
+      api_key: "os.environ/OPENAI_API_KEY"
+      temperature: 0.2
+      max_tokens: 4096
+
+  # === BACKWARD COMPAT ALIASES ===
+  - model_name: "fast"
+    litellm_params:
+      model: "groq/llama-3.1-8b-instant"
+      api_key: "os.environ/GROQ_API_KEY"
+      temperature: 0.1
+      max_tokens: 1024
+
+  # === EMBEDDING ===
+  - model_name: "embed"
     litellm_params:
       model: huggingface/BAAI/bge-base-en-v1.5
       api_base: http://embedding-server:80
       mode: embedding
 
+router_settings:
+  fallbacks:
+    - {"hydra-fast": ["hydra-fast-fallback"]}
+    - {"hydra-standard": ["hydra-standard-fallback", "hydra-standard-emergency"]}
+    - {"hydra-reasoning": ["hydra-reasoning-fallback", "hydra-standard"]}
+    - {"fast": ["hydra-fast-fallback"]}
+  allowed_fails: 3
+  cooldown_time: 60
+  timeout: 15
+  retry_after: 5
+  routing_strategy: "simple-shuffle"
+  redis_host: "redis"
+  redis_port: 6379
+
 general_settings:
-  master_key: os.environ/LITELLM_MASTER_KEY
+  master_key: "os.environ/LITELLM_MASTER_KEY"
+  log_level: "INFO"

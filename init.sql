@@ -1015,3 +1015,37 @@ CREATE TABLE IF NOT EXISTS self_healing_events (
 
 CREATE INDEX IF NOT EXISTS idx_self_healing_created ON self_healing_events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_self_healing_category ON self_healing_events(error_category);
+
+-- ============================================================
+-- SPRINT 5: ALERT DEDUPLICATION + VALIDATION
+-- ============================================================
+
+-- Update audit_events CHECK to add Sprint 5 event types
+ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_event_type_check;
+ALTER TABLE audit_events ADD CONSTRAINT audit_events_event_type_check CHECK (event_type IN (
+    'investigation_started', 'investigation_completed', 'code_executed',
+    'approval_requested', 'approval_granted', 'approval_denied', 'approval_timeout',
+    'entity_extracted', 'detection_generated', 'user_login', 'user_registered',
+    'injection_detected', 'cross_tenant_hit', 'threat_score_updated',
+    'self_healing_scan', 'self_healing_diagnosis', 'self_healing_patch_applied',
+    'self_healing_patch_failed', 'self_healing_rollback',
+    'dry_run_validation_failed', 'memory_enrichment_applied'
+));
+
+-- Alert deduplication via composite fingerprinting
+CREATE TABLE IF NOT EXISTS alert_fingerprints (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id),
+    fingerprint     VARCHAR(64) NOT NULL,  -- SHA-256 hex
+    alert_type      VARCHAR(100) NOT NULL,
+    first_seen      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    alert_count     INTEGER NOT NULL DEFAULT 1,
+    investigation_id UUID,  -- references investigations(id) logically, no FK due to partitioned table
+    dedup_window_seconds INTEGER NOT NULL DEFAULT 900,  -- 15 min default
+    raw_sample      JSONB,  -- first alert payload for reference
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_fp_tenant_hash ON alert_fingerprints(tenant_id, fingerprint);
+CREATE INDEX IF NOT EXISTS idx_alert_fp_last_seen ON alert_fingerprints(last_seen);

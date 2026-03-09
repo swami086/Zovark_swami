@@ -156,5 +156,64 @@ def init_prompts():
         "Sigma detection rule generation from attack patterns",
     )
 
+    # --- Investigation Prompt with Memory (Sprint 5) ---
+    from prompts.investigation_prompt import INVESTIGATION_PROMPT_V1
+    register_prompt(
+        "investigation_with_memory",
+        INVESTIGATION_PROMPT_V1,
+        "Investigation prompt with memory context injection (Sprint 5)",
+    )
+
+    # --- Skill Prompts (Sprint 5) ---
+    register_prompt(
+        "brute_force_investigation_v1",
+        (
+            "You are a SOC analyst investigating brute force and credential stuffing attacks. "
+            "Analyze login patterns, source IPs, targeted accounts, and success/failure ratios. "
+            "Output ONLY valid JSON with: findings, confidence, entities, verdict, recommended_actions, reasoning."
+        ),
+        "Brute force investigation skill prompt",
+    )
+
+    register_prompt(
+        "malware_triage_v1",
+        (
+            "You are a SOC analyst triaging a malware alert. "
+            "Analyze file hashes, process execution chains, network callbacks, and persistence mechanisms. "
+            "Output ONLY valid JSON with: findings, confidence, entities, verdict, recommended_actions, reasoning."
+        ),
+        "Malware triage skill prompt",
+    )
+
+    register_prompt(
+        "phishing_analysis_v1",
+        (
+            "You are a SOC analyst investigating a phishing email. "
+            "Analyze sender domains, URLs, attachments, and recipient interaction patterns. "
+            "Output ONLY valid JSON with: findings, confidence, entities, verdict, recommended_actions, reasoning."
+        ),
+        "Phishing analysis skill prompt",
+    )
+
+    register_prompt(
+        "lateral_movement_v1",
+        (
+            "You are a SOC analyst detecting lateral movement. "
+            "Analyze authentication patterns across hosts, RDP/SMB connections, and credential usage. "
+            "Output ONLY valid JSON with: findings, confidence, entities, verdict, recommended_actions, reasoning."
+        ),
+        "Lateral movement detection skill prompt",
+    )
+
+    register_prompt(
+        "c2_communication_v1",
+        (
+            "You are a SOC analyst detecting command-and-control communication. "
+            "Analyze beaconing patterns, DNS tunneling, and unusual outbound connections. "
+            "Output ONLY valid JSON with: findings, confidence, entities, verdict, recommended_actions, reasoning."
+        ),
+        "C2 communication detection skill prompt",
+    )
+
     from prompt_registry import prompt_count as get_count
     print(f"Prompt registry initialized: {get_count()} prompts registered")

@@ -12,6 +12,7 @@ import re
 from llm_logger import log_llm_call
 from prompt_registry import get_version
 from model_config import get_tier_config
+from validation.dry_run import DryRunValidator
 
 # Add the /app level to path so we can import sandbox.ast_prefilter
 sys.path.append("/app")
@@ -907,6 +908,68 @@ async def heartbeat_lease_activity(data: dict) -> None:
     """Extend lease TTL. Called between long-running activities."""
     from rate_limiter import heartbeat_lease
     heartbeat_lease(data["tenant_id"], data["task_id"])
+
+
+@activity.defn
+async def validate_generated_code(code: str) -> dict:
+    """Dry-run validation gate. Runs BEFORE full sandbox execution."""
+    validator = DryRunValidator(timeout=5)
+    result = await validator.validate(code)
+
+    if not result['passed']:
+        import logging
+        logging.getLogger(__name__).warning(f"Dry-run validation failed: {result['reason']}")
+        await log_llm_call(
+            activity='validate_generated_code',
+            model='dry-run',
+            status='validation_failed',
+            error=result['reason']
+        )
+
+    return result
+
+
+@activity.defn
+async def enrich_alert_with_memory(task_input: dict) -> dict:
+    """Step 0: Check investigation memory before generating code."""
+    try:
+        from investigation_memory import InvestigationMemory
+        raw_entities = _extract_iocs_from_input(task_input)
+        if not raw_entities:
+            return {'exact_matches': [], 'similar_entities': [], 'related_investigations': []}
+        db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+        memory = InvestigationMemory(db_url=db_url)
+        return await memory.enrich_alert(raw_entities)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Memory enrichment failed non-fatally: {e}")
+        return {'exact_matches': [], 'similar_entities': [], 'related_investigations': []}
+
+
+def _extract_iocs_from_input(task_input: dict) -> list:
+    """Quick regex extraction of IOCs from alert input for memory lookup."""
+    entities = []
+    text = str(task_input)
+
+    # IPs
+    for ip in re.findall(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', text):
+        if not ip.startswith(('0.', '127.', '255.')):
+            entities.append({'type': 'ip', 'value': ip})
+
+    # Domains
+    for domain in re.findall(r'\b[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}\b', text):
+        if '.' in domain and not domain[0].isdigit():
+            entities.append({'type': 'domain', 'value': domain.lower()})
+
+    # SHA256 hashes
+    for h in re.findall(r'\b[a-fA-F0-9]{64}\b', text):
+        entities.append({'type': 'file_hash', 'value': h.lower()})
+
+    # MD5 hashes
+    for h in re.findall(r'\b[a-fA-F0-9]{32}\b', text):
+        entities.append({'type': 'file_hash', 'value': h.lower()})
+
+    return entities
 
 
 @activity.defn

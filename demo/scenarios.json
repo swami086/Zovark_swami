@@ -1,0 +1,37 @@
+{
+  "scenarios": [
+    {
+      "name": "SSH Brute Force \u2192 Lateral Movement",
+      "alert": {
+        "task_type": "brute_force",
+        "input": {
+          "prompt": "Investigate 847 failed SSH login attempts from 203.0.113.50 targeting server admin accounts over the past 30 minutes. The last 3 attempts succeeded."
+        }
+      },
+      "expected_verdict": "malicious",
+      "demo_duration_seconds": 90
+    },
+    {
+      "name": "Phishing Email \u2192 C2 Discovery",
+      "alert": {
+        "task_type": "phishing",
+        "input": {
+          "prompt": "Analyze suspicious email from invoice-update@acm3corp.com containing attachment 'Q3_Report.pdf.exe' (SHA256: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2). 3 users clicked the link to hxxp://acm3corp.com/download."
+        }
+      },
+      "expected_verdict": "malicious",
+      "demo_duration_seconds": 90
+    },
+    {
+      "name": "Ransomware Indicators \u2192 Blast Radius",
+      "alert": {
+        "task_type": "malware",
+        "input": {
+          "prompt": "Endpoint alert: Process 'svchost_update.exe' encrypting files on WORKSTATION-042. Outbound connection to 198.51.100.77:4443. Shadow copies deleted via vssadmin."
+        }
+      },
+      "expected_verdict": "malicious",
+      "demo_duration_seconds": 120
+    }
+  ]
+}

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -115,8 +117,59 @@ func createTaskHandler(c *gin.Context) {
 		req.TaskType = "log_analysis"
 	}
 
+	// --- ALERT DEDUPLICATION (Sprint 5) ---
+	// Compute SHA-256 fingerprint of normalized alert fields
+	fpFields := []string{tenantID, req.TaskType}
+	if prompt, ok := req.Input["prompt"].(string); ok {
+		fpFields = append(fpFields, strings.ToLower(strings.TrimSpace(prompt)))
+	}
+	if srcIP, ok := req.Input["source_ip"].(string); ok {
+		fpFields = append(fpFields, strings.TrimSpace(srcIP))
+	}
+	if dstIP, ok := req.Input["dest_ip"].(string); ok {
+		fpFields = append(fpFields, strings.TrimSpace(dstIP))
+	}
+	sort.Strings(fpFields[2:]) // Sort fields after tenant_id and task_type
+	fpHash := sha256.Sum256([]byte(strings.Join(fpFields, "|")))
+	fingerprint := hex.EncodeToString(fpHash[:])
+
+	// Check for existing fingerprint within dedup window
+	var existingInvID *string
+	var existingCount int
+	dedupErr := dbPool.QueryRow(c.Request.Context(),
+		`SELECT investigation_id, alert_count FROM alert_fingerprints
+		 WHERE tenant_id = $1 AND fingerprint = $2
+		 AND last_seen > NOW() - (dedup_window_seconds * interval '1 second')`,
+		tenantID, fingerprint,
+	).Scan(&existingInvID, &existingCount)
+
+	if dedupErr == nil && existingInvID != nil {
+		// Duplicate alert — increment count and return existing
+		_, _ = dbPool.Exec(c.Request.Context(),
+			`UPDATE alert_fingerprints SET last_seen = NOW(), alert_count = alert_count + 1
+			 WHERE tenant_id = $1 AND fingerprint = $2`,
+			tenantID, fingerprint,
+		)
+		c.JSON(http.StatusOK, gin.H{
+			"status":           "deduplicated",
+			"investigation_id": *existingInvID,
+			"alert_count":      existingCount + 1,
+			"fingerprint":      fingerprint,
+		})
+		return
+	}
+
 	// 2. Generate task ID
 	taskID := uuid.New().String()
+
+	// Insert new fingerprint record (investigation_id will be updated later)
+	rawSample, _ := json.Marshal(req.Input)
+	_, _ = dbPool.Exec(c.Request.Context(),
+		`INSERT INTO alert_fingerprints (tenant_id, fingerprint, alert_type, raw_sample)
+		 VALUES ($1, $2, $3, $4)
+		 ON CONFLICT DO NOTHING`,
+		tenantID, fingerprint, req.TaskType, rawSample,
+	)
 
 	// 3. Insert into agent_tasks
 	_, err := dbPool.Exec(c.Request.Context(), 
