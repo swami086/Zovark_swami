@@ -4,6 +4,8 @@ import InvestigationWaterfall from '../components/InvestigationWaterfall';
 import StepDetailPanel from '../components/StepDetailPanel';
 import DemoBanner from '../components/DemoBanner';
 import DemoSelector from '../components/DemoSelector';
+import ExecutiveSummary from '../components/ExecutiveSummary';
+import SovereigntyBanner from '../components/SovereigntyBanner';
 import { C2_BEACON_INVESTIGATION } from '../demo/c2BeaconScenario';
 import type { WorkflowStep } from '../types';
 import { Shield, Clock3, Target, Zap } from 'lucide-react';
@@ -42,6 +44,8 @@ export default function DemoPage() {
   return (
     <div className="space-y-4">
       <DemoBanner />
+      <ExecutiveSummary />
+      <SovereigntyBanner />
 
       {/* Investigation Header */}
       <div className="bg-[#1E293B] border border-slate-700/50 rounded-lg p-6">

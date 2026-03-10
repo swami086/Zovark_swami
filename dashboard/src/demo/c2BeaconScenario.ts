@@ -27,6 +27,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       beacon_interval_seconds: 30,
     },
     retry_count: 0,
+    execution_context: 'local',
   },
   {
     id: 'step-002',
@@ -54,6 +55,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       ],
     },
     retry_count: 0,
+    execution_context: 'llm',
   },
   {
     id: 'step-003',
@@ -80,6 +82,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       process_user: 'CORP\\jthompson',
     },
     retry_count: 0,
+    execution_context: 'local',
   },
   {
     id: 'step-004',
@@ -108,6 +111,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       ],
     },
     retry_count: 0,
+    execution_context: 'local',
   },
   {
     id: 'step-005',
@@ -143,6 +147,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       },
     },
     retry_count: 0,
+    execution_context: 'local',
   },
   {
     id: 'step-006',
@@ -173,6 +178,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       ],
     },
     retry_count: 0,
+    execution_context: 'llm',
   },
   {
     id: 'step-007',
@@ -192,6 +198,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       investigation_status: 'complete',
     },
     retry_count: 0,
+    execution_context: 'local',
   },
 ];
 

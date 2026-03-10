@@ -1,0 +1,99 @@
+package main
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+type FeedbackRequest struct {
+	VerdictCorrect   *bool   `json:"verdict_correct"`
+	CorrectedVerdict string  `json:"corrected_verdict"`
+	FalsePositive    bool    `json:"false_positive"`
+	MissedThreat     bool    `json:"missed_threat"`
+	Notes            string  `json:"notes"`
+	AnalystConfidence *float64 `json:"analyst_confidence"`
+}
+
+func submitFeedbackHandler(c *gin.Context) {
+	investigationID := c.Param("id")
+	if _, err := uuid.Parse(investigationID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid investigation ID"})
+		return
+	}
+
+	var req FeedbackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetString("user_id")
+
+	feedbackID := uuid.New().String()
+
+	_, err := dbPool.Exec(context.Background(),
+		`INSERT INTO investigation_feedback
+			(id, investigation_id, tenant_id, analyst_id, verdict_correct, corrected_verdict,
+			 false_positive, missed_threat, notes, analyst_confidence)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		feedbackID, investigationID, tenantID, userID,
+		req.VerdictCorrect, req.CorrectedVerdict,
+		req.FalsePositive, req.MissedThreat, req.Notes, req.AnalystConfidence,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store feedback"})
+		return
+	}
+
+	// Refresh materialized view asynchronously (best effort)
+	go func() {
+		_, _ = dbPool.Exec(context.Background(), "REFRESH MATERIALIZED VIEW CONCURRENTLY feedback_accuracy")
+	}()
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":               feedbackID,
+		"investigation_id": investigationID,
+		"status":           "recorded",
+	})
+}
+
+func getFeedbackStatsHandler(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var stats struct {
+		Total              int     `json:"total"`
+		Correct            int     `json:"correct"`
+		Incorrect          int     `json:"incorrect"`
+		FalsePositives     int     `json:"false_positives"`
+		MissedThreats      int     `json:"missed_threats"`
+		AccuracyRate       float64 `json:"accuracy_rate"`
+		AvgAnalystConf     float64 `json:"avg_analyst_confidence"`
+	}
+
+	err := dbPool.QueryRow(context.Background(),
+		`SELECT
+			COUNT(*)::int,
+			COALESCE(SUM(CASE WHEN verdict_correct THEN 1 ELSE 0 END), 0)::int,
+			COALESCE(SUM(CASE WHEN NOT verdict_correct THEN 1 ELSE 0 END), 0)::int,
+			COALESCE(SUM(CASE WHEN false_positive THEN 1 ELSE 0 END), 0)::int,
+			COALESCE(SUM(CASE WHEN missed_threat THEN 1 ELSE 0 END), 0)::int,
+			COALESCE(AVG(CASE WHEN verdict_correct THEN 1.0 ELSE 0.0 END), 0)::float8,
+			COALESCE(AVG(analyst_confidence), 0)::float8
+		 FROM investigation_feedback
+		 WHERE tenant_id = $1`, tenantID,
+	).Scan(
+		&stats.Total, &stats.Correct, &stats.Incorrect,
+		&stats.FalsePositives, &stats.MissedThreats,
+		&stats.AccuracyRate, &stats.AvgAnalystConf,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch stats"})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}

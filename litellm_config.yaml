@@ -55,6 +55,28 @@ model_list:
       temperature: 0.2
       max_tokens: 4096
 
+  # === AIR-GAP TIER (local Ollama, no internet required) ===
+  - model_name: "hydra-fast-airgap"
+    litellm_params:
+      model: "ollama/qwen2.5:7b"
+      api_base: "http://ollama:11434"
+      temperature: 0.1
+      max_tokens: 1024
+
+  - model_name: "hydra-standard-airgap"
+    litellm_params:
+      model: "ollama/qwen2.5:7b"
+      api_base: "http://ollama:11434"
+      temperature: 0.3
+      max_tokens: 4096
+
+  - model_name: "hydra-reasoning-airgap"
+    litellm_params:
+      model: "ollama/qwen2.5:7b"
+      api_base: "http://ollama:11434"
+      temperature: 0.2
+      max_tokens: 4096
+
   # === BACKWARD COMPAT ALIASES ===
   - model_name: "fast"
     litellm_params:
@@ -72,9 +94,9 @@ model_list:
 
 router_settings:
   fallbacks:
-    - {"hydra-fast": ["hydra-fast-fallback"]}
-    - {"hydra-standard": ["hydra-standard-fallback", "hydra-standard-emergency"]}
-    - {"hydra-reasoning": ["hydra-reasoning-fallback", "hydra-standard"]}
+    - {"hydra-fast": ["hydra-fast-fallback", "hydra-fast-airgap"]}
+    - {"hydra-standard": ["hydra-standard-fallback", "hydra-standard-emergency", "hydra-standard-airgap"]}
+    - {"hydra-reasoning": ["hydra-reasoning-fallback", "hydra-standard", "hydra-reasoning-airgap"]}
     - {"fast": ["hydra-fast-fallback"]}
   allowed_fails: 3
   cooldown_time: 60

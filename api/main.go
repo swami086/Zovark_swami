@@ -100,6 +100,10 @@ func main() {
 		api.POST("/tasks", requireRole("admin", "analyst"), createTaskHandler)
 		api.POST("/tasks/upload", requireRole("admin", "analyst"), uploadTaskHandler)
 		api.POST("/siem-alerts/:id/investigate", requireRole("admin", "analyst"), investigateAlertHandler)
+		api.POST("/investigations/:id/feedback", requireRole("admin", "analyst"), submitFeedbackHandler)
+
+		// Feedback stats (admin only)
+		api.GET("/feedback/stats", requireRole("admin"), getFeedbackStatsHandler)
 
 		// Webhook endpoints (authenticated)
 		api.GET("/webhooks/endpoints", listWebhookEndpointsHandler)

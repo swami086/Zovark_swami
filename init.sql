@@ -1049,3 +1049,64 @@ CREATE TABLE IF NOT EXISTS alert_fingerprints (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_fp_tenant_hash ON alert_fingerprints(tenant_id, fingerprint);
 CREATE INDEX IF NOT EXISTS idx_alert_fp_last_seen ON alert_fingerprints(last_seen);
+
+-- ============================================================
+-- INVESTIGATION FEEDBACK (Sprint 7C — Migration 017)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS investigation_feedback (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    investigation_id UUID NOT NULL,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    analyst_id UUID REFERENCES users(id),
+    verdict_correct BOOLEAN,
+    corrected_verdict VARCHAR(30),
+    false_positive BOOLEAN DEFAULT false,
+    missed_threat BOOLEAN DEFAULT false,
+    notes TEXT,
+    analyst_confidence FLOAT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_investigation ON investigation_feedback(investigation_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_tenant ON investigation_feedback(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_verdict ON investigation_feedback(verdict_correct);
+
+-- ============================================================
+-- COST TRACKING (Sprint 7D — Migration 018)
+-- ============================================================
+
+ALTER TABLE llm_call_log ADD COLUMN IF NOT EXISTS cost_usd DECIMAL(10,6);
+
+CREATE OR REPLACE VIEW investigation_costs AS
+SELECT
+    task_id,
+    COUNT(*) as llm_calls,
+    SUM(input_tokens) as total_input_tokens,
+    SUM(output_tokens) as total_output_tokens,
+    SUM(cost_usd) as total_cost_usd
+FROM llm_call_log
+WHERE task_id IS NOT NULL
+GROUP BY task_id;
+
+-- ============================================================
+-- INVESTIGATION CACHE (Sprint 7E — Migration 019)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS investigation_cache (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    cache_key VARCHAR(64) NOT NULL,
+    investigation_id UUID NOT NULL,
+    task_id UUID,
+    verdict VARCHAR(30),
+    risk_score FLOAT,
+    confidence FLOAT,
+    entity_count INTEGER,
+    summary TEXT,
+    ttl_hours INTEGER DEFAULT 24,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '24 hours'
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cache_key ON investigation_cache(cache_key);
+CREATE INDEX IF NOT EXISTS idx_cache_expires ON investigation_cache(expires_at);

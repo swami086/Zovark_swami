@@ -12,6 +12,7 @@ export interface WorkflowStep {
   guardrail_threshold?: number;
   retry_count?: number;
   model_name?: string;
+  execution_context?: 'local' | 'llm';
 }
 
 export const STEP_LABELS: Record<string, string> = {

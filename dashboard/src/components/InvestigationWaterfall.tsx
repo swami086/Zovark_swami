@@ -1,6 +1,7 @@
 import { Clock3, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import type { WorkflowStep } from '../types';
 import { STEP_LABELS } from '../types';
+import DataFlowBadge from './DataFlowBadge';
 
 interface InvestigationWaterfallProps {
     steps: WorkflowStep[];
@@ -103,6 +104,9 @@ export default function InvestigationWaterfall({ steps, isDemo, onStepClick }: I
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                        {step.execution_context && (
+                                            <DataFlowBadge context={step.execution_context} />
+                                        )}
                                         {step.model_name && (
                                             <span className="bg-cyan-500/10 text-cyan-400 text-xs px-2 py-0.5 rounded">
                                                 {step.model_name}

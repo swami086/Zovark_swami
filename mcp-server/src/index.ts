@@ -14,7 +14,7 @@ if (process.argv.includes("--test")) {
   const apiOk = await apiHealthCheck();
   console.log(`  api:      ${apiOk ? "ok" : "FAIL"}`);
   console.log("  tools:    7 registered");
-  console.log("  resources: 6 registered");
+  console.log("  resources: 7 registered");
   console.log("  prompts:  6 registered");
   await closePool();
   process.exit(dbOk ? 0 : 1);
@@ -779,6 +779,34 @@ server.resource(
           uri: "hydra://metrics/llm",
           mimeType: "application/json",
           text: JSON.stringify(result.rows, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+server.resource(
+  "Feedback Accuracy",
+  "hydra://feedback/accuracy",
+  { description: "Investigation feedback accuracy — analyst verdicts and correction rates" },
+  async () => {
+    const result = await query(`
+      SELECT
+        COUNT(*) as total_feedback,
+        SUM(CASE WHEN verdict_correct THEN 1 ELSE 0 END) as correct,
+        SUM(CASE WHEN NOT verdict_correct THEN 1 ELSE 0 END) as incorrect,
+        SUM(CASE WHEN false_positive THEN 1 ELSE 0 END) as false_positives,
+        SUM(CASE WHEN missed_threat THEN 1 ELSE 0 END) as missed_threats,
+        COALESCE(ROUND(AVG(CASE WHEN verdict_correct THEN 1.0 ELSE 0.0 END), 3), 0) as accuracy_rate,
+        COALESCE(ROUND(AVG(analyst_confidence), 3), 0) as avg_analyst_confidence
+      FROM investigation_feedback
+    `);
+    return {
+      contents: [
+        {
+          uri: "hydra://feedback/accuracy",
+          mimeType: "application/json",
+          text: JSON.stringify(result.rows[0] || {}, null, 2),
         },
       ],
     };

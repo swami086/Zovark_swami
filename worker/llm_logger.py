@@ -9,18 +9,15 @@ No Pydantic — plain dicts only.
 import os
 import psycopg2
 
-# Cost per 1M tokens (rough estimates for OpenRouter/Gemini Flash)
-_COST_PER_1M = {
-    "input": 0.10,   # $0.10 per 1M input tokens
-    "output": 0.40,  # $0.40 per 1M output tokens
-}
+from cost_calculator import calculate_cost
 
 
-def estimate_cost(input_tokens: int, output_tokens: int) -> float:
-    """Estimate USD cost from token counts."""
-    input_cost = (input_tokens / 1_000_000) * _COST_PER_1M["input"]
-    output_cost = (output_tokens / 1_000_000) * _COST_PER_1M["output"]
-    return round(input_cost + output_cost, 6)
+def estimate_cost(input_tokens: int, output_tokens: int, model: str = None) -> float:
+    """Estimate USD cost from token counts using per-model rates."""
+    if model:
+        return round(calculate_cost(model, input_tokens, output_tokens), 6)
+    # Fallback: conservative default
+    return round(calculate_cost("hydra-standard", input_tokens, output_tokens), 6)
 
 
 def log_llm_call(
@@ -62,17 +59,18 @@ def log_llm_call(
         conn = psycopg2.connect(db_url)
         try:
             with conn.cursor() as cur:
+                cost = estimate_cost(input_tokens, output_tokens, model=model_id)
                 cur.execute("""
                     INSERT INTO llm_call_log
                     (tenant_id, task_id, activity_name, model_tier, model_id,
                      prompt_name, prompt_version, input_tokens, output_tokens,
-                     estimated_cost_usd, latency_ms, status, error_message,
+                     estimated_cost_usd, cost_usd, latency_ms, status, error_message,
                      temperature, max_tokens)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     tenant_id, task_id, activity_name, model_tier, model_id,
                     prompt_name, prompt_version, input_tokens, output_tokens,
-                    estimate_cost(input_tokens, output_tokens),
+                    cost, cost,
                     latency_ms, status, error_message,
                     temperature, max_tokens,
                 ))
