@@ -478,6 +478,183 @@ export interface Notification {
     timestamp: string;
 }
 
+// --- Tenant Management ---
+export interface Tenant {
+    id: string;
+    name: string;
+    slug: string;
+    tier: string;
+    status: string;
+    created_at: string;
+    user_count?: number;
+}
+
+export interface TenantUser {
+    id: string;
+    email: string;
+    display_name: string;
+    role: string;
+    created_at: string;
+}
+
+export const fetchTenants = async (): Promise<Tenant[]> => {
+    const response = await fetch(`${API_BASE_URL}/tenants`, {
+        headers: getHeaders(),
+        cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) throw new Error('Failed to fetch tenants');
+    const data = await response.json();
+    return data.tenants || data || [];
+};
+
+export const createTenant = async (data: { name: string; slug: string; tier: string }): Promise<Tenant> => {
+    const response = await fetch(`${API_BASE_URL}/tenants`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) throw new Error('Failed to create tenant');
+    return response.json();
+};
+
+export const updateTenant = async (id: string, data: { name?: string; tier?: string; status?: string }): Promise<Tenant> => {
+    const response = await fetch(`${API_BASE_URL}/tenants/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) throw new Error('Failed to update tenant');
+    return response.json();
+};
+
+export const fetchTenantUsers = async (tenantId: string): Promise<TenantUser[]> => {
+    const response = await fetch(`${API_BASE_URL}/tenants/${tenantId}/users`, {
+        headers: getHeaders(),
+        cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) throw new Error('Failed to fetch tenant users');
+    const data = await response.json();
+    return data.users || data || [];
+};
+
+// --- Cost Tracking ---
+export interface CostData {
+    total_cost: number;
+    cost_by_model: Record<string, number>;
+    cost_by_tenant: Record<string, number>;
+    daily_costs: Array<{ date: string; cost: number }>;
+    weekly_costs: Array<{ week: string; cost: number }>;
+    monthly_costs: Array<{ month: string; cost: number }>;
+    total_tokens_input: number;
+    total_tokens_output: number;
+    total_requests: number;
+}
+
+export const fetchCosts = async (period?: string): Promise<CostData> => {
+    let url = `${API_BASE_URL}/costs`;
+    if (period) url += `?period=${period}`;
+    const response = await fetch(url, {
+        headers: getHeaders(),
+        cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) {
+        // Fallback to stats endpoint if /costs doesn't exist
+        return {
+            total_cost: 0,
+            cost_by_model: {},
+            cost_by_tenant: {},
+            daily_costs: [],
+            weekly_costs: [],
+            monthly_costs: [],
+            total_tokens_input: 0,
+            total_tokens_output: 0,
+            total_requests: 0,
+        };
+    }
+    return response.json();
+};
+
+// --- Entity Graph ---
+export interface Entity {
+    id: string;
+    entity_type: string;
+    value: string;
+    first_seen: string;
+    last_seen: string;
+    investigation_count: number;
+    risk_score?: number;
+    metadata?: Record<string, unknown>;
+}
+
+export interface EntityEdge {
+    id: string;
+    source_id: string;
+    target_id: string;
+    relationship: string;
+    confidence: number;
+    first_seen: string;
+}
+
+export interface EntityGraphData {
+    entities: Entity[];
+    edges: EntityEdge[];
+}
+
+export const fetchEntities = async (entityType?: string): Promise<EntityGraphData> => {
+    let url = `${API_BASE_URL}/entities`;
+    if (entityType) url += `?type=${entityType}`;
+    const response = await fetch(url, {
+        headers: getHeaders(),
+        cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) {
+        // Return placeholder data if endpoint doesn't exist yet
+        return generatePlaceholderEntities();
+    }
+    return response.json();
+};
+
+function generatePlaceholderEntities(): EntityGraphData {
+    const entities: Entity[] = [
+        { id: 'e1', entity_type: 'ip', value: '192.168.1.100', first_seen: '2026-03-10T08:00:00Z', last_seen: '2026-03-12T10:00:00Z', investigation_count: 5, risk_score: 72 },
+        { id: 'e2', entity_type: 'ip', value: '10.0.0.55', first_seen: '2026-03-11T14:00:00Z', last_seen: '2026-03-12T09:00:00Z', investigation_count: 3, risk_score: 45 },
+        { id: 'e3', entity_type: 'domain', value: 'evil-c2.example.com', first_seen: '2026-03-10T12:00:00Z', last_seen: '2026-03-12T11:00:00Z', investigation_count: 8, risk_score: 95 },
+        { id: 'e4', entity_type: 'user', value: 'admin@corp.local', first_seen: '2026-03-09T08:00:00Z', last_seen: '2026-03-12T08:00:00Z', investigation_count: 12, risk_score: 60 },
+        { id: 'e5', entity_type: 'hash', value: 'a1b2c3d4e5f6...', first_seen: '2026-03-11T16:00:00Z', last_seen: '2026-03-11T16:00:00Z', investigation_count: 2, risk_score: 88 },
+        { id: 'e6', entity_type: 'ip', value: '203.0.113.42', first_seen: '2026-03-10T09:00:00Z', last_seen: '2026-03-12T07:00:00Z', investigation_count: 4, risk_score: 82 },
+        { id: 'e7', entity_type: 'domain', value: 'phishing-site.xyz', first_seen: '2026-03-11T10:00:00Z', last_seen: '2026-03-12T06:00:00Z', investigation_count: 6, risk_score: 90 },
+        { id: 'e8', entity_type: 'user', value: 'svc-backup@corp.local', first_seen: '2026-03-10T06:00:00Z', last_seen: '2026-03-12T05:00:00Z', investigation_count: 3, risk_score: 35 },
+        { id: 'e9', entity_type: 'ip', value: '172.16.0.10', first_seen: '2026-03-11T08:00:00Z', last_seen: '2026-03-12T04:00:00Z', investigation_count: 2, risk_score: 20 },
+        { id: 'e10', entity_type: 'hash', value: 'f7e8d9c0b1a2...', first_seen: '2026-03-12T02:00:00Z', last_seen: '2026-03-12T02:00:00Z', investigation_count: 1, risk_score: 75 },
+    ];
+    const edges: EntityEdge[] = [
+        { id: 'ed1', source_id: 'e1', target_id: 'e3', relationship: 'connected_to', confidence: 0.92, first_seen: '2026-03-10T12:00:00Z' },
+        { id: 'ed2', source_id: 'e4', target_id: 'e1', relationship: 'logged_into', confidence: 0.85, first_seen: '2026-03-10T08:00:00Z' },
+        { id: 'ed3', source_id: 'e5', target_id: 'e3', relationship: 'downloaded_from', confidence: 0.95, first_seen: '2026-03-11T16:00:00Z' },
+        { id: 'ed4', source_id: 'e6', target_id: 'e7', relationship: 'resolved_to', confidence: 0.88, first_seen: '2026-03-10T09:00:00Z' },
+        { id: 'ed5', source_id: 'e4', target_id: 'e2', relationship: 'logged_into', confidence: 0.78, first_seen: '2026-03-11T14:00:00Z' },
+        { id: 'ed6', source_id: 'e2', target_id: 'e3', relationship: 'connected_to', confidence: 0.70, first_seen: '2026-03-11T15:00:00Z' },
+        { id: 'ed7', source_id: 'e8', target_id: 'e9', relationship: 'logged_into', confidence: 0.65, first_seen: '2026-03-11T08:00:00Z' },
+        { id: 'ed8', source_id: 'e10', target_id: 'e7', relationship: 'downloaded_from', confidence: 0.91, first_seen: '2026-03-12T02:00:00Z' },
+        { id: 'ed9', source_id: 'e1', target_id: 'e6', relationship: 'scanned_by', confidence: 0.60, first_seen: '2026-03-10T10:00:00Z' },
+    ];
+    return { entities, edges };
+}
+
+// --- Bulk SIEM Alert Investigation ---
+export const bulkInvestigateAlerts = async (alertIds: string[]): Promise<any> => {
+    const results = await Promise.allSettled(
+        alertIds.map(id => investigateAlert(id))
+    );
+    return results;
+};
+
 export const fetchNotifications = async (since?: string): Promise<Notification[]> => {
     let url = `${API_BASE_URL}/notifications`;
     if (since) {

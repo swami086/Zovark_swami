@@ -1,0 +1,68 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: hydra
+          POSTGRES_PASSWORD: hydra_dev_2026
+          POSTGRES_DB: hydra
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+
+    env:
+      DATABASE_URL: postgresql://hydra:hydra_dev_2026@localhost:5432/hydra
+      REDIS_URL: redis://localhost:6379/0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov
+          pip install -r worker/requirements.txt || true
+
+      - name: Apply database schema
+        run: |
+          PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f init.sql
+          for f in migrations/*.sql; do
+            echo "Applying $f..."
+            PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f "$f" || true
+          done
+
+      - name: Run coverage
+        run: |
+          python -m pytest \
+            --cov=worker \
+            --cov=sandbox \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=60 \
+            tests/sandbox/test_ast_prefilter.py \
+            tests/sandbox/test_seccomp.py \
+            -m "not e2e and not load and not slow and not sandbox" \
+            --tb=short
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml

@@ -1,0 +1,37 @@
+name: Accuracy Validation
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'worker/**'
+      - 'worker/tests/accuracy/**'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'worker/**'
+
+jobs:
+  accuracy-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r worker/requirements.txt || true
+
+      - name: Run accuracy validation (dry-run)
+        run: |
+          bash scripts/accuracy-gate.sh --dry-run --threshold 80
+
+      - name: Upload accuracy results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accuracy-results
+          path: worker/tests/accuracy/results.json

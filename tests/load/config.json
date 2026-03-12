@@ -1,0 +1,50 @@
+{
+  "profiles": {
+    "smoke": {
+      "description": "Quick smoke test — 5 users, 30 seconds",
+      "users": 5,
+      "spawn_rate": 2,
+      "duration": "30s",
+      "thresholds": {
+        "p95_response_time_ms": 2000,
+        "error_rate_pct": 5,
+        "min_rps": 1
+      }
+    },
+    "baseline": {
+      "description": "Baseline load — 10 users, 2 minutes",
+      "users": 10,
+      "spawn_rate": 2,
+      "duration": "120s",
+      "thresholds": {
+        "p95_response_time_ms": 3000,
+        "error_rate_pct": 5,
+        "min_rps": 5
+      }
+    },
+    "stress": {
+      "description": "Stress test — 50 users, 5 minutes",
+      "users": 50,
+      "spawn_rate": 5,
+      "duration": "300s",
+      "thresholds": {
+        "p95_response_time_ms": 5000,
+        "error_rate_pct": 10,
+        "min_rps": 10
+      }
+    },
+    "soak": {
+      "description": "Soak test — 20 users, 30 minutes",
+      "users": 20,
+      "spawn_rate": 2,
+      "duration": "1800s",
+      "thresholds": {
+        "p95_response_time_ms": 3000,
+        "error_rate_pct": 2,
+        "min_rps": 5
+      }
+    }
+  },
+  "default_profile": "baseline",
+  "host": "http://localhost:8090"
+}
