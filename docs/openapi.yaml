@@ -1,0 +1,1394 @@
+openapi: 3.1.0
+info:
+  title: HYDRA SOC Automation API
+  version: 1.0.0
+  description: |
+    AI-powered SOC automation platform. Manages security investigations,
+    task orchestration, SIEM integration, and multi-tenant operations.
+  contact:
+    name: HYDRA Platform
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8090
+    description: Local development
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/v1/auth/login or /api/v1/auth/callback
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for M2M authentication (hydra_ prefix)
+
+  schemas:
+    APIResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          $ref: '#/components/schemas/APIError'
+        meta:
+          $ref: '#/components/schemas/APIMeta'
+
+    APIError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    APIMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        totp_code:
+          type: string
+          description: TOTP code if 2FA is enabled
+
+    RegisterRequest:
+      type: object
+      required: [email, password, display_name, tenant_id]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        display_name:
+          type: string
+        tenant_id:
+          type: string
+          format: uuid
+
+    TaskRequest:
+      type: object
+      required: [input]
+      properties:
+        task_type:
+          type: string
+          default: log_analysis
+        input:
+          type: object
+          properties:
+            prompt:
+              type: string
+            playbook_id:
+              type: string
+            severity:
+              type: string
+
+    BulkTaskRequest:
+      type: object
+      required: [tasks]
+      properties:
+        tasks:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/TaskRequest'
+
+    Task:
+      type: object
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, planning, approved, executing, completed, failed, cancelled, awaiting_approval, rejected]
+        task_type:
+          type: string
+        input:
+          type: object
+        output:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        execution_ms:
+          type: integer
+        severity:
+          type: string
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        tier:
+          type: string
+          enum: [free, professional, enterprise]
+        settings:
+          type: object
+        is_active:
+          type: boolean
+        max_concurrent:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Playbook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        task_type:
+          type: string
+        is_template:
+          type: boolean
+        steps:
+          type: array
+          items:
+            type: string
+
+    APIKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        last_used_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    SIEMAlert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        alert_name:
+          type: string
+        severity:
+          type: string
+        source_ip:
+          type: string
+        dest_ip:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    FeedbackRequest:
+      type: object
+      properties:
+        verdict_correct:
+          type: boolean
+        corrected_verdict:
+          type: string
+        false_positive:
+          type: boolean
+        missed_threat:
+          type: boolean
+        notes:
+          type: string
+        analyst_confidence:
+          type: number
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+        services:
+          type: object
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      security: []
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/auth/login:
+    post:
+      summary: Authenticate user
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+        '401':
+          description: Invalid credentials or TOTP required
+        '429':
+          description: Account locked or rate limited
+
+  /api/v1/auth/register:
+    post:
+      summary: Register new user
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created
+        '400':
+          description: Validation error
+
+  /api/v1/auth/sso/login:
+    get:
+      summary: Initiate SSO/OIDC login
+      tags: [Authentication]
+      security: []
+      description: Redirects to the configured IdP authorization endpoint with PKCE
+      responses:
+        '302':
+          description: Redirect to IdP
+        '503':
+          description: SSO not configured
+
+  /api/v1/auth/callback:
+    get:
+      summary: OIDC callback handler
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSO login successful, returns JWT
+        '400':
+          description: Invalid state or authorization code
+
+  /api/v1/auth/totp/setup:
+    post:
+      summary: Setup TOTP 2FA
+      tags: [Authentication]
+      responses:
+        '200':
+          description: TOTP secret and QR code URI
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      secret:
+                        type: string
+                      otpauth_uri:
+                        type: string
+        '409':
+          description: TOTP already enabled
+
+  /api/v1/auth/totp/verify:
+    post:
+      summary: Verify TOTP code and enable 2FA
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: TOTP enabled
+        '401':
+          description: Invalid TOTP code
+
+  /api/v1/tasks:
+    get:
+      summary: List tasks
+      tags: [Tasks]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: severity
+          in: query
+          schema:
+            type: string
+        - name: task_type
+          in: query
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: created_at
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated task list
+    post:
+      summary: Create a task
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '202':
+          description: Task created and workflow started
+        '200':
+          description: Deduplicated — existing investigation returned
+        '400':
+          description: Validation error
+
+  /api/v1/tasks/bulk:
+    post:
+      summary: Bulk create tasks (max 50)
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkTaskRequest'
+      responses:
+        '201':
+          description: Tasks created
+        '400':
+          description: Validation error
+
+  /api/v1/tasks/{id}:
+    get:
+      summary: Get task details
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task details
+        '404':
+          description: Task not found
+
+  /api/v1/tasks/{id}/audit:
+    get:
+      summary: Get task audit trail
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Audit trail
+
+  /api/v1/tasks/{id}/steps:
+    get:
+      summary: Get investigation steps
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Investigation steps
+
+  /api/v1/tasks/{id}/timeline:
+    get:
+      summary: Get task timeline
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Timeline events
+
+  /api/v1/tasks/{id}/stream:
+    get:
+      summary: Stream task updates via SSE
+      tags: [Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '404':
+          description: Task not found
+
+  /api/v1/tasks/upload:
+    post:
+      summary: Upload file and create task
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                task_type:
+                  type: string
+                prompt:
+                  type: string
+      responses:
+        '201':
+          description: Task created from uploaded file
+
+  /api/v1/stats:
+    get:
+      summary: Get dashboard statistics
+      tags: [Dashboard]
+      responses:
+        '200':
+          description: Aggregated statistics
+
+  /api/v1/playbooks:
+    get:
+      summary: List playbooks
+      tags: [Playbooks]
+      responses:
+        '200':
+          description: List of playbooks
+    post:
+      summary: Create playbook (admin)
+      tags: [Playbooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, task_type, steps]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                icon:
+                  type: string
+                task_type:
+                  type: string
+                system_prompt_override:
+                  type: string
+                steps:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Playbook created
+
+  /api/v1/playbooks/{id}:
+    put:
+      summary: Update playbook (admin)
+      tags: [Playbooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Playbook updated
+    delete:
+      summary: Delete playbook (admin)
+      tags: [Playbooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Playbook deleted
+
+  /api/v1/skills:
+    get:
+      summary: List investigation skills
+      tags: [Skills]
+      responses:
+        '200':
+          description: List of active skills
+
+  /api/v1/me:
+    get:
+      summary: Get current user info
+      tags: [Users]
+      responses:
+        '200':
+          description: Current user details
+
+  /api/v1/log-sources:
+    get:
+      summary: List log sources
+      tags: [SIEM]
+      responses:
+        '200':
+          description: List of configured log sources
+    post:
+      summary: Create log source (admin)
+      tags: [SIEM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, source_type]
+              properties:
+                name:
+                  type: string
+                source_type:
+                  type: string
+                connection_config:
+                  type: object
+      responses:
+        '201':
+          description: Log source created
+
+  /api/v1/log-sources/{id}:
+    put:
+      summary: Update log source (admin)
+      tags: [SIEM]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Log source updated
+    delete:
+      summary: Deactivate log source (admin)
+      tags: [SIEM]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Log source deactivated
+
+  /api/v1/siem-alerts:
+    get:
+      summary: List SIEM alerts
+      tags: [SIEM]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: source_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of alerts
+
+  /api/v1/siem-alerts/{id}/investigate:
+    post:
+      summary: Investigate a SIEM alert
+      tags: [SIEM]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Investigation started
+        '400':
+          description: Alert already investigated
+
+  /api/v1/notifications:
+    get:
+      summary: Get notifications
+      tags: [Dashboard]
+      parameters:
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Recent notifications
+
+  /api/v1/investigations/{id}/feedback:
+    post:
+      summary: Submit investigation feedback
+      tags: [Feedback]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '201':
+          description: Feedback recorded
+
+  /api/v1/feedback/stats:
+    get:
+      summary: Get feedback statistics (admin)
+      tags: [Feedback]
+      responses:
+        '200':
+          description: Feedback accuracy statistics
+
+  /api/v1/approvals/pending:
+    get:
+      summary: List pending approvals (admin)
+      tags: [Approvals]
+      responses:
+        '200':
+          description: Pending approvals
+
+  /api/v1/approvals/{id}/decide:
+    post:
+      summary: Approve or reject (admin)
+      tags: [Approvals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                approved:
+                  type: boolean
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Decision recorded
+
+  /api/v1/tenants:
+    get:
+      summary: List tenants (admin)
+      tags: [Tenants]
+      responses:
+        '200':
+          description: List of tenants
+    post:
+      summary: Create tenant (admin)
+      tags: [Tenants]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                tier:
+                  type: string
+                max_concurrent:
+                  type: integer
+      responses:
+        '201':
+          description: Tenant created
+
+  /api/v1/tenants/{id}:
+    get:
+      summary: Get tenant details (admin)
+      tags: [Tenants]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant details
+    put:
+      summary: Update tenant (admin)
+      tags: [Tenants]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                tier:
+                  type: string
+                settings:
+                  type: object
+                is_active:
+                  type: boolean
+                max_concurrent:
+                  type: integer
+      responses:
+        '200':
+          description: Tenant updated
+
+  /api/v1/webhooks/endpoints:
+    get:
+      summary: List webhook endpoints
+      tags: [Webhooks]
+      responses:
+        '200':
+          description: List of webhook endpoints
+    post:
+      summary: Create webhook endpoint (admin)
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, url, event_types]
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                event_types:
+                  type: array
+                  items:
+                    type: string
+                    enum: [investigation_completed, alert_received, approval_needed, response_executed]
+      responses:
+        '201':
+          description: Endpoint created with secret
+
+  /api/v1/webhooks/endpoints/{id}:
+    put:
+      summary: Update webhook endpoint (admin)
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Endpoint updated
+    delete:
+      summary: Deactivate webhook endpoint (admin)
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Endpoint deactivated
+
+  /api/v1/webhooks/deliveries:
+    get:
+      summary: List webhook deliveries
+      tags: [Webhooks]
+      responses:
+        '200':
+          description: Recent delivery attempts
+
+  /api/v1/webhooks/{source_id}/alert:
+    post:
+      summary: Receive SIEM alert webhook
+      tags: [Webhooks]
+      security: []
+      parameters:
+        - name: source_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Webhook-Signature
+          in: header
+          schema:
+            type: string
+          description: HMAC-SHA256 signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Alert received
+        '401':
+          description: Invalid signature
+
+  /api/v1/api-keys:
+    get:
+      summary: List API keys (admin)
+      tags: [API Keys]
+      responses:
+        '200':
+          description: List of API keys (without raw key values)
+    post:
+      summary: Create API key (admin)
+      tags: [API Keys]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                expires:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: API key created (raw key shown once)
+
+  /api/v1/api-keys/{id}:
+    delete:
+      summary: Deactivate API key (admin)
+      tags: [API Keys]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: API key deactivated
+
+  /api/v1/audit/export:
+    get:
+      summary: Export audit logs (admin)
+      tags: [Audit]
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv, cef]
+            default: json
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: Audit log export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIResponse'
+            text/csv:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+                description: CEF format
+
+  /api/v1/models:
+    get:
+      summary: List model registry (admin)
+      tags: [Models]
+      responses:
+        '200':
+          description: Registered models
+    post:
+      summary: Register model (admin)
+      tags: [Models]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, provider, model_id]
+              properties:
+                name:
+                  type: string
+                provider:
+                  type: string
+                model_id:
+                  type: string
+                version:
+                  type: string
+                is_default:
+                  type: boolean
+                config:
+                  type: object
+                routing_rules:
+                  type: object
+      responses:
+        '201':
+          description: Model registered
+
+  /api/v1/models/{id}:
+    put:
+      summary: Update model (admin)
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Model updated
+
+  /api/v1/models/ab-tests:
+    get:
+      summary: List A/B tests (admin)
+      tags: [Models]
+      responses:
+        '200':
+          description: A/B tests
+    post:
+      summary: Create A/B test (admin)
+      tags: [Models]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, model_a_id, model_b_id]
+              properties:
+                name:
+                  type: string
+                model_a_id:
+                  type: string
+                  format: uuid
+                model_b_id:
+                  type: string
+                  format: uuid
+                traffic_split:
+                  type: number
+                  default: 0.5
+      responses:
+        '201':
+          description: A/B test started
+
+  /api/v1/models/ab-tests/{id}/complete:
+    post:
+      summary: Complete A/B test (admin)
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [winner_id]
+              properties:
+                winner_id:
+                  type: string
+                  format: uuid
+                promote:
+                  type: boolean
+      responses:
+        '200':
+          description: A/B test completed
+
+  /api/v1/retention-policies:
+    get:
+      summary: List data retention policies (admin)
+      tags: [Admin]
+      responses:
+        '200':
+          description: Retention policies
+
+  /api/v1/retention-policies/{id}:
+    put:
+      summary: Update retention policy (admin)
+      tags: [Admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retention_days:
+                  type: integer
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Policy updated
+
+  /api/v1/integrations/slack/test:
+    post:
+      summary: Test Slack webhook (admin)
+      tags: [Integrations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [webhook_url]
+              properties:
+                webhook_url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Slack test successful
+        '502':
+          description: Slack connection failed
+
+  /api/v1/integrations/slack:
+    put:
+      summary: Configure Slack webhook (admin)
+      tags: [Integrations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [webhook_url]
+              properties:
+                webhook_url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    type: string
+                channel:
+                  type: string
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Slack configured
+
+  /api/v1/integrations/teams/test:
+    post:
+      summary: Test Teams webhook (admin)
+      tags: [Integrations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [webhook_url]
+              properties:
+                webhook_url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Teams test successful
+        '502':
+          description: Teams connection failed
+
+  /api/v1/integrations/teams:
+    put:
+      summary: Configure Teams webhook (admin)
+      tags: [Integrations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [webhook_url]
+              properties:
+                webhook_url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    type: string
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Teams configured
+
+tags:
+  - name: System
+    description: Health and system endpoints
+  - name: Authentication
+    description: Login, registration, SSO, and 2FA
+  - name: Tasks
+    description: Investigation task management
+  - name: Dashboard
+    description: Statistics and notifications
+  - name: Playbooks
+    description: Investigation playbook management
+  - name: Skills
+    description: Agent investigation skills
+  - name: Users
+    description: User management
+  - name: SIEM
+    description: SIEM integration and alert management
+  - name: Webhooks
+    description: Webhook endpoints and deliveries
+  - name: API Keys
+    description: API key management for M2M auth
+  - name: Audit
+    description: Audit log export and SIEM forwarding
+  - name: Feedback
+    description: Investigation feedback and accuracy
+  - name: Approvals
+    description: Human-in-the-loop approvals
+  - name: Tenants
+    description: Multi-tenant management
+  - name: Models
+    description: Model registry and A/B testing
+  - name: Admin
+    description: Administrative operations
+  - name: Integrations
+    description: Third-party integration management

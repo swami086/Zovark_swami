@@ -1151,3 +1151,126 @@ func getTaskTimelineHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"timeline": timeline})
 }
+
+// ============================================================
+// BULK TASK CREATION (Issue #12)
+// ============================================================
+
+// BulkTaskRequest represents a single task in a bulk creation request.
+type BulkTaskRequest struct {
+	TaskType string                 `json:"task_type"`
+	Input    map[string]interface{} `json:"input" binding:"required"`
+}
+
+// bulkCreateTasksHandler creates multiple tasks in a single request.
+// POST /api/v1/tasks/bulk
+func bulkCreateTasksHandler(c *gin.Context) {
+	var req struct {
+		Tasks []BulkTaskRequest `json:"tasks" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.Tasks) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one task is required"})
+		return
+	}
+	if len(req.Tasks) > 50 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "maximum 50 tasks per bulk request"})
+		return
+	}
+
+	tenantID := c.MustGet("tenant_id").(string)
+
+	// Validate all tasks first
+	for i, task := range req.Tasks {
+		if task.Input == nil || len(task.Input) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("task %d: input is required", i)})
+			return
+		}
+		if task.TaskType == "" {
+			req.Tasks[i].TaskType = "log_analysis"
+		}
+	}
+
+	// Create all tasks in a transaction
+	ctx := c.Request.Context()
+	tx, err := dbPool.Begin(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to begin transaction"})
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	var taskIDs []string
+	var workflowIDs []string
+
+	for _, task := range req.Tasks {
+		taskID := uuid.New().String()
+		taskIDs = append(taskIDs, taskID)
+
+		_, err := tx.Exec(ctx,
+			"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+			taskID, tenantID, task.TaskType, task.Input, "pending", time.Now(),
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create task: %v", err)})
+			return
+		}
+
+		// Audit log
+		_, _ = tx.Exec(ctx,
+			"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id) VALUES ($1, $2, $3, $4)",
+			tenantID, "task_created", "task", taskID,
+		)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
+		return
+	}
+
+	// Start workflows for all tasks (outside transaction)
+	for i, task := range req.Tasks {
+		taskID := taskIDs[i]
+		workflowOptions := client.StartWorkflowOptions{
+			ID:        "task-" + taskID,
+			TaskQueue: "hydra-tasks",
+		}
+
+		we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow",
+			TaskRequest{TaskType: task.TaskType, Input: task.Input})
+		if err != nil {
+			log.Printf("Failed to start workflow for bulk task %s: %v", taskID, err)
+			_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
+			workflowIDs = append(workflowIDs, "")
+			continue
+		}
+		workflowIDs = append(workflowIDs, we.GetID())
+	}
+
+	// Build response
+	var results []map[string]interface{}
+	for i, taskID := range taskIDs {
+		wfID := ""
+		if i < len(workflowIDs) {
+			wfID = workflowIDs[i]
+		}
+		status := "pending"
+		if wfID == "" {
+			status = "failed"
+		}
+		results = append(results, map[string]interface{}{
+			"task_id":     taskID,
+			"workflow_id": wfID,
+			"status":      status,
+		})
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"tasks":   results,
+		"created": len(taskIDs),
+	})
+}

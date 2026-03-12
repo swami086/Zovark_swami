@@ -21,6 +21,7 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+	TOTPCode string `json:"totp_code"` // Optional TOTP code for 2FA
 }
 
 type CustomClaims struct {
@@ -97,6 +98,20 @@ func loginHandler(c *gin.Context) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		recordFailedLogin(req.Email)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		return
+	}
+
+	// Check TOTP 2FA if enabled
+	totpValid, totpErr := checkTOTP(user.ID, req.TOTPCode)
+	if totpErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to verify 2FA"})
+		return
+	}
+	if !totpValid {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":        "TOTP code required",
+			"totp_required": true,
+		})
 		return
 	}
 

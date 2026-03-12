@@ -19,6 +19,17 @@ type Config struct {
 	TemporalAddress  string
 	LiteLLMMasterKey string
 	JWTSecret        string
+	// OIDC/SSO configuration
+	OIDCIssuerURL    string
+	OIDCClientID     string
+	OIDCClientSecret string
+	OIDCRedirectURI  string
+	OIDCRoleClaimKey string
+	// Vault
+	VaultAddr  string
+	VaultToken string
+	// Redis
+	RedisURL string
 }
 
 func init() {
@@ -28,6 +39,17 @@ func init() {
 		TemporalAddress:  getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233"),
 		LiteLLMMasterKey: getEnvOrDefault("LITELLM_MASTER_KEY", ""),
 		JWTSecret:        getEnvOrDefault("JWT_SECRET", "hydra-jwt-secret-dev-2026"),
+		// OIDC
+		OIDCIssuerURL:    getEnvOrDefault("OIDC_ISSUER_URL", ""),
+		OIDCClientID:     getEnvOrDefault("OIDC_CLIENT_ID", ""),
+		OIDCClientSecret: getEnvOrDefault("OIDC_CLIENT_SECRET", ""),
+		OIDCRedirectURI:  getEnvOrDefault("OIDC_REDIRECT_URI", "http://localhost:8090/api/v1/auth/callback"),
+		OIDCRoleClaimKey: getEnvOrDefault("OIDC_ROLE_CLAIM_KEY", "role"),
+		// Vault
+		VaultAddr:  getEnvOrDefault("VAULT_ADDR", ""),
+		VaultToken: getEnvOrDefault("VAULT_TOKEN", ""),
+		// Redis
+		RedisURL: getEnvOrDefault("REDIS_URL", "redis:6379"),
 	}
 }
 
@@ -41,6 +63,14 @@ func getEnvOrDefault(key, fallback string) string {
 func main() {
 	log.Println("Starting Hydra API Gateway...")
 
+	// Initialize Vault (for secrets management — must come before DB init)
+	initVault()
+	defer stopVault()
+
+	// Override config from Vault if available
+	appConfig.DatabaseURL = GetSecret("database_url", "DATABASE_URL", appConfig.DatabaseURL)
+	appConfig.JWTSecret = GetSecret("jwt_secret", "JWT_SECRET", appConfig.JWTSecret)
+
 	// Initialize Database connection
 	err := initDB(appConfig.DatabaseURL)
 	if err != nil {
@@ -48,12 +78,18 @@ func main() {
 	}
 	defer closeDB()
 
+	// Initialize Redis for rate limiting
+	initRedis()
+
 	// Initialize Temporal client
 	err = initTemporal(appConfig.TemporalAddress)
 	if err != nil {
 		log.Fatalf("Failed to initialize Temporal client: %v", err)
 	}
 	defer closeTemporal()
+
+	// Initialize OIDC (SSO)
+	initOIDC()
 
 	// Setup Gin router
 	router := gin.Default()
@@ -72,6 +108,9 @@ func main() {
 	{
 		auth.POST("/login", loginHandler)
 		auth.POST("/register", registerHandler)
+		// SSO/OIDC routes (public)
+		auth.GET("/sso/login", ssoLoginHandler)
+		auth.GET("/callback", ssoCallbackHandler)
 	}
 
 	// Public webhook route (HMAC-validated, no JWT)
@@ -80,6 +119,7 @@ func main() {
 	// Protected API routes
 	api := router.Group("/api/v1")
 	api.Use(authMiddleware())
+	api.Use(tenantRateLimitMiddleware())
 	api.Use(auditMiddleware())
 	{
 		// Anyone authenticated
@@ -88,6 +128,7 @@ func main() {
 		api.GET("/tasks/:id/audit", getTaskAuditHandler)
 		api.GET("/tasks/:id/steps", getTaskStepsHandler)
 		api.GET("/tasks/:id/timeline", getTaskTimelineHandler)
+		api.GET("/tasks/:id/stream", taskSSEHandler)
 		api.GET("/stats", getStatsHandler)
 		api.GET("/playbooks", listPlaybooksHandler)
 		api.GET("/skills", listSkillsHandler)
@@ -97,10 +138,15 @@ func main() {
 		api.GET("/notifications", getNotificationsHandler)
 
 		// Analyst + Admin
-		api.POST("/tasks", requireRole("admin", "analyst"), createTaskHandler)
+		api.POST("/tasks", requireRole("admin", "analyst", "api_key"), createTaskHandler)
+		api.POST("/tasks/bulk", requireRole("admin", "analyst", "api_key"), bulkCreateTasksHandler)
 		api.POST("/tasks/upload", requireRole("admin", "analyst"), uploadTaskHandler)
 		api.POST("/siem-alerts/:id/investigate", requireRole("admin", "analyst"), investigateAlertHandler)
 		api.POST("/investigations/:id/feedback", requireRole("admin", "analyst"), submitFeedbackHandler)
+
+		// TOTP 2FA (authenticated users)
+		api.POST("/auth/totp/setup", totpSetupHandler)
+		api.POST("/auth/totp/verify", totpVerifyHandler)
 
 		// Feedback stats (admin only)
 		api.GET("/feedback/stats", requireRole("admin"), getFeedbackStatsHandler)
@@ -108,6 +154,14 @@ func main() {
 		// Webhook endpoints (authenticated)
 		api.GET("/webhooks/endpoints", listWebhookEndpointsHandler)
 		api.GET("/webhooks/deliveries", listWebhookDeliveriesHandler)
+
+		// Audit export (admin only)
+		api.GET("/audit/export", requireRole("admin"), auditExportHandler)
+
+		// API key management (admin only)
+		api.POST("/api-keys", requireRole("admin"), createAPIKeyHandler)
+		api.GET("/api-keys", requireRole("admin"), listAPIKeysHandler)
+		api.DELETE("/api-keys/:id", requireRole("admin"), deleteAPIKeyHandler)
 
 		// Admin only
 		api.GET("/approvals/pending", requireRole("admin"), getPendingApprovalsHandler)
@@ -143,6 +197,12 @@ func main() {
 		// Data retention (admin only)
 		api.GET("/retention-policies", requireRole("admin"), listRetentionPoliciesHandler)
 		api.PUT("/retention-policies/:id", requireRole("admin"), updateRetentionPolicyHandler)
+
+		// Integration management (admin only)
+		api.POST("/integrations/slack/test", requireRole("admin"), testSlackWebhookHandler)
+		api.PUT("/integrations/slack", requireRole("admin"), configureSlackWebhookHandler)
+		api.POST("/integrations/teams/test", requireRole("admin"), testTeamsWebhookHandler)
+		api.PUT("/integrations/teams", requireRole("admin"), configureTeamsWebhookHandler)
 	}
 
 	// Start server
