@@ -1029,7 +1029,8 @@ ALTER TABLE audit_events ADD CONSTRAINT audit_events_event_type_check CHECK (eve
     'injection_detected', 'cross_tenant_hit', 'threat_score_updated',
     'self_healing_scan', 'self_healing_diagnosis', 'self_healing_patch_applied',
     'self_healing_patch_failed', 'self_healing_rollback',
-    'dry_run_validation_failed', 'memory_enrichment_applied'
+    'dry_run_validation_failed', 'memory_enrichment_applied',
+    'playbook_auto_triggered', 'retrain_check', 'sla_breach'
 ));
 
 -- Alert deduplication via composite fingerprinting
@@ -1125,3 +1126,141 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_failure_modes
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_blocked
     ON agent_tasks (tenant_id, status)
     WHERE status = 'blocked_credentials';
+
+-- ============================================================
+-- HNSW VECTOR INDEXES (Sprint 9A — Migration 021)
+-- ============================================================
+
+-- Add embedding columns to entities and entity_edges
+ALTER TABLE entities ADD COLUMN IF NOT EXISTS embedding vector(768);
+ALTER TABLE entity_edges ADD COLUMN IF NOT EXISTS embedding vector(768);
+
+-- HNSW indexes (m=16, ef_construction=200 for high recall)
+CREATE INDEX IF NOT EXISTS idx_entities_embedding_hnsw
+    ON entities USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
+
+CREATE INDEX IF NOT EXISTS idx_entity_edges_embedding_hnsw
+    ON entity_edges USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
+
+CREATE INDEX IF NOT EXISTS idx_skills_embedding_hnsw
+    ON agent_skills USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
+
+CREATE INDEX IF NOT EXISTS idx_investigation_memory_embedding_hnsw
+    ON investigation_memory USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
+
+CREATE INDEX IF NOT EXISTS idx_memory_episodic_embedding_hnsw
+    ON agent_memory_episodic USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
+
+CREATE INDEX IF NOT EXISTS idx_investigations_summary_embedding_hnsw
+    ON investigations USING hnsw (summary_embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
+
+CREATE INDEX IF NOT EXISTS idx_mitre_embedding_hnsw
+    ON mitre_techniques USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
+
+-- ============================================================
+-- API KEYS (Sprint 9A — Migration 022)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS api_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    key_hash VARCHAR(64) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    scopes TEXT[] NOT NULL DEFAULT '{read}',
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    last_used_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_api_keys_tenant ON api_keys(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_active ON api_keys(tenant_id, is_active) WHERE is_active = true;
+
+-- ============================================================
+-- TOTP 2FA (Sprint 9A — Migration 023)
+-- ============================================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false;
+
+-- ============================================================
+-- SCHEDULED WORKFLOWS (Sprint 9B — Migration 024)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS scheduled_workflows (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    workflow_type VARCHAR(100) NOT NULL,
+    cron_expression VARCHAR(100) NOT NULL,
+    params JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    last_run_at TIMESTAMPTZ,
+    next_run_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_workflows_active ON scheduled_workflows(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_scheduled_workflows_type ON scheduled_workflows(workflow_type);
+
+INSERT INTO scheduled_workflows (workflow_type, cron_expression, params, is_active) VALUES
+    ('DetectionGenerationWorkflow', '0 2 * * *', '{"min_investigations": 2}', true),
+    ('SelfHealingWorkflow', '*/30 * * * *', '{"lookback_minutes": 30, "dry_run": true}', true),
+    ('CrossTenantRefreshWorkflow', '0 * * * *', '{}', true)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- INCIDENTS (Sprint 9B — Migration 025)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS incidents (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    title VARCHAR(500) NOT NULL,
+    severity VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (severity IN ('critical', 'high', 'medium', 'low', 'informational')),
+    alert_ids UUID[] DEFAULT '{}',
+    alert_count INTEGER DEFAULT 0,
+    correlation_rule VARCHAR(100),
+    mitre_techniques TEXT[],
+    source_ips TEXT[],
+    target_users TEXT[],
+    status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'investigating', 'resolved', 'closed', 'false_positive')),
+    investigation_id UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidents_tenant ON incidents(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
+CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity);
+CREATE INDEX IF NOT EXISTS idx_incidents_created ON incidents(created_at DESC);
+
+-- ============================================================
+-- SLA EVENTS (Sprint 9B — Migration 026)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS sla_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    task_id UUID NOT NULL,
+    severity VARCHAR(20) NOT NULL,
+    sla_threshold_minutes INTEGER NOT NULL,
+    actual_duration_minutes FLOAT NOT NULL,
+    breached BOOLEAN DEFAULT false,
+    breach_ratio FLOAT,
+    webhook_sent BOOLEAN DEFAULT false,
+    webhook_status INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sla_events_tenant ON sla_events(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sla_events_breached ON sla_events(breached) WHERE breached = true;
+CREATE INDEX IF NOT EXISTS idx_sla_events_created ON sla_events(created_at DESC);

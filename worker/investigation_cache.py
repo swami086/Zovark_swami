@@ -1,7 +1,12 @@
 """Investigation result cache — skip re-investigation for identical indicators.
 
-SHA-256 hash of normalized, sorted indicators → cached verdict + report.
-24-hour TTL by default.
+SHA-256 hash of normalized, sorted indicators -> cached verdict + report.
+Severity-based TTL: critical=1hr, high=4hr, medium=24hr, low=48hr.
+
+Enhanced (Issue #38):
+- Redis-based caching layer (check Redis before DB)
+- Semantic dedup: if new alert embedding >0.95 similar to cached, return cached
+- TTL management by severity
 """
 
 import hashlib
@@ -9,6 +14,33 @@ import json
 import os
 import re
 import psycopg2
+
+
+# Severity-based TTL in hours
+SEVERITY_TTL = {
+    "critical": 1,
+    "high": 4,
+    "medium": 24,
+    "low": 48,
+    "informational": 48,
+}
+
+# Semantic dedup similarity threshold
+SEMANTIC_DEDUP_THRESHOLD = 0.95
+
+# Redis config
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+REDIS_CACHE_PREFIX = "hydra:inv_cache:"
+REDIS_CACHE_TTL = 3600  # 1 hour default Redis TTL (seconds)
+
+
+def _get_redis():
+    """Get Redis connection. Returns None if Redis unavailable."""
+    try:
+        import redis
+        return redis.from_url(REDIS_URL, decode_responses=True)
+    except Exception:
+        return None
 
 
 def _normalize_indicators(indicators):
@@ -47,15 +79,62 @@ def compute_cache_key(task_input):
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
+def get_ttl_for_severity(severity):
+    """Get TTL in hours based on severity level."""
+    return SEVERITY_TTL.get(severity, 24)
+
+
+def _check_redis(cache_key):
+    """Check Redis cache layer first. Returns dict or None."""
+    try:
+        r = _get_redis()
+        if r is None:
+            return None
+
+        cached = r.get(f"{REDIS_CACHE_PREFIX}{cache_key}")
+        if cached:
+            result = json.loads(cached)
+            result['cache_hit'] = True
+            result['cache_source'] = 'redis'
+            return result
+    except Exception as e:
+        print(f"investigation_cache: Redis check failed (non-fatal): {e}")
+    return None
+
+
+def _store_redis(cache_key, data, ttl_hours=24):
+    """Store in Redis cache layer. Fire-and-forget."""
+    try:
+        r = _get_redis()
+        if r is None:
+            return
+
+        ttl_seconds = ttl_hours * 3600
+        r.setex(
+            f"{REDIS_CACHE_PREFIX}{cache_key}",
+            ttl_seconds,
+            json.dumps(data),
+        )
+    except Exception as e:
+        print(f"investigation_cache: Redis store failed (non-fatal): {e}")
+
+
 def check_cache(task_input):
     """Check if a cached result exists for these indicators.
 
+    Checks Redis first, then falls back to PostgreSQL.
     Returns dict with cached result or None.
     """
     cache_key = compute_cache_key(task_input)
     if not cache_key:
         return None
 
+    # Layer 1: Check Redis
+    redis_hit = _check_redis(cache_key)
+    if redis_hit:
+        return redis_hit
+
+    # Layer 2: Check PostgreSQL
     try:
         db_url = os.environ.get(
             "DATABASE_URL",
@@ -66,15 +145,16 @@ def check_cache(task_input):
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT investigation_id, task_id, verdict, risk_score,
-                           confidence, entity_count, summary
+                           confidence, entity_count, summary, ttl_hours
                     FROM investigation_cache
                     WHERE cache_key = %s AND expires_at > NOW()
                     LIMIT 1
                 """, (cache_key,))
                 row = cur.fetchone()
                 if row:
-                    return {
+                    result = {
                         'cache_hit': True,
+                        'cache_source': 'postgres',
                         'cache_key': cache_key,
                         'investigation_id': str(row[0]),
                         'task_id': str(row[1]) if row[1] else None,
@@ -84,6 +164,10 @@ def check_cache(task_input):
                         'entity_count': row[5],
                         'summary': row[6],
                     }
+                    # Backfill Redis for next time
+                    ttl_hours = row[7] if row[7] else 24
+                    _store_redis(cache_key, result, ttl_hours)
+                    return result
         finally:
             conn.close()
     except Exception as e:
@@ -92,14 +176,103 @@ def check_cache(task_input):
     return None
 
 
+def check_semantic_dedup(embedding, severity=None):
+    """Check if a semantically similar investigation is cached.
+
+    Uses pgvector cosine similarity to find cached results with
+    embedding similarity > SEMANTIC_DEDUP_THRESHOLD (0.95).
+
+    Args:
+        embedding: List of floats (embedding vector)
+        severity: Severity level for TTL lookup
+
+    Returns:
+        Dict with cached result or None.
+    """
+    if not embedding:
+        return None
+
+    try:
+        db_url = os.environ.get(
+            "DATABASE_URL",
+            "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra"
+        )
+        conn = psycopg2.connect(db_url)
+        try:
+            with conn.cursor() as cur:
+                # Find investigations with high embedding similarity
+                threshold_distance = 1.0 - SEMANTIC_DEDUP_THRESHOLD  # cosine distance
+                cur.execute("""
+                    SELECT
+                        ic.investigation_id, ic.task_id, ic.verdict,
+                        ic.risk_score, ic.confidence, ic.entity_count,
+                        ic.summary, ic.cache_key,
+                        1.0 - (i.embedding <-> %s::vector) as similarity
+                    FROM investigation_cache ic
+                    JOIN investigations i ON i.id = ic.investigation_id
+                    WHERE ic.expires_at > NOW()
+                      AND i.embedding IS NOT NULL
+                      AND i.embedding <-> %s::vector < %s
+                    ORDER BY i.embedding <-> %s::vector
+                    LIMIT 1
+                """, (
+                    str(embedding), str(embedding),
+                    threshold_distance, str(embedding),
+                ))
+                row = cur.fetchone()
+                if row:
+                    return {
+                        'cache_hit': True,
+                        'cache_source': 'semantic_dedup',
+                        'investigation_id': str(row[0]),
+                        'task_id': str(row[1]) if row[1] else None,
+                        'verdict': row[2],
+                        'risk_score': row[3],
+                        'confidence': row[4],
+                        'entity_count': row[5],
+                        'summary': row[6],
+                        'cache_key': row[7],
+                        'similarity': round(float(row[8]), 4),
+                    }
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f"investigation_cache: semantic dedup failed (non-fatal): {e}")
+
+    return None
+
+
 def store_cache(task_input, investigation_id, task_id=None,
                 verdict=None, risk_score=None, confidence=None,
-                entity_count=None, summary=None, ttl_hours=24):
-    """Store investigation result in cache."""
+                entity_count=None, summary=None, ttl_hours=None,
+                severity=None):
+    """Store investigation result in cache.
+
+    TTL is determined by severity if provided, otherwise uses ttl_hours or default 24h.
+    Stores in both Redis and PostgreSQL.
+    """
     cache_key = compute_cache_key(task_input)
     if not cache_key:
         return
 
+    # Determine TTL from severity
+    if ttl_hours is None:
+        ttl_hours = get_ttl_for_severity(severity) if severity else 24
+
+    # Store in Redis (fast layer)
+    redis_data = {
+        'cache_key': cache_key,
+        'investigation_id': str(investigation_id),
+        'task_id': str(task_id) if task_id else None,
+        'verdict': verdict,
+        'risk_score': risk_score,
+        'confidence': confidence,
+        'entity_count': entity_count,
+        'summary': summary,
+    }
+    _store_redis(cache_key, redis_data, ttl_hours)
+
+    # Store in PostgreSQL (durable layer)
     try:
         db_url = os.environ.get(
             "DATABASE_URL",
@@ -123,6 +296,7 @@ def store_cache(task_input, investigation_id, task_id=None,
                         confidence = EXCLUDED.confidence,
                         entity_count = EXCLUDED.entity_count,
                         summary = EXCLUDED.summary,
+                        ttl_hours = EXCLUDED.ttl_hours,
                         expires_at = NOW() + make_interval(hours => EXCLUDED.ttl_hours),
                         created_at = NOW()
                 """, (

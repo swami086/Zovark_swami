@@ -51,6 +51,13 @@ ACTIVITY_TIER_MAP = {
     # Sprint 5 activities
     "validate_generated_code": "fast",
     "enrich_alert_with_memory": "fast",
+    # Sprint 9B activities
+    "semantic_search": "fast",
+    "batch_embed_entities": "fast",
+    "re_embed_stale": "fast",
+    "compute_eval_metrics": "standard",
+    "correlate_alerts": "fast",
+    "ingest_threat_feed": "fast",
 }
 
 

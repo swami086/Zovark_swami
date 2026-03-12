@@ -18,6 +18,7 @@ with workflow.unsafe.imports_passed_through():
     from intelligence.cross_tenant import get_entity_intelligence
     from reporting.incident_report import generate_incident_report
     from response.workflow import ResponsePlaybookWorkflow, find_matching_playbooks
+    from response.auto_trigger import auto_trigger_playbooks
     from security.injection_detector import scan_for_injection
     from security.prompt_sanitizer import wrap_untrusted_data
 
@@ -1087,7 +1088,7 @@ If something has worked in past investigations for this threat type, apply those
             except Exception as e:
                 workflow.logger.info(f"Report generation failed non-fatally: {e}")
 
-        # --- SOAR RESPONSE AUTO-TRIGGER (Sprint 2B) ---
+        # --- SOAR RESPONSE AUTO-TRIGGER (Sprint 2B + Sprint 9B) ---
         if investigation_id:
             try:
                 matching_playbooks = await workflow.execute_activity(
@@ -1099,6 +1100,27 @@ If something has worked in past investigations for this threat type, apply those
                     },
                     schedule_to_close_timeout=timedelta(seconds=15),
                 )
+
+                # Auto-trigger audit logging (Sprint 9B, Issue #51)
+                if matching_playbooks:
+                    try:
+                        await workflow.execute_activity(
+                            auto_trigger_playbooks,
+                            {
+                                "investigation_id": investigation_id,
+                                "tenant_id": tenant_id,
+                                "verdict": verdict,
+                                "severity": severity,
+                                "risk_score": inv_risk_score,
+                                "task_id": task_id,
+                                "task_type": task_type,
+                                "matching_playbooks": matching_playbooks,
+                            },
+                            schedule_to_close_timeout=timedelta(seconds=15),
+                        )
+                    except Exception as e:
+                        workflow.logger.info(f"Auto-trigger audit failed non-fatally: {e}")
+
                 for pb in matching_playbooks:
                     try:
                         await workflow.execute_child_workflow(
