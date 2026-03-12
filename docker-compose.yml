@@ -231,6 +231,34 @@ services:
     networks:
       - hydra-internal
 
+  # ─── TLS TERMINATION / REVERSE PROXY ─────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: hydra-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - HYDRA_DOMAIN=${HYDRA_DOMAIN:-localhost}
+      - TLS_EMAIL=${TLS_EMAIL:-admin@hydra.local}
+      - HYDRA_TLS_ENABLED=${HYDRA_TLS_ENABLED:-false}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - dashboard
+    profiles: ["tls"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
   # ─── LOCAL LLM (Air-Gap) ──────────────────────────────
   ollama:
     image: ollama/ollama:latest
@@ -487,3 +515,5 @@ volumes:
   ollama_data:
   prometheus_data:
   grafana_data:
+  caddy_data:
+  caddy_config:

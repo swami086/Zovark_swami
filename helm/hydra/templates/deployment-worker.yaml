@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hydra.fullname" . }}-worker
+  labels:
+    {{- include "hydra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "hydra.worker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "hydra.worker.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          env:
+            - name: WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hydra.fullname" . }}-secrets
+                  key: database-url
+            - name: TEMPORAL_ADDRESS
+              value: {{ .Values.worker.env.TEMPORAL_ADDRESS | quote }}
+            - name: LITELLM_URL
+              value: {{ .Values.worker.env.LITELLM_URL | quote }}
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hydra.fullname" . }}-secrets
+                  key: litellm-master-key
+            - name: REDIS_URL
+              value: {{ .Values.worker.env.REDIS_URL | quote }}
+            - name: HYDRA_LLM_MODEL
+              value: {{ .Values.worker.env.HYDRA_LLM_MODEL | quote }}
+            - name: PYTHONUNBUFFERED
+              value: {{ .Values.worker.env.PYTHONUNBUFFERED | quote }}
+            {{- if .Values.integrations.slack.webhookUrl }}
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hydra.fullname" . }}-secrets
+                  key: slack-webhook-url
+            {{- end }}
+            {{- if .Values.integrations.teams.webhookUrl }}
+            - name: TEAMS_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hydra.fullname" . }}-secrets
+                  key: teams-webhook-url
+            {{- end }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import temporalio; print('ok')"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import temporalio; print('ok')"
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 10

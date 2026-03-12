@@ -1,0 +1,156 @@
+# ============================================================
+# HYDRA Helm Chart — Default Values
+# ============================================================
+
+global:
+  imageRegistry: ghcr.io
+  imagePullSecrets: []
+  namespace: hydra
+
+# ─── API Gateway ──────────────────────────────────────────
+api:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/hydra-soc/hydra-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8090
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    PORT: "8090"
+    TEMPORAL_ADDRESS: "temporal:7233"
+
+# ─── Worker ───────────────────────────────────────────────
+worker:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/hydra-soc/hydra-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  env:
+    TEMPORAL_ADDRESS: "temporal:7233"
+    LITELLM_URL: "http://litellm:4000/v1/chat/completions"
+    REDIS_URL: "redis://redis:6379/0"
+    HYDRA_LLM_MODEL: "fast"
+    PYTHONUNBUFFERED: "1"
+
+# ─── Dashboard ────────────────────────────────────────────
+dashboard:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/hydra-soc/hydra-dashboard
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# ─── PostgreSQL ───────────────────────────────────────────
+postgresql:
+  enabled: true
+  auth:
+    username: hydra
+    password: hydra_dev_2026
+    database: hydra
+  primary:
+    persistence:
+      size: 20Gi
+
+# ─── Redis ────────────────────────────────────────────────
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 1Gi
+    resources:
+      limits:
+        memory: 256Mi
+
+# ─── Temporal ─────────────────────────────────────────────
+temporal:
+  enabled: true
+  address: "temporal:7233"
+
+# ─── LiteLLM ─────────────────────────────────────────────
+litellm:
+  enabled: true
+  masterKey: sk-hydra-dev-2026
+
+# ─── Ingress ─────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: hydra.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: api
+          port: 8090
+        - path: /
+          pathType: Prefix
+          service: dashboard
+          port: 3000
+  tls: []
+    # - secretName: hydra-tls
+    #   hosts:
+    #     - hydra.local
+
+# ─── Secrets ─────────────────────────────────────────────
+secrets:
+  databaseUrl: "postgresql://hydra:hydra_dev_2026@postgresql:5432/hydra"
+  jwtSecret: "hydra-jwt-secret-dev-2026"
+  litellmMasterKey: "sk-hydra-dev-2026"
+
+# ─── Integration Secrets (optional) ──────────────────────
+integrations:
+  slack:
+    webhookUrl: ""
+  jira:
+    url: ""
+    email: ""
+    apiToken: ""
+  teams:
+    webhookUrl: ""
+  email:
+    smtpHost: ""
+    smtpPort: "587"
+    smtpUser: ""
+    smtpPassword: ""
+  servicenow:
+    instance: ""
+    user: ""
+    password: ""

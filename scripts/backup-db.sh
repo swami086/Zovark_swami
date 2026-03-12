@@ -1,0 +1,106 @@
+#!/bin/sh
+# ============================================================
+# HYDRA Database Backup Script
+# Dumps PostgreSQL, compresses, uploads to MinIO
+# Retention: 7 daily + 4 weekly backups
+# Usage: ./scripts/backup-db.sh
+# ============================================================
+set -eu
+
+# Configuration
+POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+POSTGRES_USER="${POSTGRES_USER:-hydra}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-hydra_dev_2026}"
+POSTGRES_DB="${POSTGRES_DB:-hydra}"
+MINIO_ALIAS="${MINIO_ALIAS:-hydra}"
+MINIO_ENDPOINT="${MINIO_ENDPOINT:-http://localhost:9000}"
+MINIO_BUCKET="${MINIO_BUCKET:-hydra-backups}"
+MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-hydra}"
+MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-hydra_dev_2026}"
+BACKUP_DIR="${BACKUP_DIR:-/tmp/hydra-backups}"
+DAILY_RETENTION=7
+WEEKLY_RETENTION=4
+
+# Timestamp
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+DAY_OF_WEEK=$(date +%u)
+DAILY_FILE="hydra_daily_${TIMESTAMP}.sql.gz"
+WEEKLY_FILE="hydra_weekly_${TIMESTAMP}.sql.gz"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# Create backup directory
+mkdir -p "${BACKUP_DIR}"
+
+# Configure MinIO client (mc)
+if command -v mc >/dev/null 2>&1; then
+    mc alias set "${MINIO_ALIAS}" "${MINIO_ENDPOINT}" "${MINIO_ACCESS_KEY}" "${MINIO_SECRET_KEY}" 2>/dev/null || true
+    mc mb --ignore-existing "${MINIO_ALIAS}/${MINIO_BUCKET}" 2>/dev/null || true
+else
+    log "WARNING: mc (MinIO client) not found — backup will be stored locally only"
+fi
+
+# ─── DUMP DATABASE ──────────────────────────────────────
+log "Starting PostgreSQL backup of '${POSTGRES_DB}'..."
+
+export PGPASSWORD="${POSTGRES_PASSWORD}"
+BACKUP_PATH="${BACKUP_DIR}/${DAILY_FILE}"
+
+pg_dump \
+    -h "${POSTGRES_HOST}" \
+    -p "${POSTGRES_PORT}" \
+    -U "${POSTGRES_USER}" \
+    -d "${POSTGRES_DB}" \
+    --format=plain \
+    --no-owner \
+    --no-acl \
+    --verbose 2>/dev/null | gzip > "${BACKUP_PATH}"
+
+BACKUP_SIZE=$(ls -lh "${BACKUP_PATH}" | awk '{print $5}')
+log "Backup created: ${BACKUP_PATH} (${BACKUP_SIZE})"
+
+# ─── UPLOAD TO MINIO ───────────────────────────────────
+if command -v mc >/dev/null 2>&1; then
+    # Upload daily backup
+    log "Uploading daily backup to MinIO..."
+    mc cp "${BACKUP_PATH}" "${MINIO_ALIAS}/${MINIO_BUCKET}/daily/${DAILY_FILE}"
+
+    # On Sunday (day 7), also save a weekly backup
+    if [ "${DAY_OF_WEEK}" = "7" ]; then
+        log "Sunday — creating weekly backup..."
+        mc cp "${BACKUP_PATH}" "${MINIO_ALIAS}/${MINIO_BUCKET}/weekly/${WEEKLY_FILE}"
+    fi
+
+    # ─── RETENTION CLEANUP ──────────────────────────────
+    log "Enforcing retention policy..."
+
+    # Clean daily backups (keep last N)
+    DAILY_COUNT=$(mc ls "${MINIO_ALIAS}/${MINIO_BUCKET}/daily/" 2>/dev/null | wc -l)
+    if [ "${DAILY_COUNT}" -gt "${DAILY_RETENTION}" ]; then
+        DELETE_COUNT=$((DAILY_COUNT - DAILY_RETENTION))
+        log "Removing ${DELETE_COUNT} old daily backups..."
+        mc ls "${MINIO_ALIAS}/${MINIO_BUCKET}/daily/" 2>/dev/null | head -n "${DELETE_COUNT}" | awk '{print $NF}' | while read -r file; do
+            mc rm "${MINIO_ALIAS}/${MINIO_BUCKET}/daily/${file}" 2>/dev/null || true
+        done
+    fi
+
+    # Clean weekly backups (keep last N)
+    WEEKLY_COUNT=$(mc ls "${MINIO_ALIAS}/${MINIO_BUCKET}/weekly/" 2>/dev/null | wc -l)
+    if [ "${WEEKLY_COUNT}" -gt "${WEEKLY_RETENTION}" ]; then
+        DELETE_COUNT=$((WEEKLY_COUNT - WEEKLY_RETENTION))
+        log "Removing ${DELETE_COUNT} old weekly backups..."
+        mc ls "${MINIO_ALIAS}/${MINIO_BUCKET}/weekly/" 2>/dev/null | head -n "${DELETE_COUNT}" | awk '{print $NF}' | while read -r file; do
+            mc rm "${MINIO_ALIAS}/${MINIO_BUCKET}/weekly/${file}" 2>/dev/null || true
+        done
+    fi
+
+    log "Retention enforced: ${DAILY_RETENTION} daily, ${WEEKLY_RETENTION} weekly"
+fi
+
+# Clean local temp file
+rm -f "${BACKUP_PATH}"
+
+log "Backup complete: ${DAILY_FILE}"
