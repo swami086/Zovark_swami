@@ -1110,3 +1110,18 @@ CREATE TABLE IF NOT EXISTS investigation_cache (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cache_key ON investigation_cache(cache_key);
 CREATE INDEX IF NOT EXISTS idx_cache_expires ON investigation_cache(expires_at);
+
+-- ============================================================
+-- FAILURE CONTEXT (Sprint 8 — Migration 020)
+-- ============================================================
+
+-- blocked_credentials status already included in agent_tasks CHECK above
+-- Failure mode audit event types already included in audit_events CHECK above
+-- Partial indexes for failure mode queries
+CREATE INDEX IF NOT EXISTS idx_audit_events_failure_modes
+    ON audit_events (event_type, created_at DESC)
+    WHERE event_type IN ('model_timeout', 'telemetry_access_denied', 'schema_validation_error', 'postgres_lock');
+
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_blocked
+    ON agent_tasks (tenant_id, status)
+    WHERE status = 'blocked_credentials';

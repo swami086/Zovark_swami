@@ -228,25 +228,36 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 		"siem_event":     normalized,
 	}
 
-	_, err := dbPool.Exec(ctx,
+	// Insert task with 5s lock timeout
+	dbCtx, dbCancel := dbContextWithTimeout(ctx)
+	_, err := dbPool.Exec(dbCtx,
 		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
 		taskID, tenantID, taskType, input, "pending", time.Now(),
 	)
+	dbCancel()
 	if err != nil {
+		if isLockTimeout(err) {
+			HandlePostgresLock(nil, tenantID, taskID, severity, "INSERT", "agent_tasks", 5000)
+		}
 		return "", fmt.Errorf("failed to create task: %w", err)
 	}
 
-	// Start Temporal workflow
+	// Start Temporal workflow (with timeout detection)
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
 		TaskQueue: "hydra-tasks",
 	}
 
+	wfStart := time.Now()
 	_, err = tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow", map[string]interface{}{
 		"task_type": taskType,
 		"input":     input,
 	})
+	wfLatency := int(time.Since(wfStart).Milliseconds())
 	if err != nil {
+		if isTemporalTimeout(err) {
+			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/litellm", "hydra-fast")
+		}
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		return "", fmt.Errorf("failed to start workflow: %w", err)
 	}
@@ -489,16 +500,23 @@ func investigateAlertHandler(c *gin.Context) {
 	alertID := c.Param("id")
 	tenantID := c.MustGet("tenant_id").(string)
 
-	// Get the alert
+	// Get the alert (with 5s lock timeout)
 	var alertName, severity, status string
 	var sourceIP, destIP, ruleName *string
 	var normEvent map[string]interface{}
 
-	err := dbPool.QueryRow(c.Request.Context(),
+	dbCtx, dbCancel := dbContextWithTimeout(c.Request.Context())
+	defer dbCancel()
+
+	err := dbPool.QueryRow(dbCtx,
 		"SELECT alert_name, severity, source_ip, dest_ip, rule_name, normalized_event, status FROM siem_alerts WHERE id = $1 AND tenant_id = $2",
 		alertID, tenantID,
 	).Scan(&alertName, &severity, &sourceIP, &destIP, &ruleName, &normEvent, &status)
 	if err != nil {
+		if isLockTimeout(err) {
+			HandlePostgresLock(c, tenantID, alertID, "unknown", "SELECT", "siem_alerts", 5000)
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
 		return
 	}
@@ -506,6 +524,42 @@ func investigateAlertHandler(c *gin.Context) {
 	if status != "new" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "alert already being investigated or resolved"})
 		return
+	}
+
+	// Validate SIEM source credentials before starting investigation
+	var logSourceID string
+	var connConfig map[string]interface{}
+	srcErr := dbPool.QueryRow(c.Request.Context(),
+		`SELECT sa.log_source_id, ls.connection_config
+		 FROM siem_alerts sa JOIN log_sources ls ON sa.log_source_id = ls.id
+		 WHERE sa.id = $1`, alertID,
+	).Scan(&logSourceID, &connConfig)
+	if srcErr == nil {
+		if tokenExpiry, ok := connConfig["token_expiry"].(string); ok && tokenExpiry != "" {
+			expTime, parseErr := time.Parse(time.RFC3339, tokenExpiry)
+			if parseErr == nil && expTime.Before(time.Now()) {
+				priority := severity
+				if priority == "" {
+					priority = "medium"
+				}
+				// Credentials expired — block the investigation
+				taskID := uuid.New().String()
+				_, _ = dbPool.Exec(c.Request.Context(),
+					"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+					taskID, tenantID, "incident_response", normEvent, StatusBlockedCredentials, time.Now(),
+				)
+				siemEndpoint := fmt.Sprintf("log_source:%s", logSourceID)
+				HandleTelemetryAccessDenied(c.Request.Context(), tenantID, taskID, priority,
+					siemEndpoint, 401, tokenExpiry)
+				c.JSON(http.StatusUnprocessableEntity, gin.H{
+					"error":        "SIEM credentials expired. Credential rotation webhook dispatched.",
+					"failure_mode": FailureTelemetryDenied,
+					"task_id":      taskID,
+					"status":       StatusBlockedCredentials,
+				})
+				return
+			}
+		}
 	}
 
 	taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, normEvent)

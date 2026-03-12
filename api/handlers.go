@@ -171,12 +171,20 @@ func createTaskHandler(c *gin.Context) {
 		tenantID, fingerprint, req.TaskType, rawSample,
 	)
 
-	// 3. Insert into agent_tasks
-	_, err := dbPool.Exec(c.Request.Context(), 
+	// 3. Insert into agent_tasks (with 5s lock timeout)
+	priority := extractPriority(req.Input)
+	dbCtx, dbCancel := dbContextWithTimeout(c.Request.Context())
+	defer dbCancel()
+
+	_, err := dbPool.Exec(dbCtx,
 		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
 		taskID, tenantID, req.TaskType, req.Input, "pending", time.Now(),
 	)
 	if err != nil {
+		if isLockTimeout(err) {
+			HandlePostgresLock(c, tenantID, taskID, priority, "INSERT", "agent_tasks", 5000)
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create task record"})
 		return
 	}
@@ -190,15 +198,22 @@ func createTaskHandler(c *gin.Context) {
 		log.Printf("Failed to insert audit log for task_created: %v", errAudit)
 	}
 
-	// 5. Start Temporal Workflow
+	// 5. Start Temporal Workflow (with timeout detection for model failover)
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
 		TaskQueue: "hydra-tasks",
 	}
 
+	wfStart := time.Now()
 	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow", req)
+	wfLatency := int(time.Since(wfStart).Milliseconds())
+
 	if err != nil {
-		// Update status to failed
+		if isTemporalTimeout(err) {
+			fallbackModel := HandleModelTimeout(c.Request.Context(), tenantID, taskID, priority,
+				wfLatency, "temporal/litellm", "hydra-fast")
+			log.Printf("Model timeout on task %s, fallback to %s", taskID, fallbackModel)
+		}
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start workflow"})
 		return
