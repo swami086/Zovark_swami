@@ -58,12 +58,12 @@ func healthCheckHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":         "ok",
-		"version":        "1.0.0",
-		"uptime_seconds": int(time.Since(startTime).Seconds()),
-		"mode":           deploymentMode,
-		"llm_provider":      llmProvider,
-		"llm_model":         llmModel,
+		"status":             "ok",
+		"version":            "1.0.0",
+		"uptime_seconds":     int(time.Since(startTime).Seconds()),
+		"mode":               deploymentMode,
+		"llm_provider":       llmProvider,
+		"llm_model":          llmModel,
 		"embedding_provider": "HuggingFace TEI (Local)",
 		"database":           "PostgreSQL + pgvector",
 		"services": gin.H{
@@ -106,7 +106,7 @@ func createTaskHandler(c *gin.Context) {
 				req.Input["prompt"] = playbookSteps[0]
 			}
 		}
-		
+
 		req.TaskType = playbookTaskType
 		if playbookSystemPrompt != nil {
 			req.Input["playbook_system_prompt_override"] = *playbookSystemPrompt
@@ -238,7 +238,7 @@ func getTaskHandler(c *gin.Context) {
 
 	tenantID := c.MustGet("tenant_id").(string)
 
-	err := dbPool.QueryRow(c.Request.Context(), 
+	err := dbPool.QueryRow(c.Request.Context(),
 		"SELECT status, task_type, input, output, created_at, completed_at, tokens_used_input, tokens_used_output, execution_ms, severity FROM agent_tasks WHERE id = $1 AND tenant_id = $2", taskID, tenantID,
 	).Scan(&status, &taskType, &input, &output, &createdAt, &completedAt, &tokensInput, &tokensOutput, &executionMs, &severity)
 
@@ -264,23 +264,23 @@ func getTaskHandler(c *gin.Context) {
 	).Scan(&pendingApprovalID, &approvalStatus, &approvalRiskLevel, &approvalReason)
 
 	c.JSON(http.StatusOK, gin.H{
-		"task_id":              taskID,
-		"status":               status,
-		"task_type":            taskType,
-		"input":                input,
-		"output":               output,
-		"created_at":           createdAt,
-		"completed_at":         completedAt,
-		"tokens_used_input":    tokensInput,
-		"tokens_used_output":   tokensOutput,
-		"execution_ms":         executionMs,
-		"severity":             severity,
-		"step_count":           stepCount,
-		"current_step":         currentStep,
-		"approval_status":      approvalStatus,
-		"pending_approval_id":  pendingApprovalID,
-		"approval_risk_level":  approvalRiskLevel,
-		"approval_reason":      approvalReason,
+		"task_id":             taskID,
+		"status":              status,
+		"task_type":           taskType,
+		"input":               input,
+		"output":              output,
+		"created_at":          createdAt,
+		"completed_at":        completedAt,
+		"tokens_used_input":   tokensInput,
+		"tokens_used_output":  tokensOutput,
+		"execution_ms":        executionMs,
+		"severity":            severity,
+		"step_count":          stepCount,
+		"current_step":        currentStep,
+		"approval_status":     approvalStatus,
+		"pending_approval_id": pendingApprovalID,
+		"approval_risk_level": approvalRiskLevel,
+		"approval_reason":     approvalReason,
 	})
 }
 
@@ -532,18 +532,18 @@ func getStatsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total_tasks":        totalTasks,
-		"completed":          completed,
-		"failed":             failed,
-		"pending":            pending,
-		"executing":          executing,
-		"total_tokens_input":  inTokens,
-		"total_tokens_output": outTokens,
-		"type_distribution":   typeDistribution,
-		"siem_alerts_total":       siemTotal,
-		"siem_alerts_new":         siemNew,
+		"total_tasks":               totalTasks,
+		"completed":                 completed,
+		"failed":                    failed,
+		"pending":                   pending,
+		"executing":                 executing,
+		"total_tokens_input":        inTokens,
+		"total_tokens_output":       outTokens,
+		"type_distribution":         typeDistribution,
+		"siem_alerts_total":         siemTotal,
+		"siem_alerts_new":           siemNew,
 		"siem_alerts_investigating": siemInvestigating,
-		"recent_activity":    recentActivity,
+		"recent_activity":           recentActivity,
 	})
 }
 
@@ -703,27 +703,27 @@ func getTaskStepsHandler(c *gin.Context) {
 			continue
 		}
 
-		// Handle parameter deserialization safely 
+		// Handle parameter deserialization safely
 		var parsedParams map[string]interface{}
 		if parametersUsed != nil {
 			_ = json.Unmarshal([]byte(*parametersUsed), &parsedParams)
 		}
 
 		step := map[string]interface{}{
-			"id":                stepID,
-			"step_number":       stepNumber,
-			"step_type":         stepType,
-			"prompt":            prompt,
-			"generated_code":    generatedCode,
-			"output":            output,
-			"status":            status,
-			"tokens_used_input": tokensIn,
+			"id":                 stepID,
+			"step_number":        stepNumber,
+			"step_type":          stepType,
+			"prompt":             prompt,
+			"generated_code":     generatedCode,
+			"output":             output,
+			"status":             status,
+			"tokens_used_input":  tokensIn,
 			"tokens_used_output": tokensOut,
-			"execution_ms":      executionMs,
-			"created_at":        createdAt,
-			"completed_at":      completedAt,
-			"execution_mode":    executionMode,
-			"parameters_used":   parsedParams,
+			"execution_ms":       executionMs,
+			"created_at":         createdAt,
+			"completed_at":       completedAt,
+			"execution_mode":     executionMode,
+			"parameters_used":    parsedParams,
 		}
 		steps = append(steps, step)
 	}
@@ -879,7 +879,7 @@ func getMeHandler(c *gin.Context) {
 }
 
 func listSkillsHandler(c *gin.Context) {
-	rows, err := dbPool.Query(c.Request.Context(), 
+	rows, err := dbPool.Query(c.Request.Context(),
 		"SELECT id, skill_name, skill_slug, threat_types, mitre_tactics, mitre_techniques, severity_default, investigation_methodology, detection_patterns, example_prompt, times_used, version, is_community, (code_template IS NOT NULL) as has_template FROM agent_skills WHERE is_active = true ORDER BY times_used DESC",
 	)
 	if err != nil {
@@ -958,14 +958,14 @@ func getNotificationsHandler(c *gin.Context) {
 			var action, resID string
 			var ts time.Time
 			auditRows.Scan(&action, &resID, &ts)
-			
+
 			var message string
 			if action == "task_completed" {
 				message = fmt.Sprintf("Investigation completed: %s", resID[:8])
 			} else if action == "approval_requested" {
 				message = fmt.Sprintf("Approval required for investigation %s", resID[:8])
 			}
-			
+
 			notifications = append(notifications, map[string]interface{}{
 				"id":        uuid.New().String(),
 				"type":      action,
@@ -990,7 +990,7 @@ func getNotificationsHandler(c *gin.Context) {
 			var altID, title string
 			var ts time.Time
 			alertRows.Scan(&altID, &title, &ts)
-			
+
 			notifications = append(notifications, map[string]interface{}{
 				"id":        altID,
 				"type":      "siem_alert",
@@ -1019,24 +1019,24 @@ func getTaskTimelineHandler(c *gin.Context) {
 
 	// 1. Fetch task creation and completion info
 	var createdAt, completedAt *time.Time
-	err := dbPool.QueryRow(c.Request.Context(), 
+	err := dbPool.QueryRow(c.Request.Context(),
 		"SELECT created_at, completed_at FROM agent_tasks WHERE id = $1 AND tenant_id = $2", taskID, tenantID,
 	).Scan(&createdAt, &completedAt)
 	if err == nil && createdAt != nil {
 		timeline = append(timeline, map[string]interface{}{
-			"id": "task-created",
-			"timestamp": *createdAt,
-			"type": "task_created",
-			"icon": "created",
+			"id":          "task-created",
+			"timestamp":   *createdAt,
+			"type":        "task_created",
+			"icon":        "created",
 			"description": "Investigation created",
 		})
 	}
 	if err == nil && completedAt != nil {
 		timeline = append(timeline, map[string]interface{}{
-			"id": "task-completed",
-			"timestamp": *completedAt,
-			"type": "task_completed",
-			"icon": "check",
+			"id":          "task-completed",
+			"timestamp":   *completedAt,
+			"type":        "task_completed",
+			"icon":        "check",
 			"description": "Investigation completed",
 		})
 	}
@@ -1055,36 +1055,36 @@ func getTaskTimelineHandler(c *gin.Context) {
 			var execMs *int
 			var ts time.Time
 			stepRows.Scan(&id, &stepNum, &stepType, &prompt, &status, &execMs, &ts)
-			
+
 			desc := fmt.Sprintf("Step %d started: %s", stepNum, stepType)
 			if prompt != nil && *prompt != "" {
 				desc = fmt.Sprintf("Step %d started: %s", stepNum, *prompt)
 			}
-			
+
 			timeline = append(timeline, map[string]interface{}{
-				"id": fmt.Sprintf("step-start-%s", id),
-				"timestamp": ts,
-				"type": "step_started",
-				"icon": "play",
+				"id":          fmt.Sprintf("step-start-%s", id),
+				"timestamp":   ts,
+				"type":        "step_started",
+				"icon":        "play",
 				"description": desc,
 			})
 
 			if status == "completed" && execMs != nil {
 				endTs := ts.Add(time.Duration(*execMs) * time.Millisecond)
 				timeline = append(timeline, map[string]interface{}{
-					"id": fmt.Sprintf("step-end-%s", id),
-					"timestamp": endTs,
-					"type": "step_completed",
-					"icon": "check",
+					"id":          fmt.Sprintf("step-end-%s", id),
+					"timestamp":   endTs,
+					"type":        "step_completed",
+					"icon":        "check",
 					"description": fmt.Sprintf("Step %d completed", stepNum),
 					"duration_ms": *execMs,
 				})
 			} else if status == "failed" {
 				timeline = append(timeline, map[string]interface{}{
-					"id": fmt.Sprintf("step-fail-%s", id),
-					"timestamp": ts,
-					"type": "step_failed",
-					"icon": "error",
+					"id":          fmt.Sprintf("step-fail-%s", id),
+					"timestamp":   ts,
+					"type":        "step_failed",
+					"icon":        "error",
 					"description": fmt.Sprintf("Step %d failed", stepNum),
 				})
 			}
@@ -1103,7 +1103,7 @@ func getTaskTimelineHandler(c *gin.Context) {
 			var details map[string]interface{}
 			var ts time.Time
 			auditRows.Scan(&id, &action, &details, &ts)
-			
+
 			// Only include specific actions in timeline
 			if action == "approval_requested" || action == "approval_approved" || action == "approval_rejected" {
 				desc := "Approval requested"
@@ -1119,10 +1119,10 @@ func getTaskTimelineHandler(c *gin.Context) {
 					desc += fmt.Sprintf(": %s", comment)
 				}
 				timeline = append(timeline, map[string]interface{}{
-					"id": fmt.Sprintf("audit-%s", id),
-					"timestamp": ts,
-					"type": action,
-					"icon": icon,
+					"id":          fmt.Sprintf("audit-%s", id),
+					"timestamp":   ts,
+					"type":        action,
+					"icon":        icon,
 					"description": desc,
 				})
 			} else if action == "skill_retrieved" {
@@ -1131,10 +1131,10 @@ func getTaskTimelineHandler(c *gin.Context) {
 					skillName = sn
 				}
 				timeline = append(timeline, map[string]interface{}{
-					"id": fmt.Sprintf("audit-%s", id),
-					"timestamp": ts,
-					"type": action,
-					"icon": "tool",
+					"id":          fmt.Sprintf("audit-%s", id),
+					"timestamp":   ts,
+					"type":        action,
+					"icon":        "tool",
 					"description": fmt.Sprintf("Retrieved skill: %s", skillName),
 				})
 			}

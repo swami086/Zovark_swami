@@ -223,9 +223,9 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 	taskID := uuid.New().String()
 
 	input := map[string]interface{}{
-		"prompt":         prompt,
-		"siem_alert_id":  alertID,
-		"siem_event":     normalized,
+		"prompt":        prompt,
+		"siem_alert_id": alertID,
+		"siem_event":    normalized,
 	}
 
 	// Insert task with 5s lock timeout

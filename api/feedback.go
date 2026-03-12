@@ -9,11 +9,11 @@ import (
 )
 
 type FeedbackRequest struct {
-	VerdictCorrect   *bool   `json:"verdict_correct"`
-	CorrectedVerdict string  `json:"corrected_verdict"`
-	FalsePositive    bool    `json:"false_positive"`
-	MissedThreat     bool    `json:"missed_threat"`
-	Notes            string  `json:"notes"`
+	VerdictCorrect    *bool    `json:"verdict_correct"`
+	CorrectedVerdict  string   `json:"corrected_verdict"`
+	FalsePositive     bool     `json:"false_positive"`
+	MissedThreat      bool     `json:"missed_threat"`
+	Notes             string   `json:"notes"`
 	AnalystConfidence *float64 `json:"analyst_confidence"`
 }
 
@@ -65,13 +65,13 @@ func getFeedbackStatsHandler(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
 	var stats struct {
-		Total              int     `json:"total"`
-		Correct            int     `json:"correct"`
-		Incorrect          int     `json:"incorrect"`
-		FalsePositives     int     `json:"false_positives"`
-		MissedThreats      int     `json:"missed_threats"`
-		AccuracyRate       float64 `json:"accuracy_rate"`
-		AvgAnalystConf     float64 `json:"avg_analyst_confidence"`
+		Total          int     `json:"total"`
+		Correct        int     `json:"correct"`
+		Incorrect      int     `json:"incorrect"`
+		FalsePositives int     `json:"false_positives"`
+		MissedThreats  int     `json:"missed_threats"`
+		AccuracyRate   float64 `json:"accuracy_rate"`
+		AvgAnalystConf float64 `json:"avg_analyst_confidence"`
 	}
 
 	err := dbPool.QueryRow(context.Background(),

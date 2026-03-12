@@ -43,7 +43,7 @@ func authMiddleware() gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
-		
+
 		token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 			return []byte(appConfig.JWTSecret), nil
 		})

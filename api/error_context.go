@@ -17,11 +17,11 @@ import (
 // ============================================================
 
 const (
-	FailureModelTimeout       = "model_timeout"
-	FailureTelemetryDenied    = "telemetry_access_denied"
-	FailureSchemaValidation   = "schema_validation_error"
-	FailurePostgresLock       = "postgres_lock"
-	StatusBlockedCredentials  = "blocked_credentials"
+	FailureModelTimeout      = "model_timeout"
+	FailureTelemetryDenied   = "telemetry_access_denied"
+	FailureSchemaValidation  = "schema_validation_error"
+	FailurePostgresLock      = "postgres_lock"
+	StatusBlockedCredentials = "blocked_credentials"
 )
 
 // ============================================================
@@ -125,11 +125,11 @@ func HandleTelemetryAccessDenied(ctx context.Context, tenantID, taskID, priority
 
 	// Fire webhook to MSSP for credential rotation via existing delivery engine
 	go DispatchWebhook(tenantID, "credential_rotation_required", map[string]interface{}{
-		"task_id":        taskID,
-		"siem_endpoint":  siemEndpoint,
-		"http_status":    httpStatus,
-		"token_expiry":   tokenExpiry,
-		"message":        "SIEM credentials need rotation. Investigation blocked until resolved.",
+		"task_id":       taskID,
+		"siem_endpoint": siemEndpoint,
+		"http_status":   httpStatus,
+		"token_expiry":  tokenExpiry,
+		"message":       "SIEM credentials need rotation. Investigation blocked until resolved.",
 	})
 }
 

@@ -35,8 +35,8 @@ type CreatePlaybookRequest struct {
 func listPlaybooksHandler(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(string)
 
-	rows, err := dbPool.Query(c.Request.Context(), 
-		"SELECT id, tenant_id, name, description, icon, task_type, is_template, system_prompt_override, steps, created_by, created_at, updated_at FROM playbooks WHERE tenant_id = $1 OR is_template = true ORDER BY is_template DESC, created_at DESC", 
+	rows, err := dbPool.Query(c.Request.Context(),
+		"SELECT id, tenant_id, name, description, icon, task_type, is_template, system_prompt_override, steps, created_by, created_at, updated_at FROM playbooks WHERE tenant_id = $1 OR is_template = true ORDER BY is_template DESC, created_at DESC",
 		tenantID,
 	)
 	if err != nil {
@@ -57,10 +57,10 @@ func listPlaybooksHandler(c *gin.Context) {
 		json.Unmarshal(stepsJSON, &p.Steps)
 		playbooks = append(playbooks, p)
 	}
-    
-    if playbooks == nil {
-        playbooks = []Playbook{}
-    }
+
+	if playbooks == nil {
+		playbooks = []Playbook{}
+	}
 
 	c.JSON(http.StatusOK, playbooks)
 }
@@ -83,13 +83,13 @@ func createPlaybookHandler(c *gin.Context) {
 
 	var p Playbook
 	var returnedStepsJSON []byte
-	err := dbPool.QueryRow(c.Request.Context(), 
+	err := dbPool.QueryRow(c.Request.Context(),
 		`INSERT INTO playbooks (tenant_id, name, description, icon, task_type, is_template, system_prompt_override, steps, created_by) 
 		 VALUES ($1, $2, $3, $4, $5, false, $6, $7, $8) 
 		 RETURNING id, tenant_id, name, description, icon, task_type, is_template, system_prompt_override, steps, created_by, created_at, updated_at`,
 		tenantID, req.Name, req.Description, req.Icon, req.TaskType, req.SystemPromptOverride, stepsJSON, userID,
 	).Scan(&p.ID, &p.TenantID, &p.Name, &p.Description, &p.Icon, &p.TaskType, &p.IsTemplate, &p.SystemPromptOverride, &returnedStepsJSON, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt)
-	
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create playbook: " + err.Error()})
 		return
@@ -114,7 +114,7 @@ func updatePlaybookHandler(c *gin.Context) {
 		req.Icon = "🔍"
 	}
 
-	result, err := dbPool.Exec(c.Request.Context(), 
+	result, err := dbPool.Exec(c.Request.Context(),
 		`UPDATE playbooks SET name = $1, description = $2, icon = $3, task_type = $4, system_prompt_override = $5, steps = $6, updated_at = NOW() 
 		 WHERE id = $7 AND tenant_id = $8 AND is_template = false`,
 		req.Name, req.Description, req.Icon, req.TaskType, req.SystemPromptOverride, stepsJSON, id, tenantID,
@@ -124,7 +124,7 @@ func updatePlaybookHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update playbook"})
 		return
 	}
-	
+
 	if result.RowsAffected() == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "playbook not found or cannot be edited"})
 		return
@@ -137,7 +137,7 @@ func deletePlaybookHandler(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.MustGet("tenant_id").(string)
 
-	result, err := dbPool.Exec(c.Request.Context(), 
+	result, err := dbPool.Exec(c.Request.Context(),
 		"DELETE FROM playbooks WHERE id = $1 AND tenant_id = $2 AND is_template = false",
 		id, tenantID,
 	)
@@ -146,7 +146,7 @@ func deletePlaybookHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete playbook"})
 		return
 	}
-	
+
 	if result.RowsAffected() == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "playbook not found or cannot be deleted"})
 		return
