@@ -9,9 +9,7 @@ import os
 import json
 import httpx
 import psycopg2
-from psycopg2.extras import RealDictCursor
 from temporalio import activity
-from datetime import datetime
 
 
 def _get_db():
@@ -79,7 +77,6 @@ async def ingest_threat_feed(data: dict) -> dict:
                         continue
 
                     stix_id = obj.get("id", "")
-                    name = obj.get("name", entity_value)
                     description = obj.get("description", "")
                     created = obj.get("created", "")
                     modified = obj.get("modified", "")

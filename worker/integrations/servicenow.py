@@ -15,18 +15,18 @@ SNOW_ASSIGNMENT_GROUP = os.environ.get("SNOW_ASSIGNMENT_GROUP", "Security Operat
 
 # ServiceNow impact/urgency: 1=High, 2=Medium, 3=Low
 SEVERITY_MAP = {
-    "critical": {"impact": "1", "urgency": "1"},  # P1
-    "high":     {"impact": "1", "urgency": "2"},   # P2
-    "medium":   {"impact": "2", "urgency": "2"},   # P3
-    "low":      {"impact": "2", "urgency": "3"},   # P4
-    "info":     {"impact": "3", "urgency": "3"},   # P5
+    "critical": {"impact": "1", "urgency": "1"},
+    "high": {"impact": "1", "urgency": "2"},
+    "medium": {"impact": "2", "urgency": "2"},
+    "low": {"impact": "2", "urgency": "3"},
+    "info": {"impact": "3", "urgency": "3"},
 }
 
 
 def _build_work_notes(data: dict) -> str:
     """Build ServiceNow work notes from investigation data."""
     parts = []
-    parts.append(f"=== HYDRA Investigation Report ===")
+    parts.append("=== HYDRA Investigation Report ===")
     parts.append(f"Investigation ID: {data.get('investigation_id', 'N/A')}")
     parts.append(f"Verdict: {data.get('verdict', 'unknown').upper()}")
     parts.append(f"Severity: {data.get('severity', 'medium').upper()}")
@@ -45,7 +45,7 @@ def _build_work_notes(data: dict) -> str:
 
     mitre = data.get("mitre_techniques", [])
     if mitre:
-        parts.append(f"MITRE ATT&CK Techniques:")
+        parts.append("MITRE ATT&CK Techniques:")
         for t in mitre[:10]:
             parts.append(f"  - {t}")
         parts.append("")

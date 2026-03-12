@@ -4,7 +4,6 @@ Creates Jira issues from investigation results via REST API v3.
 Maps investigation verdict/severity to Jira priority.
 """
 import os
-import json
 import base64
 import httpx
 from temporalio import activity

@@ -87,7 +87,7 @@ def _export_markdown(data: dict) -> str:
     timeline = data.get("timeline", [])
 
     lines = [
-        f"# HYDRA Investigation Report",
+        "# HYDRA Investigation Report",
         "",
         f"**Investigation ID:** `{investigation_id}`",
         f"**Verdict:** {verdict}",
@@ -185,7 +185,7 @@ def _export_pdf(data: dict) -> bytes:
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
-        from reportlab.lib.colors import HexColor, black, grey
+        from reportlab.lib.colors import HexColor, grey
 
         buf = io.BytesIO()
         doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=0.75 * inch, bottomMargin=0.75 * inch)

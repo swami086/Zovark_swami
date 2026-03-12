@@ -5,7 +5,6 @@ Fires webhooks for SLA breaches and records events to sla_events table.
 """
 
 import os
-import json
 import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor

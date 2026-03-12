@@ -4,10 +4,8 @@ Posts investigation results to Slack via incoming webhooks.
 Supports: investigation_complete, approval_needed, sla_breach events.
 """
 import os
-import json
 import httpx
 from temporalio import activity
-from datetime import datetime, timezone
 
 
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
@@ -24,10 +22,8 @@ SEVERITY_COLORS = {
 def _build_investigation_complete_blocks(data: dict) -> list:
     """Build Slack blocks for investigation_complete event."""
     severity = data.get("severity", "medium").lower()
-    color = SEVERITY_COLORS.get(severity, "#6b7280")
     verdict = data.get("verdict", "unknown")
     investigation_id = data.get("investigation_id", "N/A")
-    title = data.get("title", "Investigation Complete")
     summary = data.get("summary", "No summary available.")
     entities = data.get("entities", [])
     mitre = data.get("mitre_techniques", [])

@@ -107,8 +107,6 @@ def _group_by_field(alerts, field_name, window_minutes):
 
     Returns: {field_value: [alert_id, ...]}
     """
-    from datetime import timedelta
-
     field_map = {}  # field_value -> [(alert_id, created_at)]
 
     for alert in alerts:

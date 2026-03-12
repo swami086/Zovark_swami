@@ -5,13 +5,12 @@ and regression detection (new model vs baseline).
 """
 
 import os
-import json
-import re
+import math
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from temporalio import activity
 
-from finetuning.evaluator import evaluate_model, score_output
+from finetuning.evaluator import evaluate_model
 
 
 def _get_db():
@@ -69,7 +68,6 @@ def compute_bleu(reference, hypothesis, max_n=4):
         return 0.0
 
     # Geometric mean of precisions (with smoothing for zero)
-    import math
     log_avg = 0.0
     weight = 1.0 / len(precisions)
     for p in precisions:
@@ -83,7 +81,7 @@ def compute_bleu(reference, hypothesis, max_n=4):
 
 def _get_ngrams(tokens, n):
     """Extract n-grams from token list."""
-    return [tuple(tokens[i:i+n]) for i in range(len(tokens) - n + 1)]
+    return [tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)]
 
 
 @activity.defn

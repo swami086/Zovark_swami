@@ -7,7 +7,6 @@ Uses existing sandbox infrastructure — NOT a new Docker implementation.
 """
 import asyncio
 import json
-import subprocess
 import tempfile
 import os
 import logging
