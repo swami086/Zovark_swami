@@ -200,8 +200,8 @@ func authenticateAPIKey(c *gin.Context) bool {
 
 	// Set context values for downstream handlers
 	c.Set("tenant_id", tenantID)
-	c.Set("user_id", keyID)          // API key ID as user_id
-	c.Set("user_role", "api_key")    // Special role for API keys
+	c.Set("user_id", keyID)       // API key ID as user_id
+	c.Set("user_role", "api_key") // Special role for API keys
 	c.Set("api_key_id", keyID)
 	c.Set("api_key_scopes", scopes)
 

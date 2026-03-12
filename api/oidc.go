@@ -143,11 +143,11 @@ func ssoLoginHandler(c *gin.Context) {
 	// Build authorization URL
 	params := url.Values{
 		"client_id":             {oidcConfig.ClientID},
-		"redirect_uri":         {oidcConfig.RedirectURI},
-		"response_type":        {"code"},
-		"scope":                {"openid email profile"},
-		"state":                {state},
-		"code_challenge":       {challenge},
+		"redirect_uri":          {oidcConfig.RedirectURI},
+		"response_type":         {"code"},
+		"scope":                 {"openid email profile"},
+		"state":                 {state},
+		"code_challenge":        {challenge},
 		"code_challenge_method": {"S256"},
 	}
 

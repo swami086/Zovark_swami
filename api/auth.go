@@ -109,7 +109,7 @@ func loginHandler(c *gin.Context) {
 	}
 	if !totpValid {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":        "TOTP code required",
+			"error":         "TOTP code required",
 			"totp_required": true,
 		})
 		return

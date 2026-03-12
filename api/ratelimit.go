@@ -110,8 +110,8 @@ func slidingWindowIncrement(tenantID, endpoint string, windowSeconds, limit int)
 
 // getTenantRateLimits reads per-tenant rate limit overrides from settings JSONB.
 func getTenantRateLimits(ctx context.Context, tenantID string) (perMinute int, perHour int) {
-	perMinute = 100  // Default: 100 req/min
-	perHour = 1000   // Default: 1000 req/hour
+	perMinute = 100 // Default: 100 req/min
+	perHour = 1000  // Default: 1000 req/hour
 
 	var settings map[string]interface{}
 	err := dbPool.QueryRow(ctx,

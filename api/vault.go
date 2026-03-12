@@ -16,13 +16,13 @@ import (
 
 // VaultClient provides secret reading from HashiCorp Vault.
 type VaultClient struct {
-	addr      string
-	token     string
-	client    *http.Client
-	cache     map[string]string
-	cacheMu   sync.RWMutex
-	enabled   bool
-	stopChan  chan struct{}
+	addr     string
+	token    string
+	client   *http.Client
+	cache    map[string]string
+	cacheMu  sync.RWMutex
+	enabled  bool
+	stopChan chan struct{}
 }
 
 var vaultClient *VaultClient
@@ -82,10 +82,10 @@ func (vc *VaultClient) periodicRefresh() {
 // refreshSecrets reads all HYDRA secrets from Vault and updates the cache.
 func (vc *VaultClient) refreshSecrets() {
 	secretPaths := map[string]string{
-		"database_url":      "secret/data/hydra/database",
-		"jwt_secret":        "secret/data/hydra/jwt",
+		"database_url":       "secret/data/hydra/database",
+		"jwt_secret":         "secret/data/hydra/jwt",
 		"litellm_master_key": "secret/data/hydra/litellm",
-		"redis_url":         "secret/data/hydra/redis",
+		"redis_url":          "secret/data/hydra/redis",
 	}
 
 	for key, path := range secretPaths {
