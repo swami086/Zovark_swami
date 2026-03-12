@@ -124,13 +124,22 @@ export default function Playbooks() {
                     <p className="text-slate-400 mt-1">Reusable investigation templates and automated response workflows</p>
                 </div>
                 {user?.role === 'admin' && (
-                    <button
-                        onClick={() => setShowForm(true)}
-                        className="flex items-center px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors font-medium shadow-lg shadow-cyan-900/20"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Playbook
-                    </button>
+                    <div className="flex items-center space-x-3">
+                        <Link
+                            to="/playbooks/builder"
+                            className="flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/50 rounded-lg transition-colors font-medium"
+                        >
+                            <GitMerge className="w-4 h-4 mr-2" />
+                            Visual Builder
+                        </Link>
+                        <button
+                            onClick={() => setShowForm(true)}
+                            className="flex items-center px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors font-medium shadow-lg shadow-cyan-900/20"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Playbook
+                        </button>
+                    </div>
                 )}
             </div>
 

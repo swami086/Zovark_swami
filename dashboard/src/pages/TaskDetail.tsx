@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Loader2, ArrowLeft, Terminal, FileCode2, Clock3, Cpu, DollarSign, ListFilter, CheckCircle, Copy, Check, ShieldAlert, Crosshair, AlertTriangle, Info, ListChecks, Target, CheckSquare, ChevronDown, ChevronUp, ChevronRight, Circle, Zap, ShieldCheck, XCircle, MessageSquare, Share2, FileJson } from 'lucide-react';
 import { Skeleton } from '../components/Skeleton';
+import MitreTimeline from '../components/MitreTimeline';
 
 const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
@@ -867,6 +868,10 @@ ${recommendations.length ? '<h3>Recommendations</h3><ul>' + recommendations.slic
                                 })()}
                             </div>
                         </div>
+                    )}
+                    {/* MITRE ATT&CK Timeline */}
+                    {steps.length > 0 && (
+                        <MitreTimeline steps={steps} taskType={task.task_type} />
                     )}
                 </div>
 
