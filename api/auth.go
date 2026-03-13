@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -117,26 +118,59 @@ func loginHandler(c *gin.Context) {
 
 	recordSuccessfulLogin(req.Email)
 
-	claims := CustomClaims{
+	// Access token: 15 minutes
+	accessClaims := CustomClaims{
 		TenantID: user.TenantID,
 		UserID:   user.ID,
 		Email:    user.Email,
 		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   "access",
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(appConfig.JWTSecret))
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessTokenString, err := accessToken.SignedString([]byte(appConfig.JWTSecret))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
 
+	// Refresh token: 7 days
+	refreshClaims := CustomClaims{
+		TenantID: user.TenantID,
+		UserID:   user.ID,
+		Email:    user.Email,
+		Role:     user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   "refresh",
+		},
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshTokenString, err := refreshToken.SignedString([]byte(appConfig.JWTSecret))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate refresh token"})
+		return
+	}
+
+	// Set refresh token as httpOnly cookie
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshTokenString,
+		HttpOnly: true,
+		Secure:   c.Request.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   7 * 24 * 60 * 60,
+		Path:     "/",
+	})
+
 	c.JSON(http.StatusOK, gin.H{
-		"token": tokenString,
+		"token": accessTokenString,
 		"user": map[string]interface{}{
 			"id":        user.ID,
 			"email":     user.Email,
@@ -144,4 +178,76 @@ func loginHandler(c *gin.Context) {
 			"tenant_id": user.TenantID,
 		},
 	})
+}
+
+// refreshHandler issues a new access token from a valid refresh token cookie.
+// POST /api/v1/auth/refresh
+func refreshHandler(c *gin.Context) {
+	cookie, err := c.Cookie("refresh_token")
+	if err != nil || cookie == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "no refresh token"})
+		return
+	}
+
+	token, err := jwt.ParseWithClaims(cookie, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(appConfig.JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
+		return
+	}
+
+	claims, ok := token.Claims.(*CustomClaims)
+	if !ok || claims.Subject != "refresh" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token type"})
+		return
+	}
+
+	// Issue new access token (15 min)
+	accessClaims := CustomClaims{
+		TenantID: claims.TenantID,
+		UserID:   claims.UserID,
+		Email:    claims.Email,
+		Role:     claims.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   "access",
+		},
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessTokenString, err := accessToken.SignedString([]byte(appConfig.JWTSecret))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": accessTokenString,
+		"user": map[string]interface{}{
+			"id":        claims.UserID,
+			"email":     claims.Email,
+			"role":      claims.Role,
+			"tenant_id": claims.TenantID,
+		},
+	})
+}
+
+// logoutHandler clears the refresh token cookie.
+// POST /api/v1/auth/logout
+func logoutHandler(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   c.Request.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+		Path:     "/",
+	})
+	c.JSON(http.StatusOK, gin.H{"status": "logged out"})
 }

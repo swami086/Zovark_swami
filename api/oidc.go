@@ -252,31 +252,61 @@ func ssoCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	// Issue HYDRA JWT
+	// Issue HYDRA access JWT (15 min)
 	jwtClaims := CustomClaims{
 		TenantID: user.TenantID,
 		UserID:   user.ID,
 		Email:    user.Email,
 		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   "access",
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtClaims)
-	tokenString, err := token.SignedString([]byte(appConfig.JWTSecret))
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtClaims)
+	accessTokenString, err := accessToken.SignedString([]byte(appConfig.JWTSecret))
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "TOKEN_GENERATION_FAILED", "Failed to generate JWT")
 		return
 	}
+
+	// Issue refresh token (7 days) in httpOnly cookie
+	refreshClaims := CustomClaims{
+		TenantID: user.TenantID,
+		UserID:   user.ID,
+		Email:    user.Email,
+		Role:     user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   "refresh",
+		},
+	}
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshTokenString, err := refreshToken.SignedString([]byte(appConfig.JWTSecret))
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "TOKEN_GENERATION_FAILED", "Failed to generate refresh token")
+		return
+	}
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshTokenString,
+		HttpOnly: true,
+		Secure:   c.Request.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   7 * 24 * 60 * 60,
+		Path:     "/",
+	})
 
 	// Clear OIDC cookies
 	c.SetCookie("oidc_verifier", "", -1, "/", "", false, true)
 	c.SetCookie("oidc_state", "", -1, "/", "", false, true)
 
 	respondOK(c, gin.H{
-		"token": tokenString,
+		"token": accessTokenString,
 		"user": map[string]interface{}{
 			"id":        user.ID,
 			"email":     user.Email,

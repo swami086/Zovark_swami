@@ -123,6 +123,8 @@ func main() {
 	{
 		auth.POST("/login", loginHandler)
 		auth.POST("/register", registerHandler)
+		auth.POST("/refresh", refreshHandler)
+		auth.POST("/logout", logoutHandler)
 		// SSO/OIDC routes (public)
 		auth.GET("/sso/login", ssoLoginHandler)
 		auth.GET("/callback", ssoCallbackHandler)

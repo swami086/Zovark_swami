@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -51,12 +52,23 @@ func authMiddleware() gin.HandlerFunc {
 		tokenString := parts[1]
 
 		token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
 			return []byte(appConfig.JWTSecret), nil
 		})
 
-		// Allow expired tokens for smooth local MVP testing, but reject invalid signatures
-		if err != nil && !strings.Contains(err.Error(), "token is expired") {
+		if err != nil {
 			log.Printf("JWT parsing error: %v", err)
+			msg := "Invalid token"
+			if strings.Contains(err.Error(), "token is expired") {
+				msg = "Token expired"
+			}
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": msg})
+			return
+		}
+
+		if !token.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
