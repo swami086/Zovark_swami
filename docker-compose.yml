@@ -312,7 +312,7 @@ services:
       - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@pgbouncer:5432/hydra
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
-      - JWT_SECRET=${JWT_SECRET:-hydra-jwt-secret-dev-2026}
+      - JWT_SECRET=${JWT_SECRET:-hydra-jwt-secret-dev-2026-CHANGE-ME-IN-PRODUCTION-min-32-chars}
       - NATS_URL=nats://hydra-nats:4222
     depends_on:
       pgbouncer:

@@ -40,7 +40,7 @@ func init() {
 		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra"),
 		TemporalAddress:  getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233"),
 		LiteLLMMasterKey: getEnvOrDefault("LITELLM_MASTER_KEY", ""),
-		JWTSecret:        getEnvOrDefault("JWT_SECRET", "hydra-jwt-secret-dev-2026"),
+		JWTSecret:        getEnvOrDefault("JWT_SECRET", ""),
 		// OIDC
 		OIDCIssuerURL:    getEnvOrDefault("OIDC_ISSUER_URL", ""),
 		OIDCClientID:     getEnvOrDefault("OIDC_CLIENT_ID", ""),
@@ -74,6 +74,11 @@ func main() {
 	// Override config from Vault if available
 	appConfig.DatabaseURL = GetSecret("database_url", "DATABASE_URL", appConfig.DatabaseURL)
 	appConfig.JWTSecret = GetSecret("jwt_secret", "JWT_SECRET", appConfig.JWTSecret)
+
+	// Enforce strong JWT secret
+	if len(appConfig.JWTSecret) < 32 {
+		log.Fatal("FATAL: JWT_SECRET must be at least 32 characters. Generate with: openssl rand -base64 64")
+	}
 
 	// Initialize Database connection
 	err := initDB(appConfig.DatabaseURL)
