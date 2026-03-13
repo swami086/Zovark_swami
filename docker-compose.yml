@@ -23,8 +23,8 @@ services:
       - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
       - ./config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     command: postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hydra -d hydra"]
       interval: 10s
@@ -46,8 +46,8 @@ services:
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -108,8 +108,8 @@ services:
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
     volumes:
       - ./temporal-config:/etc/temporal/config/dynamicconfig:ro
-    ports:
-      - "7233:7233"
+    expose:
+      - "7233"
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,8 +154,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./litellm_config.yaml:/app/config.yaml:ro
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -185,9 +185,9 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-hydra_dev_2026}
     volumes:
       - minio_data:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    expose:
+      - "9000"
+      - "9001"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
       interval: 15s
@@ -203,9 +203,9 @@ services:
     image: nats:2.10-alpine
     container_name: hydra-nats
     command: ["--jetstream", "--store_dir", "/data", "--max_payload", "1048576", "--http_port", "8222"]
-    ports:
-      - "4222:4222"    # Client connections
-      - "8222:8222"    # HTTP monitoring
+    expose:
+      - "4222"
+      - "8222"
     volumes:
       - nats-data:/data
     networks:
@@ -227,8 +227,8 @@ services:
     container_name: hydra-embedding
     environment:
       - MODEL_ID=BAAI/bge-base-en-v1.5
-    ports:
-      - "8081:80"
+    expose:
+      - "80"
     networks:
       - hydra-internal
     deploy:
