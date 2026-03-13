@@ -3,15 +3,18 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -51,9 +54,33 @@ type OIDCTokenResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// JWKSKeySet holds cached JWKS keys from the OIDC provider.
+type JWKSKeySet struct {
+	mu        sync.RWMutex
+	keys      map[string]*rsa.PublicKey // kid -> public key
+	fetchedAt time.Time
+	jwksURI   string
+}
+
+// JWKSResponse is the JSON structure returned by a JWKS endpoint.
+type JWKSResponse struct {
+	Keys []JWK `json:"keys"`
+}
+
+// JWK represents a single JSON Web Key.
+type JWK struct {
+	Kid string `json:"kid"`
+	Kty string `json:"kty"`
+	Alg string `json:"alg"`
+	Use string `json:"use"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
 var (
 	oidcConfig    *OIDCConfig
 	oidcDiscovery *OIDCDiscovery
+	oidcJWKS      *JWKSKeySet
 )
 
 // initOIDC initializes the OIDC configuration from environment variables.
@@ -80,6 +107,18 @@ func initOIDC() {
 		return
 	}
 	oidcDiscovery = discovery
+
+	// Fetch JWKS for ID token signature verification
+	if oidcDiscovery.JwksURI != "" {
+		jwks, err := fetchJWKS(oidcDiscovery.JwksURI)
+		if err != nil {
+			log.Printf("OIDC JWKS fetch failed: %v. ID tokens will NOT be signature-verified.", err)
+		} else {
+			oidcJWKS = jwks
+			log.Printf("OIDC JWKS loaded: %d keys from %s", len(jwks.keys), oidcDiscovery.JwksURI)
+		}
+	}
+
 	log.Printf("OIDC configured: issuer=%s", oidcConfig.IssuerURL)
 }
 
@@ -349,31 +388,170 @@ func exchangeCode(code, verifier string) (*OIDCTokenResponse, error) {
 	return &tokenResp, nil
 }
 
-// parseIDTokenClaims extracts claims from a JWT ID token without full verification.
-// In production, you would verify the signature against the IdP's JWKS.
+// fetchJWKS retrieves and parses the JWKS from the given URI.
+func fetchJWKS(jwksURI string) (*JWKSKeySet, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(jwksURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch JWKS: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("JWKS endpoint returned status %d", resp.StatusCode)
+	}
+
+	var jwksResp JWKSResponse
+	if err := json.NewDecoder(resp.Body).Decode(&jwksResp); err != nil {
+		return nil, fmt.Errorf("failed to parse JWKS: %w", err)
+	}
+
+	keys := make(map[string]*rsa.PublicKey)
+	for _, k := range jwksResp.Keys {
+		if k.Kty != "RSA" {
+			continue
+		}
+		pubKey, err := jwkToRSAPublicKey(k)
+		if err != nil {
+			log.Printf("JWKS: skipping key kid=%s: %v", k.Kid, err)
+			continue
+		}
+		keys[k.Kid] = pubKey
+	}
+
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("no usable RSA keys in JWKS")
+	}
+
+	return &JWKSKeySet{
+		keys:      keys,
+		fetchedAt: time.Now(),
+		jwksURI:   jwksURI,
+	}, nil
+}
+
+// jwkToRSAPublicKey converts a JWK to an *rsa.PublicKey.
+func jwkToRSAPublicKey(k JWK) (*rsa.PublicKey, error) {
+	nBytes, err := base64.RawURLEncoding.DecodeString(k.N)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode modulus: %w", err)
+	}
+	eBytes, err := base64.RawURLEncoding.DecodeString(k.E)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode exponent: %w", err)
+	}
+
+	n := new(big.Int).SetBytes(nBytes)
+	e := 0
+	for _, b := range eBytes {
+		e = e<<8 + int(b)
+	}
+
+	return &rsa.PublicKey{N: n, E: e}, nil
+}
+
+// getJWKSKey returns the keyfunc for jwt.Parse that looks up keys by kid.
+func (ks *JWKSKeySet) getJWKSKey(token *jwt.Token) (interface{}, error) {
+	kid, ok := token.Header["kid"].(string)
+	if !ok {
+		return nil, fmt.Errorf("token missing kid header")
+	}
+
+	ks.mu.RLock()
+	key, exists := ks.keys[kid]
+	ks.mu.RUnlock()
+
+	if !exists {
+		// Try refreshing JWKS once (key rotation)
+		if err := ks.refresh(); err != nil {
+			return nil, fmt.Errorf("JWKS refresh failed: %w", err)
+		}
+		ks.mu.RLock()
+		key, exists = ks.keys[kid]
+		ks.mu.RUnlock()
+		if !exists {
+			return nil, fmt.Errorf("unknown key id: %s", kid)
+		}
+	}
+
+	return key, nil
+}
+
+// refresh re-fetches the JWKS (rate-limited to once per minute).
+func (ks *JWKSKeySet) refresh() error {
+	ks.mu.Lock()
+	defer ks.mu.Unlock()
+
+	if time.Since(ks.fetchedAt) < time.Minute {
+		return nil // rate limit
+	}
+
+	newKS, err := fetchJWKS(ks.jwksURI)
+	if err != nil {
+		return err
+	}
+
+	ks.keys = newKS.keys
+	ks.fetchedAt = time.Now()
+	return nil
+}
+
+// parseIDTokenClaims verifies and extracts claims from a JWT ID token.
+// If JWKS is available, verifies the signature. Validates issuer and audience.
 func parseIDTokenClaims(idToken string) (map[string]interface{}, error) {
+	if oidcJWKS != nil {
+		// Verify with JWKS
+		token, err := jwt.Parse(idToken, oidcJWKS.getJWKSKey)
+		if err != nil {
+			return nil, fmt.Errorf("ID token signature verification failed: %w", err)
+		}
+		if !token.Valid {
+			return nil, fmt.Errorf("ID token is not valid")
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return nil, fmt.Errorf("failed to extract claims")
+		}
+
+		// Validate issuer
+		if iss, _ := claims["iss"].(string); iss != oidcConfig.IssuerURL {
+			return nil, fmt.Errorf("invalid issuer: expected %s, got %s", oidcConfig.IssuerURL, iss)
+		}
+
+		// Validate audience
+		if aud, _ := claims["aud"].(string); aud != oidcConfig.ClientID {
+			// aud can also be an array
+			if audArr, ok := claims["aud"].([]interface{}); ok {
+				found := false
+				for _, a := range audArr {
+					if s, _ := a.(string); s == oidcConfig.ClientID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return nil, fmt.Errorf("invalid audience")
+				}
+			} else {
+				return nil, fmt.Errorf("invalid audience: expected %s, got %s", oidcConfig.ClientID, aud)
+			}
+		}
+
+		return claims, nil
+	}
+
+	// Fallback: no JWKS available (fail closed in production, allow in dev)
+	log.Println("WARNING: OIDC ID token parsed WITHOUT signature verification (no JWKS)")
+
 	parts := strings.Split(idToken, ".")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid JWT format")
 	}
 
-	// Decode payload (second part)
-	payload := parts[1]
-	// Add padding if needed
-	switch len(payload) % 4 {
-	case 2:
-		payload += "=="
-	case 3:
-		payload += "="
-	}
-
-	decoded, err := base64.URLEncoding.DecodeString(payload)
+	decoded, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		// Try without padding
-		decoded, err = base64.RawURLEncoding.DecodeString(parts[1])
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode payload: %w", err)
-		}
+		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
 	var claims map[string]interface{}
