@@ -26,6 +26,7 @@ func corsMiddleware() gin.HandlerFunc {
 	config.AllowOrigins = []string{"http://localhost:3000"}
 	config.AllowCredentials = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	config.ExposeHeaders = []string{"Set-Cookie"}
 	return cors.New(config)
 }
 

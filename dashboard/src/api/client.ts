@@ -1,23 +1,66 @@
 export const API_BASE_URL = 'http://localhost:8090/api/v1';
 
-let jwtToken: string | null = localStorage.getItem('hydra_token');
-let currentUser: any = localStorage.getItem('hydra_user') ? JSON.parse(localStorage.getItem('hydra_user')!) : null;
+// Access token stored in memory only (never localStorage) — XSS-safe
+let jwtToken: string | null = null;
+let currentUser: any = null;
+
+// Restore user info from sessionStorage (survives page refresh, not tab close)
+const savedUser = sessionStorage.getItem('hydra_user');
+if (savedUser) {
+    try { currentUser = JSON.parse(savedUser); } catch { /* ignore */ }
+}
 
 export const setToken = (token: string, user: any) => {
     jwtToken = token;
     currentUser = user;
-    localStorage.setItem('hydra_token', token);
-    localStorage.setItem('hydra_user', JSON.stringify(user));
+    // Only store non-sensitive user info in sessionStorage for UI state
+    sessionStorage.setItem('hydra_user', JSON.stringify(user));
 };
 
 export const clearToken = () => {
     jwtToken = null;
     currentUser = null;
+    sessionStorage.removeItem('hydra_user');
+    // Also clear any legacy localStorage tokens
     localStorage.removeItem('hydra_token');
     localStorage.removeItem('hydra_user');
 };
 
 export const getUser = () => currentUser;
+
+// Flag to prevent concurrent refresh attempts
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+// Attempt to refresh the access token using the httpOnly refresh cookie
+const refreshAccessToken = async (): Promise<boolean> => {
+    if (isRefreshing && refreshPromise) {
+        return refreshPromise;
+    }
+    isRefreshing = true;
+    refreshPromise = (async () => {
+        try {
+            const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!resp.ok) return false;
+            const data = await resp.json();
+            if (data.token) {
+                setToken(data.token, data.user || currentUser);
+                return true;
+            }
+            return false;
+        } catch {
+            return false;
+        } finally {
+            isRefreshing = false;
+            refreshPromise = null;
+        }
+    })();
+    return refreshPromise;
+};
 
 const getHeaders = () => {
     const headers: Record<string, string> = {
@@ -27,6 +70,27 @@ const getHeaders = () => {
         headers['Authorization'] = `Bearer ${jwtToken}`;
     }
     return headers;
+};
+
+// Wrapper that automatically retries on 401 by refreshing the token
+const fetchWithRefresh = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    // Ensure cookies are sent for refresh token
+    options.credentials = 'include';
+
+    let response = await fetch(url, options);
+    if (response.status === 401 && !isRefreshing) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+            // Retry with new token
+            const newHeaders = { ...options.headers } as Record<string, string>;
+            if (jwtToken) {
+                newHeaders['Authorization'] = `Bearer ${jwtToken}`;
+            }
+            options.headers = newHeaders;
+            response = await fetch(url, options);
+        }
+    }
+    return response;
 };
 
 export interface Task {
@@ -140,7 +204,7 @@ export const fetchTasks = async (params?: Record<string, string>): Promise<TaskL
         const str = qs.toString();
         if (str) url += `?${str}`;
     }
-    const response = await fetch(url, {
+    const response = await fetchWithRefresh(url, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -150,7 +214,7 @@ export const fetchTasks = async (params?: Record<string, string>): Promise<TaskL
 };
 
 export const fetchTaskDetail = async (id: string): Promise<TaskDetail> => {
-    const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tasks/${id}`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -167,7 +231,7 @@ export const fetchTaskDetail = async (id: string): Promise<TaskDetail> => {
 };
 
 export const fetchTaskSteps = async (id: string): Promise<InvestigationStep[]> => {
-    const response = await fetch(`${API_BASE_URL}/tasks/${id}/steps`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tasks/${id}/steps`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -189,7 +253,7 @@ export interface TimelineEvent {
 }
 
 export const fetchTaskTimeline = async (id: string): Promise<TimelineEvent[]> => {
-    const response = await fetch(`${API_BASE_URL}/tasks/${id}/timeline`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tasks/${id}/timeline`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -204,7 +268,7 @@ export const fetchTaskTimeline = async (id: string): Promise<TimelineEvent[]> =>
 };
 
 export const fetchPendingApprovals = async (): Promise<{ approvals: ApprovalRequest[], count: number }> => {
-    const response = await fetch(`${API_BASE_URL}/approvals/pending`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/approvals/pending`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -214,7 +278,7 @@ export const fetchPendingApprovals = async (): Promise<{ approvals: ApprovalRequ
 };
 
 export const decideApproval = async (approvalId: string, approved: boolean, comment: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/approvals/${approvalId}/decide`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/approvals/${approvalId}/decide`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ approved, comment })
@@ -232,7 +296,7 @@ export const createTask = async (prompt: string, taskType: string = 'Log Analysi
     if (playbookId) {
         payload.input.playbook_id = playbookId;
     }
-    const response = await fetch(`${API_BASE_URL}/tasks`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tasks`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(payload),
@@ -259,7 +323,7 @@ export const uploadTask = async (
         headers['Authorization'] = `Bearer ${jwtToken}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/tasks/upload`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tasks/upload`, {
         method: 'POST',
         headers,
         body: formData,
@@ -273,7 +337,7 @@ export const uploadTask = async (
 };
 
 export const fetchTaskAudit = async (id: string): Promise<AuditEntry[]> => {
-    const response = await fetch(`${API_BASE_URL}/tasks/${id}/audit`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tasks/${id}/audit`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -286,7 +350,7 @@ export const fetchTaskAudit = async (id: string): Promise<AuditEntry[]> => {
 };
 
 export const fetchStats = async (): Promise<Stats> => {
-    const response = await fetch(`${API_BASE_URL}/stats`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/stats`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -301,6 +365,7 @@ export const login = async (email: string, password: string): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
     });
 
@@ -311,6 +376,17 @@ export const login = async (email: string, password: string): Promise<any> => {
     const data = await response.json();
     setToken(data.token, data.user);
     return data.user;
+};
+
+export const logout = async (): Promise<void> => {
+    try {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch { /* ignore logout errors */ }
+    clearToken();
 };
 
 export const register = async (email: string, password: string, display_name: string, tenant_id: string): Promise<any> => {
@@ -328,7 +404,7 @@ export const register = async (email: string, password: string, display_name: st
 };
 
 export const fetchPlaybooks = async (): Promise<Playbook[]> => {
-    const response = await fetch(`${API_BASE_URL}/playbooks`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/playbooks`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -338,7 +414,7 @@ export const fetchPlaybooks = async (): Promise<Playbook[]> => {
 };
 
 export const createPlaybook = async (data: any): Promise<Playbook> => {
-    const response = await fetch(`${API_BASE_URL}/playbooks`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/playbooks`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -349,7 +425,7 @@ export const createPlaybook = async (data: any): Promise<Playbook> => {
 };
 
 export const updatePlaybook = async (id: string, data: any): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/playbooks/${id}`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/playbooks/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -360,7 +436,7 @@ export const updatePlaybook = async (id: string, data: any): Promise<any> => {
 };
 
 export const deletePlaybook = async (id: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/playbooks/${id}`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/playbooks/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -387,7 +463,7 @@ export interface Skill {
 }
 
 export const fetchSkills = async (): Promise<{ skills: Skill[], count: number }> => {
-    const response = await fetch(`${API_BASE_URL}/skills`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/skills`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -423,7 +499,7 @@ export interface SIEMAlert {
 }
 
 export const fetchLogSources = async (): Promise<{ sources: LogSource[], count: number }> => {
-    const response = await fetch(`${API_BASE_URL}/log-sources`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/log-sources`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -433,7 +509,7 @@ export const fetchLogSources = async (): Promise<{ sources: LogSource[], count: 
 };
 
 export const createLogSource = async (data: any): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/log-sources`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/log-sources`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -451,7 +527,7 @@ export const fetchSIEMAlerts = async (status?: string, sourceId?: string): Promi
     const qs = params.toString();
     if (qs) url += `?${qs}`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithRefresh(url, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -461,7 +537,7 @@ export const fetchSIEMAlerts = async (status?: string, sourceId?: string): Promi
 };
 
 export const investigateAlert = async (alertId: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/siem-alerts/${alertId}/investigate`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/siem-alerts/${alertId}/investigate`, {
         method: 'POST',
         headers: getHeaders()
     });
@@ -498,7 +574,7 @@ export interface TenantUser {
 }
 
 export const fetchTenants = async (): Promise<Tenant[]> => {
-    const response = await fetch(`${API_BASE_URL}/tenants`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tenants`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -509,7 +585,7 @@ export const fetchTenants = async (): Promise<Tenant[]> => {
 };
 
 export const createTenant = async (data: { name: string; slug: string; tier: string }): Promise<Tenant> => {
-    const response = await fetch(`${API_BASE_URL}/tenants`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tenants`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -520,7 +596,7 @@ export const createTenant = async (data: { name: string; slug: string; tier: str
 };
 
 export const updateTenant = async (id: string, data: { name?: string; tier?: string; status?: string }): Promise<Tenant> => {
-    const response = await fetch(`${API_BASE_URL}/tenants/${id}`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tenants/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -531,7 +607,7 @@ export const updateTenant = async (id: string, data: { name?: string; tier?: str
 };
 
 export const fetchTenantUsers = async (tenantId: string): Promise<TenantUser[]> => {
-    const response = await fetch(`${API_BASE_URL}/tenants/${tenantId}/users`, {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/tenants/${tenantId}/users`, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -557,7 +633,7 @@ export interface CostData {
 export const fetchCosts = async (period?: string): Promise<CostData> => {
     let url = `${API_BASE_URL}/costs`;
     if (period) url += `?period=${period}`;
-    const response = await fetch(url, {
+    const response = await fetchWithRefresh(url, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -608,7 +684,7 @@ export interface EntityGraphData {
 export const fetchEntities = async (entityType?: string): Promise<EntityGraphData> => {
     let url = `${API_BASE_URL}/entities`;
     if (entityType) url += `?type=${entityType}`;
-    const response = await fetch(url, {
+    const response = await fetchWithRefresh(url, {
         headers: getHeaders(),
         cache: 'no-store'
     });
@@ -660,7 +736,7 @@ export const fetchNotifications = async (since?: string): Promise<Notification[]
     if (since) {
         url += `?since=${encodeURIComponent(since)}`;
     }
-    const response = await fetch(url, { headers: getHeaders(), cache: 'no-store' });
+    const response = await fetchWithRefresh(url, { headers: getHeaders(), cache: 'no-store' });
     if (!response.ok) return [];
     try {
         const data = await response.json();
