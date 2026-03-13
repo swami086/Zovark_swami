@@ -1,6 +1,6 @@
 -- Hydra MVP Database Schema
--- Version: 1.2.0
--- 21 tables (14 base + 3 new + 4 entity graph), 1 view, append-only enforcement
+-- Version: 1.3.0
+-- 21 base tables + entity graph + sprint extensions + shadow mode (v0.10.0), views, append-only enforcement
 
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -1264,3 +1264,240 @@ CREATE TABLE IF NOT EXISTS sla_events (
 CREATE INDEX IF NOT EXISTS idx_sla_events_tenant ON sla_events(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sla_events_breached ON sla_events(breached) WHERE breached = true;
 CREATE INDEX IF NOT EXISTS idx_sla_events_created ON sla_events(created_at DESC);
+
+-- ============================================================
+-- SHADOW MODE (Sprint v0.10.0 — Migration 027)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS shadow_recommendations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    task_id UUID REFERENCES agent_tasks(id),
+    investigation_id UUID REFERENCES investigations(id),
+    alert_type VARCHAR(100),
+    alert_source VARCHAR(100),
+    recommended_action VARCHAR(50) NOT NULL,
+    recommended_severity VARCHAR(20),
+    recommendation_reasoning TEXT,
+    confidence FLOAT CHECK (confidence >= 0 AND confidence <= 1),
+    recommended_playbook_id UUID REFERENCES response_playbooks(id),
+    human_action VARCHAR(50),
+    human_severity VARCHAR(20),
+    human_reasoning TEXT,
+    decided_by UUID REFERENCES users(id),
+    decided_at TIMESTAMPTZ,
+    action_match BOOLEAN,
+    severity_match BOOLEAN,
+    match_category VARCHAR(20),
+    mismatch_reason TEXT,
+    model_id VARCHAR(100),
+    prompt_version VARCHAR(20),
+    processing_time_ms INTEGER,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_shadow_rec_tenant ON shadow_recommendations(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_shadow_rec_status ON shadow_recommendations(status) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_shadow_rec_match ON shadow_recommendations(tenant_id, action_match) WHERE human_action IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_shadow_rec_created ON shadow_recommendations(created_at);
+CREATE INDEX IF NOT EXISTS idx_shadow_rec_task ON shadow_recommendations(task_id);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS shadow_conformance_stats AS
+SELECT
+    tenant_id,
+    alert_type,
+    COUNT(*) AS total_recommendations,
+    COUNT(*) FILTER (WHERE human_action IS NOT NULL) AS total_decided,
+    COUNT(*) FILTER (WHERE action_match = true) AS exact_matches,
+    COUNT(*) FILTER (WHERE severity_match = true) AS severity_matches,
+    COUNT(*) FILTER (WHERE match_category = 'override') AS overrides,
+    COUNT(*) FILTER (WHERE match_category = 'rejection') AS rejections,
+    ROUND(AVG(CASE WHEN action_match THEN 1.0 ELSE 0.0 END)::numeric, 4) AS action_match_rate,
+    ROUND(AVG(confidence)::numeric, 4) AS avg_confidence,
+    ROUND(AVG(processing_time_ms)::numeric, 0) AS avg_processing_ms,
+    MAX(created_at) AS last_recommendation_at
+FROM shadow_recommendations
+WHERE human_action IS NOT NULL
+GROUP BY tenant_id, alert_type
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_shadow_conformance_tenant_alert ON shadow_conformance_stats(tenant_id, alert_type);
+
+-- ============================================================
+-- TOKEN QUOTAS (Sprint v0.10.0 — Migration 028)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS token_quotas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) UNIQUE,
+    monthly_token_limit BIGINT NOT NULL DEFAULT 10000000,
+    monthly_cost_limit_usd NUMERIC(10,2) DEFAULT 500.00,
+    current_period_start DATE NOT NULL DEFAULT date_trunc('month', CURRENT_DATE)::date,
+    tokens_used BIGINT NOT NULL DEFAULT 0,
+    cost_used_usd NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    warn_threshold_pct INTEGER NOT NULL DEFAULT 80,
+    hard_limit_pct INTEGER NOT NULL DEFAULT 100,
+    circuit_breaker_open BOOLEAN NOT NULL DEFAULT false,
+    circuit_breaker_reason TEXT,
+    circuit_breaker_opened_at TIMESTAMPTZ,
+    circuit_breaker_opened_by UUID REFERENCES users(id),
+    last_reset_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_quotas_tenant ON token_quotas(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_token_quotas_circuit ON token_quotas(circuit_breaker_open) WHERE circuit_breaker_open = true;
+
+CREATE TABLE IF NOT EXISTS token_usage_events (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    task_id UUID REFERENCES agent_tasks(id),
+    model_id VARCHAR(100),
+    tokens_input INTEGER NOT NULL DEFAULT 0,
+    tokens_output INTEGER NOT NULL DEFAULT 0,
+    tokens_total INTEGER GENERATED ALWAYS AS (tokens_input + tokens_output) STORED,
+    cost_usd NUMERIC(10,6) NOT NULL DEFAULT 0,
+    quota_pct_after NUMERIC(5,2),
+    throttled BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_usage_tenant_period ON token_usage_events(tenant_id, created_at);
+
+-- ============================================================
+-- KILL SWITCH (Sprint v0.10.0 — Migration 029)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS automation_controls (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    scope VARCHAR(30) NOT NULL DEFAULT 'tenant',
+    scope_target VARCHAR(200),
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    mode VARCHAR(20) NOT NULL DEFAULT 'shadow',
+    killed BOOLEAN NOT NULL DEFAULT false,
+    killed_by UUID REFERENCES users(id),
+    killed_at TIMESTAMPTZ,
+    kill_reason TEXT,
+    auto_resume_at TIMESTAMPTZ,
+    last_changed_by UUID REFERENCES users(id),
+    last_changed_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, scope, scope_target)
+);
+
+CREATE INDEX IF NOT EXISTS idx_automation_controls_tenant ON automation_controls(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_automation_controls_killed ON automation_controls(killed) WHERE killed = true;
+
+CREATE TABLE IF NOT EXISTS kill_switch_audit (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    control_id UUID NOT NULL REFERENCES automation_controls(id),
+    action VARCHAR(20) NOT NULL,
+    old_state JSONB,
+    new_state JSONB,
+    actor_id UUID REFERENCES users(id),
+    reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_kill_audit_tenant ON kill_switch_audit(tenant_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_kill_audit_control ON kill_switch_audit(control_id);
+
+-- ============================================================
+-- PII DETECTION (Sprint v0.10.0 — Migration 030)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS pii_detections (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    task_id UUID REFERENCES agent_tasks(id),
+    field_path VARCHAR(200),
+    pii_type VARCHAR(50) NOT NULL,
+    detection_method VARCHAR(30) NOT NULL DEFAULT 'regex',
+    original_hash VARCHAR(64),
+    masked_value VARCHAR(200),
+    entity_map_id VARCHAR(100),
+    direction VARCHAR(10) NOT NULL,
+    blocked BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pii_tenant ON pii_detections(tenant_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_pii_type ON pii_detections(pii_type);
+CREATE INDEX IF NOT EXISTS idx_pii_blocked ON pii_detections(blocked) WHERE blocked = true;
+
+CREATE TABLE IF NOT EXISTS pii_masking_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id),
+    pii_type VARCHAR(50) NOT NULL,
+    action VARCHAR(20) NOT NULL DEFAULT 'mask',
+    pattern TEXT,
+    priority INTEGER NOT NULL DEFAULT 100,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pii_rules_tenant ON pii_masking_rules(tenant_id);
+
+-- ============================================================
+-- NATS STREAM TRACKING (Sprint v0.10.0 — Migration 031)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS alert_stream_offsets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    stream_name VARCHAR(100) NOT NULL,
+    consumer_name VARCHAR(100) NOT NULL,
+    last_sequence BIGINT NOT NULL DEFAULT 0,
+    last_processed_at TIMESTAMPTZ,
+    lag INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, stream_name, consumer_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stream_offsets_tenant ON alert_stream_offsets(tenant_id);
+
+CREATE TABLE IF NOT EXISTS alert_surge_events (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    alerts_per_second NUMERIC(10,2),
+    queue_depth INTEGER,
+    processing_lag_ms INTEGER,
+    throttle_applied BOOLEAN NOT NULL DEFAULT false,
+    backpressure_applied BOOLEAN NOT NULL DEFAULT false,
+    alerts_dropped INTEGER NOT NULL DEFAULT 0,
+    source VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_surge_tenant ON alert_surge_events(tenant_id, created_at);
+
+-- ============================================================
+-- STAMPEDE PROTECTION (Sprint v0.10.0 — Migration 032)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS coalescing_locks (
+    cache_key VARCHAR(500) PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+    locked_by VARCHAR(100) NOT NULL,
+    locked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    waiter_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_coalescing_expires ON coalescing_locks(expires_at);
+
+-- Shadow mode tenant settings (Migration 032)
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS approval_mode VARCHAR(20) NOT NULL DEFAULT 'shadow';
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS shadow_mode_start DATE;
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS shadow_mode_day INTEGER GENERATED ALWAYS AS (
+    CASE WHEN shadow_mode_start IS NOT NULL
+    THEN EXTRACT(DAY FROM (CURRENT_DATE - shadow_mode_start))::integer
+    ELSE NULL END
+) STORED;

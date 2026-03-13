@@ -47,6 +47,12 @@ from integrations.jira import create_jira_ticket
 from integrations.teams import send_teams_notification
 from integrations.email import send_email_notification
 from integrations.servicenow import create_snow_incident
+# Sprint v0.10.0 — Shadow Mode, PII, Anti-Stampede, Token Quota
+from shadow import ShadowInvestigationWorkflow, generate_recommendation, check_automation_mode, record_human_decision, compute_conformance_metrics, check_mode_graduation
+from pii_detector import detect_pii, mask_for_llm, unmask_response, load_tenant_pii_rules
+from stampede import coalesced_llm_call, check_stampede_protection
+from token_quota import check_token_quota, record_token_usage, reset_monthly_quota, trip_circuit_breaker
+from nats_consumer import create_nats_consumer
 from prompt_init import init_prompts
 import logger
 
@@ -67,6 +73,15 @@ async def main():
     # Initialize prompt registry at startup
     init_prompts()
 
+    # Initialize NATS consumer if NATS_URL is configured
+    nats_consumer = None
+    if os.environ.get("NATS_URL"):
+        try:
+            nats_consumer = create_nats_consumer(worker_id=WORKER_ID)
+            logger.info("NATS consumer initialized", worker_id=WORKER_ID)
+        except Exception as e:
+            logger.warn("NATS consumer initialization failed (non-fatal)", error=str(e))
+
     temporal_address = os.environ.get("TEMPORAL_ADDRESS", "temporal:7233")
     logger.info("Connecting to Temporal", address=temporal_address)
 
@@ -84,11 +99,14 @@ async def main():
     worker = Worker(
         client,
         task_queue="hydra-tasks",
+        # 10 workflows
         workflows=[
             ExecuteTaskWorkflow, BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow,
             DetectionGenerationWorkflow, ResponsePlaybookWorkflow, FineTuningPipelineWorkflow,
             SelfHealingWorkflow, ScheduledWorkflow, AlertCorrelationWorkflow,
+            ShadowInvestigationWorkflow,
         ],
+        # 95 activities
         activities=[
             # Core investigation activities
             fetch_task, generate_code, validate_code, execute_code,
@@ -141,10 +159,24 @@ async def main():
             enrich_ioc_virustotal, check_ip_reputation,
             send_slack_notification, create_jira_ticket,
             send_teams_notification, send_email_notification, create_snow_incident,
+            # Shadow mode (Sprint v0.10.0)
+            generate_recommendation, check_automation_mode, record_human_decision,
+            compute_conformance_metrics, check_mode_graduation,
+            # PII detection (Sprint v0.10.0)
+            detect_pii, mask_for_llm, unmask_response, load_tenant_pii_rules,
+            # Anti-stampede (Sprint v0.10.0)
+            coalesced_llm_call, check_stampede_protection,
+            # Token quota (Sprint v0.10.0)
+            check_token_quota, record_token_usage, reset_monthly_quota, trip_circuit_breaker,
         ],
     )
-    logger.info("Worker starting", task_queue="hydra-tasks", workflows=9, activities=80)
-    await worker.run()
+    logger.info("Worker starting", task_queue="hydra-tasks", workflows=10, activities=95)
+
+    try:
+        await worker.run()
+    finally:
+        if nats_consumer:
+            nats_consumer.shutdown()
 
 
 if __name__ == "__main__":

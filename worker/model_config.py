@@ -58,6 +58,9 @@ ACTIVITY_TIER_MAP = {
     "compute_eval_metrics": "standard",
     "correlate_alerts": "fast",
     "ingest_threat_feed": "fast",
+    # Sprint v0.10.0 activities
+    "generate_recommendation": "standard",
+    "coalesced_llm_call": "fast",
 }
 
 

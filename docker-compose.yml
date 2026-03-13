@@ -198,6 +198,29 @@ services:
     networks:
       - hydra-internal
 
+  # ─── MESSAGE BROKER ────────────────────────────────────
+  nats:
+    image: nats:2.10-alpine
+    container_name: hydra-nats
+    command: ["--jetstream", "--store_dir", "/data", "--max_payload", "1048576", "--http_port", "8222"]
+    ports:
+      - "4222:4222"    # Client connections
+      - "8222:8222"    # HTTP monitoring
+    volumes:
+      - nats-data:/data
+    networks:
+      - hydra-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget -q --spider http://localhost:8222/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   # ─── EMBEDDING SERVER ─────────────────────────────────
   embedding-server:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
@@ -290,6 +313,7 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
       - JWT_SECRET=${JWT_SECRET:-hydra-jwt-secret-dev-2026}
+      - NATS_URL=nats://hydra-nats:4222
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -297,6 +321,8 @@ services:
         condition: service_started
       litellm:
         condition: service_started
+      nats:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -321,6 +347,7 @@ services:
       - HOST_SANDBOX_DIR=${PWD}/sandbox
       - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-}
       - PYTHONUNBUFFERED=1
+      - NATS_URL=nats://hydra-nats:4222
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro
@@ -332,6 +359,8 @@ services:
         condition: service_healthy
       litellm:
         condition: service_started
+      nats:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import temporalio; print('ok')"]
       interval: 30s
@@ -512,6 +541,7 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  nats-data:
   ollama_data:
   prometheus_data:
   grafana_data:

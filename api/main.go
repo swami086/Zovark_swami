@@ -30,6 +30,8 @@ type Config struct {
 	VaultToken string
 	// Redis
 	RedisURL string
+	// NATS
+	NATSURL string
 }
 
 func init() {
@@ -50,6 +52,8 @@ func init() {
 		VaultToken: getEnvOrDefault("VAULT_TOKEN", ""),
 		// Redis
 		RedisURL: getEnvOrDefault("REDIS_URL", "redis:6379"),
+		// NATS
+		NATSURL: getEnvOrDefault("NATS_URL", ""),
 	}
 }
 
@@ -90,6 +94,12 @@ func main() {
 
 	// Initialize OIDC (SSO)
 	initOIDC()
+
+	// Initialize NATS (alert publishing — optional)
+	natsClient = initNATS()
+	if natsClient != nil {
+		defer natsClient.Close()
+	}
 
 	// Setup Gin router
 	router := gin.Default()
@@ -137,11 +147,11 @@ func main() {
 		api.GET("/siem-alerts", listSIEMalertsHandler)
 		api.GET("/notifications", getNotificationsHandler)
 
-		// Analyst + Admin
-		api.POST("/tasks", requireRole("admin", "analyst", "api_key"), createTaskHandler)
-		api.POST("/tasks/bulk", requireRole("admin", "analyst", "api_key"), bulkCreateTasksHandler)
-		api.POST("/tasks/upload", requireRole("admin", "analyst"), uploadTaskHandler)
-		api.POST("/siem-alerts/:id/investigate", requireRole("admin", "analyst"), investigateAlertHandler)
+		// Analyst + Admin (LLM-triggering endpoints have token quota check)
+		api.POST("/tasks", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), createTaskHandler)
+		api.POST("/tasks/bulk", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), bulkCreateTasksHandler)
+		api.POST("/tasks/upload", requireRole("admin", "analyst"), checkTokenQuota(), uploadTaskHandler)
+		api.POST("/siem-alerts/:id/investigate", requireRole("admin", "analyst"), checkTokenQuota(), investigateAlertHandler)
 		api.POST("/investigations/:id/feedback", requireRole("admin", "analyst"), submitFeedbackHandler)
 
 		// TOTP 2FA (authenticated users)
@@ -203,6 +213,26 @@ func main() {
 		api.PUT("/integrations/slack", requireRole("admin"), configureSlackWebhookHandler)
 		api.POST("/integrations/teams/test", requireRole("admin"), testTeamsWebhookHandler)
 		api.PUT("/integrations/teams", requireRole("admin"), configureTeamsWebhookHandler)
+
+		// Shadow mode (authenticated users)
+		api.GET("/shadow/recommendations", listShadowRecommendationsHandler)
+		api.GET("/shadow/recommendations/:id", getShadowRecommendationHandler)
+		api.POST("/shadow/recommendations/:id/decide", decideShadowRecommendationHandler)
+		api.GET("/shadow/conformance", getShadowConformanceHandler)
+		api.GET("/shadow/status", getShadowStatusHandler)
+
+		// Automation controls (authenticated for GET, admin for mutations)
+		api.GET("/automation/controls", listAutomationControlsHandler)
+		api.POST("/automation/controls", requireRole("admin"), upsertAutomationControlHandler)
+		api.POST("/automation/kill", requireRole("admin"), emergencyKillHandler)
+		api.POST("/automation/resume", requireRole("admin"), resumeAutomationHandler)
+		api.GET("/automation/audit", requireRole("admin"), getKillSwitchAuditHandler)
+
+		// Token quotas (authenticated for GET, admin for mutations)
+		api.GET("/quotas", getTokenQuotaHandler)
+		api.PUT("/quotas", requireRole("admin"), updateTokenQuotaHandler)
+		api.POST("/quotas/circuit-breaker", requireRole("admin"), circuitBreakerHandler)
+		api.GET("/quotas/usage", getTokenUsageHandler)
 	}
 
 	// Start server
