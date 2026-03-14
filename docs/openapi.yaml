@@ -1,10 +1,17 @@
 openapi: 3.1.0
 info:
   title: HYDRA SOC Automation API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     AI-powered SOC automation platform. Manages security investigations,
-    task orchestration, SIEM integration, and multi-tenant operations.
+    task orchestration, SIEM integration, shadow mode automation, kill switch
+    controls, token quota management, and multi-tenant operations.
+
+    ## Authentication
+    - **Access tokens** expire in 15 minutes and are returned in the JSON response body.
+    - **Refresh tokens** are stored in httpOnly cookies (7-day lifetime) and are NOT sent as Bearer tokens.
+      Use `POST /api/v1/auth/refresh` to obtain a new access token.
+    - **API keys** (hydra_ prefix) can be used for M2M authentication via X-API-Key header.
   contact:
     name: HYDRA Platform
   license:
@@ -24,7 +31,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT token obtained from /api/v1/auth/login or /api/v1/auth/callback
+      description: |
+        JWT access token obtained from /api/v1/auth/login, /api/v1/auth/callback,
+        or /api/v1/auth/refresh. Access tokens expire in 15 minutes. Refresh tokens
+        are delivered via httpOnly cookies and cannot be sent as Bearer tokens — use
+        the /api/v1/auth/refresh endpoint to rotate access tokens silently.
     ApiKeyAuth:
       type: apiKey
       in: header
@@ -261,6 +272,186 @@ components:
         services:
           type: object
 
+    ShadowRecommendation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        alert_id:
+          type: string
+          format: uuid
+        recommended_action:
+          type: string
+        severity:
+          type: string
+        confidence_score:
+          type: number
+        reasoning:
+          type: string
+        status:
+          type: string
+          enum: [pending, decided]
+        created_at:
+          type: string
+          format: date-time
+        decided_at:
+          type: string
+          format: date-time
+        decided_by:
+          type: string
+        human_action:
+          type: string
+        human_reasoning:
+          type: string
+        match_category:
+          type: string
+          enum: [exact_match, partial_match, override, rejection]
+        context_data:
+          type: object
+
+    ShadowDecideRequest:
+      type: object
+      required: [action, reasoning, match_category]
+      properties:
+        action:
+          type: string
+        severity:
+          type: string
+        reasoning:
+          type: string
+        match_category:
+          type: string
+          enum: [exact_match, partial_match, override, rejection]
+
+    AutomationControl:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        scope:
+          type: string
+          enum: [tenant, workflow, activity, playbook]
+        scope_target:
+          type: string
+        mode:
+          type: string
+          enum: [shadow, assisted, autonomous, disabled]
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        kill_reason:
+          type: string
+
+    AutomationControlRequest:
+      type: object
+      required: [scope, mode]
+      properties:
+        scope:
+          type: string
+          enum: [tenant, workflow, activity, playbook]
+        scope_target:
+          type: string
+        mode:
+          type: string
+          enum: [shadow, assisted, autonomous, disabled]
+        enabled:
+          type: boolean
+
+    KillRequest:
+      type: object
+      required: [scope, reason]
+      properties:
+        scope:
+          type: string
+          enum: [tenant, workflow]
+        scope_target:
+          type: string
+          description: Required when scope is 'workflow'
+        reason:
+          type: string
+
+    ResumeRequest:
+      type: object
+      required: [control_id, reason]
+      properties:
+        control_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        resume_mode:
+          type: string
+          enum: [shadow, assisted, autonomous]
+          default: shadow
+        cooldown_minutes:
+          type: integer
+
+    TokenQuota:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+        monthly_token_limit:
+          type: integer
+        monthly_tokens_used:
+          type: integer
+        monthly_cost_limit_usd:
+          type: number
+        monthly_cost_used_usd:
+          type: number
+        warn_threshold_pct:
+          type: integer
+        token_usage_pct:
+          type: number
+        cost_usage_pct:
+          type: number
+        circuit_breaker_open:
+          type: boolean
+        circuit_breaker_reason:
+          type: string
+        circuit_breaker_opened_at:
+          type: string
+          format: date-time
+        warning:
+          type: boolean
+        configured:
+          type: boolean
+
+    TokenQuotaUpdateRequest:
+      type: object
+      properties:
+        monthly_token_limit:
+          type: integer
+        monthly_cost_limit_usd:
+          type: number
+        warn_threshold_pct:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    CircuitBreakerRequest:
+      type: object
+      required: [open, reason]
+      properties:
+        open:
+          type: boolean
+          description: true to open (block LLM calls), false to close (resume)
+        reason:
+          type: string
+
 paths:
   /health:
     get:
@@ -280,6 +471,9 @@ paths:
       summary: Authenticate user
       tags: [Authentication]
       security: []
+      description: |
+        Returns a short-lived access token (15 min) in the response body and sets
+        a refresh token (7 days) as an httpOnly cookie.
       requestBody:
         required: true
         content:
@@ -296,8 +490,14 @@ paths:
                 properties:
                   token:
                     type: string
+                    description: Access token (15-minute expiry)
                   user:
                     type: object
+          headers:
+            Set-Cookie:
+              description: httpOnly refresh_token cookie (7-day expiry, SameSite=Strict)
+              schema:
+                type: string
         '401':
           description: Invalid credentials or TOTP required
         '429':
@@ -319,6 +519,65 @@ paths:
           description: User created
         '400':
           description: Validation error
+
+  /api/v1/auth/refresh:
+    post:
+      summary: Refresh access token
+      tags: [Authentication]
+      security: []
+      description: |
+        Uses the httpOnly refresh_token cookie to issue a new access token.
+        No request body is needed — the refresh token is read from the cookie automatically.
+        Returns 401 if the cookie is missing or the refresh token is expired/invalid.
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: New access token (15-minute expiry)
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                      tenant_id:
+                        type: string
+        '401':
+          description: Missing, expired, or invalid refresh token
+
+  /api/v1/auth/logout:
+    post:
+      summary: Logout and clear refresh token
+      tags: [Authentication]
+      security: []
+      description: |
+        Clears the httpOnly refresh_token cookie by setting MaxAge to -1.
+        After logout, the client must re-authenticate via /api/v1/auth/login.
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: logged out
+          headers:
+            Set-Cookie:
+              description: Expired refresh_token cookie (clears the token)
+              schema:
+                type: string
 
   /api/v1/auth/sso/login:
     get:
@@ -1357,11 +1616,551 @@ paths:
         '200':
           description: Teams configured
 
+  # ============================================================
+  # Shadow Mode Endpoints (Sprint v0.10.0)
+  # ============================================================
+
+  /api/v1/shadow/recommendations:
+    get:
+      summary: List shadow mode recommendations
+      tags: [Shadow Mode]
+      description: |
+        Lists pending and decided shadow recommendations for the authenticated tenant.
+        Shadow mode records what the AI would do without executing, allowing analysts
+        to compare their decisions against the AI's recommendations.
+      parameters:
+        - name: status
+          in: query
+          description: Filter by status (pending or decided)
+          schema:
+            type: string
+            enum: [pending, decided]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated list of shadow recommendations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShadowRecommendation'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  pages:
+                    type: integer
+
+  /api/v1/shadow/recommendations/{id}:
+    get:
+      summary: Get shadow recommendation detail
+      tags: [Shadow Mode]
+      description: Returns full detail for a single shadow recommendation including context data.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recommendation detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendation:
+                    $ref: '#/components/schemas/ShadowRecommendation'
+        '404':
+          description: Recommendation not found
+
+  /api/v1/shadow/recommendations/{id}/decide:
+    post:
+      summary: Record human decision on shadow recommendation
+      tags: [Shadow Mode]
+      description: |
+        Analyst records their actual decision against the AI's shadow recommendation.
+        The match_category indicates how closely the human action aligned with the AI's
+        recommendation (exact_match, partial_match, override, or rejection).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShadowDecideRequest'
+      responses:
+        '200':
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: decided
+                  recommendation_id:
+                    type: string
+                  match_category:
+                    type: string
+                  human_action:
+                    type: string
+        '400':
+          description: Invalid match_category or recommendation already decided
+        '404':
+          description: Recommendation not found
+
+  /api/v1/shadow/conformance:
+    get:
+      summary: Get shadow mode conformance statistics
+      tags: [Shadow Mode]
+      description: |
+        Returns conformance analytics showing how well the AI's shadow recommendations
+        match human analyst decisions. Includes match rate breakdown by category,
+        combined agreement rate, and a 7-day daily trend.
+      responses:
+        '200':
+          description: Conformance statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_decisions:
+                    type: integer
+                  exact_matches:
+                    type: integer
+                  partial_matches:
+                    type: integer
+                  overrides:
+                    type: integer
+                  rejections:
+                    type: integer
+                  exact_match_rate:
+                    type: number
+                  partial_match_rate:
+                    type: number
+                  override_rate:
+                    type: number
+                  rejection_rate:
+                    type: number
+                  combined_match_rate:
+                    type: number
+                    description: Sum of exact + partial match rates (agreement percentage)
+                  pending_count:
+                    type: integer
+                  daily_trend:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        total:
+                          type: integer
+                        matches:
+                          type: integer
+                        match_rate:
+                          type: number
+
+  /api/v1/shadow/status:
+    get:
+      summary: Get shadow mode status
+      tags: [Shadow Mode]
+      description: |
+        Returns the current shadow mode status for the tenant, including the automation
+        mode, how long shadow mode has been running, the current match rate, and whether
+        the tenant is eligible for promotion to assisted/autonomous mode.
+        Promotion requires at least 14 days, 50+ decisions, and a configurable match rate threshold (default 90%).
+      responses:
+        '200':
+          description: Shadow mode status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mode:
+                    type: string
+                    enum: [shadow, assisted, autonomous, disabled]
+                  day_count:
+                    type: integer
+                  shadow_start_date:
+                    type: string
+                    format: date-time
+                  match_rate:
+                    type: number
+                  total_decisions:
+                    type: integer
+                  promotion_threshold:
+                    type: number
+                  promotion_eligible:
+                    type: boolean
+                  requirements:
+                    type: object
+                    properties:
+                      min_days:
+                        type: integer
+                      min_match_rate:
+                        type: number
+                      min_decisions:
+                        type: integer
+                      days_met:
+                        type: boolean
+                      match_rate_met:
+                        type: boolean
+                      decisions_met:
+                        type: boolean
+
+  # ============================================================
+  # Automation Control / Kill Switch Endpoints (Sprint v0.10.0)
+  # ============================================================
+
+  /api/v1/automation/controls:
+    get:
+      summary: List automation controls
+      tags: [Automation]
+      description: Lists all automation controls (mode settings) for the tenant.
+      responses:
+        '200':
+          description: Automation controls
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  controls:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AutomationControl'
+                  count:
+                    type: integer
+    post:
+      summary: Create or update automation control
+      tags: [Automation]
+      description: |
+        Upserts an automation control for a given scope (tenant, workflow, activity, playbook).
+        If a control already exists for the same scope and scope_target, it is updated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutomationControlRequest'
+      responses:
+        '201':
+          description: Control created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    example: created
+                  scope:
+                    type: string
+                  mode:
+                    type: string
+                  enabled:
+                    type: boolean
+        '200':
+          description: Existing control updated
+        '400':
+          description: Invalid scope or mode
+
+  /api/v1/automation/kill:
+    post:
+      summary: Emergency kill switch (admin)
+      tags: [Automation]
+      description: |
+        Immediately disables all automation for the tenant (scope=tenant) or a specific
+        workflow (scope=workflow). This is instantaneous — a direct DB update with no queue.
+        Dispatches a webhook notification on activation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KillRequest'
+      responses:
+        '200':
+          description: Kill switch activated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: killed
+                  scope:
+                    type: string
+                  scope_target:
+                    type: string
+                  reason:
+                    type: string
+                  killed_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid scope (must be tenant or workflow)
+
+  /api/v1/automation/resume:
+    post:
+      summary: Resume automation after kill (admin)
+      tags: [Automation]
+      description: |
+        Re-enables a previously killed automation control. Defaults to shadow mode
+        for safety. An optional cooldown_minutes parameter sets a time window before
+        full capability is restored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResumeRequest'
+      responses:
+        '200':
+          description: Automation resumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: resumed
+                  control_id:
+                    type: string
+                  mode:
+                    type: string
+                  reason:
+                    type: string
+                  resumed_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid resume_mode
+        '404':
+          description: Control not found
+
+  /api/v1/automation/audit:
+    get:
+      summary: Kill switch audit log (admin)
+      tags: [Automation]
+      description: Returns the kill/resume audit history for the tenant.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audit_log:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        action:
+                          type: string
+                          enum: [kill, resume]
+                        scope:
+                          type: string
+                        scope_target:
+                          type: string
+                        reason:
+                          type: string
+                        performed_by:
+                          type: string
+                        performed_at:
+                          type: string
+                          format: date-time
+                  count:
+                    type: integer
+
+  # ============================================================
+  # Token Quota Endpoints (Sprint v0.10.0)
+  # ============================================================
+
+  /api/v1/quotas:
+    get:
+      summary: Get tenant token quota status
+      tags: [Token Quotas]
+      description: |
+        Returns the current token and cost quota for the authenticated tenant,
+        including usage percentages, warning status, and circuit breaker state.
+        If no quota is configured, returns defaults with configured=false.
+      responses:
+        '200':
+          description: Token quota status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenQuota'
+    put:
+      summary: Update tenant token quota limits (admin)
+      tags: [Token Quotas]
+      description: |
+        Sets or updates the monthly token limit, cost limit, and warning threshold
+        for the tenant. Uses upsert — creates the quota record if none exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenQuotaUpdateRequest'
+      responses:
+        '200':
+          description: Quota updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: updated
+                  monthly_token_limit:
+                    type: integer
+                  monthly_cost_limit_usd:
+                    type: number
+                  warn_threshold_pct:
+                    type: integer
+        '400':
+          description: Invalid warn_threshold_pct (must be 1-100)
+
+  /api/v1/quotas/circuit-breaker:
+    post:
+      summary: Open or close circuit breaker (admin)
+      tags: [Token Quotas]
+      description: |
+        Opens the circuit breaker to block all LLM calls for the tenant, or closes
+        it to resume. When open, any LLM-triggering endpoint returns 429 with code
+        CIRCUIT_BREAKER_OPEN. Dispatches a webhook notification on state change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CircuitBreakerRequest'
+      responses:
+        '200':
+          description: Circuit breaker state changed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: circuit_breaker_opened
+                  circuit_breaker_open:
+                    type: boolean
+                  reason:
+                    type: string
+        '400':
+          description: Missing reason
+
+  /api/v1/quotas/usage:
+    get:
+      summary: Get detailed token usage breakdown
+      tags: [Token Quotas]
+      description: |
+        Returns a detailed breakdown of LLM token usage for the current month,
+        grouped by model and by day. Includes total tokens, cost, and call counts.
+      responses:
+        '200':
+          description: Token usage breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                    description: Current month (YYYY-MM)
+                  total_tokens:
+                    type: integer
+                  total_cost:
+                    type: number
+                  total_calls:
+                    type: integer
+                  by_model:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        model:
+                          type: string
+                        tokens_input:
+                          type: integer
+                        tokens_output:
+                          type: integer
+                        total_tokens:
+                          type: integer
+                        cost_usd:
+                          type: number
+                        call_count:
+                          type: integer
+                  by_day:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        total_tokens:
+                          type: integer
+                        cost_usd:
+                          type: number
+                        call_count:
+                          type: integer
+
 tags:
   - name: System
     description: Health and system endpoints
   - name: Authentication
-    description: Login, registration, SSO, and 2FA
+    description: Login, registration, SSO, 2FA, token refresh, and logout
   - name: Tasks
     description: Investigation task management
   - name: Dashboard
@@ -1392,3 +2191,9 @@ tags:
     description: Administrative operations
   - name: Integrations
     description: Third-party integration management
+  - name: Shadow Mode
+    description: Shadow mode recommendations and conformance tracking
+  - name: Automation
+    description: Automation controls, kill switch, and resume operations
+  - name: Token Quotas
+    description: Per-tenant token and cost quota management with circuit breaker

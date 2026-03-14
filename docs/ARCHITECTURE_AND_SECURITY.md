@@ -1,41 +1,77 @@
 # Architecture and Security Overview
 
+**Version: v0.10.1-security | Date: 2026-03-14**
+
 This document outlines the system architecture and security boundaries for **Project Hydra**, explicitly designed for CISO review and InfoSec engineering teams.
 
 ## High-Level Architecture
 
-Hydra utilizes a distributed, 8-container Docker Compose stack to decouple the web tier from the state-machine orchestration and generative inference components.
+Hydra utilizes a distributed, 21-service Docker Compose stack spanning inference, orchestration, observability, messaging, and a hardened web tier. Only two ports are exposed to the host network: the Go API gateway (8090) and the React dashboard (3000). All other services communicate exclusively on an internal bridge network.
 
 ```mermaid
 graph TD
-    UI[React Dashboard] -->|REST API + JWT| API[Go API Gateway]
-    API --> DB[(PostgreSQL + pgvector)]
+    UI[React Dashboard :3000] -->|REST API + JWT| CADDY[Caddy Reverse Proxy]
+    CADDY --> API[Go API Gateway :8090]
+
+    API --> PGBOUNCER[PgBouncer Connection Pool]
+    PGBOUNCER --> DB[(PostgreSQL 16 + pgvector)]
+    API --> REDIS[(Redis 7 Cache)]
     API --> TEMPORAL[Temporal Server]
     API --> S3[(MinIO Object Storage)]
-    
+    API --> NATS[NATS JetStream]
+
     TEMPORAL -->|gRPC| WORKER[Python Temporal Worker]
-    
-    WORKER --> DB
+
+    WORKER --> PGBOUNCER
+    WORKER --> REDIS
     WORKER --> LITELLM[LiteLLM Proxy]
-    WORKER --> EMBED[HuggingFace TEI]
-    
-    LITELLM -->|Air-Gapped Inference| OLLAMA[Local LLM Engine]
-    
+    WORKER --> EMBED[Embedding Server]
+    WORKER --> NATS
+
+    LITELLM --> OLLAMA[Ollama Air-Gap LLM]
+
+    subgraph "Observability"
+        PROMETHEUS[Prometheus] --> GRAFANA[Grafana]
+        PROMETHEUS --> PG_EXP[Postgres Exporter]
+        PROMETHEUS --> REDIS_EXP[Redis Exporter]
+        PROMETHEUS --> TEMP_EXP[Temporal Exporter]
+        PROMETHEUS --> WORKER_M[Worker Metrics]
+        JAEGER[Jaeger OTLP Tracing]
+    end
+
+    WORKER --> JAEGER
+    API --> JAEGER
+
     subgraph "5-Layer Sandbox Physics"
         WORKER -- executes --> DIND[Docker-in-Docker Sandbox]
     end
 ```
 
-### The 8-Container Stack
+### The 21-Service Stack
 
-1. **hydra-api**: A highly concurrent Go (Gin) API Gateway handling RGBAC, tenant isolation, and RESTful routing.
-2. **hydra-worker**: A Python Temporal worker managing the autonomous investigation state machine and executing generated scripts.
-3. **hydra-temporal**: The workflow orchestration engine ensuring exactly-once execution, durable timers, and retry logic.
-4. **hydra-postgres**: The central relational database, enhanced with `pgvector` for Episodic Security Memory and `pg_trgm` for keyword matching.
-5. **hydra-litellm**: An inference routing proxy allowing the worker codebase to seamlessly interface with local, sovereign LLM engines via standard protocols.
-6. **hydra-embedding**: A local HuggingFace Text Embeddings Inference (TEI) server for converting logs and methodologies into densely packed vector embeddings.
-7. **hydra-minio**: An S3-compliant object store handling log uploads and forensic artifact retention.
-8. **hydra-dashboard**: A modern React/TypeScript/Tailwind CSS frontend for SOC analysts.
+| # | Service | Role |
+|---|---------|------|
+| 1 | **hydra-api** | Go (Gin) API gateway — RBAC, tenant isolation, OIDC SSO, RESTful routing |
+| 2 | **hydra-worker** | Python Temporal worker — investigation state machine, script execution |
+| 3 | **hydra-dashboard** | React 19 / TypeScript / Tailwind 4 SOC analyst frontend |
+| 4 | **hydra-temporal** | Workflow orchestration — exactly-once execution, durable timers, retries |
+| 5 | **hydra-temporal-ui** | Temporal web console for workflow inspection |
+| 6 | **hydra-postgres** | PostgreSQL 16 + pgvector (episodic memory) + pg_trgm (keyword matching) |
+| 7 | **hydra-pgbouncer** | Connection pooling — limits DB connection exhaustion |
+| 8 | **hydra-redis** | 256 MB LRU cache — rate limiting, session state, investigation cache |
+| 9 | **hydra-litellm** | LLM inference routing proxy (fast / standard / reasoning tiers) |
+| 10 | **hydra-ollama** | Air-gapped local LLM engine (sovereign inference fallback) |
+| 11 | **hydra-embedding** | Local embedding server — 768-dim vectors for RAG retrieval |
+| 12 | **hydra-nats** | NATS JetStream — 100k/sec alert buffering, anti-stampede coalescing |
+| 13 | **hydra-minio** | S3-compliant object store — log uploads, forensic artifact retention |
+| 14 | **hydra-caddy** | Reverse proxy / TLS termination |
+| 15 | **hydra-jaeger** | Distributed tracing (OTLP) |
+| 16 | **hydra-prometheus** | Metrics collection and alerting (6 alert rules) |
+| 17 | **hydra-grafana** | 3 monitoring dashboards |
+| 18 | **hydra-postgres-exporter** | PostgreSQL metrics exporter |
+| 19 | **hydra-redis-exporter** | Redis metrics exporter |
+| 20 | **hydra-temporal-exporter** | Temporal metrics exporter |
+| 21 | **hydra-worker-metrics** | Worker performance metrics exporter |
 
 ## Human-in-the-Loop AI Workflow
 
@@ -61,3 +97,48 @@ All generated code is executed within an ephemeral Docker-in-Docker container bo
 ## RBAC and Tenant Isolation
 
 Hydra enforces strict multi-tenancy at the database level. Every REST endpoint forces a `tenant_id` extraction from the decoded JWT. The API injects this `tenant_id` into every SQL statement, logically ensuring that cross-tenant data leakage is mathematically impossible within the relational domain. Roles (`admin`, `analyst`, `viewer`) gate the invocation of destructive or sensitive state transitions (e.g., bypassing approvals).
+
+## v0.10.1 Security Hardening
+
+The following fixes were shipped in v0.10.1-security (tag `v0.10.1-security`, 5 commits) to address findings from the v0.10.0 security audit:
+
+### Infrastructure Port Closure
+
+All internal services (PostgreSQL, Redis, Temporal, NATS, LiteLLM, MinIO, embedding server) use Docker `expose` only and are **not** bound to the host network. Only two host-accessible ports remain:
+
+| Port | Service | Purpose |
+|------|---------|---------|
+| 8090 | Go API Gateway | All REST/auth traffic |
+| 3000 | React Dashboard | SOC analyst UI |
+
+### JWT and Session Security
+
+- **Access tokens**: 15-minute expiry (reduced from 24 hours). Stored in JavaScript memory only — never written to `localStorage` or `sessionStorage`.
+- **Refresh tokens**: 7-day expiry, issued in `httpOnly` + `SameSite=Strict` cookies. Rotation via `POST /auth/refresh`.
+- **Signing method validation**: Only HMAC accepted; algorithm confusion attacks are rejected.
+- **JWT_SECRET enforcement**: Server refuses to start if `JWT_SECRET` is fewer than 32 characters. No hardcoded defaults ship in the binary.
+- **Logout**: `POST /auth/logout` clears the refresh cookie. Legacy `localStorage` tokens are purged on frontend load.
+
+### OIDC SSO Verification
+
+- ID tokens are verified against the provider's published JWKS endpoint (RSA signatures).
+- Issuer (`iss`) and audience (`aud`) claims are validated on every token exchange.
+- JWKS key sets auto-refresh on key rotation — no manual intervention required.
+- Implemented with Go stdlib (`crypto/rsa`) — zero new dependencies.
+
+### Authentication Rate Limiting
+
+- **Login attempts**: 10 per 15 minutes per source IP.
+- **Account lockout**: Triggered after 5 consecutive failed attempts; requires admin unlock.
+- Rate limits are enforced at the API middleware layer before credential verification.
+
+### Database Authentication
+
+- PostgreSQL connections use **SCRAM-SHA-256** authentication (replaces md5).
+- Connection pooling via PgBouncer limits max connections and prevents exhaustion attacks.
+
+### Frontend Security Posture
+
+- Access token held in a JavaScript closure — inaccessible to XSS-injected scripts reading `localStorage`.
+- All API calls use `fetchWithRefresh()` which auto-retries on 401 with the httpOnly refresh cookie.
+- Legacy `localStorage` token entries are explicitly deleted on application bootstrap.

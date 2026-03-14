@@ -1,5 +1,7 @@
 # Deployment Guide
 
+**Version: v0.10.1 | Date: 2026-03-14**
+
 This guide is intended for DevOps engineers and IT Administrators responsible for deploying Project Hydra in air-gapped environments.
 
 ## System Requirements
@@ -35,7 +37,16 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
    ```bash
    cp .env.example .env
    vim .env
-   # Set POSTGRES_PASSWORD, JWT_SECRET, LITELLM_MASTER_KEY, MINIO_ROOT_PASSWORD
+   # Set POSTGRES_PASSWORD, LITELLM_MASTER_KEY, MINIO_ROOT_PASSWORD
+   ```
+
+   **JWT_SECRET is REQUIRED and must be at least 32 characters.** The API server will refuse to start if this value is missing or too short. Generate a strong secret:
+   ```bash
+   openssl rand -base64 64
+   ```
+   Copy the output and set it in `.env`:
+   ```
+   JWT_SECRET=<paste-generated-value-here>
    ```
 
 3. **Configure the Inference Proxy (LiteLLM):**
@@ -49,9 +60,9 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
    ```
 
 4. **Spin up the Core Stack:**
-   Initialize the database, message queues, and API gateways.
+   Initialize the database, message queues, and API gateways. NATS is required by both the API and worker for alert streaming.
    ```bash
-   docker compose up -d postgres redis temporal temporal-ui api dashboard litellm minio embedding-server
+   docker compose up -d postgres redis temporal nats litellm pgbouncer api dashboard
    ```
 
 5. **Spin up the Python Worker:**
@@ -66,6 +77,39 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
    ```bash
    docker compose ps
    ```
+
+## Security Configuration
+
+As of v0.10.1, Hydra follows a hardened network posture by default.
+
+**Exposed Ports (host-accessible):**
+
+| Service   | Port | Purpose           |
+|-----------|------|-------------------|
+| API       | 8090 | REST API gateway  |
+| Dashboard | 3000 | Web UI            |
+
+**Internal-only Services (not reachable from host):**
+
+PostgreSQL (5432), Redis (6379), Temporal (7233), NATS (4222), LiteLLM (4000), MinIO (9000), PgBouncer, and the embedding server are all bound to the `hydra-internal` Docker network using `expose` only. They are not accessible outside the Docker network.
+
+**OIDC Single Sign-On (optional):**
+
+To enable OIDC-based authentication, set the following in `.env`:
+```
+OIDC_ISSUER_URL=https://idp.example.com
+OIDC_CLIENT_ID=hydra-app
+OIDC_CLIENT_SECRET=<your-client-secret>
+```
+When configured, ID tokens are verified against the provider's JWKS endpoint (RSA). If these variables are unset, OIDC is disabled and only local login is available.
+
+**Monitoring Stack (optional):**
+
+Prometheus, Grafana, Jaeger, and associated exporters are gated behind a Docker Compose profile. To include them:
+```bash
+docker compose --profile monitoring up -d
+```
+This adds Prometheus (9090), Grafana (3001), and exporters for PostgreSQL, Redis, and Temporal.
 
 ## Disaster Recovery
 
