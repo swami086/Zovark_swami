@@ -21,6 +21,7 @@ ALLOWED_DOMAINS = {
     "slack.com", "pagerduty.com", "teams.microsoft.com",
     # Threat intelligence
     "virustotal.com", "abuseipdb.com", "shodan.io",
+    "redhuntlabs.com",
 }
 
 # Internal services that bypass the proxy
@@ -97,7 +98,18 @@ class EgressController:
 
         Validates domain, routes through proxy, returns response.
         Raises EgressDeniedError for blocked domains.
+
+        Supports kwargs: headers, json, data, params (query string dict), timeout.
         """
+        # Append query params to URL before validation
+        query_params = kwargs.get("params")
+        if query_params:
+            from urllib.parse import urlencode, urlparse, urlunparse
+            parsed = urlparse(url)
+            existing = parsed.query
+            new_query = (existing + "&" if existing else "") + urlencode(query_params)
+            url = urlunparse(parsed._replace(query=new_query))
+
         self.validate_url(url)
 
         import urllib.request
