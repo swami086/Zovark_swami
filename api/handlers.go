@@ -41,7 +41,7 @@ func healthCheckHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":             "ok",
-		"version":            "0.18.0",
+		"version":            "1.0.0-rc1",
 		"uptime_seconds":     int(time.Since(startTime).Seconds()),
 		"mode":               deploymentMode,
 		"llm_provider":       llmProvider,
