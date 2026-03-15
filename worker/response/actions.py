@@ -3,12 +3,28 @@
 All actions are simulated by default (log what they would do).
 If a webhook integration exists for the action type + tenant,
 the action calls the webhook. Otherwise, log-only mode.
+
+Credential resolution order:
+  1. Vault JIT token (if VAULT_ADDR + VAULT_TOKEN are set and vault_path is populated)
+  2. Plaintext DB auth_credentials (backward-compatible fallback)
 """
 
 import os
+import logging
 import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+logger = logging.getLogger(__name__)
+
+# Lazy import — only fails at runtime if Vault is actually needed but not
+# installed. vault_manager has no third-party dependencies (stdlib only).
+try:
+    from vault_manager import VaultManager, JITCredentials, VaultUnavailableError
+    _VAULT_AVAILABLE = True
+except ImportError:
+    _VAULT_AVAILABLE = False
+    VaultUnavailableError = Exception  # fallback sentinel
 
 
 def _get_db():
@@ -17,13 +33,18 @@ def _get_db():
 
 
 def _get_webhook(tenant_id: str, action_type: str) -> dict:
-    """Check if a webhook integration exists for this action type."""
+    """Check if a webhook integration exists for this action type.
+
+    Returns a dict with at minimum: webhook_url, auth_type, auth_credentials,
+    and optionally: id (integration UUID), vault_path, credentials_migrated.
+    """
     try:
         conn = _get_db()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute("""
-                    SELECT webhook_url, auth_type, auth_credentials
+                    SELECT id::text, webhook_url, auth_type, auth_credentials,
+                           vault_path, credentials_migrated
                     FROM response_integrations
                     WHERE tenant_id = %s AND integration_type = %s AND enabled = true
                     LIMIT 1
@@ -36,13 +57,62 @@ def _get_webhook(tenant_id: str, action_type: str) -> dict:
         return None
 
 
-async def _call_webhook(webhook: dict, payload: dict) -> dict:
-    """Call a webhook endpoint with the action payload."""
+async def _resolve_credentials(webhook: dict, tenant_id: str) -> str | None:
+    """Resolve the auth credential value using Vault JIT when available.
+
+    Resolution order:
+      1. Vault JIT token — used when VAULT_ADDR/VAULT_TOKEN are set and
+         the integration has a vault_path (credentials_migrated = true).
+      2. Plaintext auth_credentials column — backward-compatible fallback.
+
+    Returns the raw credential string, or None if not applicable.
+    """
+    integration_id = webhook.get("id")
+    vault_path = webhook.get("vault_path")
+    credentials_migrated = webhook.get("credentials_migrated", False)
+
+    if _VAULT_AVAILABLE and integration_id and vault_path and credentials_migrated:
+        try:
+            vault = VaultManager()
+            async with JITCredentials(vault, integration_id, tenant_id) as creds:
+                # Vault creds dict may contain "api_key", "bearer_token", or
+                # "password" depending on auth_type.
+                auth_type = webhook.get("auth_type", "none")
+                if auth_type == "bearer":
+                    return creds.get("bearer_token") or creds.get("api_key")
+                elif auth_type in ("api_key", "basic"):
+                    return creds.get("api_key") or creds.get("password")
+                # For any other type return the first value in the dict
+                return next(iter(creds.values()), None) if creds else None
+        except VaultUnavailableError as exc:
+            logger.warning(
+                "Vault unavailable for integration %s, falling back to DB credentials: %s",
+                integration_id, exc,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Vault JIT credential fetch failed for %s, falling back to DB: %s",
+                integration_id, exc,
+            )
+
+    # Fallback: plaintext credential stored in the DB column
+    return webhook.get("auth_credentials")
+
+
+async def _call_webhook(webhook: dict, payload: dict, tenant_id: str | None = None) -> dict:
+    """Call a webhook endpoint with the action payload.
+
+    Credentials are resolved via Vault JIT when available; plaintext DB
+    auth_credentials are used as a backward-compatible fallback.
+    """
     headers = {"Content-Type": "application/json"}
-    if webhook.get("auth_type") == "bearer" and webhook.get("auth_credentials"):
-        headers["Authorization"] = f"Bearer {webhook['auth_credentials']}"
-    elif webhook.get("auth_type") == "api_key" and webhook.get("auth_credentials"):
-        headers["X-API-Key"] = webhook["auth_credentials"]
+
+    credential = await _resolve_credentials(webhook, tenant_id or "")
+
+    if webhook.get("auth_type") == "bearer" and credential:
+        headers["Authorization"] = f"Bearer {credential}"
+    elif webhook.get("auth_type") == "api_key" and credential:
+        headers["X-API-Key"] = credential
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -77,7 +147,7 @@ class BlockIP(ResponseAction):
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "block_ip") if tenant_id else None
         if webhook:
-            result = await _call_webhook(webhook, {"action": "block_ip", "ip": ip})
+            result = await _call_webhook(webhook, {"action": "block_ip", "ip": ip}, tenant_id)
             print(f"[BlockIP] Webhook called for {ip}: {result}")
             return {"status": "executed", "ip": ip, "webhook": result}
         print(f"[BlockIP] SIMULATED: Would block IP {ip} on firewall")
@@ -100,7 +170,7 @@ class DisableUser(ResponseAction):
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "disable_user") if tenant_id else None
         if webhook:
-            result = await _call_webhook(webhook, {"action": "disable_user", "username": username})
+            result = await _call_webhook(webhook, {"action": "disable_user", "username": username}, tenant_id)
             return {"status": "executed", "username": username, "webhook": result}
         print(f"[DisableUser] SIMULATED: Would disable user {username}")
         return {"status": "simulated", "username": username, "message": f"Would disable user {username}"}
@@ -121,7 +191,7 @@ class IsolateEndpoint(ResponseAction):
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "isolate_endpoint") if tenant_id else None
         if webhook:
-            result = await _call_webhook(webhook, {"action": "isolate_endpoint", "target": target})
+            result = await _call_webhook(webhook, {"action": "isolate_endpoint", "target": target}, tenant_id)
             return {"status": "executed", "target": target, "webhook": result}
         print(f"[IsolateEndpoint] SIMULATED: Would isolate endpoint {target}")
         return {"status": "simulated", "target": target, "message": f"Would isolate {target}"}
@@ -143,7 +213,7 @@ class RotateCredentials(ResponseAction):
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "rotate_credentials") if tenant_id else None
         if webhook:
-            result = await _call_webhook(webhook, {"action": "rotate_credentials", "target": target})
+            result = await _call_webhook(webhook, {"action": "rotate_credentials", "target": target}, tenant_id)
             return {"status": "executed", "target": target, "webhook": result}
         print(f"[RotateCredentials] SIMULATED: Would rotate credentials for {target}")
         return {"status": "simulated", "target": target, "message": f"Would rotate credentials for {target}"}
@@ -167,7 +237,7 @@ class CreateTicket(ResponseAction):
                 "action": "create_ticket", "title": title,
                 "description": context.get("description", ""),
                 "priority": context.get("priority", "medium"),
-            })
+            }, tenant_id)
             return {"status": "executed", "title": title, "webhook": result}
         print(f"[CreateTicket] SIMULATED: Would create ticket '{title}'")
         return {"status": "simulated", "title": title, "message": f"Would create ticket: {title}"}
@@ -188,7 +258,7 @@ class SendNotification(ResponseAction):
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "send_notification") if tenant_id else None
         if webhook:
-            result = await _call_webhook(webhook, {"action": "send_notification", "channel": channel, "message": message})
+            result = await _call_webhook(webhook, {"action": "send_notification", "channel": channel, "message": message}, tenant_id)
             return {"status": "executed", "channel": channel, "webhook": result}
         print(f"[SendNotification] SIMULATED: Would notify #{channel}: {message[:100]}")
         return {"status": "simulated", "channel": channel, "message": f"Would notify #{channel}"}
@@ -208,7 +278,7 @@ class QuarantineFile(ResponseAction):
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "quarantine_file") if tenant_id else None
         if webhook:
-            result = await _call_webhook(webhook, {"action": "quarantine_file", "target": target})
+            result = await _call_webhook(webhook, {"action": "quarantine_file", "target": target}, tenant_id)
             return {"status": "executed", "target": target, "webhook": result}
         print(f"[QuarantineFile] SIMULATED: Would quarantine file {target}")
         return {"status": "simulated", "target": target, "message": f"Would quarantine {target}"}

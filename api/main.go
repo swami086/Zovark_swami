@@ -198,6 +198,10 @@ func main() {
 		api.PUT("/tenants/:id", requireRole("admin"), updateTenantHandler)
 		api.DELETE("/tenants/:id/data", requireRole("admin"), gdprEraseHandler)
 
+		// MCP workflow approval gate (Security v0.12.0)
+		api.GET("/approvals/pending", listMCPApprovalsHandler)
+		api.POST("/approvals/:token/decide", requireRole("admin"), decideMCPApprovalHandler)
+
 		// Webhook endpoint management (admin only)
 		api.POST("/webhooks/endpoints", requireRole("admin"), createWebhookEndpointHandler)
 		api.PUT("/webhooks/endpoints/:id", requireRole("admin"), updateWebhookEndpointHandler)

@@ -73,6 +73,13 @@ func webhookAlertHandler(c *gin.Context) {
 	// 5. Auto-detect SIEM format and normalize
 	normalized := normalizeSIEMAlert(payload)
 
+	// TODO(security): Go-side sanitization is limited to control-char stripping and
+	// field truncation (see sanitizeSIEMField / autoInvestigateAlert). Deep prompt-injection
+	// neutralization, IoC extraction, and integrity hashing are handled on the Python side
+	// by worker/security/alert_sanitizer.py (AlertSanitizer) before any embedding or LLM call.
+	// If a Go-native sanitization layer is needed in future, mirror the 5-stage pipeline
+	// defined in that module.
+
 	// 6. Insert into siem_alerts
 	alertID := uuid.New().String()
 	autoInvestigate := false

@@ -14,6 +14,8 @@ from prompt_registry import get_version
 from model_config import get_tier_config
 from validation.dry_run import DryRunValidator
 from security.prompt_sanitizer import wrap_untrusted_data
+from security.alert_sanitizer import sanitize_alert
+from security.adversarial_review import review_code
 
 # Add the /app level to path so we can import sandbox.ast_prefilter
 sys.path.append("/app")
@@ -123,6 +125,10 @@ async def generate_code(task_data: dict) -> dict:
 
     # Build the user message
     siem_event = task_data.get("input", {}).get("siem_event")
+
+    # Sanitize SIEM event before embedding or passing to LLM (prevents memory poisoning)
+    if siem_event:
+        siem_event = sanitize_alert(siem_event)
 
     if log_data:
         # Truncate log data if extremely large (safety net)
@@ -247,6 +253,20 @@ async def validate_code(code: str) -> dict:
 
 @activity.defn
 async def execute_code(code: str) -> dict:
+    # Stage 1: Adversarial review — red-team LLM checks for sandbox escape attempts
+    # Must run BEFORE AST prefilter (Stage 2) and Docker execution (Stage 3)
+    review_result = review_code(code)
+    if not review_result["safe"]:
+        logger.warning(f"Adversarial review blocked code: {review_result['reason']}")
+        return {
+            "status": "failed",
+            "stdout": "",
+            "stderr": f"Code blocked by adversarial review: {review_result['reason']}",
+            "execution_ms": review_result.get("review_ms", 0),
+            "blocked_by": "adversarial_review",
+        }
+
+    # Stage 2 (AST prefilter) and Stage 3 (Docker sandbox) follow below
     seccomp_path = "/app/sandbox/seccomp_profile.json"
 
     cmd = [
@@ -768,6 +788,10 @@ async def fill_skill_parameters(data: dict) -> dict:
     prompt = data.get("prompt", "")
     log_data = data.get("log_data", "")
     siem_event = data.get("siem_event", {})
+
+    # Sanitize SIEM event before embedding or passing to LLM (prevents memory poisoning)
+    if siem_event:
+        siem_event = sanitize_alert(siem_event)
 
     defaults = {p["name"]: p.get("default") for p in skill_params}
 
