@@ -65,6 +65,25 @@ func getEnvOrDefault(key, fallback string) string {
 }
 
 func main() {
+	// Check for CLI commands
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		cmd := "up"
+		if len(os.Args) > 2 {
+			cmd = os.Args[2]
+		}
+		// Initialize DB for migration commands
+		initVault()
+		defer stopVault()
+		appConfig.DatabaseURL = GetSecret("database_url", "DATABASE_URL", appConfig.DatabaseURL)
+		appConfig.JWTSecret = GetSecret("jwt_secret", "JWT_SECRET", appConfig.JWTSecret)
+		if err := initDB(appConfig.DatabaseURL); err != nil {
+			log.Fatalf("Failed to initialize database: %v", err)
+		}
+		defer closeDB()
+		runMigrations(cmd, os.Args[3:])
+		return
+	}
+
 	log.Println("Starting Hydra API Gateway...")
 
 	// Initialize Vault (for secrets management — must come before DB init)

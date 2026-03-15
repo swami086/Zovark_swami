@@ -1,0 +1,5 @@
+[
+  {"email": "admin@test.hydra.local", "password": "test-admin-pass", "role": "admin", "display_name": "Test Admin"},
+  {"email": "analyst@test.hydra.local", "password": "test-analyst-pass", "role": "analyst", "display_name": "Test Analyst"},
+  {"email": "viewer@test.hydra.local", "password": "test-viewer-pass", "role": "viewer", "display_name": "Test Viewer"}
+]

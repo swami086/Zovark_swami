@@ -12,7 +12,7 @@ import (
 func gdprEraseHandler(c *gin.Context) {
 	tenantID := c.Param("id")
 	callerTenantID := c.MustGet("tenant_id").(string)
-	role := c.MustGet("role").(string)
+	role := c.MustGet("user_role").(string)
 
 	// Only own-tenant admin or super_admin
 	if role != "super_admin" && tenantID != callerTenantID {

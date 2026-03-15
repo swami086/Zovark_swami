@@ -1,0 +1,14 @@
+{
+  "alert_name": "Brute Force Login Attempt",
+  "severity": "high",
+  "source_ip": "203.0.113.42",
+  "dest_ip": "10.0.1.50",
+  "rule_name": "AUTH-001: Multiple Failed Logins",
+  "raw_event": {
+    "event_type": "authentication_failure",
+    "count": 50,
+    "timeframe_minutes": 5,
+    "target_account": "administrator",
+    "source_country": "CN"
+  }
+}
