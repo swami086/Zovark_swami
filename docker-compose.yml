@@ -209,7 +209,7 @@ services:
   nats:
     image: nats:2.10-alpine
     container_name: hydra-nats
-    command: ["--jetstream", "--store_dir", "/data", "--max_payload", "1048576", "--http_port", "8222", "--user", "${NATS_USER:-hydra}", "--pass", "${NATS_PASSWORD:-hydra-nats-dev-2026}"]
+    command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER:-hydra}", "--pass", "${NATS_PASSWORD:-hydra-nats-dev-2026}"]
     expose:
       - "4222"
       - "8222"

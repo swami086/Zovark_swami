@@ -115,7 +115,7 @@ class TestGetCredentials:
             return_value={"data": {"data": {}}}
         )
         self.vm.get_credentials("my-integration", "my-tenant")
-        _, path, _ = self.vm._request.call_args[0]
+        path = self.vm._request.call_args[0][1]
         assert "my-integration" in path
         assert "my-tenant" in path
 
@@ -142,7 +142,7 @@ class TestDeleteCredentials:
 
     def test_uses_metadata_path(self):
         self.vm.delete_credentials("int-1", "tenant-1")
-        _, path, _ = self.vm._request.call_args[0]
+        path = self.vm._request.call_args[0][1]
         assert "metadata" in path
 
     def test_does_not_raise_on_success(self):
