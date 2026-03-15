@@ -1,92 +1,107 @@
+"""AST prefilter v2 — blocks dangerous imports, builtins, attributes, dunder traversal."""
 import ast
-from typing import Tuple
+from typing import Set, Tuple, List
 
-FORBIDDEN_MODULES = {
-    'ctypes', 'multiprocessing',
-    'importlib', 'pty', 'fcntl', 'resource'
+FORBIDDEN_MODULES: Set[str] = {
+    "eval", "exec", "subprocess", "socket", "ctypes", "importlib",
+    "os", "sys", "shutil", "signal", "requests", "urllib", "http",
+    "http.client", "http.server", "xmlrpc", "ftplib", "smtplib",
+    "imaplib", "poplib", "telnetlib", "socketserver",
+    "multiprocessing", "threading", "concurrent",
+    "pickle", "shelve", "marshal", "code", "codeop",
+    "compileall", "py_compile", "pty", "pipes", "resource",
+    "gc", "inspect", "dis", "traceback", "linecache",
+    "tokenize", "ast", "builtins", "io", "pathlib",
+    "glob", "fnmatch", "tempfile", "zipfile", "tarfile",
+    "gzip", "bz2", "lzma", "webbrowser", "antigravity",
+    "tkinter", "cffi", "pdb", "runpy",
 }
 
-FORBIDDEN_ATTRIBUTES = {
-    'system', 'execl', 'execle', 'execlp', 'execlpe', 'execv',
-    'execve', 'execvp', 'execvpe', 'rmtree'
+FORBIDDEN_BUILTINS: Set[str] = {
+    "eval", "exec", "__import__", "compile", "open",
+    "getattr", "setattr", "delattr", "globals", "locals",
+    "vars", "dir", "type", "super", "memoryview",
+    "breakpoint", "exit", "quit", "input",
 }
 
-FORBIDDEN_FUNCTIONS = {
-    'eval', 'exec', '__import__'
+FORBIDDEN_ATTRIBUTES: Set[str] = {
+    "__class__", "__bases__", "__subclasses__", "__globals__",
+    "__dict__", "__builtins__", "__init__", "__new__", "__del__",
+    "__getattr__", "__setattr__", "__delattr__", "__getattribute__",
+    "__mro__", "__code__", "__func__", "__self__",
+    "__wrapped__", "__closure__", "__annotations__",
+    "system", "popen", "exec_command", "spawn",
+    "fork", "kill", "environ",
 }
 
+FORBIDDEN_STRING_PATTERNS = [
+    "__import__", "__builtins__", "__subclasses__", "__globals__",
+    "os.system", "os.popen", "subprocess", "eval(", "exec(", "compile(",
+]
 
-class SecurityVisitor(ast.NodeVisitor):
+
+class SecurityASTVisitor(ast.NodeVisitor):
     def __init__(self):
-        self.safe = True
-        self.reason = ""
+        self.violations: List[str] = []
 
-    def fail(self, reason: str):
-        self.safe = False
-        self.reason = reason
-
-    def visit_Import(self, node: ast.Import):
+    def visit_Import(self, node):
         for alias in node.names:
-            base_module = alias.name.split('.')[0]
-            if base_module in FORBIDDEN_MODULES or alias.name in FORBIDDEN_MODULES:
-                self.fail(f"Forbidden import: {alias.name}")
-                return
+            for f in FORBIDDEN_MODULES:
+                if alias.name == f or alias.name.startswith(f + "."):
+                    self.violations.append(f"Forbidden import: '{alias.name}' (line {node.lineno})")
         self.generic_visit(node)
 
-    def visit_ImportFrom(self, node: ast.ImportFrom):
+    def visit_ImportFrom(self, node):
         if node.module:
-            base_module = node.module.split('.')[0]
-            if base_module in FORBIDDEN_MODULES or node.module in FORBIDDEN_MODULES:
-                self.fail(f"Forbidden import module: {node.module}")
-                return
-
-        # Check if importing forbidden attributes mapped from allowed modules (e.g. from os import system)
-        for alias in node.names:
-            if alias.name in FORBIDDEN_ATTRIBUTES or alias.name in FORBIDDEN_FUNCTIONS or alias.name == '__import__':
-                self.fail(f"Forbidden import alias: {alias.name}")
-                return
+            for f in FORBIDDEN_MODULES:
+                if node.module == f or node.module.startswith(f + "."):
+                    self.violations.append(f"Forbidden import from: '{node.module}' (line {node.lineno})")
         self.generic_visit(node)
 
-    def visit_Call(self, node: ast.Call):
-        # Direct function calls (e.g., eval(), exec(), __import__())
-        if isinstance(node.func, ast.Name):
-            if node.func.id in FORBIDDEN_FUNCTIONS:
-                self.fail(f"Forbidden function call: {node.func.id}")
-                return
-        # Method calls (e.g., os.system(), shutil.rmtree())
-        elif isinstance(node.func, ast.Attribute):
-            if node.func.attr in FORBIDDEN_ATTRIBUTES or node.func.attr in FORBIDDEN_FUNCTIONS or node.func.attr == '__import__':
-                self.fail(f"Forbidden attribute/method call: {node.func.attr}")
-                return
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_BUILTINS:
+            self.violations.append(f"Forbidden call: '{node.func.id}()' (line {node.lineno})")
+        if isinstance(node.func, ast.Attribute) and node.func.attr in FORBIDDEN_ATTRIBUTES:
+            self.violations.append(f"Forbidden method: '.{node.func.attr}()' (line {node.lineno})")
         self.generic_visit(node)
 
-    def visit_Name(self, node: ast.Name):
-        if node.id in FORBIDDEN_FUNCTIONS or node.id == '__import__':
-            self.fail(f"Forbidden name reference: {node.id}")
-            return
+    def visit_Attribute(self, node):
+        if node.attr in FORBIDDEN_ATTRIBUTES:
+            self.violations.append(f"Forbidden attribute: '.{node.attr}' (line {node.lineno})")
         self.generic_visit(node)
 
-    def visit_Attribute(self, node: ast.Attribute):
-        if node.attr in FORBIDDEN_ATTRIBUTES or node.attr in FORBIDDEN_FUNCTIONS or node.attr == '__import__':
-            self.fail(f"Forbidden attribute reference: {node.attr}")
-            return
+    def visit_Subscript(self, node):
+        if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+            if node.slice.value in FORBIDDEN_ATTRIBUTES:
+                self.violations.append(f"Forbidden subscript: ['{node.slice.value}'] (line {node.lineno})")
+        self.generic_visit(node)
+
+    def visit_Constant(self, node):
+        if isinstance(node.value, str):
+            for p in FORBIDDEN_STRING_PATTERNS:
+                if p in node.value:
+                    self.violations.append(f"Forbidden string: '{p}' (line {node.lineno})")
         self.generic_visit(node)
 
 
-def is_safe_python_code(code_string: str) -> Tuple[bool, str]:
-    """
-    Parses the AST of the provided Python code string and rejects it if it
-    contains forbidden imports, function calls, or attribute accesses.
+def validate_code(code: str) -> Tuple[bool, List[str]]:
+    """Validate Python code against security rules.
+
+    Returns (is_safe, list_of_violations).
     """
     try:
-        tree = ast.parse(code_string)
-    except Exception as e:
-        return False, f"Code parsing failed (SyntaxError): {e}"
-
-    visitor = SecurityVisitor()
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return False, [f"Syntax error: {e}"]
+    visitor = SecurityASTVisitor()
     visitor.visit(tree)
+    return (len(visitor.violations) == 0), visitor.violations
 
-    if not visitor.safe:
-        return False, visitor.reason
 
-    return True, "Safe"
+# Backwards-compatible wrapper for existing callers
+def is_safe_python_code(code_string: str) -> Tuple[bool, str]:
+    """Legacy API — returns (is_safe, reason_string)."""
+    safe, violations = validate_code(code_string)
+    if safe:
+        return True, "Safe"
+    return False, violations[0]

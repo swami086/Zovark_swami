@@ -1,5 +1,6 @@
 """Sandbox deobfuscation skill — decode base64/hex/PowerShell/URL payloads."""
 
+import base64
 import json
 import time
 import subprocess
@@ -71,17 +72,22 @@ async def run_deobfuscation(data: dict) -> dict:
         "--tmpfs", "/tmp:size=64m,noexec,nosuid", "--workdir", "/tmp",
         "--cpus=0.5", "--memory=512m", "--memory-swap=512m",
         "--pids-limit=64", "--cap-drop=ALL",
+        "--user", "65534:65534",
         "--security-opt=no-new-privileges",
         "--security-opt", f"seccomp={seccomp_path}",
         "python:3.11-slim", "python"
     ]
 
-    # Feed the template script via stdin, with the payload piped through
-    # We build a script that reads the payload from a variable instead of stdin
+    # Feed the template script via stdin, with the payload piped through.
+    # Base64-encode the payload before embedding so that triple-quotes or any
+    # other special characters in the payload CANNOT break out of the string
+    # literal — base64 output is [A-Za-z0-9+/=] only (Security P1#19).
+    b64_payload = base64.b64encode(encoded_payload.encode("utf-8", errors="replace")).decode()
     script = f'''
 import sys
-# Inject payload as variable
-PAYLOAD = """{encoded_payload.replace(chr(92), chr(92)*2).replace('"', chr(92)+'"')}"""
+# Decode injection-safe base64 payload
+import base64 as _b64
+PAYLOAD = _b64.b64decode("{b64_payload}").decode("utf-8", errors="replace")
 
 import base64, binascii, re, json
 

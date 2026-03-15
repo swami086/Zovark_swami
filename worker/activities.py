@@ -13,6 +13,7 @@ from llm_logger import log_llm_call
 from prompt_registry import get_version
 from model_config import get_tier_config
 from validation.dry_run import DryRunValidator
+from security.prompt_sanitizer import wrap_untrusted_data
 
 # Add the /app level to path so we can import sandbox.ast_prefilter
 sys.path.append("/app")
@@ -117,7 +118,8 @@ async def generate_code(task_data: dict) -> dict:
 
     playbook_system_prompt_override = task_data.get("input", {}).get("playbook_system_prompt_override")
     if playbook_system_prompt_override:
-        system_prompt += f"\n\nPLAYBOOK OVERRIDE INSTRUCTIONS:\n{playbook_system_prompt_override}"
+        wrapped_override, _ = wrap_untrusted_data(playbook_system_prompt_override, "system_override")
+        system_prompt += f"\n\nPLAYBOOK OVERRIDE INSTRUCTIONS:\n{wrapped_override}"
 
     # Build the user message
     siem_event = task_data.get("input", {}).get("siem_event")
@@ -129,8 +131,11 @@ async def generate_code(task_data: dict) -> dict:
         augmented_prompt = f"Here is the log data from file '{filename}' to analyze:\n\n{log_data}\n\nTask: {prompt}\n\nIMPORTANT: Embed this EXACT log data in your script as a multi-line string variable named LOG_DATA. Analyze it directly."
     elif siem_event:
         siem_context = json.dumps(siem_event, indent=2)
+        # Wrap untrusted SIEM data with randomized delimiters (Security P0#10)
+        wrapped_siem, siem_safety_instruction = wrap_untrusted_data(siem_context, "siem_alert")
+        system_prompt += f"\n\n{siem_safety_instruction}"
         augmented_prompt = (
-            f"SIEM ALERT DATA:\n{siem_context}\n\n"
+            f"SIEM ALERT DATA:\n{wrapped_siem}\n\n"
             f"Task: {prompt}\n\n"
             "IMPORTANT: This is a real SIEM alert. Embed the alert data in your script and analyze it. "
             "Generate detection logic and IOC extraction based on the alert details. "
@@ -249,6 +254,7 @@ async def execute_code(code: str) -> dict:
         "--tmpfs", "/tmp:size=64m,noexec,nosuid", "--workdir", "/tmp",
         "--cpus=0.5", "--memory=512m", "--memory-swap=512m",
         "--pids-limit=64", "--cap-drop=ALL",
+        "--user", "65534:65534",
         "--security-opt=no-new-privileges",
         "--security-opt", f"seccomp={seccomp_path}",
         "python:3.11-slim", "python"
@@ -774,7 +780,9 @@ async def fill_skill_parameters(data: dict) -> dict:
 
         user_msg = f"Available parameters and their types:\\n{json.dumps(skill_params, indent=2)}\\n\\nUser Prompt:\\n{prompt}\\n\\n"
         if siem_event:
-            user_msg += f"Available SIEM Context:\\n{json.dumps(siem_event)}\\n\\n"
+            # Wrap untrusted SIEM data (Security P0#10)
+            wrapped_siem_ctx, _ = wrap_untrusted_data(json.dumps(siem_event), "siem_alert")
+            user_msg += f"Available SIEM Context:\\n{wrapped_siem_ctx}\\n\\n"
         user_msg += "Respond ONLY with a JSON object where keys are parameter names and values are the extracted values."
 
         async with httpx.AsyncClient(timeout=30.0) as client:

@@ -20,6 +20,7 @@ with workflow.unsafe.imports_passed_through():
     from llm_logger import log_llm_call
     from model_config import get_tier_config
     from prompt_registry import get_version
+    from security.prompt_sanitizer import wrap_untrusted_data
     import logger
 
 
@@ -60,7 +61,10 @@ async def generate_recommendation(params: dict) -> dict:
         "Respond with ONLY valid JSON, no markdown fences."
     )
 
-    user_prompt = f"Investigation data:\n{json.dumps(investigation_data, default=str)[:4000]}"
+    raw_investigation = json.dumps(investigation_data, default=str)[:4000]
+    safe_investigation, inv_safety_instruction = wrap_untrusted_data(raw_investigation, "investigation_data")
+    system_prompt += f"\n\n{inv_safety_instruction}"
+    user_prompt = f"Investigation data:\n{safe_investigation}"
 
     payload = {
         "model": tier_config["model"],
@@ -191,11 +195,12 @@ async def record_human_decision(params: dict) -> dict:
     """Record the analyst's decision for a shadow recommendation.
 
     Args:
-        params: {recommendation_id, human_action, human_severity, human_reasoning, decided_by}
+        params: {recommendation_id, tenant_id, human_action, human_severity, human_reasoning, decided_by}
     Returns:
         {action_match, severity_match, match_category}
     """
     recommendation_id = params["recommendation_id"]
+    tenant_id = params["tenant_id"]
     human_action = params["human_action"]
     human_severity = params["human_severity"]
     human_reasoning = params.get("human_reasoning", "")
@@ -204,11 +209,11 @@ async def record_human_decision(params: dict) -> dict:
     conn = _get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            # Fetch the original recommendation
+            # Fetch the original recommendation — verify tenant ownership
             cur.execute("""
                 SELECT recommended_action, severity FROM shadow_recommendations
-                WHERE id = %s
-            """, (recommendation_id,))
+                WHERE id = %s AND tenant_id = %s
+            """, (recommendation_id, tenant_id))
             rec = cur.fetchone()
             if not rec:
                 raise ValueError(f"Recommendation {recommendation_id} not found")
@@ -491,6 +496,7 @@ class ShadowInvestigationWorkflow:
             record_human_decision,
             {
                 "recommendation_id": recommendation_id,
+                "tenant_id": tenant_id,
                 "human_action": decision.get("action", "monitor"),
                 "human_severity": decision.get("severity", "medium"),
                 "human_reasoning": decision.get("reasoning", ""),

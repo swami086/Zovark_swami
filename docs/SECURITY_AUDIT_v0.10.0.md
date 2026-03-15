@@ -348,48 +348,48 @@ OpenRouter API key `sk-or-v1-...` on disk (gitignored, but present).
 
 ### P0 — Fix Before ANY External Access
 
-| # | Fix | Files | Effort |
-|---|-----|-------|--------|
-| 1 | **Block injection detector** — reject/quarantine when `injection_detected` | `worker/workflows.py:176-204` | 2hr |
-| 2 | **Wire PII masking into workflows** — call `mask_for_llm` before LLM calls | `worker/workflows.py` | 4hr |
-| 3 | **Remove expired JWT bypass** | `api/middleware.go:57-62` | 30min |
-| 4 | **Remove tenant_id from registration** — require invite | `api/auth.go:14-19` | 2hr |
-| 5 | **Fail startup without JWT_SECRET** — no hardcoded default | `api/main.go:40-43` | 30min |
-| 6 | **Add request body size limit** — prevent OOM DoS | `api/siem.go:46` + global middleware | 1hr |
-| 7 | **Fix investigation cache tenant isolation** — add tenant_id to cache keys | `worker/investigation_cache.py`, `worker/stampede.py` | 3hr |
-| 8 | **Scope tenant CRUD to own tenant** or add super-admin role | `api/tenants.go` | 3hr |
-| 9 | **Move dry-run validation into Docker sandbox** | `worker/validation/dry_run.py:114-118` | 4hr |
-| 10 | **Sanitize SIEM fields before prompt construction** | `api/siem.go:218-221` | 2hr |
+| # | Fix | Files | Effort | Status |
+|---|-----|-------|--------|--------|
+| 1 | **Block injection detector** — reject/quarantine when `injection_detected` | `worker/workflows.py:176-212` | 2hr | **FIXED v0.10.2** |
+| 2 | **Wire PII masking into workflows** — call `mask_for_llm` before LLM calls | `worker/workflows.py` | 4hr | **FIXED v0.10.2** |
+| 3 | **Remove expired JWT bypass** | `api/middleware.go:57-62` | 30min | **FIXED v0.10.1** |
+| 4 | **Validate tenant_id in registration** — verify tenant exists + active | `api/auth.go:36-48` | 2hr | **FIXED v0.10.2** |
+| 5 | **Fail startup without JWT_SECRET** — no hardcoded default | `api/main.go:40-43` | 30min | **FIXED v0.10.1** |
+| 6 | **Add request body size limit** — prevent OOM DoS | `api/siem.go:46` + `api/security.go` | 1hr | **FIXED v0.10.2** |
+| 7 | **Fix investigation cache tenant isolation** — add tenant_id to cache keys | `worker/investigation_cache.py`, `worker/stampede.py` | 3hr | **FIXED v0.10.2** |
+| 8 | **Scope tenant CRUD to own tenant** | `api/tenants.go` | 3hr | **FIXED v0.10.2** |
+| 9 | **Move dry-run validation into Docker sandbox** | `worker/validation/dry_run.py:84-130` | 4hr | **FIXED v0.10.2** |
+| 10 | **Sanitize SIEM fields before prompt construction** | `api/siem.go:200-221`, `worker/activities.py:130-138` | 2hr | **FIXED v0.10.2** |
 
 ### P1 — Fix Before Pilot Onboarding
 
-| # | Fix | Effort |
-|---|-----|--------|
-| 11 | Add OIDC JWKS signature verification | 4hr |
-| 12 | Add tenant_id to model registry/A/B tests/retention policies | 3hr |
-| 13 | Expand AST prefilter forbidden list (os, subprocess, socket, dunders) | 2hr |
-| 14 | Apply `wrap_untrusted_data()` to all 12 unsanitized LLM call sites | 6hr |
-| 15 | Stop leaking err.Error() to clients (35+ handlers) | 4hr |
-| 16 | Rate limit fail-closed on Redis failure | 2hr |
-| 17 | Enable TLS by default (Caddy, sslmode=require) | 3hr |
-| 18 | Add independent validation of LLM-derived risk scores | 4hr |
-| 19 | Fix deobfuscation template injection | 1hr |
-| 20 | Use json.Marshal for all audit log JSON construction | 2hr |
+| # | Fix | Effort | Status |
+|---|-----|--------|--------|
+| 11 | Add OIDC JWKS signature verification | 4hr | **FIXED v0.10.1** |
+| 12 | Add tenant_id to model registry/A/B tests/retention policies | 3hr | **FIXED v0.11.0** |
+| 13 | Expand AST prefilter forbidden list (os, subprocess, socket, dunders) | 2hr | **FIXED v0.11.0** |
+| 14 | Apply `wrap_untrusted_data()` to all 12 unsanitized LLM call sites | 6hr | **FIXED v0.11.0** |
+| 15 | Stop leaking err.Error() to clients (35+ handlers) | 4hr | **FIXED v0.11.0** |
+| 16 | Rate limit fail-closed on Redis failure | 2hr | **FIXED v0.11.0** |
+| 17 | Enable TLS by default (Caddy, sslmode=require) | 3hr | **FIXED v0.11.0** |
+| 18 | Add independent validation of LLM-derived risk scores | 4hr | **FIXED v0.11.0** |
+| 19 | Fix deobfuscation template injection | 1hr | **FIXED v0.11.0** |
+| 20 | Use json.Marshal for all audit log JSON construction | 2hr | **FIXED v0.11.0** |
 
 ### P2 — Fix Before GA
 
-| # | Fix | Effort |
-|---|-----|--------|
-| 21 | Encrypt TOTP secrets at rest (pgcrypto or app-level AES) | 4hr |
-| 22 | Column-level encryption for sensitive investigation data | 8hr |
-| 23 | Redis authentication + TLS | 2hr |
-| 24 | NATS authentication + TLS | 2hr |
-| 25 | Implement data retention enforcement job | 4hr |
-| 26 | Add CSP and HSTS headers | 1hr |
-| 27 | PostgreSQL row-level security (RLS) | 8hr |
-| 28 | GDPR erasure endpoint | 4hr |
-| 29 | Encrypt database backups | 1hr |
-| 30 | Add --user flag to sandbox Docker containers | 30min |
+| # | Fix | Effort | Status |
+|---|-----|--------|--------|
+| 21 | Encrypt TOTP secrets at rest (pgcrypto or app-level AES) | 4hr | **FIXED v0.11.0** |
+| 22 | Column-level encryption for sensitive investigation data | 8hr | **FIXED v0.11.0** |
+| 23 | Redis authentication + TLS | 2hr | **FIXED v0.11.0** |
+| 24 | NATS authentication + TLS | 2hr | **FIXED v0.11.0** |
+| 25 | Implement data retention enforcement job | 4hr | **FIXED v0.11.0** |
+| 26 | Add CSP and HSTS headers | 1hr | **FIXED v0.11.0** |
+| 27 | PostgreSQL row-level security (RLS) | 8hr | **FIXED v0.11.0** |
+| 28 | GDPR erasure endpoint | 4hr | **FIXED v0.11.0** |
+| 29 | Encrypt database backups | 1hr | **FIXED v0.11.0** |
+| 30 | Add --user flag to sandbox Docker containers | 30min | **FIXED v0.11.0** |
 
 ---
 

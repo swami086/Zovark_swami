@@ -26,8 +26,7 @@ func listAutomationControlsHandler(c *gin.Context) {
 		ORDER BY created_at DESC
 	`, tenantID)
 	if err != nil {
-		log.Printf("Error querying automation controls: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query automation controls"})
+		respondInternalError(c, err, "query automation controls")
 		return
 	}
 	defer rows.Close()
@@ -124,7 +123,7 @@ func upsertAutomationControlHandler(c *gin.Context) {
 			WHERE id = $4 AND tenant_id = $5
 		`, req.Mode, enabled, userID, existingID, tenantID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update automation control"})
+			respondInternalError(c, err, "update automation control")
 			return
 		}
 
@@ -149,8 +148,7 @@ func upsertAutomationControlHandler(c *gin.Context) {
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, controlID, tenantID, req.Scope, req.ScopeTarget, req.Mode, enabled, userID)
 	if err != nil {
-		log.Printf("Error creating automation control: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create automation control"})
+		respondInternalError(c, err, "create automation control")
 		return
 	}
 
@@ -199,8 +197,7 @@ func emergencyKillHandler(c *gin.Context) {
 			WHERE tenant_id = $3
 		`, req.Reason, now, tenantID)
 		if err != nil {
-			log.Printf("Error executing tenant kill switch: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to execute kill switch"})
+			respondInternalError(c, err, "execute tenant kill switch")
 			return
 		}
 
@@ -222,8 +219,7 @@ func emergencyKillHandler(c *gin.Context) {
 			DO UPDATE SET mode = 'disabled', enabled = false, kill_reason = $4, updated_at = NOW()
 		`, controlID, tenantID, req.ScopeTarget, req.Reason, userID)
 		if err != nil {
-			log.Printf("Error executing workflow kill switch: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to execute kill switch"})
+			respondInternalError(c, err, "execute workflow kill switch")
 			return
 		}
 	}
@@ -315,8 +311,7 @@ func resumeAutomationHandler(c *gin.Context) {
 	}
 
 	if err != nil {
-		log.Printf("Error resuming automation control: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to resume automation"})
+		respondInternalError(c, err, "resume automation control")
 		return
 	}
 
@@ -362,8 +357,7 @@ func getKillSwitchAuditHandler(c *gin.Context) {
 		LIMIT $2
 	`, tenantID, limit)
 	if err != nil {
-		log.Printf("Error querying kill switch audit: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query audit log"})
+		respondInternalError(c, err, "query kill switch audit log")
 		return
 	}
 	defer rows.Close()

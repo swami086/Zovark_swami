@@ -11,15 +11,18 @@ import (
 )
 
 // ============================================================
-// MODEL REGISTRY CRUD
+// MODEL REGISTRY CRUD (tenant-scoped — Security P1#12)
 // ============================================================
 
 func listModelsHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
 	rows, err := dbPool.Query(c.Request.Context(),
-		"SELECT id, name, provider, model_id, version, status, is_default, config, routing_rules, eval_score, created_at FROM model_registry ORDER BY created_at DESC",
+		"SELECT id, name, provider, model_id, version, status, is_default, config, routing_rules, eval_score, created_at FROM model_registry WHERE tenant_id = $1 OR is_global = true ORDER BY created_at DESC",
+		tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query models"})
+		respondInternalError(c, err, "query models")
 		return
 	}
 	defer rows.Close()
@@ -60,6 +63,8 @@ func listModelsHandler(c *gin.Context) {
 }
 
 func createModelHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
 	var req struct {
 		Name         string                 `json:"name" binding:"required"`
 		Provider     string                 `json:"provider" binding:"required"`
@@ -88,17 +93,17 @@ func createModelHandler(c *gin.Context) {
 	configJSON, _ := json.Marshal(req.Config)
 	rulesJSON, _ := json.Marshal(req.RoutingRules)
 
-	// If setting as default, clear existing default
+	// If setting as default, clear existing default for this tenant
 	if req.IsDefault {
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = false WHERE is_default = true")
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = false WHERE is_default = true AND tenant_id = $1", tenantID)
 	}
 
 	_, err := dbPool.Exec(c.Request.Context(),
-		"INSERT INTO model_registry (id, name, provider, model_id, version, is_default, config, routing_rules) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-		id, req.Name, req.Provider, req.ModelID, req.Version, req.IsDefault, configJSON, rulesJSON,
+		"INSERT INTO model_registry (id, tenant_id, name, provider, model_id, version, is_default, config, routing_rules) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+		id, tenantID, req.Name, req.Provider, req.ModelID, req.Version, req.IsDefault, configJSON, rulesJSON,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create model"})
+		respondInternalError(c, err, "create model")
 		return
 	}
 
@@ -114,6 +119,7 @@ func createModelHandler(c *gin.Context) {
 
 func updateModelHandler(c *gin.Context) {
 	modelID := c.Param("id")
+	tenantID := c.MustGet("tenant_id").(string)
 
 	var req struct {
 		Name         *string                `json:"name"`
@@ -127,9 +133,10 @@ func updateModelHandler(c *gin.Context) {
 		return
 	}
 
+	// Verify model belongs to this tenant (or is global)
 	var exists bool
 	_ = dbPool.QueryRow(c.Request.Context(),
-		"SELECT EXISTS(SELECT 1 FROM model_registry WHERE id = $1)", modelID,
+		"SELECT EXISTS(SELECT 1 FROM model_registry WHERE id = $1 AND (tenant_id = $2 OR is_global = true))", modelID, tenantID,
 	).Scan(&exists)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
@@ -137,32 +144,34 @@ func updateModelHandler(c *gin.Context) {
 	}
 
 	if req.Name != nil {
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET name = $1, updated_at = NOW() WHERE id = $2", *req.Name, modelID)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET name = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", *req.Name, modelID, tenantID)
 	}
 	if req.Status != nil {
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET status = $1, updated_at = NOW() WHERE id = $2", *req.Status, modelID)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", *req.Status, modelID, tenantID)
 	}
 	if req.IsDefault != nil && *req.IsDefault {
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = false WHERE is_default = true")
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = true, status = 'promoted', updated_at = NOW() WHERE id = $1", modelID)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = false WHERE is_default = true AND tenant_id = $1", tenantID)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = true, status = 'promoted', updated_at = NOW() WHERE id = $1 AND tenant_id = $2", modelID, tenantID)
 	}
 	if req.Config != nil {
 		configJSON, _ := json.Marshal(req.Config)
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET config = $1, updated_at = NOW() WHERE id = $2", configJSON, modelID)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET config = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", configJSON, modelID, tenantID)
 	}
 	if req.RoutingRules != nil {
 		rulesJSON, _ := json.Marshal(req.RoutingRules)
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET routing_rules = $1, updated_at = NOW() WHERE id = $2", rulesJSON, modelID)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET routing_rules = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3", rulesJSON, modelID, tenantID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})
 }
 
 // ============================================================
-// A/B TESTING
+// A/B TESTING (tenant-scoped — Security P1#12)
 // ============================================================
 
 func listABTestsHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
 	rows, err := dbPool.Query(c.Request.Context(), `
 		SELECT ab.id, ab.name, ab.traffic_split, ab.status,
 		       ma.name as model_a_name, mb.name as model_b_name,
@@ -170,10 +179,11 @@ func listABTestsHandler(c *gin.Context) {
 		FROM model_ab_tests ab
 		JOIN model_registry ma ON ab.model_a_id = ma.id
 		JOIN model_registry mb ON ab.model_b_id = mb.id
+		WHERE ab.tenant_id = $1
 		ORDER BY ab.started_at DESC
-	`)
+	`, tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query A/B tests"})
+		respondInternalError(c, err, "query A/B tests")
 		return
 	}
 	defer rows.Close()
@@ -215,6 +225,8 @@ func listABTestsHandler(c *gin.Context) {
 }
 
 func createABTestHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
 	var req struct {
 		Name         string  `json:"name" binding:"required"`
 		ModelAID     string  `json:"model_a_id" binding:"required"`
@@ -232,16 +244,16 @@ func createABTestHandler(c *gin.Context) {
 
 	id := uuid.New().String()
 	_, err := dbPool.Exec(c.Request.Context(),
-		"INSERT INTO model_ab_tests (id, name, model_a_id, model_b_id, traffic_split) VALUES ($1, $2, $3, $4, $5)",
-		id, req.Name, req.ModelAID, req.ModelBID, req.TrafficSplit,
+		"INSERT INTO model_ab_tests (id, tenant_id, name, model_a_id, model_b_id, traffic_split) VALUES ($1, $2, $3, $4, $5, $6)",
+		id, tenantID, req.Name, req.ModelAID, req.ModelBID, req.TrafficSplit,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create A/B test"})
+		respondInternalError(c, err, "create A/B test")
 		return
 	}
 
-	// Mark both models as testing
-	_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET status = 'testing' WHERE id IN ($1, $2)", req.ModelAID, req.ModelBID)
+	// Mark both models as testing (only for this tenant's models)
+	_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET status = 'testing' WHERE id IN ($1, $2) AND tenant_id = $3", req.ModelAID, req.ModelBID, tenantID)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"id":            id,
@@ -253,6 +265,7 @@ func createABTestHandler(c *gin.Context) {
 
 func completeABTestHandler(c *gin.Context) {
 	testID := c.Param("id")
+	tenantID := c.MustGet("tenant_id").(string)
 
 	var req struct {
 		WinnerID string `json:"winner_id" binding:"required"`
@@ -264,18 +277,18 @@ func completeABTestHandler(c *gin.Context) {
 	}
 
 	_, err := dbPool.Exec(c.Request.Context(),
-		"UPDATE model_ab_tests SET status = 'completed', winner_id = $1, completed_at = NOW() WHERE id = $2",
-		req.WinnerID, testID,
+		"UPDATE model_ab_tests SET status = 'completed', winner_id = $1, completed_at = NOW() WHERE id = $2 AND tenant_id = $3",
+		req.WinnerID, testID, tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to complete A/B test"})
+		respondInternalError(c, err, "complete A/B test")
 		return
 	}
 
 	if req.Promote {
-		// Promote winner to default
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = false WHERE is_default = true")
-		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = true, status = 'promoted', updated_at = NOW() WHERE id = $1", req.WinnerID)
+		// Promote winner to default (within tenant scope)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = false WHERE is_default = true AND tenant_id = $1", tenantID)
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE model_registry SET is_default = true, status = 'promoted', updated_at = NOW() WHERE id = $1 AND tenant_id = $2", req.WinnerID, tenantID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "completed", "winner_id": req.WinnerID, "promoted": req.Promote})

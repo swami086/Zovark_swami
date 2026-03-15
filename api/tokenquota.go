@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -140,8 +139,7 @@ func updateTokenQuotaHandler(c *gin.Context) {
 	`, tenantID, tokenLimit, costLimit, warnPct)
 
 	if err != nil {
-		log.Printf("Error updating token quota: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update token quota"})
+		respondInternalError(c, err, "update token quota")
 		return
 	}
 
@@ -149,8 +147,7 @@ func updateTokenQuotaHandler(c *gin.Context) {
 	_, _ = dbPool.Exec(c.Request.Context(),
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
 		tenantID, "quota_updated", "token_quota", tenantID,
-		fmt.Sprintf(`{"token_limit": %d, "cost_limit": %.2f, "warn_pct": %d, "updated_by": "%s"}`,
-			tokenLimit, costLimit, warnPct, userID),
+		func() string { d, _ := json.Marshal(map[string]interface{}{"token_limit": tokenLimit, "cost_limit": costLimit, "warn_pct": warnPct, "updated_by": userID}); return string(d) }(),
 	)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -186,8 +183,7 @@ func circuitBreakerHandler(c *gin.Context) {
 			DO UPDATE SET circuit_breaker_open = true, circuit_breaker_reason = $2, circuit_breaker_opened_at = $3, updated_at = NOW()
 		`, tenantID, req.Reason, now)
 		if err != nil {
-			log.Printf("Error opening circuit breaker: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to open circuit breaker"})
+			respondInternalError(c, err, "open circuit breaker")
 			return
 		}
 	} else {
@@ -198,8 +194,7 @@ func circuitBreakerHandler(c *gin.Context) {
 			WHERE tenant_id = $1
 		`, tenantID)
 		if err != nil {
-			log.Printf("Error closing circuit breaker: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to close circuit breaker"})
+			respondInternalError(c, err, "close circuit breaker")
 			return
 		}
 	}
@@ -212,7 +207,7 @@ func circuitBreakerHandler(c *gin.Context) {
 	_, _ = dbPool.Exec(c.Request.Context(),
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
 		tenantID, action, "token_quota", tenantID,
-		fmt.Sprintf(`{"open": %t, "reason": "%s", "performed_by": "%s"}`, req.Open, req.Reason, userID),
+		func() string { d, _ := json.Marshal(map[string]interface{}{"open": req.Open, "reason": req.Reason, "performed_by": userID}); return string(d) }(),
 	)
 
 	// Dispatch webhook for circuit breaker state change

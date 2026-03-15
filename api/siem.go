@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -42,10 +43,11 @@ func webhookAlertHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. Read body
+	// 2. Read body (limit to 1MB to prevent OOM DoS)
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body too large (max 1MB)"})
 		return
 	}
 
@@ -92,8 +94,7 @@ func webhookAlertHandler(c *gin.Context) {
 		autoInvestigate,
 	)
 	if err != nil {
-		log.Printf("Failed to insert siem_alert: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store alert"})
+		respondInternalError(c, err, "store SIEM alert")
 		return
 	}
 
@@ -197,6 +198,23 @@ func normalizeSIEMAlert(payload map[string]interface{}) map[string]interface{} {
 	return norm
 }
 
+// sanitizeSIEMField strips control characters and truncates SIEM field values
+// to prevent prompt injection via crafted alert data (Security P0#10).
+func sanitizeSIEMField(value string, maxLen int) string {
+	// Strip control characters and newlines
+	cleaned := strings.Map(func(r rune) rune {
+		if r < 32 || r == 127 {
+			return ' '
+		}
+		return r
+	}, value)
+	// Truncate to max length
+	if len(cleaned) > maxLen {
+		cleaned = cleaned[:maxLen]
+	}
+	return strings.TrimSpace(cleaned)
+}
+
 func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normalized map[string]interface{}) (string, error) {
 	// Map severity to task type
 	taskType := "log_analysis"
@@ -209,11 +227,12 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 		}
 	}
 
-	alertName := fmt.Sprintf("%v", normalized["alert_name"])
-	sourceIP := fmt.Sprintf("%v", normalized["source_ip"])
-	destIP := fmt.Sprintf("%v", normalized["dest_ip"])
-	ruleName := fmt.Sprintf("%v", normalized["rule_name"])
-	severity := fmt.Sprintf("%v", normalized["severity"])
+	// Sanitize all SIEM fields to prevent prompt injection (Security P0#10)
+	alertName := sanitizeSIEMField(fmt.Sprintf("%v", normalized["alert_name"]), 200)
+	sourceIP := sanitizeSIEMField(fmt.Sprintf("%v", normalized["source_ip"]), 45)
+	destIP := sanitizeSIEMField(fmt.Sprintf("%v", normalized["dest_ip"]), 45)
+	ruleName := sanitizeSIEMField(fmt.Sprintf("%v", normalized["rule_name"]), 200)
+	severity := sanitizeSIEMField(fmt.Sprintf("%v", normalized["severity"]), 20)
 
 	prompt := fmt.Sprintf(
 		"Investigate SIEM alert: %s. Source: %s, Dest: %s. Rule: %s. Severity: %s.",
@@ -268,11 +287,12 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 		taskID, alertID,
 	)
 
-	// Audit log
+	// Audit log (use json.Marshal to prevent JSON injection — Security H11)
+	auditDetails, _ := json.Marshal(map[string]string{"task_id": taskID, "alert_name": alertName})
 	_, _ = dbPool.Exec(ctx,
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
 		tenantID, "auto_investigate", "siem_alert", alertID,
-		fmt.Sprintf(`{"task_id": "%s", "alert_name": "%s"}`, taskID, alertName),
+		string(auditDetails),
 	)
 
 	return taskID, nil
@@ -290,7 +310,7 @@ func listLogSourcesHandler(c *gin.Context) {
 		tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query log sources"})
+		respondInternalError(c, err, "query log sources")
 		return
 	}
 	defer rows.Close()
@@ -356,8 +376,7 @@ func createLogSourceHandler(c *gin.Context) {
 		sourceID, tenantID, req.Name, req.SourceType, configJSON, userID,
 	)
 	if err != nil {
-		log.Printf("Failed to create log source: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create log source"})
+		respondInternalError(c, err, "create log source")
 		return
 	}
 
@@ -417,7 +436,7 @@ func deleteLogSourceHandler(c *gin.Context) {
 		sourceID, tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to deactivate source"})
+		respondInternalError(c, err, "deactivate log source")
 		return
 	}
 	if result.RowsAffected() == 0 {
@@ -455,7 +474,7 @@ func listSIEMalertsHandler(c *gin.Context) {
 
 	rows, err := dbPool.Query(c.Request.Context(), query, args...)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query alerts"})
+		respondInternalError(c, err, "query SIEM alerts")
 		return
 	}
 	defer rows.Close()
@@ -564,7 +583,7 @@ func investigateAlertHandler(c *gin.Context) {
 
 	taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, normEvent)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start investigation"})
+		respondInternalError(c, err, "start investigation")
 		return
 	}
 

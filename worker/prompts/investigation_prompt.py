@@ -4,6 +4,8 @@ Registers with existing prompt_registry.py via get_version() SHA256 pattern.
 JSON enforcement is IN THE PROMPT TEXT — NOT via API response_format parameter.
 """
 
+from security.prompt_sanitizer import wrap_untrusted_data
+
 INVESTIGATION_PROMPT_V1 = """You are a SOC analyst investigating a security alert.
 
 ALERT CONTEXT:
@@ -38,11 +40,13 @@ def build_investigation_prompt(alert, memory=None):
     """Build prompt with optional memory enrichment."""
     memory_section = _format_memory(memory) if memory else "PRIOR INTELLIGENCE: No prior investigations found for these indicators."
 
+    safe_alert, _ = wrap_untrusted_data(str(alert.get('input', alert.get('raw_data', '')))[:2000], "alert_data")
+
     return INVESTIGATION_PROMPT_V1.format(
         alert_type=alert.get('task_type', alert.get('type', 'unknown')),
         source=alert.get('source', 'SIEM'),
         timestamp=alert.get('timestamp', 'N/A'),
-        raw_data=str(alert.get('input', alert.get('raw_data', '')))[:2000],
+        raw_data=safe_alert,
         memory_section=memory_section
     )
 

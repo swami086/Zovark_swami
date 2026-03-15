@@ -50,8 +50,7 @@ func listShadowRecommendationsHandler(c *gin.Context) {
 	countQuery := "SELECT COUNT(*) FROM shadow_recommendations sr " + where
 	err := dbPool.QueryRow(c.Request.Context(), countQuery, args...).Scan(&total)
 	if err != nil {
-		log.Printf("Error counting shadow recommendations: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to count recommendations"})
+		respondInternalError(c, err, "count shadow recommendations")
 		return
 	}
 
@@ -71,8 +70,7 @@ func listShadowRecommendationsHandler(c *gin.Context) {
 
 	rows, err := dbPool.Query(c.Request.Context(), query, dataArgs...)
 	if err != nil {
-		log.Printf("Error querying shadow recommendations: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query recommendations"})
+		respondInternalError(c, err, "query shadow recommendations")
 		return
 	}
 	defer rows.Close()
@@ -231,8 +229,7 @@ func decideShadowRecommendationHandler(c *gin.Context) {
 		WHERE id = $5 AND tenant_id = $6
 	`, userID, req.Action, req.Reasoning, req.MatchCategory, recID, tenantID)
 	if err != nil {
-		log.Printf("Error updating shadow recommendation: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update recommendation"})
+		respondInternalError(c, err, "update shadow recommendation")
 		return
 	}
 
@@ -246,7 +243,7 @@ func decideShadowRecommendationHandler(c *gin.Context) {
 	_, _ = dbPool.Exec(c.Request.Context(),
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
 		tenantID, "shadow_recommendation_decided", "shadow_recommendation", recID,
-		fmt.Sprintf(`{"action": "%s", "match_category": "%s", "decided_by": "%s"}`, req.Action, req.MatchCategory, userID),
+		func() string { d, _ := json.Marshal(map[string]string{"action": req.Action, "match_category": req.MatchCategory, "decided_by": userID}); return string(d) }(),
 	)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -274,8 +271,7 @@ func getShadowConformanceHandler(c *gin.Context) {
 		WHERE tenant_id = $1 AND status = 'decided'
 	`, tenantID).Scan(&totalDecisions, &exactMatches, &partialMatches, &overrides, &rejections)
 	if err != nil {
-		log.Printf("Error querying conformance stats: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query conformance stats"})
+		respondInternalError(c, err, "query shadow conformance stats")
 		return
 	}
 
@@ -360,7 +356,7 @@ func getShadowStatusHandler(c *gin.Context) {
 		"SELECT COALESCE(settings, '{}') FROM tenants WHERE id = $1", tenantID,
 	).Scan(&settings)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tenant settings"})
+		respondInternalError(c, err, "query shadow tenant settings")
 		return
 	}
 

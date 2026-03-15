@@ -108,7 +108,7 @@ func configureSlackWebhookHandler(c *gin.Context) {
 		configJSON, tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save Slack configuration"})
+		respondInternalError(c, err, "save Slack configuration")
 		return
 	}
 
@@ -222,7 +222,7 @@ func configureTeamsWebhookHandler(c *gin.Context) {
 		configJSON, tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save Teams configuration"})
+		respondInternalError(c, err, "save Teams configuration")
 		return
 	}
 

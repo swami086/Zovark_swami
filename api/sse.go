@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -76,7 +77,8 @@ func taskSSEHandler(c *gin.Context) {
 			// Check for status change
 			if status != lastStatus {
 				c.Writer.WriteString("event: status_changed\n")
-				data := fmt.Sprintf(`{"task_id":"%s","status":"%s","previous_status":"%s"}`, taskID, status, lastStatus)
+				dataBytes, _ := json.Marshal(map[string]string{"task_id": taskID, "status": status, "previous_status": lastStatus})
+				data := string(dataBytes)
 				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", data))
 				c.Writer.Flush()
 				lastStatus = status
@@ -85,7 +87,7 @@ func taskSSEHandler(c *gin.Context) {
 			// Check for new steps
 			var stepCount int
 			_ = dbPool.QueryRow(ctx,
-				"SELECT COUNT(*) FROM investigation_steps WHERE task_id = $1", taskID,
+				"SELECT COUNT(*) FROM investigation_steps WHERE task_id = $1 AND tenant_id = $2", taskID, tenantID,
 			).Scan(&stepCount)
 
 			if stepCount > lastStepCount {
@@ -95,8 +97,8 @@ func taskSSEHandler(c *gin.Context) {
 				var stepOutput *string
 				_ = dbPool.QueryRow(ctx,
 					`SELECT step_number, step_type, status, output
-					 FROM investigation_steps WHERE task_id = $1
-					 ORDER BY step_number DESC LIMIT 1`, taskID,
+					 FROM investigation_steps WHERE task_id = $1 AND tenant_id = $2
+					 ORDER BY step_number DESC LIMIT 1`, taskID, tenantID,
 				).Scan(&stepNum, &stepType, &stepStatus, &stepOutput)
 
 				c.Writer.WriteString("event: step_completed\n")
@@ -107,9 +109,8 @@ func taskSSEHandler(c *gin.Context) {
 						outputSnippet = outputSnippet[:500] + "..."
 					}
 				}
-				data := fmt.Sprintf(`{"task_id":"%s","step_number":%d,"step_type":"%s","status":"%s","output":"%s"}`,
-					taskID, stepNum, stepType, stepStatus, outputSnippet)
-				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", data))
+				stepBytes, _ := json.Marshal(map[string]interface{}{"task_id": taskID, "step_number": stepNum, "step_type": stepType, "status": stepStatus, "output": outputSnippet})
+				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(stepBytes)))
 				c.Writer.Flush()
 				lastStepCount = stepCount
 			}
@@ -121,9 +122,8 @@ func taskSSEHandler(c *gin.Context) {
 				if executionMs != nil {
 					ms = *executionMs
 				}
-				data := fmt.Sprintf(`{"task_id":"%s","status":"%s","execution_ms":%d,"step_count":%d}`,
-					taskID, status, ms, stepCount)
-				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", data))
+				completeBytes, _ := json.Marshal(map[string]interface{}{"task_id": taskID, "status": status, "execution_ms": ms, "step_count": stepCount})
+				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(completeBytes)))
 				c.Writer.Flush()
 				return
 			}

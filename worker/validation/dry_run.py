@@ -82,17 +82,17 @@ class DryRunValidator:
         return {'passed': True, 'output': None, 'reason': None}
 
     async def _execute_with_timeout(self, code: str) -> dict:
-        """Execute code in subprocess with resource limits."""
+        """Execute code in Docker sandbox with security isolation (Security P0#9).
+
+        Uses the same sandbox protections as production execution:
+        --network=none, --read-only, seccomp profile, memory/CPU limits.
+        """
         # Write code to temp file
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, dir='/tmp') as f:
             # Wrap code to capture output as JSON
             wrapper = f'''
 import json
 import sys
-import resource
-
-# Memory limit: 128MB
-resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024, 128 * 1024 * 1024))
 
 try:
     result = None
@@ -111,8 +111,33 @@ except Exception as e:
             temp_path = f.name
 
         try:
+            # Run in Docker container with full sandbox isolation
+            seccomp_path = os.environ.get(
+                "SECCOMP_PROFILE",
+                "/app/sandbox/seccomp_profile.json"
+            )
+            sandbox_image = os.environ.get("SANDBOX_IMAGE", "python:3.11-slim")
+            docker_cmd = [
+                'docker', 'run', '--rm',
+                '--network=none',
+                '--read-only',
+                '--cap-drop=ALL',
+                '--security-opt=no-new-privileges',
+                f'--memory={self.memory_limit}',
+                '--cpus=0.5',
+                '--pids-limit=64',
+                '--tmpfs', '/tmp:64m,noexec,nosuid',
+                '--user', '65534:65534',  # nobody user
+                '-v', f'{temp_path}:/sandbox/code.py:ro',
+                sandbox_image,
+                'python', '/sandbox/code.py',
+            ]
+            # Add seccomp profile if file exists
+            if os.path.exists(seccomp_path):
+                docker_cmd.insert(-3, f'--security-opt=seccomp={seccomp_path}')
+
             proc = await asyncio.create_subprocess_exec(
-                'python', temp_path,
+                *docker_cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )

@@ -21,6 +21,7 @@ MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-hydra_dev_2026}"
 BACKUP_DIR="${BACKUP_DIR:-/tmp/hydra-backups}"
 DAILY_RETENTION=7
 WEEKLY_RETENTION=4
+BACKUP_PASSPHRASE="${BACKUP_PASSPHRASE:-}"
 
 # Timestamp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -61,6 +62,22 @@ pg_dump \
 
 BACKUP_SIZE=$(ls -lh "${BACKUP_PATH}" | awk '{print $5}')
 log "Backup created: ${BACKUP_PATH} (${BACKUP_SIZE})"
+
+# ─── ENCRYPT BACKUP (Security P2#29) ─────────────────
+if [ -n "${BACKUP_PASSPHRASE}" ] && command -v gpg >/dev/null 2>&1; then
+    log "Encrypting backup with AES-256..."
+    gpg --batch --yes --passphrase "${BACKUP_PASSPHRASE}" \
+        --symmetric --cipher-algo AES256 \
+        --output "${BACKUP_PATH}.gpg" "${BACKUP_PATH}"
+    rm -f "${BACKUP_PATH}"
+    BACKUP_PATH="${BACKUP_PATH}.gpg"
+    DAILY_FILE="${DAILY_FILE}.gpg"
+    WEEKLY_FILE="${WEEKLY_FILE}.gpg"
+    BACKUP_SIZE=$(ls -lh "${BACKUP_PATH}" | awk '{print $5}')
+    log "Encrypted backup: ${BACKUP_PATH} (${BACKUP_SIZE})"
+elif [ -z "${BACKUP_PASSPHRASE}" ]; then
+    log "WARNING: BACKUP_PASSPHRASE not set — backup stored UNENCRYPTED"
+fi
 
 # ─── UPLOAD TO MINIO ───────────────────────────────────
 if command -v mc >/dev/null 2>&1; then

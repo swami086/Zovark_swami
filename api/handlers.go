@@ -59,7 +59,7 @@ func healthCheckHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":             "ok",
-		"version":            "1.0.0",
+		"version":            "1.1.0",
 		"uptime_seconds":     int(time.Since(startTime).Seconds()),
 		"mode":               deploymentMode,
 		"llm_provider":       llmProvider,
@@ -185,7 +185,7 @@ func createTaskHandler(c *gin.Context) {
 			HandlePostgresLock(c, tenantID, taskID, priority, "INSERT", "agent_tasks", 5000)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create task record"})
+		respondInternalError(c, err, "create task record")
 		return
 	}
 
@@ -215,7 +215,7 @@ func createTaskHandler(c *gin.Context) {
 			log.Printf("Model timeout on task %s, fallback to %s", taskID, fallbackModel)
 		}
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start workflow"})
+		respondInternalError(c, err, "start workflow")
 		return
 	}
 
@@ -364,8 +364,7 @@ func listTasksHandler(c *gin.Context) {
 	countQuery := "SELECT COUNT(*) FROM agent_tasks " + where
 	err := dbPool.QueryRow(c.Request.Context(), countQuery, args...).Scan(&total)
 	if err != nil {
-		log.Printf("Error counting tasks: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to count tasks"})
+		respondInternalError(c, err, "count tasks")
 		return
 	}
 
@@ -381,8 +380,7 @@ func listTasksHandler(c *gin.Context) {
 
 	rows, err := dbPool.Query(c.Request.Context(), query, dataArgs...)
 	if err != nil {
-		log.Printf("Error querying tasks: %v (query: %s)", err, query)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tasks"})
+		respondInternalError(c, err, "query tasks")
 		return
 	}
 	defer rows.Close()
@@ -433,7 +431,7 @@ func getTaskAuditHandler(c *gin.Context) {
 	rows, err := dbPool.Query(c.Request.Context(),
 		"SELECT action, created_at, details FROM agent_audit_log WHERE resource_id = $1 AND tenant_id = $2 ORDER BY created_at ASC", taskID, tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query audit log"})
+		respondInternalError(c, err, "query task audit log")
 		return
 	}
 	defer rows.Close()
@@ -445,7 +443,7 @@ func getTaskAuditHandler(c *gin.Context) {
 		var details map[string]interface{}
 
 		if err := rows.Scan(&action, &timestamp, &details); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse audit log"})
+			respondInternalError(c, err, "parse task audit log row")
 			return
 		}
 
@@ -482,8 +480,7 @@ func getStatsHandler(c *gin.Context) {
 	`, tenantID).Scan(&totalTasks, &completed, &failed, &pending, &executing, &inTokens, &outTokens)
 
 	if err != nil {
-		log.Printf("Error calculating stats: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to calculate stats"})
+		respondInternalError(c, err, "calculate task stats")
 		return
 	}
 
@@ -587,7 +584,7 @@ func uploadTaskHandler(c *gin.Context) {
 	buf := make([]byte, readSize)
 	n, err := io.ReadFull(file, buf)
 	if err != nil && err != io.ErrUnexpectedEOF {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+		respondInternalError(c, err, "read uploaded file")
 		return
 	}
 	logData := string(buf[:n])
@@ -615,7 +612,7 @@ func uploadTaskHandler(c *gin.Context) {
 
 	inputJSON, err := json.Marshal(inputMap)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to serialize input"})
+		respondInternalError(c, err, "serialize upload task input")
 		return
 	}
 
@@ -628,7 +625,7 @@ func uploadTaskHandler(c *gin.Context) {
 		taskID, tenantID, taskType, inputJSON, "pending", time.Now(),
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task record"})
+		respondInternalError(c, err, "create upload task record")
 		return
 	}
 
@@ -652,7 +649,7 @@ func uploadTaskHandler(c *gin.Context) {
 	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow", req)
 	if err != nil {
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start workflow"})
+		respondInternalError(c, err, "start upload workflow")
 		return
 	}
 
@@ -682,7 +679,7 @@ func getTaskStepsHandler(c *gin.Context) {
 	rows, err := dbPool.Query(c.Request.Context(),
 		"SELECT id, step_number, step_type, prompt, generated_code, output, status, tokens_used_input, tokens_used_output, execution_ms, created_at, completed_at, execution_mode, parameters_used FROM investigation_steps WHERE task_id = $1 ORDER BY step_number ASC", taskID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query steps"})
+		respondInternalError(c, err, "query task steps")
 		return
 	}
 	defer rows.Close()
@@ -747,7 +744,7 @@ func getPendingApprovalsHandler(c *gin.Context) {
 		ORDER BY a.requested_at DESC
 	`, tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query approvals"})
+		respondInternalError(c, err, "query pending approvals")
 		return
 	}
 	defer rows.Close()
@@ -832,7 +829,7 @@ func decideApprovalHandler(c *gin.Context) {
 		decisionStatus, userID, req.Comment, approvalID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update approval"})
+		respondInternalError(c, err, "update approval record")
 		return
 	}
 
@@ -846,8 +843,7 @@ func decideApprovalHandler(c *gin.Context) {
 
 	err = tc.SignalWorkflow(context.Background(), workflowID, "", "approval_decision", signalPayload)
 	if err != nil {
-		log.Printf("Failed to send approval signal to workflow %s: %v", workflowID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to signal workflow"})
+		respondInternalError(c, err, "signal approval workflow")
 		return
 	}
 
@@ -858,7 +854,7 @@ func decideApprovalHandler(c *gin.Context) {
 	}
 	_, _ = dbPool.Exec(c.Request.Context(),
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
-		tenantID, action, "task", taskID, fmt.Sprintf(`{"approval_id": "%s", "comment": "%s"}`, approvalID, req.Comment),
+		tenantID, action, "task", taskID, func() string { d, _ := json.Marshal(map[string]string{"approval_id": approvalID, "comment": req.Comment}); return string(d) }(),
 	)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -879,11 +875,13 @@ func getMeHandler(c *gin.Context) {
 }
 
 func listSkillsHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
 	rows, err := dbPool.Query(c.Request.Context(),
-		"SELECT id, skill_name, skill_slug, threat_types, mitre_tactics, mitre_techniques, severity_default, investigation_methodology, detection_patterns, example_prompt, times_used, version, is_community, (code_template IS NOT NULL) as has_template FROM agent_skills WHERE is_active = true ORDER BY times_used DESC",
+		"SELECT id, skill_name, skill_slug, threat_types, mitre_tactics, mitre_techniques, severity_default, investigation_methodology, detection_patterns, example_prompt, times_used, version, is_community, (code_template IS NOT NULL) as has_template FROM agent_skills WHERE is_active = true AND (tenant_id = $1 OR tenant_id IS NULL) ORDER BY times_used DESC",
+		tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query skills"})
+		respondInternalError(c, err, "query skills")
 		return
 	}
 	defer rows.Close()
@@ -1199,7 +1197,7 @@ func bulkCreateTasksHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	tx, err := dbPool.Begin(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to begin transaction"})
+		respondInternalError(c, err, "begin bulk task transaction")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -1216,7 +1214,7 @@ func bulkCreateTasksHandler(c *gin.Context) {
 			taskID, tenantID, task.TaskType, task.Input, "pending", time.Now(),
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create task: %v", err)})
+			respondInternalError(c, err, "bulk create task")
 			return
 		}
 
@@ -1228,7 +1226,7 @@ func bulkCreateTasksHandler(c *gin.Context) {
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
+		respondInternalError(c, err, "commit bulk task transaction")
 		return
 	}
 

@@ -22,11 +22,15 @@ import (
 // ============================================================
 
 func listTenantsHandler(c *gin.Context) {
+	// Scope to caller's own tenant (Security P0#8 — prevent cross-tenant enumeration)
+	callerTenantID := c.MustGet("tenant_id").(string)
+
 	rows, err := dbPool.Query(c.Request.Context(),
-		"SELECT id, name, slug, tier, settings, is_active, max_concurrent, created_at FROM tenants ORDER BY created_at DESC",
+		"SELECT id, name, slug, tier, settings, is_active, max_concurrent, created_at FROM tenants WHERE id = $1 ORDER BY created_at DESC",
+		callerTenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query tenants"})
+		respondInternalError(c, err, "query tenants")
 		return
 	}
 	defer rows.Close()
@@ -65,6 +69,13 @@ func listTenantsHandler(c *gin.Context) {
 
 func getTenantHandler(c *gin.Context) {
 	tenantID := c.Param("id")
+	callerTenantID := c.MustGet("tenant_id").(string)
+
+	// Security P0#8: admin can only view their own tenant
+	if tenantID != callerTenantID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied: cannot view other tenants"})
+		return
+	}
 
 	var name, slug, tier string
 	var settings map[string]interface{}
@@ -138,7 +149,7 @@ func createTenantHandler(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "tenant slug already exists"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tenant"})
+		respondInternalError(c, err, "create tenant")
 		return
 	}
 
@@ -153,6 +164,13 @@ func createTenantHandler(c *gin.Context) {
 
 func updateTenantHandler(c *gin.Context) {
 	tenantID := c.Param("id")
+	callerTenantID := c.MustGet("tenant_id").(string)
+
+	// Security P0#8: admin can only update their own tenant
+	if tenantID != callerTenantID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied: cannot modify other tenants"})
+		return
+	}
 
 	var req struct {
 		Name          *string                `json:"name"`
@@ -214,7 +232,7 @@ func listWebhookEndpointsHandler(c *gin.Context) {
 		tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query webhook endpoints"})
+		respondInternalError(c, err, "query webhook endpoints")
 		return
 	}
 	defer rows.Close()
@@ -283,7 +301,7 @@ func createWebhookEndpointHandler(c *gin.Context) {
 		endpointID, tenantID, req.Name, req.URL, secret, req.EventTypes,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create webhook endpoint"})
+		respondInternalError(c, err, "create webhook endpoint")
 		return
 	}
 
@@ -345,7 +363,7 @@ func deleteWebhookEndpointHandler(c *gin.Context) {
 		endpointID, tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to deactivate endpoint"})
+		respondInternalError(c, err, "deactivate webhook endpoint")
 		return
 	}
 	if result.RowsAffected() == 0 {
@@ -364,7 +382,7 @@ func listWebhookDeliveriesHandler(c *gin.Context) {
 		tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query deliveries"})
+		respondInternalError(c, err, "query webhook deliveries")
 		return
 	}
 	defer rows.Close()

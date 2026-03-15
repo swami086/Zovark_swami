@@ -113,6 +113,7 @@ func main() {
 	router.Use(corsMiddleware())
 	router.Use(securityHeadersMiddleware())
 	router.Use(loggingMiddleware())
+	router.Use(maxBodySizeMiddleware(10 << 20)) // 10MB global limit
 
 	// Public routes
 	router.GET("/health", healthCheckHandler)
@@ -195,6 +196,7 @@ func main() {
 		api.GET("/tenants/:id", requireRole("admin"), getTenantHandler)
 		api.POST("/tenants", requireRole("admin"), createTenantHandler)
 		api.PUT("/tenants/:id", requireRole("admin"), updateTenantHandler)
+		api.DELETE("/tenants/:id/data", requireRole("admin"), gdprEraseHandler)
 
 		// Webhook endpoint management (admin only)
 		api.POST("/webhooks/endpoints", requireRole("admin"), createWebhookEndpointHandler)

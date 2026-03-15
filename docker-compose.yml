@@ -43,13 +43,20 @@ services:
   redis:
     image: redis:7-alpine
     container_name: hydra-redis
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-hydra-redis-dev-2026}
+      --rename-command FLUSHALL ""
+      --rename-command CONFIG ""
+      --rename-command DEBUG ""
     volumes:
       - redis_data:/data
     expose:
       - "6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-hydra-redis-dev-2026}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -202,7 +209,7 @@ services:
   nats:
     image: nats:2.10-alpine
     container_name: hydra-nats
-    command: ["--jetstream", "--store_dir", "/data", "--max_payload", "1048576", "--http_port", "8222"]
+    command: ["--jetstream", "--store_dir", "/data", "--max_payload", "1048576", "--http_port", "8222", "--user", "${NATS_USER:-hydra}", "--pass", "${NATS_PASSWORD:-hydra-nats-dev-2026}"]
     expose:
       - "4222"
       - "8222"
@@ -313,7 +320,10 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
       - JWT_SECRET=${JWT_SECRET:-hydra-jwt-secret-dev-2026-CHANGE-ME-IN-PRODUCTION-min-32-chars}
-      - NATS_URL=nats://hydra-nats:4222
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-hydra-redis-dev-2026}
+      - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
+      - HYDRA_ENCRYPTION_KEY=${HYDRA_ENCRYPTION_KEY:-}
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -343,11 +353,11 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_URL=http://litellm:4000/v1/chat/completions
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
       - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-}
       - PYTHONUNBUFFERED=1
-      - NATS_URL=nats://hydra-nats:4222
+      - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro
@@ -469,7 +479,7 @@ services:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
     container_name: hydra-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: "postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra?sslmode=prefer"
     ports:
       - "9187:9187"
     depends_on:
@@ -512,7 +522,7 @@ services:
     command: python /app/monitoring/worker_metrics.py
     environment:
       - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
       - METRICS_PORT=9093
     volumes:
       - ./monitoring:/app/monitoring:ro

@@ -21,6 +21,8 @@ with workflow.unsafe.imports_passed_through():
     from response.auto_trigger import auto_trigger_playbooks
     from security.injection_detector import scan_for_injection
     from security.prompt_sanitizer import wrap_untrusted_data
+    from security.risk_validator import validate_risk_score
+    from pii_detector import mask_for_llm, unmask_response
 
 MAX_STEPS = 3
 
@@ -177,6 +179,9 @@ If something has worked in past investigations for this threat type, apply those
         injection_confidence = "clean"
         try:
             scan_text = current_prompt + " " + task_data.get("input", {}).get("log_data", "")
+            siem_event = task_data.get("input", {}).get("siem_event")
+            if siem_event:
+                scan_text += " " + json.dumps(siem_event)
             scan_result = scan_for_injection(scan_text)
             injection_confidence = scan_result.confidence_source
             if scan_result.is_suspicious:
@@ -199,6 +204,12 @@ If something has worked in past investigations for this threat type, apply those
                         }
                     },
                     schedule_to_close_timeout=timedelta(seconds=10)
+                )
+                # BLOCK: reject task when injection is detected
+                return await self._fail_task(
+                    task_id, tenant_id,
+                    f"Prompt injection detected ({scan_result.confidence_source}). "
+                    f"Task quarantined. Matched patterns: {scan_result.matched_patterns}"
                 )
         except Exception as e:
             workflow.logger.info(f"Injection scan failed non-fatally: {e}")
@@ -238,6 +249,33 @@ If something has worked in past investigations for this threat type, apply those
                 task_data["input"]["memory_context"] = memory_context
         except Exception as e:
             workflow.logger.info(f"Memory enrichment failed non-fatally: {e}")
+
+        # --- PII MASKING (Security P0#2) ---
+        pii_entity_map_key = None
+        try:
+            prompt_text = task_data.get("input", {}).get("prompt", "")
+            log_data = task_data.get("input", {}).get("log_data", "")
+            siem_json = json.dumps(task_data.get("input", {}).get("siem_event", {})) if task_data.get("input", {}).get("siem_event") else ""
+            pii_input_text = f"{prompt_text}\n{log_data}\n{siem_json}".strip()
+
+            if pii_input_text:
+                pii_result = await workflow.execute_activity(
+                    mask_for_llm,
+                    {"prompt_text": pii_input_text, "tenant_id": tenant_id, "task_id": task_id},
+                    schedule_to_close_timeout=timedelta(seconds=15)
+                )
+                if pii_result.get("pii_count", 0) > 0:
+                    pii_entity_map_key = pii_result["entity_map_key"]
+                    masked_text = pii_result["masked_text"]
+                    # Replace the original data with masked versions
+                    parts = masked_text.split("\n", 2)
+                    if len(parts) >= 1 and parts[0]:
+                        task_data["input"]["prompt"] = parts[0]
+                    if len(parts) >= 2 and parts[1]:
+                        task_data["input"]["log_data"] = parts[1]
+                    workflow.logger.info(f"PII masked: {pii_result['pii_count']} items detected")
+        except Exception as e:
+            workflow.logger.info(f"PII masking failed non-fatally: {e}")
 
         # Accumulators across all steps
         total_tokens_input = 0
@@ -931,6 +969,26 @@ If something has worked in past investigations for this threat type, apply those
             inv_confidence = min(inv_risk_score / 100.0, 1.0) if inv_risk_score else 0.5
             verdict = _verdict_from_severity(severity)
 
+            # Validate LLM risk score against independent heuristics (Security P1#18)
+            try:
+                siem_event_data = task_data.get("input", {}).get("siem_event", {})
+                entity_list = entity_result.get("entities", []) if 'entity_result' in dir() else []
+                validated = validate_risk_score(
+                    llm_score=inv_risk_score,
+                    alert_data=siem_event_data,
+                    entities=entity_list,
+                    output=final_stdout[:2000],
+                    techniques=[],
+                )
+                if validated["score_overridden"]:
+                    workflow.logger.info(f"Risk score overridden: {validated['override_reason']}")
+                    inv_risk_score = validated["final_risk_score"]
+                    severity = validated["final_severity"]
+                    inv_confidence = min(inv_risk_score / 100.0, 1.0)
+                    verdict = _verdict_from_severity(severity)
+            except Exception as e:
+                workflow.logger.info(f"Risk validation failed non-fatally: {e}")
+
             embed_result = await workflow.execute_activity(
                 embed_investigation,
                 {
@@ -1144,6 +1202,17 @@ If something has worked in past investigations for this threat type, apply those
                         workflow.logger.info(f"Playbook '{pb.get('name')}' trigger failed non-fatally: {e}")
             except Exception as e:
                 workflow.logger.info(f"Response auto-trigger failed non-fatally: {e}")
+
+        # --- PII UNMASKING (Security P0#2) ---
+        if pii_entity_map_key and final_stdout:
+            try:
+                final_stdout = await workflow.execute_activity(
+                    unmask_response,
+                    {"response_text": final_stdout, "entity_map_key": pii_entity_map_key},
+                    schedule_to_close_timeout=timedelta(seconds=10)
+                )
+            except Exception as e:
+                workflow.logger.info(f"PII unmasking failed non-fatally: {e}")
 
         return {"status": "completed", "steps": completed_steps}
 

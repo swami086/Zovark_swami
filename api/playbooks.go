@@ -40,7 +40,7 @@ func listPlaybooksHandler(c *gin.Context) {
 		tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list playbooks"})
+		respondInternalError(c, err, "list playbooks")
 		return
 	}
 	defer rows.Close()
@@ -51,7 +51,7 @@ func listPlaybooksHandler(c *gin.Context) {
 		var stepsJSON []byte
 		err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.Description, &p.Icon, &p.TaskType, &p.IsTemplate, &p.SystemPromptOverride, &stepsJSON, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan playbook"})
+			respondInternalError(c, err, "scan playbook row")
 			return
 		}
 		json.Unmarshal(stepsJSON, &p.Steps)
@@ -91,7 +91,7 @@ func createPlaybookHandler(c *gin.Context) {
 	).Scan(&p.ID, &p.TenantID, &p.Name, &p.Description, &p.Icon, &p.TaskType, &p.IsTemplate, &p.SystemPromptOverride, &returnedStepsJSON, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create playbook: " + err.Error()})
+		respondInternalError(c, err, "create playbook")
 		return
 	}
 	json.Unmarshal(returnedStepsJSON, &p.Steps)
@@ -121,7 +121,7 @@ func updatePlaybookHandler(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update playbook"})
+		respondInternalError(c, err, "update playbook")
 		return
 	}
 
@@ -143,7 +143,7 @@ func deletePlaybookHandler(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete playbook"})
+		respondInternalError(c, err, "delete playbook")
 		return
 	}
 

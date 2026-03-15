@@ -40,9 +40,23 @@ func registerHandler(c *gin.Context) {
 		return
 	}
 
+	// Validate that the tenant_id exists and is active
+	var tenantActive bool
+	err := dbPool.QueryRow(context.Background(),
+		"SELECT is_active FROM tenants WHERE id = $1", req.TenantID,
+	).Scan(&tenantActive)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
+	if !tenantActive {
+		c.JSON(http.StatusForbidden, gin.H{"error": "tenant is inactive"})
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		respondInternalError(c, err, "hash password")
 		return
 	}
 
@@ -52,7 +66,7 @@ func registerHandler(c *gin.Context) {
 		"INSERT INTO users (id, tenant_id, email, display_name, role, password_hash) VALUES ($1, $2, $3, $4, $5, $6)",
 		userID, req.TenantID, req.Email, req.DisplayName, "analyst", string(hashedPassword))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user or user already exists"})
+		respondInternalError(c, err, "create user")
 		return
 	}
 
@@ -105,7 +119,7 @@ func loginHandler(c *gin.Context) {
 	// Check TOTP 2FA if enabled
 	totpValid, totpErr := checkTOTP(user.ID, req.TOTPCode)
 	if totpErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to verify 2FA"})
+		respondInternalError(c, totpErr, "verify 2FA")
 		return
 	}
 	if !totpValid {
@@ -134,7 +148,7 @@ func loginHandler(c *gin.Context) {
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessTokenString, err := accessToken.SignedString([]byte(appConfig.JWTSecret))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		respondInternalError(c, err, "generate access token")
 		return
 	}
 
@@ -154,7 +168,7 @@ func loginHandler(c *gin.Context) {
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	refreshTokenString, err := refreshToken.SignedString([]byte(appConfig.JWTSecret))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate refresh token"})
+		respondInternalError(c, err, "generate refresh token")
 		return
 	}
 
@@ -222,7 +236,7 @@ func refreshHandler(c *gin.Context) {
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessTokenString, err := accessToken.SignedString([]byte(appConfig.JWTSecret))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		respondInternalError(c, err, "generate access token on refresh")
 		return
 	}
 

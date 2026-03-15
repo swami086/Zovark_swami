@@ -1,5 +1,7 @@
 """LLM prompt template for structured entity extraction from investigation output."""
 
+from security.prompt_sanitizer import wrap_untrusted_data
+
 ENTITY_EXTRACTION_SYSTEM_PROMPT = """You are a security analyst extracting structured threat intelligence entities from investigation output.
 
 Extract ALL observable entities (IOCs) and their relationships from the investigation results.
@@ -49,9 +51,11 @@ def build_entity_extraction_prompt(investigation_output: str, task_type: str, ma
     if len(investigation_output) > max_chars:
         investigation_output = investigation_output[:max_chars] + "\n... [truncated]"
 
+    safe_output, _ = wrap_untrusted_data(investigation_output, "investigation_output")
+
     return (
         f"Investigation type: {task_type}\n\n"
-        f"Investigation output:\n{investigation_output}\n\n"
+        f"Investigation output:\n{safe_output}\n\n"
         "Extract all entities and their relationships from this investigation output. "
         "Return ONLY a JSON object with 'entities' and 'edges' arrays."
     )

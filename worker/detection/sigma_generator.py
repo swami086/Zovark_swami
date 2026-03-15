@@ -14,6 +14,7 @@ from temporalio import activity
 from model_config import get_tier_config
 from prompt_registry import get_version
 from llm_logger import log_llm_call
+from security.prompt_sanitizer import wrap_untrusted_data
 
 try:
     import yaml
@@ -93,10 +94,9 @@ async def generate_sigma_rule(data: dict) -> dict:
         f"Edge patterns: {', '.join(edge_patterns) if edge_patterns else 'none'}\n\n"
     )
     if example_summaries:
-        user_prompt += "Example investigation summaries:\n"
-        for i, s in enumerate(example_summaries, 1):
-            user_prompt += f"{i}. {s}\n"
-        user_prompt += "\n"
+        summaries_text = "\n".join(f"{i}. {s}" for i, s in enumerate(example_summaries, 1))
+        safe_summaries, summaries_safety = wrap_untrusted_data(summaries_text, "investigation_summaries")
+        user_prompt += f"Example investigation summaries:\n{safe_summaries}\n\n"
     user_prompt += "Generate a Sigma YAML rule. Output ONLY valid YAML."
 
     start_time = time.time()

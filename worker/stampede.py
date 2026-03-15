@@ -60,7 +60,7 @@ class RequestCoalescer:
             self._redis = _get_redis()
         return self._redis
 
-    def coalesce(self, cache_key: str, compute_fn, ttl_seconds: int = 300):
+    def coalesce(self, cache_key: str, compute_fn, ttl_seconds: int = 300, tenant_id: str = None):
         """Execute compute_fn with coalescing protection.
 
         If another worker is already computing for this key, wait for the
@@ -70,6 +70,7 @@ class RequestCoalescer:
             cache_key: Unique key for this computation
             compute_fn: Callable that returns the result
             ttl_seconds: Lock TTL and result cache TTL
+            tenant_id: Tenant UUID for namespace isolation (Security P0#7)
         Returns:
             Result from compute_fn (or from the other worker's computation)
         """
@@ -78,8 +79,10 @@ class RequestCoalescer:
             # No Redis — just compute directly
             return compute_fn()
 
-        lock_key = f"{REDIS_COALESCE_PREFIX}{cache_key}"
-        result_key = f"{REDIS_COALESCE_RESULT_PREFIX}{cache_key}"
+        # Namespace keys by tenant_id to prevent cross-tenant result sharing
+        ns = f"{tenant_id}:{cache_key}" if tenant_id else cache_key
+        lock_key = f"{REDIS_COALESCE_PREFIX}{ns}"
+        result_key = f"{REDIS_COALESCE_RESULT_PREFIX}{ns}"
 
         # Check if result already cached
         try:
@@ -281,11 +284,12 @@ async def coalesced_llm_call(params: dict) -> dict:
     prompt = params.get("prompt", "")
     model_tier = params.get("model_tier", "fast")
 
-    # Check cache first
+    # Check cache first (tenant-scoped key for isolation — Security P0#7)
     r = _get_redis()
+    cache_ns = f"{tenant_id}:{cache_key}" if tenant_id and cache_key else cache_key
     if r and cache_key:
         try:
-            cached = r.get(f"hydra:inv_cache:{cache_key}")
+            cached = r.get(f"hydra:inv_cache:{cache_ns}")
             if cached:
                 logger.info("Coalesced LLM call: cache hit", cache_key=cache_key)
                 return {"result": json.loads(cached), "cache_hit": True, "coalesced": False}
@@ -331,7 +335,7 @@ async def coalesced_llm_call(params: dict) -> dict:
             return {"content": "", "usage": {}, "error": str(e)}
 
     if cache_key:
-        result = _coalescer.coalesce(cache_key, _do_llm_call, ttl_seconds=300)
+        result = _coalescer.coalesce(cache_key, _do_llm_call, ttl_seconds=300, tenant_id=tenant_id)
         if result is None:
             # Coalescing timeout — compute directly
             result = _do_llm_call()
@@ -342,10 +346,10 @@ async def coalesced_llm_call(params: dict) -> dict:
         result = _do_llm_call()
         coalesced = False
 
-    # Store in cache
+    # Store in cache (tenant-scoped key — Security P0#7)
     if r and cache_key and result:
         try:
-            r.setex(f"hydra:inv_cache:{cache_key}", 300, json.dumps(result, default=str))
+            r.setex(f"hydra:inv_cache:{cache_ns}", 300, json.dumps(result, default=str))
         except Exception:
             pass
 

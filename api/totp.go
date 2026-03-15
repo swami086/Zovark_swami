@@ -2,19 +2,79 @@ package main
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// encryptSecret encrypts a plaintext string using AES-256-GCM (Security P2#21).
+func encryptSecret(plaintext string) (string, error) {
+	key := []byte(os.Getenv("HYDRA_ENCRYPTION_KEY"))
+	if len(key) != 32 {
+		return plaintext, nil // Graceful fallback if key not configured
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("cipher init: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("gcm init: %w", err)
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", fmt.Errorf("nonce gen: %w", err)
+	}
+	ct := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	return "enc:" + base64.StdEncoding.EncodeToString(ct), nil
+}
+
+// decryptSecret decrypts an AES-256-GCM encrypted string (Security P2#21).
+func decryptSecret(encrypted string) (string, error) {
+	// Handle unencrypted legacy values
+	if len(encrypted) < 4 || encrypted[:4] != "enc:" {
+		return encrypted, nil
+	}
+	key := []byte(os.Getenv("HYDRA_ENCRYPTION_KEY"))
+	if len(key) != 32 {
+		return "", fmt.Errorf("HYDRA_ENCRYPTION_KEY must be 32 bytes for decryption")
+	}
+	data, err := base64.StdEncoding.DecodeString(encrypted[4:])
+	if err != nil {
+		return "", fmt.Errorf("base64 decode: %w", err)
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("cipher init: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("gcm init: %w", err)
+	}
+	ns := gcm.NonceSize()
+	if len(data) < ns {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+	pt, err := gcm.Open(nil, data[:ns], data[ns:], nil)
+	if err != nil {
+		return "", fmt.Errorf("decrypt: %w", err)
+	}
+	return string(pt), nil
+}
 
 // ============================================================
 // TWO-FACTOR AUTHENTICATION — TOTP (Issue #4)
@@ -116,10 +176,15 @@ func totpSetupHandler(c *gin.Context) {
 		"SELECT email FROM users WHERE id = $1", userID,
 	).Scan(&email)
 
-	// Store secret (not yet enabled — needs verification)
+	// Encrypt and store secret (not yet enabled — needs verification)
+	encryptedSecret, encErr := encryptSecret(secret)
+	if encErr != nil {
+		respondError(c, http.StatusInternalServerError, "ENCRYPT_FAILED", "Failed to encrypt TOTP secret")
+		return
+	}
 	_, err = dbPool.Exec(context.Background(),
 		"UPDATE users SET totp_secret = $1 WHERE id = $2",
-		secret, userID,
+		encryptedSecret, userID,
 	)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "SAVE_FAILED", "Failed to save TOTP secret")
@@ -172,8 +237,15 @@ func totpVerifyHandler(c *gin.Context) {
 		return
 	}
 
+	// Decrypt the secret before verification
+	decrypted, decErr := decryptSecret(*secret)
+	if decErr != nil {
+		respondError(c, http.StatusInternalServerError, "DECRYPT_FAILED", "Failed to decrypt TOTP secret")
+		return
+	}
+
 	// Verify the code
-	if !verifyTOTP(*secret, req.Code) {
+	if !verifyTOTP(decrypted, req.Code) {
 		respondError(c, http.StatusUnauthorized, "INVALID_CODE", "Invalid TOTP code")
 		return
 	}
@@ -218,5 +290,11 @@ func checkTOTP(userID, totpCode string) (bool, error) {
 		return false, fmt.Errorf("TOTP enabled but no secret configured")
 	}
 
-	return verifyTOTP(*secret, totpCode), nil
+	// Decrypt before verification
+	decrypted, err := decryptSecret(*secret)
+	if err != nil {
+		return false, fmt.Errorf("failed to decrypt TOTP secret: %w", err)
+	}
+
+	return verifyTOTP(decrypted, totpCode), nil
 }

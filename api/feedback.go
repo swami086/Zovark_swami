@@ -33,9 +33,19 @@ func submitFeedbackHandler(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetString("user_id")
 
+	// Verify the investigation belongs to the caller's tenant
+	var ownerTenant string
+	err := dbPool.QueryRow(context.Background(),
+		"SELECT tenant_id FROM investigations WHERE id = $1", investigationID,
+	).Scan(&ownerTenant)
+	if err != nil || ownerTenant != tenantID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "investigation not found"})
+		return
+	}
+
 	feedbackID := uuid.New().String()
 
-	_, err := dbPool.Exec(context.Background(),
+	_, err = dbPool.Exec(context.Background(),
 		`INSERT INTO investigation_feedback
 			(id, investigation_id, tenant_id, analyst_id, verdict_correct, corrected_verdict,
 			 false_positive, missed_threat, notes, analyst_confidence)
@@ -45,7 +55,7 @@ func submitFeedbackHandler(c *gin.Context) {
 		req.FalsePositive, req.MissedThreat, req.Notes, req.AnalystConfidence,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store feedback"})
+		respondInternalError(c, err, "store feedback")
 		return
 	}
 
@@ -91,7 +101,7 @@ func getFeedbackStatsHandler(c *gin.Context) {
 		&stats.AccuracyRate, &stats.AvgAnalystConf,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch stats"})
+		respondInternalError(c, err, "fetch feedback stats")
 		return
 	}
 

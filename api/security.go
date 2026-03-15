@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,6 +24,26 @@ func securityHeadersMiddleware() gin.HandlerFunc {
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
 		c.Header("Pragma", "no-cache")
+		// CSP and HSTS (Security P2#26)
+		c.Header("Content-Security-Policy",
+			"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; font-src 'self'; connect-src 'self'; "+
+				"frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		c.Header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		c.Next()
+	}
+}
+
+// ============================================================
+// MAX BODY SIZE MIDDLEWARE
+// ============================================================
+
+func maxBodySizeMiddleware(maxBytes int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Body != nil {
+			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
+		}
 		c.Next()
 	}
 }
@@ -102,8 +123,8 @@ func auditMiddleware() gin.HandlerFunc {
 		userID, _ := c.Get("user_id")
 
 		action := fmt.Sprintf("api_%s_%s", method, c.FullPath())
-		details := fmt.Sprintf(`{"method": "%s", "path": "%s", "status": %d, "ip": "%s"}`,
-			method, c.Request.URL.Path, c.Writer.Status(), c.ClientIP())
+		detailsBytes, _ := json.Marshal(map[string]interface{}{"method": method, "path": c.Request.URL.Path, "status": c.Writer.Status(), "ip": c.ClientIP()})
+		details := string(detailsBytes)
 
 		go func() {
 			_, err := dbPool.Exec(context.Background(),
@@ -162,11 +183,14 @@ func recordSuccessfulLogin(email string) {
 // ============================================================
 
 func listRetentionPoliciesHandler(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
 	rows, err := dbPool.Query(c.Request.Context(),
-		"SELECT id, table_name, retention_days, delete_strategy, is_active, last_cleanup_at, rows_cleaned FROM data_retention_policies ORDER BY table_name",
+		"SELECT id, table_name, retention_days, delete_strategy, is_active, last_cleanup_at, rows_cleaned FROM data_retention_policies WHERE tenant_id = $1 ORDER BY table_name",
+		tenantID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query retention policies"})
+		respondInternalError(c, err, "query retention policies")
 		return
 	}
 	defer rows.Close()
@@ -202,6 +226,7 @@ func listRetentionPoliciesHandler(c *gin.Context) {
 
 func updateRetentionPolicyHandler(c *gin.Context) {
 	policyID := c.Param("id")
+	tenantID := c.MustGet("tenant_id").(string)
 
 	var req struct {
 		RetentionDays *int  `json:"retention_days"`
@@ -214,13 +239,13 @@ func updateRetentionPolicyHandler(c *gin.Context) {
 
 	if req.RetentionDays != nil {
 		_, _ = dbPool.Exec(c.Request.Context(),
-			"UPDATE data_retention_policies SET retention_days = $1 WHERE id = $2",
-			*req.RetentionDays, policyID)
+			"UPDATE data_retention_policies SET retention_days = $1 WHERE id = $2 AND tenant_id = $3",
+			*req.RetentionDays, policyID, tenantID)
 	}
 	if req.IsActive != nil {
 		_, _ = dbPool.Exec(c.Request.Context(),
-			"UPDATE data_retention_policies SET is_active = $1 WHERE id = $2",
-			*req.IsActive, policyID)
+			"UPDATE data_retention_policies SET is_active = $1 WHERE id = $2 AND tenant_id = $3",
+			*req.IsActive, policyID, tenantID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "updated"})

@@ -70,12 +70,17 @@ def _normalize_indicators(indicators):
     return sorted(iocs)
 
 
-def compute_cache_key(task_input):
-    """Compute SHA-256 cache key from normalized indicators."""
+def compute_cache_key(task_input, tenant_id=None):
+    """Compute SHA-256 cache key from normalized indicators, scoped by tenant.
+
+    Tenant isolation: cache keys include tenant_id to prevent cross-tenant
+    cache poisoning (Security P0#7).
+    """
     indicators = _normalize_indicators(task_input)
     if not indicators:
         return None
-    payload = json.dumps(indicators, sort_keys=True)
+    key_data = {"tenant_id": tenant_id, "indicators": indicators} if tenant_id else {"indicators": indicators}
+    payload = json.dumps(key_data, sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
@@ -119,13 +124,14 @@ def _store_redis(cache_key, data, ttl_hours=24):
         print(f"investigation_cache: Redis store failed (non-fatal): {e}")
 
 
-def check_cache(task_input):
+def check_cache(task_input, tenant_id=None):
     """Check if a cached result exists for these indicators.
 
     Checks Redis first, then falls back to PostgreSQL.
+    Scoped by tenant_id for isolation (Security P0#7).
     Returns dict with cached result or None.
     """
-    cache_key = compute_cache_key(task_input)
+    cache_key = compute_cache_key(task_input, tenant_id=tenant_id)
     if not cache_key:
         return None
 
@@ -176,15 +182,17 @@ def check_cache(task_input):
     return None
 
 
-def check_semantic_dedup(embedding, severity=None):
+def check_semantic_dedup(embedding, severity=None, tenant_id=None):
     """Check if a semantically similar investigation is cached.
 
     Uses pgvector cosine similarity to find cached results with
     embedding similarity > SEMANTIC_DEDUP_THRESHOLD (0.95).
+    Scoped by tenant_id for isolation (Security P0#7).
 
     Args:
         embedding: List of floats (embedding vector)
         severity: Severity level for TTL lookup
+        tenant_id: Tenant UUID for isolation
 
     Returns:
         Dict with cached result or None.
@@ -200,9 +208,9 @@ def check_semantic_dedup(embedding, severity=None):
         conn = psycopg2.connect(db_url)
         try:
             with conn.cursor() as cur:
-                # Find investigations with high embedding similarity
+                # Find investigations with high embedding similarity (tenant-scoped)
                 threshold_distance = 1.0 - SEMANTIC_DEDUP_THRESHOLD  # cosine distance
-                cur.execute("""
+                query = """
                     SELECT
                         ic.investigation_id, ic.task_id, ic.verdict,
                         ic.risk_score, ic.confidence, ic.entity_count,
@@ -213,12 +221,14 @@ def check_semantic_dedup(embedding, severity=None):
                     WHERE ic.expires_at > NOW()
                       AND i.embedding IS NOT NULL
                       AND i.embedding <-> %s::vector < %s
-                    ORDER BY i.embedding <-> %s::vector
-                    LIMIT 1
-                """, (
-                    str(embedding), str(embedding),
-                    threshold_distance, str(embedding),
-                ))
+                """
+                params = [str(embedding), str(embedding), threshold_distance]
+                if tenant_id:
+                    query += " AND i.tenant_id = %s"
+                    params.append(tenant_id)
+                query += " ORDER BY i.embedding <-> %s::vector LIMIT 1"
+                params.append(str(embedding))
+                cur.execute(query, tuple(params))
                 row = cur.fetchone()
                 if row:
                     return {
@@ -245,13 +255,13 @@ def check_semantic_dedup(embedding, severity=None):
 def store_cache(task_input, investigation_id, task_id=None,
                 verdict=None, risk_score=None, confidence=None,
                 entity_count=None, summary=None, ttl_hours=None,
-                severity=None):
+                severity=None, tenant_id=None):
     """Store investigation result in cache.
 
     TTL is determined by severity if provided, otherwise uses ttl_hours or default 24h.
-    Stores in both Redis and PostgreSQL.
+    Stores in both Redis and PostgreSQL. Scoped by tenant_id (Security P0#7).
     """
-    cache_key = compute_cache_key(task_input)
+    cache_key = compute_cache_key(task_input, tenant_id=tenant_id)
     if not cache_key:
         return
 
