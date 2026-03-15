@@ -181,9 +181,19 @@ func main() {
 		api.GET("/api-keys", requireRole("admin"), listAPIKeysHandler)
 		api.DELETE("/api-keys/:id", requireRole("admin"), deleteAPIKeyHandler)
 
-		// Admin only
+		// Admin only — DB-backed task-level approvals (Temporal signal gate)
 		api.GET("/approvals/pending", requireRole("admin"), getPendingApprovalsHandler)
 		api.POST("/approvals/:id/decide", requireRole("admin"), decideApprovalHandler)
+
+		// MCP human-in-the-loop approval gate — Redis-backed workflow approvals
+		// Any authenticated caller may request an approval or check its status.
+		api.POST("/mcp/approvals/request", requestMCPApprovalHandler)
+		api.GET("/mcp/approvals/check/:token", checkMCPApprovalHandler)
+		// Admin-only: list, lookup, and decide on pending approvals.
+		api.GET("/mcp/approvals/pending", requireRole("admin"), listMCPApprovalsHandler)
+		api.GET("/mcp/approvals/id/:approval_id", requireRole("admin"), getMCPApprovalByIDHandler)
+		api.POST("/mcp/approvals/:token/decide", requireRole("admin"), decideMCPApprovalHandler)
+
 		api.POST("/playbooks", requireRole("admin"), createPlaybookHandler)
 		api.PUT("/playbooks/:id", requireRole("admin"), updatePlaybookHandler)
 		api.DELETE("/playbooks/:id", requireRole("admin"), deletePlaybookHandler)
@@ -197,10 +207,6 @@ func main() {
 		api.POST("/tenants", requireRole("admin"), createTenantHandler)
 		api.PUT("/tenants/:id", requireRole("admin"), updateTenantHandler)
 		api.DELETE("/tenants/:id/data", requireRole("admin"), gdprEraseHandler)
-
-		// MCP workflow approval gate (Security v0.12.0)
-		api.GET("/approvals/pending", listMCPApprovalsHandler)
-		api.POST("/approvals/:token/decide", requireRole("admin"), decideMCPApprovalHandler)
 
 		// Webhook endpoint management (admin only)
 		api.POST("/webhooks/endpoints", requireRole("admin"), createWebhookEndpointHandler)

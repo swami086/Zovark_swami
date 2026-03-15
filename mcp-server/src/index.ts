@@ -521,9 +521,32 @@ server.tool(
 // ═══════════════════════════════════════════════════════════════
 //  TOOL 7: hydra_trigger_workflow
 // ═══════════════════════════════════════════════════════════════
+//
+// SECURITY — HUMAN-IN-THE-LOOP APPROVAL GATE
+// ────────────────────────────────────────────
+// All workflow executions require explicit human approval before they run.
+//
+// Flow:
+//   1. This tool submits a pending approval request to the HYDRA API
+//      (POST /api/v1/mcp/approvals/pending is handled by the API, but
+//       approval creation here calls the approval gate via the API).
+//   2. The tool returns immediately with status="pending_approval" and
+//      an approval_id that the human must act on.
+//   3. A HYDRA admin approves or denies via:
+//        POST /api/v1/mcp/approvals/:token/decide
+//   4. After approval, the caller (human or orchestrator) may re-invoke
+//      this tool with the same parameters — the second call checks Redis
+//      for an approved token and proceeds with execution.
+//   5. If denied or expired, the tool returns an error; no workflow runs.
+//
+// The approval token (full URL-safe random string) is NEVER returned to
+// the MCP caller. Only the short approval_id is surfaced. This prevents
+// the AI client from self-approving its own requests.
 server.tool(
   "hydra_trigger_workflow",
-  "Start a Temporal workflow (investigation, detection, self_healing, cross_tenant, bootstrap, finetuning).",
+  "Start a Temporal workflow (detection, self_healing, cross_tenant, bootstrap, finetuning). " +
+    "REQUIRES human approval — returns pending_approval status on first call. " +
+    "A HYDRA admin must approve via POST /api/v1/mcp/approvals/:token/decide before the workflow runs.",
   {
     workflow: z
       .enum([
@@ -542,8 +565,20 @@ server.tool(
       .boolean()
       .default(true)
       .describe("Dry run mode (default true for self_healing)"),
+    approval_token: z
+      .string()
+      .optional()
+      .describe(
+        "Approval token from a prior pending_approval response. " +
+          "Omit on first call — the tool will request approval and return immediately. " +
+          "Supply on the follow-up call after a human has approved the request."
+      ),
+    tenant_slug: z
+      .string()
+      .default("hydra-dev")
+      .describe("Tenant slug for the approval context"),
   },
-  async ({ workflow, params: paramsStr, dry_run }) => {
+  async ({ workflow, params: paramsStr, dry_run, approval_token, tenant_slug }) => {
     const workflowMap: Record<string, string> = {
       detection: "DetectionGenerationWorkflow",
       self_healing: "SelfHealingWorkflow",
@@ -569,12 +604,144 @@ server.tool(
       // ignore parse errors, use empty params
     }
 
-    // For self_healing, inject dry_run into params
+    // For self_healing, inject dry_run into params.
     const wfParams =
       workflow === "self_healing"
         ? { lookback_minutes: 60, dry_run, ...parsedParams }
         : { ...parsedParams };
 
+    // ── APPROVAL GATE ────────────────────────────────────────────
+    // Phase 1 (no token): create a pending approval and return immediately.
+    // Phase 2 (token supplied): verify approval is in 'approved' state,
+    //         then execute the workflow.
+    if (!approval_token) {
+      // Request approval via the HYDRA API approval gate.
+      try {
+        const approvalResult = (await apiPost(
+          "/api/v1/mcp/approvals/request",
+          {
+            workflow_id: wfType,
+            workflow_args: wfParams,
+            requested_by: "mcp:hydra_trigger_workflow",
+            tenant_id: tenant_slug,
+          },
+          tenant_slug
+        )) as {
+          approval_id: string;
+          status: string;
+          expires_at: number;
+          message: string;
+        };
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  status: "pending_approval",
+                  approval_id: approvalResult.approval_id,
+                  workflow_type: wfType,
+                  workflow_params: wfParams,
+                  expires_at: approvalResult.expires_at,
+                  message:
+                    approvalResult.message ||
+                    `Workflow '${wfType}' is pending human approval. ` +
+                      `A HYDRA admin must approve via the dashboard or ` +
+                      `POST /api/v1/mcp/approvals/:token/decide before execution proceeds. ` +
+                      `Re-invoke this tool with approval_token=<token> after approval.`,
+                  next_step:
+                    "Wait for a HYDRA admin to approve the request, then re-invoke " +
+                    "this tool supplying the approval_token returned to the admin.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (err) {
+        // Approval creation failed — block execution (fail-closed).
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  status: "blocked",
+                  error: `Approval gate unavailable: ${err instanceof Error ? err.message : String(err)}`,
+                  message:
+                    "Workflow execution blocked. The approval gate must be available before any workflow can run.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
+    // Phase 2 — approval_token was supplied. Verify it before executing.
+    try {
+      const checkResult = (await apiGet(
+        `/api/v1/mcp/approvals/check/${encodeURIComponent(approval_token)}`,
+        tenant_slug
+      )) as { status: string; approval_id?: string; workflow_id?: string };
+
+      if (checkResult.status !== "approved") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  status: checkResult.status,
+                  error: `Workflow execution blocked — approval status is '${checkResult.status}'. Only 'approved' tokens allow execution.`,
+                  approval_id: checkResult.approval_id,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Confirm the approved workflow matches what we are about to run.
+      if (checkResult.workflow_id && checkResult.workflow_id !== wfType) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  status: "blocked",
+                  error: `Token mismatch: approval was issued for '${checkResult.workflow_id}' but '${wfType}' was requested.`,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Approval check failed: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // ── EXECUTE WORKFLOW ─────────────────────────────────────────
     const wfId = `mcp-${workflow}-${Date.now()}`;
     const paramsJson = JSON.stringify(wfParams).replace(/'/g, "\\'");
 
@@ -607,7 +774,12 @@ asyncio.run(main())
           {
             type: "text" as const,
             text: JSON.stringify(
-              { workflow_id: wfId, workflow_type: wfType, status: "completed", result },
+              {
+                workflow_id: wfId,
+                workflow_type: wfType,
+                status: "completed",
+                result,
+              },
               null,
               2
             ),
