@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: HYDRA SOC Automation API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     AI-powered SOC automation platform. Manages security investigations,
     task orchestration, SIEM integration, shadow mode automation, kill switch
-    controls, token quota management, and multi-tenant operations.
+    controls, token quota management, MCP approval gates, analytics,
+    and multi-tenant operations.
 
     ## Authentication
     - **Access tokens** expire in 15 minutes and are returned in the JSON response body.
@@ -1073,6 +1074,110 @@ paths:
         '200':
           description: Feedback accuracy statistics
 
+  # ============================================================
+  # Analytics Endpoints (Sprint v0.13.0)
+  # ============================================================
+
+  /api/v1/analytics/feedback/summary:
+    get:
+      operationId: getAnalyticsFeedbackSummary
+      summary: Get feedback analytics summary
+      tags: [Analytics]
+      description: |
+        Returns an aggregated summary of investigation feedback for the
+        authenticated tenant, including accuracy rates, verdict distributions,
+        and false-positive/missed-threat counts.
+      responses:
+        '200':
+          description: Feedback analytics summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_feedback:
+                    type: integer
+                  accuracy_rate:
+                    type: number
+                  false_positive_count:
+                    type: integer
+                  missed_threat_count:
+                    type: integer
+                  avg_confidence:
+                    type: number
+        '401':
+          description: Not authenticated
+
+  /api/v1/analytics/feedback/rules:
+    get:
+      operationId: getAnalyticsFeedbackRules
+      summary: Get per-rule feedback analytics
+      tags: [Analytics]
+      description: |
+        Returns feedback analytics broken down by detection rule, showing
+        which rules produce the most false positives, overrides, and
+        missed threats. Useful for tuning detection logic.
+      responses:
+        '200':
+          description: Per-rule feedback breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rule_name:
+                          type: string
+                        total:
+                          type: integer
+                        accuracy_rate:
+                          type: number
+                        false_positive_count:
+                          type: integer
+                        missed_threat_count:
+                          type: integer
+        '401':
+          description: Not authenticated
+
+  /api/v1/analytics/feedback/analysts:
+    get:
+      operationId: getAnalyticsFeedbackAnalysts
+      summary: Get per-analyst feedback analytics
+      tags: [Analytics]
+      description: |
+        Returns feedback analytics broken down by analyst, showing
+        individual contribution counts, agreement rates with AI verdicts,
+        and average confidence scores.
+      responses:
+        '200':
+          description: Per-analyst feedback breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        analyst_id:
+                          type: string
+                        display_name:
+                          type: string
+                        total_feedback:
+                          type: integer
+                        agreement_rate:
+                          type: number
+                        avg_confidence:
+                          type: number
+        '401':
+          description: Not authenticated
+
   /api/v1/approvals/pending:
     get:
       summary: List pending approvals (admin)
@@ -1106,6 +1211,242 @@ paths:
       responses:
         '200':
           description: Decision recorded
+
+  # ============================================================
+  # MCP Human-in-the-Loop Approval Gate (Sprint v0.12.0)
+  # ============================================================
+
+  /api/v1/mcp/approvals/request:
+    post:
+      operationId: requestMCPApproval
+      summary: Request MCP workflow approval
+      tags: [MCP Approvals]
+      description: |
+        Submits a new approval request for an MCP workflow action. Returns
+        an approval token that can be polled via the check endpoint. Any
+        authenticated user may create a request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, context]
+              properties:
+                action:
+                  type: string
+                  description: The action requiring approval
+                context:
+                  type: object
+                  description: Contextual data for the approver
+                ttl_seconds:
+                  type: integer
+                  description: Time-to-live before auto-expiry
+                  default: 3600
+      responses:
+        '201':
+          description: Approval request created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approval_id:
+                    type: string
+                  token:
+                    type: string
+                  status:
+                    type: string
+                    example: pending
+                  expires_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Not authenticated
+
+  /api/v1/mcp/approvals/check/{token}:
+    get:
+      operationId: checkMCPApproval
+      summary: Check MCP approval status by token
+      tags: [MCP Approvals]
+      description: |
+        Polls the current status of an MCP approval request using its token.
+        Returns the decision if one has been made, or pending/expired status.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Approval status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approval_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending, approved, rejected, expired]
+                  decided_by:
+                    type: string
+                  decided_at:
+                    type: string
+                    format: date-time
+                  comment:
+                    type: string
+        '401':
+          description: Not authenticated
+        '404':
+          description: Approval token not found or expired
+
+  /api/v1/mcp/approvals/pending:
+    get:
+      operationId: listMCPApprovals
+      summary: List pending MCP approvals (admin)
+      tags: [MCP Approvals]
+      description: |
+        Returns all pending MCP approval requests for the tenant. Admin only.
+      responses:
+        '200':
+          description: Pending MCP approvals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approvals:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        approval_id:
+                          type: string
+                        token:
+                          type: string
+                        action:
+                          type: string
+                        context:
+                          type: object
+                        status:
+                          type: string
+                        requested_by:
+                          type: string
+                        requested_at:
+                          type: string
+                          format: date-time
+                        expires_at:
+                          type: string
+                          format: date-time
+                  count:
+                    type: integer
+        '401':
+          description: Not authenticated
+        '403':
+          description: Admin role required
+
+  /api/v1/mcp/approvals/id/{approval_id}:
+    get:
+      operationId: getMCPApprovalByID
+      summary: Get MCP approval by ID (admin)
+      tags: [MCP Approvals]
+      description: Returns full details of an MCP approval request by its ID.
+      parameters:
+        - name: approval_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Approval details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approval_id:
+                    type: string
+                  token:
+                    type: string
+                  action:
+                    type: string
+                  context:
+                    type: object
+                  status:
+                    type: string
+                  requested_by:
+                    type: string
+                  requested_at:
+                    type: string
+                    format: date-time
+                  decided_by:
+                    type: string
+                  decided_at:
+                    type: string
+                    format: date-time
+                  comment:
+                    type: string
+        '401':
+          description: Not authenticated
+        '403':
+          description: Admin role required
+        '404':
+          description: Approval not found
+
+  /api/v1/mcp/approvals/{token}/decide:
+    post:
+      operationId: decideMCPApproval
+      summary: Approve or reject MCP approval (admin)
+      tags: [MCP Approvals]
+      description: |
+        Records an admin decision (approve or reject) on a pending MCP
+        approval request identified by its token.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approved]
+              properties:
+                approved:
+                  type: boolean
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approval_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [approved, rejected]
+                  decided_by:
+                    type: string
+                  decided_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Not authenticated
+        '403':
+          description: Admin role required
+        '404':
+          description: Approval token not found or already decided
 
   /api/v1/tenants:
     get:
@@ -1181,6 +1522,39 @@ paths:
       responses:
         '200':
           description: Tenant updated
+
+  /api/v1/tenants/{id}/data:
+    delete:
+      operationId: gdprEraseTenant
+      summary: GDPR erase tenant data (admin)
+      tags: [Tenants]
+      description: |
+        Permanently deletes all data associated with a tenant in compliance with
+        GDPR right-to-erasure requests. This action is irreversible.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tenant data erased
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: erased
+                  tenant_id:
+                    type: string
+        '401':
+          description: Not authenticated
+        '403':
+          description: Admin role required
 
   /api/v1/webhooks/endpoints:
     get:
@@ -2197,3 +2571,7 @@ tags:
     description: Automation controls, kill switch, and resume operations
   - name: Token Quotas
     description: Per-tenant token and cost quota management with circuit breaker
+  - name: Analytics
+    description: Feedback analytics — summary, per-rule, and per-analyst breakdowns
+  - name: MCP Approvals
+    description: MCP human-in-the-loop approval gate for workflow actions

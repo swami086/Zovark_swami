@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -23,7 +24,19 @@ func loggingMiddleware() gin.HandlerFunc {
 
 func corsMiddleware() gin.HandlerFunc {
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000"}
+
+	// Read allowed origins from env (comma-separated), default to localhost for dev
+	originsEnv := os.Getenv("HYDRA_CORS_ORIGINS")
+	if originsEnv != "" {
+		origins := strings.Split(originsEnv, ",")
+		for i := range origins {
+			origins[i] = strings.TrimSpace(origins[i])
+		}
+		config.AllowOrigins = origins
+	} else {
+		config.AllowOrigins = []string{"http://localhost:3000"}
+	}
+
 	config.AllowCredentials = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
 	config.ExposeHeaders = []string{"Set-Cookie"}

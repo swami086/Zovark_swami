@@ -561,6 +561,33 @@ services:
           memory: 128M
           cpus: '0.1'
 
+  hydra-vllm-chat:
+    image: vllm/vllm-openai:latest
+    container_name: hydra-vllm-chat
+    command: --model /models/chat-model --port 8000 --max-model-len 4096
+    volumes:
+      - ./local_models/chat-model:/models/chat-model
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - hydra-internal
+    profiles: ["vllm"]
+
+  hydra-vllm-embed:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: hydra-vllm-embed
+    command: --model-id /models/embed-model --port 8001
+    volumes:
+      - ./local_models/embed-model:/models/embed-model
+    networks:
+      - hydra-internal
+    profiles: ["vllm"]
+
 # ─── NETWORKS ──────────────────────────────────────────
 networks:
   hydra-internal:
