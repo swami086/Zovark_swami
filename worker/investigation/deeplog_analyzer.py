@@ -196,13 +196,11 @@ async def analyze_alert_sequence(params: dict) -> dict:
     alert_ids = params.get("alert_ids", [])
     tenant_id = params.get("tenant_id")
 
-    # Fetch alerts from DB
-    import psycopg2
+    # Fetch alerts from DB using pooled connection
     from psycopg2.extras import RealDictCursor
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
-    conn = psycopg2.connect(db_url)
+    from database.pool_manager import pooled_connection
     alerts = []
-    try:
+    with pooled_connection("normal") as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if alert_ids:
                 placeholders = ",".join(["%s"] * len(alert_ids))
@@ -221,8 +219,6 @@ async def analyze_alert_sequence(params: dict) -> dict:
             alerts = [dict(row) for row in cur.fetchall()]
             for a in alerts:
                 a["id"] = str(a["id"])
-    finally:
-        conn.close()
 
     analyzer = DeepLogAnalyzer()
     anomalies = analyzer.detect_anomalies(alerts)

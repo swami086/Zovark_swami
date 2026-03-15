@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 // localLimiter is an in-memory fallback rate limiter used when Redis is unavailable.
@@ -42,72 +41,34 @@ func localRateCheck(key string, limit int, dur time.Duration) bool {
 // PER-TENANT API RATE LIMITING WITH REDIS (Issue #11)
 // ============================================================
 
-var redisAddr string
-var redisPassword string
+var redisClient *redis.Client
 
 func initRedis() {
-	redisAddr = getEnvOrDefault("REDIS_URL", "redis:6379")
+	addr := getEnvOrDefault("REDIS_URL", "redis:6379")
 	// Strip redis:// prefix if present
-	if len(redisAddr) > 8 && redisAddr[:8] == "redis://" {
-		redisAddr = redisAddr[8:]
+	if len(addr) > 8 && addr[:8] == "redis://" {
+		addr = addr[8:]
 	}
-	redisPassword = getEnvOrDefault("REDIS_PASSWORD", "")
-}
+	password := getEnvOrDefault("REDIS_PASSWORD", "")
 
-// redisCommand sends a raw Redis command via TCP and returns the response.
-// This is a minimal Redis client using the RESP protocol to avoid external deps.
-func redisCommand(args ...string) (string, error) {
-	conn, err := net.DialTimeout("tcp", redisAddr, 2*time.Second)
-	if err != nil {
-		return "", fmt.Errorf("redis connect: %w", err)
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:         addr,
+		Password:     password,
+		DB:           0,
+		PoolSize:     20,
+		MinIdleConns: 5,
+		DialTimeout:  2 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		log.Printf("[WARN] Redis ping failed (will use local fallback): %v", err)
+	} else {
+		log.Println("Redis connection pool initialized (pool_size=20)")
 	}
-	defer conn.Close()
-
-	// Set deadline
-	conn.SetDeadline(time.Now().Add(3 * time.Second))
-
-	// Authenticate if password is set (Security P2#23)
-	if redisPassword != "" {
-		authCmd := fmt.Sprintf("*2\r\n$4\r\nAUTH\r\n$%d\r\n%s\r\n", len(redisPassword), redisPassword)
-		conn.Write([]byte(authCmd))
-		authBuf := make([]byte, 256)
-		conn.Read(authBuf)
-	}
-
-	// Build RESP array
-	cmd := fmt.Sprintf("*%d\r\n", len(args))
-	for _, arg := range args {
-		cmd += fmt.Sprintf("$%d\r\n%s\r\n", len(arg), arg)
-	}
-
-	_, err = conn.Write([]byte(cmd))
-	if err != nil {
-		return "", fmt.Errorf("redis write: %w", err)
-	}
-
-	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
-	if err != nil {
-		return "", fmt.Errorf("redis read: %w", err)
-	}
-
-	return string(buf[:n]), nil
-}
-
-// parseRedisInt parses an integer response from Redis RESP protocol.
-func parseRedisInt(resp string) (int, error) {
-	if len(resp) > 0 && resp[0] == ':' {
-		// Integer reply ":N\r\n"
-		end := len(resp)
-		for i := 1; i < len(resp); i++ {
-			if resp[i] == '\r' || resp[i] == '\n' {
-				end = i
-				break
-			}
-		}
-		return strconv.Atoi(resp[1:end])
-	}
-	return 0, fmt.Errorf("unexpected redis response: %s", resp)
 }
 
 // slidingWindowIncrement implements a Redis-based sliding window rate limiter.
@@ -118,35 +79,23 @@ func slidingWindowIncrement(tenantID, endpoint string, windowSeconds, limit int)
 	key := fmt.Sprintf("ratelimit:%s:%s:%d", tenantID, endpoint, windowSeconds)
 	member := fmt.Sprintf("%d:%d", now, time.Now().UnixNano())
 
-	// ZADD key now member
-	_, err := redisCommand("ZADD", key, fmt.Sprintf("%d", now), member)
+	ctx := context.Background()
+
+	// Pipeline: ZADD + ZREMRANGEBYSCORE + ZCARD + EXPIRE in one round trip
+	pipe := redisClient.Pipeline()
+	pipe.ZAdd(ctx, key, redis.Z{Score: float64(now), Member: member})
+	pipe.ZRemRangeByScore(ctx, key, "-inf", fmt.Sprintf("%d", windowStart))
+	zcardCmd := pipe.ZCard(ctx, key)
+	pipe.Expire(ctx, key, time.Duration(windowSeconds+10)*time.Second)
+
+	_, err := pipe.Exec(ctx)
 	if err != nil {
 		log.Printf("[WARN] Redis rate limit unavailable, using local fallback: %v", err)
 		allowed := localRateCheck(key, limit, time.Duration(windowSeconds)*time.Second)
 		return 0, allowed, err
 	}
 
-	// ZREMRANGEBYSCORE key -inf windowStart
-	_, _ = redisCommand("ZREMRANGEBYSCORE", key, "-inf", fmt.Sprintf("%d", windowStart))
-
-	// ZCARD key
-	resp, err := redisCommand("ZCARD", key)
-	if err != nil {
-		log.Printf("[WARN] Redis rate limit unavailable, using local fallback: %v", err)
-		allowed := localRateCheck(key, limit, time.Duration(windowSeconds)*time.Second)
-		return 0, allowed, err
-	}
-
-	count, err := parseRedisInt(resp)
-	if err != nil {
-		log.Printf("[WARN] Redis rate limit unavailable, using local fallback: %v", err)
-		allowed := localRateCheck(key, limit, time.Duration(windowSeconds)*time.Second)
-		return 0, allowed, err
-	}
-
-	// Set TTL on the key
-	_, _ = redisCommand("EXPIRE", key, fmt.Sprintf("%d", windowSeconds+10))
-
+	count := int(zcardCmd.Val())
 	return count, count <= limit, nil
 }
 

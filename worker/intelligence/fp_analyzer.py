@@ -18,6 +18,57 @@ def _get_db():
     return psycopg2.connect(db_url)
 
 
+def get_feedback_signal(tenant_id: str, alert_source: str = None, period_days: int = 90) -> dict:
+    """Query analyst feedback for FP signal from the same alert source.
+
+    Returns: {fp_rate: float, total: int, adjustment: float}
+    If fp_rate > 0.5, returns negative confidence adjustment.
+    """
+    from database.pool_manager import pooled_connection
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.utcnow() - timedelta(days=period_days)
+    result = {'fp_rate': 0.0, 'total': 0, 'adjustment': 0.0}
+
+    try:
+        with pooled_connection("background") as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                if alert_source:
+                    cur.execute("""
+                        SELECT
+                            COUNT(*) AS total,
+                            SUM(CASE WHEN f.false_positive THEN 1 ELSE 0 END) AS fp_count
+                        FROM investigation_feedback f
+                        JOIN agent_tasks t ON t.id::text = f.investigation_id::text
+                        WHERE f.tenant_id = %s
+                          AND f.created_at >= %s
+                          AND t.task_type = %s
+                    """, (tenant_id, cutoff, alert_source))
+                else:
+                    cur.execute("""
+                        SELECT
+                            COUNT(*) AS total,
+                            SUM(CASE WHEN f.false_positive THEN 1 ELSE 0 END) AS fp_count
+                        FROM investigation_feedback f
+                        WHERE f.tenant_id = %s AND f.created_at >= %s
+                    """, (tenant_id, cutoff))
+
+                row = cur.fetchone()
+                if row and row['total'] > 0:
+                    total = int(row['total'])
+                    fp_count = int(row['fp_count'] or 0)
+                    fp_rate = fp_count / total
+                    result = {
+                        'fp_rate': round(fp_rate, 3),
+                        'total': total,
+                        'adjustment': round(-0.15, 2) if fp_rate > 0.5 else 0.0,
+                    }
+    except Exception as e:
+        print(f"FP analyzer: feedback signal query failed (non-fatal): {e}")
+
+    return result
+
+
 @activity.defn
 async def analyze_false_positive(data: dict) -> dict:
     """Analyze investigation for false positive confidence.
@@ -108,6 +159,11 @@ async def analyze_false_positive(data: dict) -> dict:
         confidence += 0.10
     elif cross_tenant_hits >= 1:
         confidence += 0.05
+
+    # Feedback signal: apply negative adjustment if source has high FP rate
+    alert_source = data.get("task_type") or data.get("alert_source")
+    feedback_signal = get_feedback_signal(tenant_id, alert_source)
+    confidence += feedback_signal.get("adjustment", 0.0)
 
     confidence = round(min(max(confidence, 0.0), 1.0), 2)
 

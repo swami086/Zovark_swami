@@ -92,9 +92,22 @@ async def update_response_execution(data: dict) -> None:
 
 @activity.defn
 async def execute_response_action(data: dict) -> dict:
-    """Execute a single response action."""
+    """Execute a single response action with template variable resolution."""
     action_type = data.get("action_type", "unknown")
     context = data.get("context", {})
+
+    # Resolve template variables ({{attacker_ip}} → actual IPs) before execution
+    investigation_id = context.get("investigation_id")
+    tenant_id = context.get("tenant_id")
+    if investigation_id and tenant_id:
+        try:
+            from response.template_resolver import PlaybookTemplateResolver, fetch_investigation_data
+            inv_data = fetch_investigation_data(investigation_id, tenant_id)
+            resolver = PlaybookTemplateResolver()
+            context = resolver.resolve_action_context(context, inv_data)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Template resolution failed (non-fatal): {e}")
 
     action = get_action(action_type)
     if not action.validate(context):

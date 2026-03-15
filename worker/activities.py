@@ -16,6 +16,7 @@ from validation.dry_run import DryRunValidator
 from security.prompt_sanitizer import wrap_untrusted_data
 from security.alert_sanitizer import sanitize_alert
 from security.adversarial_review import review_code
+from database.pool_manager import _pools
 
 # Add the /app level to path so we can import sandbox.ast_prefilter
 sys.path.append("/app")
@@ -31,9 +32,25 @@ def _get_worker_id():
         return None
 
 
-def get_db_connection():
+def get_db_connection(tier="normal"):
+    """Get a connection from the tiered pool (falls back to direct connect)."""
+    pool = _pools.get(tier) or _pools.get("normal")
+    if pool is not None:
+        return pool.getconn()
     db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
     return psycopg2.connect(db_url)
+
+
+def _return_connection(conn, tier="normal"):
+    """Return a connection to its pool (or close if no pool)."""
+    pool = _pools.get(tier) or _pools.get("normal")
+    if pool is not None:
+        try:
+            pool.putconn(conn)
+        except Exception:
+            _return_connection(conn)
+    else:
+        _return_connection(conn)
 
 
 def _sync_commit(cur):
@@ -55,7 +72,7 @@ async def fetch_task(task_id: str) -> dict:
             row['tenant_id'] = str(row['tenant_id'])
             return dict(row)
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -328,7 +345,7 @@ async def update_task_status(task_update: dict) -> None:
             ))
         conn.commit()
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -349,7 +366,7 @@ async def log_audit(audit_data: dict) -> None:
             ))
         conn.commit()
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -375,7 +392,7 @@ async def log_audit_event(event_data: dict) -> None:
     except Exception as e:
         print(f"log_audit_event non-fatal error: {e}")
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -397,7 +414,7 @@ async def record_usage(usage_data: dict) -> None:
             ))
         conn.commit()
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -435,7 +452,7 @@ async def save_investigation_step(step_data: dict) -> None:
             ))
         conn.commit()
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -658,7 +675,7 @@ async def create_approval_request(request_data: dict) -> str:
         conn.commit()
         return approval_id
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -680,7 +697,7 @@ async def update_approval_request(update_data: dict) -> None:
             ))
         conn.commit()
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -767,7 +784,7 @@ async def retrieve_skill(task_type: str, prompt: str) -> dict:
         print(f"Error in retrieve_skill: {e}")
         return None
     finally:
-        conn.close()
+        _return_connection(conn)
 
 
 @activity.defn
@@ -917,7 +934,7 @@ async def check_rate_limit_activity(data: dict) -> bool:
             row = cur.fetchone()
             max_concurrent = row[0] if row and row[0] else 50
             cur.close()
-            conn.close()
+            _return_connection(conn)
         except Exception:
             max_concurrent = 50
     return acquire_lease(tenant_id, task_id, worker_id, max_concurrent)
@@ -1061,7 +1078,7 @@ async def write_investigation_memory(memory_data: dict) -> None:
                 ))
             conn.commit()
         finally:
-            conn.close()
+            _return_connection(conn)
 
     except Exception as e:
         print(f"Non-critical failure in write_investigation_memory: {e}")

@@ -7,6 +7,10 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from workflows import ExecuteTaskWorkflow
+from workflows.hydra_workflows import (
+    ZeekIngestionWorkflow, DeepLogAnalysisWorkflow,
+    SandboxAnalysisWorkflow, InvestigationEnrichmentWorkflow,
+)
 from activities import fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, validate_generated_code, enrich_alert_with_memory
 from entity_graph import extract_entities, write_entity_graph, embed_investigation
 from bootstrap.activities import load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques
@@ -47,6 +51,17 @@ from integrations.jira import create_jira_ticket
 from integrations.teams import send_teams_notification
 from integrations.email import send_email_notification
 from integrations.servicenow import create_snow_incident
+from activities.network_analysis import ingest_zeek_logs
+from investigation.deeplog_analyzer import analyze_alert_sequence
+from threat_intel.attack_surface import enrich_alert_with_attack_surface
+# Sprint v0.15.0 — Feedback aggregation, KEV processing
+from workflows.feedback_aggregation import (
+    FeedbackAggregationWorkflow, aggregate_feedback_stats,
+    flag_underperforming_rules, refresh_materialized_views, emit_feedback_summary,
+)
+from workflows.kev_processing import (
+    KEVProcessingWorkflow, fetch_unprocessed_kev_entries, process_kev_entry,
+)
 # Sprint v0.10.0 — Shadow Mode, PII, Anti-Stampede, Token Quota
 from shadow import ShadowInvestigationWorkflow, generate_recommendation, check_automation_mode, record_human_decision, compute_conformance_metrics, check_mode_graduation
 from pii_detector import detect_pii, mask_for_llm, unmask_response, load_tenant_pii_rules
@@ -54,6 +69,7 @@ from stampede import coalesced_llm_call, check_stampede_protection
 from token_quota import check_token_quota, record_token_usage, reset_monthly_quota, trip_circuit_breaker
 from nats_consumer import create_nats_consumer
 from prompt_init import init_prompts
+from database.pool_manager import initialize_pools, close_pools
 import logger
 
 
@@ -72,6 +88,9 @@ os.environ["WORKER_ID"] = WORKER_ID  # Make available to logger module
 async def main():
     # Initialize prompt registry at startup
     init_prompts()
+
+    # Initialize DB connection pools at startup
+    initialize_pools()
 
     # Initialize NATS consumer if NATS_URL is configured
     nats_consumer = None
@@ -99,14 +118,17 @@ async def main():
     worker = Worker(
         client,
         task_queue="hydra-tasks",
-        # 10 workflows
+        # 16 workflows
         workflows=[
             ExecuteTaskWorkflow, BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow,
             DetectionGenerationWorkflow, ResponsePlaybookWorkflow, FineTuningPipelineWorkflow,
             SelfHealingWorkflow, ScheduledWorkflow, AlertCorrelationWorkflow,
             ShadowInvestigationWorkflow,
+            ZeekIngestionWorkflow, DeepLogAnalysisWorkflow,
+            SandboxAnalysisWorkflow, InvestigationEnrichmentWorkflow,
+            FeedbackAggregationWorkflow, KEVProcessingWorkflow,
         ],
-        # 95 activities
+        # 98 activities
         activities=[
             # Core investigation activities
             fetch_task, generate_code, validate_code, execute_code,
@@ -168,15 +190,23 @@ async def main():
             coalesced_llm_call, check_stampede_protection,
             # Token quota (Sprint v0.10.0)
             check_token_quota, record_token_usage, reset_monthly_quota, trip_circuit_breaker,
+            # Network analysis + DeepLog + attack surface (Sprint v0.13.0)
+            ingest_zeek_logs, analyze_alert_sequence, enrich_alert_with_attack_surface,
+            # Feedback aggregation (Sprint v0.15.0)
+            aggregate_feedback_stats, flag_underperforming_rules,
+            refresh_materialized_views, emit_feedback_summary,
+            # KEV processing (Sprint v0.15.0)
+            fetch_unprocessed_kev_entries, process_kev_entry,
         ],
     )
-    logger.info("Worker starting", task_queue="hydra-tasks", workflows=10, activities=95)
+    logger.info("Worker starting", task_queue="hydra-tasks", workflows=16, activities=104)
 
     try:
         await worker.run()
     finally:
         if nats_consumer:
             nats_consumer.shutdown()
+        close_pools()
 
 
 if __name__ == "__main__":

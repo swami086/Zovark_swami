@@ -1,12 +1,23 @@
-"""Tiered database connection pool manager using asyncpg.
+"""Tiered database connection pool manager using psycopg2.
 
 Pools:
-  - critical: alert ingestion (min=10, max=20, timeout=5s)
-  - normal: investigations (min=5, max=15, timeout=30s)
-  - background: analytics/retention (min=2, max=5, timeout=60s)
+  - critical: alert ingestion (min=10, max=20)
+  - normal: investigations (min=5, max=15)
+  - background: analytics/retention (min=2, max=5)
+
+Usage:
+    from database.pool_manager import pooled_connection
+
+    with pooled_connection("critical") as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT ...")
 """
 import os
 import logging
+from contextlib import contextmanager
+
+import psycopg2
+from psycopg2.pool import ThreadedConnectionPool
 
 logger = logging.getLogger(__name__)
 
@@ -16,97 +27,83 @@ DATABASE_URL = os.environ.get(
 )
 
 POOL_CONFIGS = {
-    "critical": {"min_size": 10, "max_size": 20, "command_timeout": 5},
-    "normal": {"min_size": 5, "max_size": 15, "command_timeout": 30},
-    "background": {"min_size": 2, "max_size": 5, "command_timeout": 60},
+    "critical": {"minconn": 10, "maxconn": 20},
+    "normal": {"minconn": 5, "maxconn": 15},
+    "background": {"minconn": 2, "maxconn": 5},
 }
 
+# Module-level pool storage
+_pools: dict[str, ThreadedConnectionPool] = {}
 
-class ConnectionPoolManager:
-    """Manages tiered asyncpg connection pools."""
 
-    def __init__(self, database_url: str = None):
-        self.database_url = database_url or DATABASE_URL
-        self._pools = {}
+def initialize_pools(database_url: str = None):
+    """Create connection pools for each tier. Call once at worker startup."""
+    global _pools
+    dsn = database_url or DATABASE_URL
 
-    async def initialize(self):
-        """Create connection pools for each tier."""
+    for tier, config in POOL_CONFIGS.items():
         try:
-            import asyncpg
-        except ImportError:
-            logger.warning("asyncpg not installed — pool manager unavailable")
-            return
-
-        for tier, config in POOL_CONFIGS.items():
-            try:
-                pool = await asyncpg.create_pool(
-                    self.database_url,
-                    min_size=config["min_size"],
-                    max_size=config["max_size"],
-                    command_timeout=config["command_timeout"],
-                    server_settings={"jit": "off", "application_name": f"hydra-{tier}"},
-                )
-                self._pools[tier] = pool
-                logger.info(f"Pool '{tier}' initialized: min={config['min_size']}, max={config['max_size']}")
-            except Exception as e:
-                logger.error(f"Failed to create pool '{tier}': {e}")
-
-    async def acquire(self, tier: str = "normal"):
-        """Acquire a connection from the specified tier's pool.
-
-        Falls back to 'normal' tier if requested tier unavailable.
-        """
-        pool = self._pools.get(tier) or self._pools.get("normal")
-        if pool is None:
-            raise RuntimeError(f"No connection pool available (requested: {tier})")
-        return pool.acquire()
-
-    async def execute(self, query: str, *args, tier: str = "normal"):
-        """Execute a query using the specified tier's pool."""
-        pool = self._pools.get(tier) or self._pools.get("normal")
-        if pool is None:
-            raise RuntimeError(f"No connection pool available (requested: {tier})")
-        async with pool.acquire() as conn:
-            return await conn.execute(query, *args)
-
-    async def fetch(self, query: str, *args, tier: str = "normal"):
-        """Fetch rows using the specified tier's pool."""
-        pool = self._pools.get(tier) or self._pools.get("normal")
-        if pool is None:
-            raise RuntimeError(f"No connection pool available (requested: {tier})")
-        async with pool.acquire() as conn:
-            return await conn.fetch(query, *args)
-
-    async def fetchrow(self, query: str, *args, tier: str = "normal"):
-        """Fetch a single row."""
-        pool = self._pools.get(tier) or self._pools.get("normal")
-        if pool is None:
-            raise RuntimeError(f"No connection pool available (requested: {tier})")
-        async with pool.acquire() as conn:
-            return await conn.fetchrow(query, *args)
-
-    async def close(self):
-        """Gracefully close all pools."""
-        for tier, pool in self._pools.items():
-            try:
-                await pool.close()
-                logger.info(f"Pool '{tier}' closed")
-            except Exception as e:
-                logger.warning(f"Error closing pool '{tier}': {e}")
-        self._pools.clear()
-
-    @property
-    def is_initialized(self):
-        return len(self._pools) > 0
+            pool = ThreadedConnectionPool(
+                config["minconn"],
+                config["maxconn"],
+                dsn,
+                options=f"-c jit=off -c application_name=hydra-{tier}",
+            )
+            _pools[tier] = pool
+            logger.info(f"Pool '{tier}' initialized: min={config['minconn']}, max={config['maxconn']}")
+        except Exception as e:
+            logger.error(f"Failed to create pool '{tier}': {e}")
 
 
-# Module-level singleton
-_pool_manager = None
+def close_pools():
+    """Gracefully close all pools. Call at worker shutdown."""
+    global _pools
+    for tier, pool in _pools.items():
+        try:
+            pool.closeall()
+            logger.info(f"Pool '{tier}' closed")
+        except Exception as e:
+            logger.warning(f"Error closing pool '{tier}': {e}")
+    _pools.clear()
 
 
-async def get_pool_manager(database_url: str = None) -> ConnectionPoolManager:
-    global _pool_manager
-    if _pool_manager is None:
-        _pool_manager = ConnectionPoolManager(database_url)
-        await _pool_manager.initialize()
-    return _pool_manager
+@contextmanager
+def pooled_connection(tier: str = "normal"):
+    """Context manager that borrows a connection from the specified tier's pool.
+
+    Auto-returns the connection when the block exits. Commits on success,
+    rolls back on exception.
+
+    Falls back to 'normal' tier if requested tier unavailable.
+    Falls back to a fresh psycopg2.connect() if no pools are initialized.
+
+    Usage:
+        with pooled_connection("critical") as conn:
+            with conn.cursor() as cur:
+                cur.execute(...)
+    """
+    pool = _pools.get(tier) or _pools.get("normal")
+
+    if pool is None:
+        # Fallback: no pool initialized (e.g., during tests or startup race)
+        logger.warning(f"No pool available for tier '{tier}', using direct connection")
+        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return
+
+    conn = pool.getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        pool.putconn(conn)

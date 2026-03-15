@@ -17,7 +17,7 @@ jobs:
       - name: Python lint
         run: |
           pip install flake8
-          cd worker && flake8 --max-line-length=120 --ignore=E501,W503,E402 *.py security/ detection/ response/ || true
+          cd worker && flake8 --max-line-length=120 --ignore=E501,W503,E402 *.py security/ detection/ response/
       - name: Validate migrations
         run: |
           for f in migrations/*.sql; do
@@ -114,9 +114,7 @@ jobs:
         with:
           go-version: '1.22'
       - name: Run Go tests
-        run: cd api && go test -v -race -count=1 ./... 2>&1 || true
-        # Note: Some tests may fail without a real DB — that's expected for unit tests
-        # that test middleware/auth/headers (those should pass)
+        run: cd api && go test -v -race -count=1 ./... 2>&1
 
   python-tests:
     runs-on: ubuntu-latest
@@ -131,7 +129,7 @@ jobs:
           pip install psycopg2-binary redis pyyaml httpx
       - name: Run Python tests
         run: |
-          cd worker && python -m pytest tests/ -v --tb=short 2>&1 || true
+          cd worker && python -m pytest tests/ -v --tb=short 2>&1
 
   build:
     runs-on: ubuntu-latest

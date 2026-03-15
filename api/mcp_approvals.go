@@ -28,6 +28,7 @@ package main
 //   • Fail-closed: Redis unavailable → approval blocked → workflow blocked.
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -40,33 +41,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-// ─── Redis helpers ────────────────────────────────────────────────────────────
-
-// redisGetBulkString fetches a Redis key and returns the string value.
-// Returns ("", false) when the key does not exist or on any error.
-func redisGetBulkString(key string) (string, bool) {
-	resp, err := redisCommand("GET", key)
-	if err != nil {
-		return "", false
-	}
-	// RESP bulk string: "$N\r\nDATA\r\n" or "$-1\r\n" for nil
-	if len(resp) < 4 || resp[0] != '$' {
-		return "", false
-	}
-	if strings.HasPrefix(resp, "$-1") {
-		return "", false // nil bulk string
-	}
-	// Find first \r\n
-	idx := strings.Index(resp, "\r\n")
-	if idx < 0 {
-		return "", false
-	}
-	data := resp[idx+2:]
-	// Strip trailing \r\n
-	data = strings.TrimRight(data, "\r\n")
-	return data, true
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -146,22 +120,6 @@ func mcpApprovalID(token string) string {
 
 // ─── POST /api/v1/mcp/approvals/request ──────────────────────────────────────
 
-// requestMCPApprovalHandler creates a pending approval for an MCP-requested
-// workflow. Called by the MCP server's hydra_trigger_workflow tool on its first
-// invocation (before an approval_token is supplied).
-//
-// The full token is written to the server-side audit log only; it is NEVER
-// returned in the HTTP response. Only the short approval_id is returned,
-// preventing the AI client from self-approving its own requests.
-//
-// Body:
-//
-//	{
-//	  "workflow_id":   "DetectionGenerationWorkflow",   // required
-//	  "workflow_args": {},                              // optional
-//	  "requested_by": "mcp:hydra_trigger_workflow",    // required
-//	  "tenant_id":    "hydra-dev"                      // optional, defaults to caller tenant
-//	}
 func requestMCPApprovalHandler(c *gin.Context) {
 	callerTenantID := c.MustGet("tenant_id").(string)
 
@@ -220,18 +178,18 @@ func requestMCPApprovalHandler(c *gin.Context) {
 	primaryKey := "hydra:approval:" + token
 	indexKey := "hydra:approval:id:" + approvalID
 
-	if _, redisErr := redisCommand("SETEX", primaryKey, "1800", string(approvalJSON)); redisErr != nil {
+	ctx := context.Background()
+	if redisErr := redisClient.SetEx(ctx, primaryKey, string(approvalJSON), 1800*time.Second).Err(); redisErr != nil {
 		respondInternalError(c, redisErr, "store mcp approval in redis")
 		return
 	}
 	// Secondary index: approval_id → token (for admin lookup without exposing the token).
-	if _, redisErr := redisCommand("SETEX", indexKey, "1800", token); redisErr != nil {
+	if redisErr := redisClient.SetEx(ctx, indexKey, token, 1800*time.Second).Err(); redisErr != nil {
 		// Non-fatal: primary key is already stored.
 		log.Printf("[WARN] requestMCPApproval: failed to write id index key: %v", redisErr)
 	}
 
-	// Audit log — token is written server-side only. Admin can retrieve it from
-	// logs and use it in the decide endpoint.
+	// Audit log — token is written server-side only.
 	log.Printf("[AUDIT] MCP approval requested: id=%s workflow=%s by=%s tenant=%s token_prefix=%.8s…",
 		approvalID, req.WorkflowID, req.RequestedBy, req.TenantID, token)
 
@@ -251,17 +209,13 @@ func requestMCPApprovalHandler(c *gin.Context) {
 
 // ─── GET /api/v1/mcp/approvals/check/:token ──────────────────────────────────
 
-// checkMCPApprovalHandler allows the workflow dispatcher (or MCP operator) to
-// poll the status of an approval by its full token.
-//
-// Always returns HTTP 200 with a status field to avoid timing-based oracle
-// attacks. Statuses: pending | approved | denied | expired.
 func checkMCPApprovalHandler(c *gin.Context) {
 	token := c.Param("token")
 	callerTenantID := c.MustGet("tenant_id").(string)
 
-	raw, ok := redisGetBulkString("hydra:approval:" + token)
-	if !ok {
+	ctx := context.Background()
+	raw, err := redisClient.Get(ctx, "hydra:approval:"+token).Result()
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "expired",
 			"message": "Approval token not found or has expired.",
@@ -269,9 +223,9 @@ func checkMCPApprovalHandler(c *gin.Context) {
 		return
 	}
 
-	m, err := parseMCPApproval(raw)
-	if err != nil {
-		respondInternalError(c, err, "parse mcp approval for check")
+	m, parseErr := parseMCPApproval(raw)
+	if parseErr != nil {
+		respondInternalError(c, parseErr, "parse mcp approval for check")
 		return
 	}
 
@@ -297,12 +251,6 @@ func checkMCPApprovalHandler(c *gin.Context) {
 
 // ─── GET /api/v1/mcp/approvals/pending ───────────────────────────────────────
 
-// listMCPApprovalsHandler returns all pending MCP workflow approval requests
-// for the caller's tenant.
-//
-// Query params:
-//
-//	tenant_id — filter to a specific tenant (admin only; defaults to caller tenant)
 func listMCPApprovalsHandler(c *gin.Context) {
 	callerTenantID := c.MustGet("tenant_id").(string)
 	filterTenant := c.Query("tenant_id")
@@ -310,16 +258,13 @@ func listMCPApprovalsHandler(c *gin.Context) {
 		filterTenant = callerTenantID
 	}
 
-	// KEYS scan — acceptable for low-volume approval traffic.
-	// In a high-traffic deployment replace with a Redis sorted set index.
-	keysResp, err := redisCommand("KEYS", "hydra:approval:*")
+	ctx := context.Background()
+	keys, err := redisClient.Keys(ctx, "hydra:approval:*").Result()
 	if err != nil {
 		log.Printf("[WARN] listMCPApprovals: Redis KEYS error: %v", err)
 		c.JSON(http.StatusOK, gin.H{"approvals": []interface{}{}, "count": 0})
 		return
 	}
-
-	keys := parseRESPStringArray(keysResp)
 
 	var approvals []mcpApprovalSummary
 	for _, key := range keys {
@@ -328,8 +273,8 @@ func listMCPApprovalsHandler(c *gin.Context) {
 			continue
 		}
 
-		raw, ok := redisGetBulkString(key)
-		if !ok || raw == "" {
+		raw, redisErr := redisClient.Get(ctx, key).Result()
+		if redisErr != nil || raw == "" {
 			continue
 		}
 
@@ -361,8 +306,6 @@ func listMCPApprovalsHandler(c *gin.Context) {
 
 // ─── GET /api/v1/mcp/approvals/id/:approval_id ───────────────────────────────
 
-// getMCPApprovalByIDHandler looks up an approval by its short approval_id
-// (first 16 hex characters of SHA-256(token)). Safe for UI list views.
 func getMCPApprovalByIDHandler(c *gin.Context) {
 	approvalID := c.Param("approval_id")
 	if approvalID == "" {
@@ -370,22 +313,23 @@ func getMCPApprovalByIDHandler(c *gin.Context) {
 		return
 	}
 
+	ctx := context.Background()
 	idKey := "hydra:approval:id:" + approvalID
-	token, ok := redisGetBulkString(idKey)
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})
-		return
-	}
-
-	raw, ok := redisGetBulkString("hydra:approval:" + token)
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})
-		return
-	}
-
-	m, err := parseMCPApproval(raw)
+	token, err := redisClient.Get(ctx, idKey).Result()
 	if err != nil {
-		respondInternalError(c, err, "parse mcp approval by id")
+		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})
+		return
+	}
+
+	raw, err := redisClient.Get(ctx, "hydra:approval:"+token).Result()
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})
+		return
+	}
+
+	m, parseErr := parseMCPApproval(raw)
+	if parseErr != nil {
+		respondInternalError(c, parseErr, "parse mcp approval by id")
 		return
 	}
 
@@ -401,18 +345,6 @@ func getMCPApprovalByIDHandler(c *gin.Context) {
 
 // ─── POST /api/v1/mcp/approvals/:token/decide ────────────────────────────────
 
-// decideMCPApprovalHandler approves or denies a pending MCP workflow approval.
-// Only admins may call this endpoint.
-//
-// Body:
-//
-//	{
-//	  "action": "approve" | "deny",  // required
-//	  "reason": "string"             // optional, recommended for deny
-//	}
-//
-// On approve: TTL is shortened to 60 s (single-use consumption window).
-// On deny:    TTL is shortened to 300 s for audit trail.
 func decideMCPApprovalHandler(c *gin.Context) {
 	token := c.Param("token")
 	userID := c.MustGet("user_id").(string)
@@ -432,16 +364,17 @@ func decideMCPApprovalHandler(c *gin.Context) {
 		return
 	}
 
+	ctx := context.Background()
 	key := "hydra:approval:" + token
-	raw, ok := redisGetBulkString(key)
-	if !ok {
+	raw, err := redisClient.Get(ctx, key).Result()
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})
 		return
 	}
 
-	approval, err := parseMCPApproval(raw)
-	if err != nil {
-		respondInternalError(c, err, "parse mcp approval for decide")
+	approval, parseErr := parseMCPApproval(raw)
+	if parseErr != nil {
+		respondInternalError(c, parseErr, "parse mcp approval for decide")
 		return
 	}
 
@@ -461,13 +394,13 @@ func decideMCPApprovalHandler(c *gin.Context) {
 	}
 
 	now := time.Now().Unix()
-	var ttl string
+	var ttl time.Duration
 	switch req.Action {
 	case "approve":
 		approval["status"] = "approved"
 		approval["approved_by"] = userID
 		approval["approved_at"] = now
-		ttl = "60" // Single-use window.
+		ttl = 60 * time.Second // Single-use window.
 	case "deny":
 		approval["status"] = "denied"
 		approval["denied_by"] = userID
@@ -475,7 +408,7 @@ func decideMCPApprovalHandler(c *gin.Context) {
 		if req.Reason != "" {
 			approval["deny_reason"] = req.Reason
 		}
-		ttl = "300" // Brief audit retention.
+		ttl = 300 * time.Second // Brief audit retention.
 	}
 
 	updatedJSON, jsonErr := json.Marshal(approval)
@@ -484,7 +417,7 @@ func decideMCPApprovalHandler(c *gin.Context) {
 		return
 	}
 
-	if _, redisErr := redisCommand("SETEX", key, ttl, string(updatedJSON)); redisErr != nil {
+	if redisErr := redisClient.SetEx(ctx, key, string(updatedJSON), ttl).Err(); redisErr != nil {
 		respondInternalError(c, redisErr, "persist mcp approval decision")
 		return
 	}
@@ -503,40 +436,4 @@ func decideMCPApprovalHandler(c *gin.Context) {
 		"decided_by":  userID,
 		"decided_at":  now,
 	})
-}
-
-// ─── RESP array parser ────────────────────────────────────────────────────────
-
-// parseRESPStringArray parses a Redis RESP array of bulk strings.
-// Format: *N\r\n$L1\r\nS1\r\n$L2\r\nS2\r\n...
-// Returns a slice of the string values; nil on any parse error.
-func parseRESPStringArray(resp string) []string {
-	if len(resp) == 0 || resp[0] != '*' {
-		return nil
-	}
-
-	lines := strings.Split(resp, "\r\n")
-	if len(lines) == 0 {
-		return nil
-	}
-
-	var count int
-	if _, err := fmt.Sscanf(lines[0], "*%d", &count); err != nil || count <= 0 {
-		return nil
-	}
-
-	var result []string
-	i := 1
-	for i < len(lines) && len(result) < count {
-		if len(lines[i]) == 0 || lines[i][0] != '$' {
-			i++
-			continue
-		}
-		i++
-		if i < len(lines) {
-			result = append(result, lines[i])
-			i++
-		}
-	}
-	return result
 }

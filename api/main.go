@@ -188,6 +188,11 @@ func main() {
 		// Feedback stats (admin only)
 		api.GET("/feedback/stats", requireRole("admin"), getFeedbackStatsHandler)
 
+		// Analytics — feedback insights (all tenant-scoped)
+		api.GET("/analytics/feedback/summary", feedbackSummaryHandler)
+		api.GET("/analytics/feedback/rules", feedbackRulesHandler)
+		api.GET("/analytics/feedback/analysts", feedbackAnalystsHandler)
+
 		// Webhook endpoints (authenticated)
 		api.GET("/webhooks/endpoints", listWebhookEndpointsHandler)
 		api.GET("/webhooks/deliveries", listWebhookDeliveriesHandler)

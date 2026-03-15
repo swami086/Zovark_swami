@@ -28,6 +28,51 @@ def _get_db():
     return psycopg2.connect(db_url)
 
 
+def get_rule_feedback_stats(tenant_id: str, technique_id: str = None) -> dict:
+    """Check feedback on investigations triggered by detection rules.
+
+    If accuracy < 30% over 10+ samples, the rule should be marked needs_review.
+
+    Returns: {accuracy: float, total: int, needs_review: bool}
+    """
+    from database.pool_manager import pooled_connection
+    result = {'accuracy': 1.0, 'total': 0, 'needs_review': False}
+
+    try:
+        with pooled_connection("background") as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                query = """
+                    SELECT
+                        COUNT(*) AS total,
+                        SUM(CASE WHEN f.verdict_correct THEN 1 ELSE 0 END) AS correct
+                    FROM investigation_feedback f
+                    JOIN agent_tasks t ON t.id::text = f.investigation_id::text
+                    WHERE f.tenant_id = %s
+                """
+                params = [tenant_id]
+
+                if technique_id:
+                    query += " AND t.input->>'mitre_technique' = %s"
+                    params.append(technique_id)
+
+                cur.execute(query, params)
+                row = cur.fetchone()
+
+                if row and int(row['total']) > 0:
+                    total = int(row['total'])
+                    correct = int(row['correct'] or 0)
+                    accuracy = correct / total
+                    result = {
+                        'accuracy': round(accuracy, 3),
+                        'total': total,
+                        'needs_review': total >= 10 and accuracy < 0.3,
+                    }
+    except Exception as e:
+        print(f"Sigma generator: rule feedback stats failed (non-fatal): {e}")
+
+    return result
+
+
 SIGMA_SYSTEM_PROMPT = (
     "You are a detection engineer. Generate a Sigma detection rule in YAML format. "
     "The rule MUST have these required fields: title, status (test), level (medium/high/critical), "
