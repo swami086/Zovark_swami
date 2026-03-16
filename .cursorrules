@@ -1,0 +1,18 @@
+You are working on HYDRA, an AI-powered SOC automation platform.
+
+Read CLAUDE.md at repo root for full project context.
+
+Key rules:
+- Go API in api/ — uses Gin framework, package main
+- Python worker in worker/ — uses Temporal SDK, psycopg2 for DB
+- All database queries must be tenant-scoped (WHERE tenant_id = $X)
+- All new migrations go in migrations/ with next sequential number
+- Tests: Go in api/*_test.go, Python in worker/tests/test_*.py
+- Never hardcode secrets — use env vars from .env.example
+- Error responses must use respondInternalError() — never leak details
+- LLM calls go through LiteLLM (port 4000), never direct to model
+- Sandbox code must pass AST prefilter before execution
+- Redis accessed via go-redis/v9 client (api/ratelimit.go), never raw TCP
+- DB connections via pooled_connection() context manager (worker/database/pool_manager.py)
+- Temporal activities use @activity.defn, workflows use @workflow.defn
+- All LLM inputs wrapped with wrap_untrusted_data() for injection defense

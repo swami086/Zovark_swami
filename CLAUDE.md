@@ -1,111 +1,189 @@
-# HYDRA MVP
+# HYDRA — AI-Powered SOC Automation Platform
 
-AI agent framework with code generation and sandboxed execution. Full-stack infrastructure for receiving tasks, generating Python code via local LLMs, and executing it securely.
+## What This Is
 
-## Tech Stack
+HYDRA receives security alerts from any SIEM, uses locally-hosted LLMs to generate investigation code, executes that code in sandboxed containers, and returns structured findings with risk scores, entity graphs, and incident reports. Zero mandatory cloud dependencies. Air-gap capable.
 
-| Layer            | Technology                              |
-|------------------|-----------------------------------------|
-| LLM Inference    | vLLM v0.15.1 (2 instances: chat + embed)|
-| Chat Model       | Qwen2.5-1.5B-Instruct-AWQ (4-bit)      |
-| Embedding Model  | nomic-embed-text-v1.5 (768-dim)         |
-| LLM Gateway      | LiteLLM (unified API on port 4000)      |
-| Database         | PostgreSQL 16 + pgvector                |
-| Cache            | Redis 7-alpine (256MB, LRU)             |
-| Workflow Engine  | Temporal 1.24.2                         |
-| Object Storage   | MinIO (S3-compatible)                   |
-| Observability    | Jaeger 1.57 (OTLP tracing)             |
-| Sandbox          | Docker + seccomp + AST validation       |
-| Orchestration    | Docker Compose V2                       |
+## Quick Reference
 
-## Project Structure
+- **Version:** v1.0.0-rc1
+- **Status:** Runtime-validated release candidate
+- **Total LOC:** ~74,800 (Go 10.6k + Python 42k + TypeScript 8.9k + SQL 3.2k + Shell 4.1k + YAML 6k)
+- **Tests:** 44 Go + 302 Python = 346 passing
+- **Services:** 17 Docker containers
+
+## Architecture
+
+```
+Dashboard (React 19 :3000)
+    ↓ REST
+Go API Gateway (Gin :8090)
+    ↓           ↓          ↓         ↓
+PostgreSQL   Temporal    Redis     NATS
+(16+pgvector) (1.24.2)  (7-alpine) (JetStream)
+    ↓           ↓
+Python Worker (Temporal SDK)
+    ↓           ↓
+LiteLLM → vLLM/Ollama    Docker Sandbox (no-net, seccomp, 30s kill)
+```
+
+## Directory Map
 
 ```
 hydra-mvp/
-├── docker-compose.yml          # 9-service stack (v1.1.1, RTX 3050 tuned)
-├── .env                        # Dev credentials (POSTGRES_PASSWORD, LITELLM_MASTER_KEY, MINIO creds)
-├── litellm_config.yaml         # LLM routing: "fast" -> vllm-chat, "embed" -> vllm-embed
-├── litellm_config_rtx3050.yaml # RTX 3050 GPU variant config
-├── download_models.py          # HuggingFace model download script
-├── HYDRA_SETUP_RTX3050.md      # Comprehensive setup guide (537 lines)
-├── local_models/
-│   ├── chat-model/             # Qwen2.5-1.5B-Instruct-AWQ weights
-│   └── embed-model/            # nomic-embed-text-v1.5 weights
-├── sandbox/
-│   ├── ast_prefilter.py        # Python AST security validator
-│   ├── kill_timer.py           # 30-second execution timeout
-│   └── seccomp_profile.json    # Syscall whitelist/blacklist
-└── temporal-config/            # Workflow engine dynamic config
+├── api/                # Go API gateway (48 files) — auth, RBAC, handlers, middleware
+├── worker/             # Python Temporal worker (132 files) — investigation pipeline
+│   ├── activities/     #   Network analysis (Zeek)
+│   ├── bootstrap/      #   MITRE/CISA corpus loading
+│   ├── database/       #   Connection pool manager (psycopg2 ThreadedConnectionPool)
+│   ├── detection/      #   Sigma rule generation
+│   ├── finetuning/     #   Training data pipeline
+│   ├── intelligence/   #   Blast radius, FP analysis, cross-tenant intel
+│   ├── investigation/  #   DeepLog LSTM, enrichment
+│   ├── prompts/        #   16 LLM prompt templates
+│   ├── reporting/      #   Incident reports (MD + PDF)
+│   ├── response/       #   SOAR playbooks + template resolver
+│   ├── security/       #   Injection detection, sanitization
+│   ├── skills/         #   Deobfuscation sandbox
+│   ├── sre/            #   Self-healing agent
+│   ├── tests/          #   302 unit tests
+│   ├── threat_intel/   #   Attack surface recon
+│   └── workflows/      #   Feedback aggregation, KEV processing
+├── dashboard/          # React 19 + Vite 7 + Tailwind 4 (55 files, 15 pages)
+├── mcp-server/         # TypeScript MCP server (25 files — 7 tools, 7 resources, 6 prompts)
+├── sandbox/            # AST prefilter + seccomp + kill timer (4 files)
+├── migrations/         # 39 SQL migration files
+├── k8s/                # Kubernetes manifests (32 files — dev/prod/airgap overlays)
+├── helm/               # Helm charts for K8s deployment
+├── terraform/          # AWS/GCP infrastructure-as-code
+├── config/             # PostgreSQL configuration (pg_hba.conf, postgresql.conf)
+├── proxy/              # Squid egress proxy configuration
+├── monitoring/         # Prometheus rules + Grafana dashboards (9 files)
+├── scripts/            # 35 operational scripts
+│   └── pov/            # 48-hour Proof of Value package
+├── security-fixes/     # Security remediation specs and reports (18 files)
+├── sdk/                # Client SDK (6 files)
+├── tests/              # Integration tests + test corpus (83 files)
+├── docs/               # Architecture, deployment, security docs (23 files)
+├── temporal-config/    # Temporal workflow engine configuration
+└── local_models/       # Downloaded LLM weights (Qwen2.5 + nomic-embed)
 ```
 
-## Commands
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| API | Go 1.22 + Gin (61+ endpoints) |
+| Worker | Python 3.11 + Temporal SDK (16 workflows, 104 activities) |
+| Database | PostgreSQL 16 + pgvector (67 tables, 39 migrations) |
+| Cache | Redis 7 via go-redis/v9 (pooled) |
+| Workflows | Temporal 1.24.2 |
+| Events | NATS JetStream |
+| LLM Gateway | LiteLLM (multi-provider fallback) |
+| Inference | vLLM (Qwen2.5-1.5B-AWQ) / Ollama (air-gap) |
+| Embeddings | nomic-embed-text-v1.5 (768-dim) |
+| Frontend | React 19 + Vite 7 + Tailwind 4 |
+| MCP | TypeScript + @modelcontextprotocol/sdk |
+| Object Storage | MinIO |
+| Monitoring | Prometheus + Grafana + Jaeger |
+
+## How to Run
 
 ```bash
-# Start the full stack
-docker compose up -d
+# Quick deploy (generates secrets, boots 17 services, runs migrations)
+bash scripts/pov/deploy.sh
 
-# Stop
-docker compose down
+# Verify
+curl http://localhost:8090/health
 
-# Check service health
-docker compose ps
-
-# Test chat inference
-curl http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer sk-hydra-dev-2026" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"fast","messages":[{"role":"user","content":"Say hello"}],"max_tokens":50}'
-
-# Test embeddings
-curl http://localhost:4000/v1/embeddings \
-  -H "Authorization: Bearer sk-hydra-dev-2026" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"embed","input":"test embedding"}'
-
-# Download models
-pip install huggingface-hub
-huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-AWQ --local-dir local_models/chat-model
-huggingface-cli download nomic-ai/nomic-embed-text-v1.5 --local-dir local_models/embed-model
+# Open dashboard at http://localhost:3000
 ```
 
-## Service Ports
+## How to Test
 
-| Service      | Port  | URL                          |
-|--------------|-------|------------------------------|
-| LiteLLM      | 4000  | http://localhost:4000        |
-| PostgreSQL   | 5432  |                              |
-| Redis        | 6379  |                              |
-| Temporal     | 7233  |                              |
-| Temporal UI  | 8080  | http://localhost:8080        |
-| vLLM Chat    | 8000  | (internal only)              |
-| vLLM Embed   | 8001  | (internal only)              |
-| MinIO API    | 9000  |                              |
-| MinIO Console| 9001  | http://localhost:9001        |
-| Jaeger UI    | 16686 | http://localhost:16686       |
+```bash
+# Go tests (44 tests) — requires golang:1.22 or Docker
+cd api && go test -v -count=1 ./...
 
-## Key Conventions
+# Python tests (302 tests) — requires Python 3.11
+cd worker && python -m pytest tests/ -v
 
-- **Model names**: Use `"fast"` for chat, `"embed"` for embeddings (routed via LiteLLM)
-- **Container naming**: `hydra-{service}` (e.g., `hydra-postgres`, `hydra-vllm-chat`)
-- **Network**: All services on `hydra-internal` bridge network
-- **GPU budget**: 0.40 (chat) + 0.15 (embed) = ~2.2GB of 4GB VRAM (RTX 3050)
-- **Auth**: LiteLLM API key is `sk-hydra-dev-2026`
-- **Sandbox security layers**: AST prefilter -> seccomp profile -> Docker `--network=none` -> kill timer (30s)
-- **Blocked in sandbox**: `eval`, `exec`, `subprocess`, `socket`, `ctypes`, `importlib`, `__import__`
+# Integration (requires Docker stack running)
+python tests/integration/test_full_investigation.py
+```
 
-## Architecture Notes
+## API
 
-- Week 1 MVP: infrastructure and plumbing only
-- Local inference (no cloud APIs) for privacy and cost control
-- Qwen 1.5B chosen over Mistral 7B due to 4GB VRAM constraint
-- Temporal provides durable, fault-tolerant workflow execution
-- PostgreSQL includes pgvector extension for future RAG capabilities
-- Multi-tenant design with usage metering in database schema
+61+ REST endpoints. Full OpenAPI spec at `docs/openapi.yaml` (v1.2.0).
 
-## Roadmap (Implied)
+Key endpoints:
+- `POST /api/v1/auth/login` — authenticate (returns JWT)
+- `POST /api/v1/auth/register` — create user (requires email, password, display_name, tenant_id)
+- `POST /api/v1/tasks` — submit investigation task
+- `GET /api/v1/tasks/{id}` — get investigation result
+- `GET /api/v1/tasks/{id}/stream` — SSE stream investigation progress
+- `POST /api/v1/siem-alerts/{id}/investigate` — investigate a SIEM alert
+- `GET /api/v1/stats` — dashboard statistics
+- `GET /api/v1/analytics/feedback/summary` — feedback analytics
 
-- Week 2: Go API Gateway with task submission endpoints
-- Week 3: Python Worker with sandbox integration
-- Week 4: End-to-end task -> inference -> sandbox -> result
-- Weeks 5-6: RAG with pgvector, Prometheus/Grafana monitoring
-- Later: Upgrade to Mistral-7B when GPU allows
+Auth: JWT access token (15min) + httpOnly refresh cookie (7d). RBAC roles: admin, analyst, viewer.
+
+## Database
+
+67 tables. PostgreSQL 16 + pgvector. Migrations in `migrations/` (001-039).
+
+Key tables: `agent_tasks`, `investigations`, `entities`, `entity_edges`, `siem_alerts`, `detection_candidates`, `response_playbooks`, `investigation_feedback`, `users`, `tenants`
+
+## Temporal Workflows
+
+16 workflows, 104 activities. Task queue: `hydra-tasks`.
+
+Core: `ExecuteTaskWorkflow` — the main investigation pipeline (alert → LLM code gen → AST validation → sandbox execution → entity extraction → report).
+
+## Security
+
+7-layer defense: network perimeter → JWT auth → RBAC → PII masking → sandbox (AST + seccomp + no-net + kill timer) → LLM safety (injection detection, adversarial review, approval gates) → audit logging.
+
+30/30 security audit findings resolved. See `docs/SECURITY_AUDIT_v0.10.0.md`.
+
+## Key Docs
+
+| Doc | Path |
+|-----|------|
+| Architecture (deep) | `docs/ARCHITECTURE.md` |
+| API Spec | `docs/openapi.yaml` |
+| Deployment | `docs/DEPLOYMENT_GUIDE.md` |
+| Security Audit | `docs/SECURITY_AUDIT_v0.10.0.md` |
+| Changelog | `CHANGELOG.md` |
+| Release Notes | `RELEASE_NOTES.md` |
+| PoV Playbook | `scripts/pov/README.md` |
+| Codebase Census | `docs/CODEBASE_CENSUS.md` |
+| Validation Report | `VALIDATION_REPORT.md` |
+
+## Version History
+
+```
+v1.0.0-rc1  Release candidate (validated: 346 tests, 17 services healthy)
+v0.18.0     Documentation + CHANGELOG
+v0.17.0     48-hour PoV package
+v0.16.0     Deployment hardening (CORS, vLLM, OpenAPI, legacy cleanup)
+v0.15.0     Architectural fixes + operational readiness
+v0.14.0     Testing + CI (44 Go + 302 Python tests, migration runner)
+v0.13.0     Platform features (ML detection, Zeek, WebSocket, 4 workflows)
+v0.12.0     Defense-in-depth (Vault, egress proxy, sanitizer, adversarial, MCP gate)
+v0.11.0     Security remediation (30/30 audit findings)
+v0.10.1     Critical security fixes (JWT, httpOnly, injection blocking)
+```
+
+## Conventions
+
+- **Go:** `gofmt`, package `main` for API binary, errors via `respondInternalError()`
+- **Python:** `flake8`, type hints preferred, `@activity.defn` / `@workflow.defn` for Temporal
+- **Commits:** `feat:`, `fix:`, `security:`, `test:`, `docs:`, `release:` prefixes
+- **Migrations:** Sequential numbered `NNN_description.sql`, idempotent (IF NOT EXISTS)
+- **Tests:** Go: `*_test.go` in same package. Python: `worker/tests/test_*.py`
+- **Config:** All secrets via env vars. `.env.example` is the contract. Never hardcode.
+- **DB queries:** Always tenant-scoped (WHERE tenant_id = $X)
+- **LLM calls:** Always through LiteLLM (port 4000), never direct to model
+- **Error responses:** Never leak table names, SQL, or stack traces to clients
+- **Branches:** `master` is main development branch
