@@ -4,21 +4,32 @@ This file provides context for AI coding agents working on HYDRA.
 
 ## Before Making Changes
 
-1. Read `CLAUDE.md` for project overview
-2. Run `bash scripts/census.sh` to verify current state
-3. Check `CHANGELOG.md` for recent changes
-4. Run tests before and after: `cd api && go test ./...` and `cd worker && pytest tests/`
+1. Read `CLAUDE.md` for project overview and current state
+2. Check `CHANGELOG.md` for recent changes
+3. Run tests before and after changes
+4. After Python changes: `docker compose build worker && docker compose up -d worker`
+5. After Go changes: `docker compose build api && docker compose up -d api`
 
 ## Architecture Decisions
 
-- Temporal for all async work — never use raw goroutines or threading for investigation pipeline
+- Temporal for all async work — never use raw goroutines or threading for the investigation pipeline
 - PostgreSQL + pgvector for all persistent state — no separate vector DB
-- LiteLLM as single gateway to all LLM providers — never call models directly
+- LiteLLM as single gateway to all LLM providers — never call Ollama/models directly
 - Docker sandbox for code execution — never run LLM-generated code in worker process
 - NATS for real-time events — never poll the database for status updates
 - Redis for ephemeral state only (rate limits, cache) — never for durable data
 - go-redis/v9 for Redis access in Go — never raw TCP/RESP parsing
 - psycopg2 ThreadedConnectionPool for DB in Python — never per-call psycopg2.connect()
+
+## Important: Legacy File Layout
+
+The worker has a legacy file layout due to the package/file name conflict:
+- `worker/_legacy_activities.py` — the ACTUAL activities file (was `activities.py`, renamed to avoid conflict with `activities/` package)
+- `worker/_legacy_workflows.py` — the ACTUAL workflows file (same pattern)
+- `worker/activities/__init__.py` — re-exports all functions from `_legacy_activities.py`
+- `worker/workflows/__init__.py` — re-exports `ExecuteTaskWorkflow` from `_legacy_workflows.py`
+
+When adding new activities/workflows, add them to the `_legacy_*.py` files AND update the `__init__.py` re-exports.
 
 ## Common Tasks
 
@@ -26,39 +37,65 @@ This file provides context for AI coding agents working on HYDRA.
 1. Add handler in `api/` (group with related handlers by domain)
 2. Register route in `api/main.go`
 3. Add test in `api/*_test.go`
-4. Update `docs/openapi.yaml`
+4. `docker compose build api && docker compose up -d api`
 
 ### Add a new Temporal activity
-1. Create function with `@activity.defn` in appropriate `worker/` subdirectory
-2. Import and register in `worker/main.py` activities list
-3. Update the activities count in the log line
-4. Add test in `worker/tests/test_*.py`
+1. Add `@activity.defn` function to `worker/_legacy_activities.py`
+2. Add re-export to `worker/activities/__init__.py`
+3. Import and register in `worker/main.py` activities list
+4. Update the activities count in the log line
+5. `docker compose build worker && docker compose up -d worker`
 
 ### Add a new Temporal workflow
-1. Create class with `@workflow.defn` in `worker/workflows/`
-2. Import and register in `worker/main.py` workflows list
-3. Update the workflows count in the log line
+1. Add `@workflow.defn` class to `worker/_legacy_workflows.py` (or a workflows/ submodule)
+2. Re-export in `worker/workflows/__init__.py` if needed
+3. Import and register in `worker/main.py` workflows list
+4. `docker compose build worker && docker compose up -d worker`
 
 ### Add a new migration
-1. Create `migrations/NNN_description.sql` (next number after 039)
+1. Create `migrations/NNN_description.sql` (next number after 040)
 2. Use IF NOT EXISTS / IF EXISTS for idempotency
-3. Apply: `docker compose exec hydra-api ./hydra-api migrate up`
+3. Apply: `docker compose exec -T postgres psql -U hydra -d hydra < migrations/NNN_description.sql`
 
-### Run the 48-hour PoV
-1. `bash scripts/pov/deploy.sh`
-2. `python scripts/pov/import_alerts.py --format splunk --file alerts.csv --tenant-id <id>`
-3. `python scripts/pov/generate_report.py --tenant-id <id> --output report.html`
-
-### Regenerate codebase census
+### Debug a failed investigation
 ```bash
-bash scripts/census.sh
+# 1. Check worker logs
+docker compose logs worker --tail 50 | grep -iv "nats\|redis"
+
+# 2. Get Temporal workflow history
+docker compose exec temporal tctl --address temporal:7233 workflow show -w task-<TASK_ID>
+
+# 3. Find which activity failed
+docker compose exec temporal tctl --address temporal:7233 workflow show -w task-<TASK_ID> | grep ActivityType
+
+# 4. Common failure points:
+#    - AST prefilter blocks code → check for forbidden imports (os, sys, subprocess)
+#    - Adversarial review timeout → passes through (by design)
+#    - fill_skill_parameters error → falls back to defaults (non-fatal)
+#    - Docker sandbox timeout → 30s kill timer
+#    - LLM 429 → Ollama single-threaded, retries automatically
 ```
 
-## File Count Reference
+### Update skill templates in the DB
+```bash
+# Fix a template import
+docker compose exec -T postgres psql -U hydra -d hydra -c "
+UPDATE agent_skills
+SET code_template = REPLACE(code_template, 'import os', '# import os (blocked)')
+WHERE code_template LIKE '%import os%';
+"
+```
 
-- Go source files: 48 in `api/`
-- Python source files: 132 in `worker/`
-- SQL migrations: 39 in `migrations/`
-- Dashboard: 55 files in `dashboard/`
-- K8s manifests: 32 files in `k8s/`
-- Tests: 83 files in `tests/`, plus `worker/tests/` and `api/*_test.go`
+### Run the accuracy benchmark
+```bash
+# Against existing completed investigations
+docker run --rm --network hydra-mvp_hydra-internal \
+  -v "$(pwd):/app" -w /app -e HYDRA_API_URL=http://hydra-api:8090 \
+  python:3.11-slim sh -c "pip install -q httpx && python scripts/score_baseline.py"
+```
+
+### Rebuild and restart a single service
+```bash
+docker compose build <service> && docker compose up -d <service>
+# e.g., docker compose build worker && docker compose up -d worker
+```

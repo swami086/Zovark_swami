@@ -119,9 +119,9 @@ HYDRA is an AI-powered SOC (Security Operations Center) automation platform. It 
 
 | Component | Language | Key Files | Scale |
 |-----------|----------|-----------|-------|
-| Go API Gateway | Go 1.22+ | 48 .go files | 61+ endpoints |
-| Python Worker | Python 3.11+ | 132 .py files | 16 workflows, 104 activities |
-| Database | PostgreSQL 16 | 39 migrations | 67 tables |
+| Go API Gateway | Go 1.22+ | 45 .go files | 78 endpoints |
+| Python Worker | Python 3.11+ | 124 .py files | 16 workflows, 110 activities |
+| Database | PostgreSQL 16 | 40 migrations | 76 tables |
 | Dashboard | TypeScript 5.9 | React 19 + Vite 7 | SPA |
 | MCP Server | TypeScript | Node.js | 7 tools, 7 resources, 6 prompts |
 | Docker Stack | YAML | docker-compose.yml | ~20 services |
@@ -134,7 +134,7 @@ HYDRA is an AI-powered SOC (Security Operations Center) automation platform. It 
 
 The API gateway is a Go service built with Gin 1.9.1. It handles all external HTTP traffic, enforces authentication and authorization, and dispatches work to Temporal.
 
-### Endpoint Groups (61+ endpoints across 27 files)
+### Endpoint Groups (78 endpoints across 27 files)
 
 | Group | Responsibilities | Key Patterns |
 |-------|-----------------|--------------|
@@ -246,7 +246,7 @@ Activities are individual units of work. Key categories:
 **Connection pooling:** PgBouncer
 **Migrations:** 32 files in `migrations/` (001 through 032)
 
-### Table Inventory (67 tables)
+### Table Inventory (76 tables)
 
 | Category | Tables | Purpose |
 |----------|--------|---------|
@@ -953,7 +953,7 @@ For fully disconnected environments:
 
 ```
 hydra-mvp/
-├── api/                          # Go API gateway (48 .go files, 61+ endpoints)
+├── api/                          # Go API gateway (45 .go files, 78 endpoints)
 ├── worker/                       # Python Temporal worker (39+ files)
 │   ├── bootstrap/                #   MITRE/CISA data + synthetic investigations
 │   ├── detection/                #   Sigma rule generation + pattern mining

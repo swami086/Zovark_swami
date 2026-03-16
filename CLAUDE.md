@@ -1,202 +1,212 @@
-# HYDRA — AI-Powered SOC Automation Platform
+# HYDRA — Autonomous AI SOC Platform
 
-## What This Is
-
-HYDRA receives security alerts from any SIEM, uses locally-hosted LLMs to generate investigation code, executes that code in sandboxed containers, and returns structured findings with risk scores, entity graphs, and incident reports. Zero mandatory cloud dependencies. Air-gap capable.
+> Air-gapped, on-premise security operations center powered by local LLMs.
+> Receives SIEM alerts → generates investigation code → executes in sandbox → delivers structured verdicts.
 
 ## Quick Reference
 
-- **Version:** v1.0.0-rc1
-- **Status:** Runtime-validated release candidate
-- **Total LOC:** ~74,800 (Go 10.6k + Python 42k + TypeScript 8.9k + SQL 3.2k + Shell 4.1k + YAML 6k)
-- **Tests:** 44 Go + 302 Python = 346 passing
-- **Services:** 17 Docker containers
+- **Version:** post v1.0.0-rc1 (latest: `e17ccad`)
+- **Status:** Pipeline OPERATIONAL — investigations complete end-to-end
+- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + NATS + LiteLLM + Ollama
+- **LOC:** Go 45 files, Python 124 files, TypeScript 33 files, 40 migrations
+- **Tests:** 44 Go + 179 Python = 223 test functions passing
+- **Services:** 17 Docker containers running (11 core + 6 monitoring/exporters)
 
 ## Architecture
 
 ```
-Dashboard (React 19 :3000)
-    ↓ REST
-Go API Gateway (Gin :8090)
-    ↓           ↓          ↓         ↓
-PostgreSQL   Temporal    Redis     NATS
-(16+pgvector) (1.24.2)  (7-alpine) (JetStream)
-    ↓           ↓
-Python Worker (Temporal SDK)
-    ↓           ↓
-LiteLLM → vLLM/Ollama    Docker Sandbox (no-net, seccomp, 30s kill)
+SIEM Alert → Go API (:8090, auth/RBAC/rate-limit) → PostgreSQL → Temporal Workflow →
+  → Skill Matching → PII Masking → LLM (Ollama via LiteLLM) → fill_skill_parameters →
+  → render_skill_template → AST Prefilter → Adversarial Review → Docker Sandbox →
+  → Entity Extraction → Knowledge Graph → Sigma Rule Gen → Investigation Memory →
+  → Structured Verdict (findings, IOCs, recommendations, risk score)
 ```
 
 ## Directory Map
 
 ```
 hydra-mvp/
-├── api/                # Go API gateway (48 files) — auth, RBAC, handlers, middleware
-├── worker/             # Python Temporal worker (132 files) — investigation pipeline
-│   ├── activities/     #   Network analysis (Zeek)
-│   ├── bootstrap/      #   MITRE/CISA corpus loading
-│   ├── database/       #   Connection pool manager (psycopg2 ThreadedConnectionPool)
-│   ├── detection/      #   Sigma rule generation
-│   ├── finetuning/     #   Training data pipeline
-│   ├── intelligence/   #   Blast radius, FP analysis, cross-tenant intel
-│   ├── investigation/  #   DeepLog LSTM, enrichment
-│   ├── prompts/        #   16 LLM prompt templates
-│   ├── reporting/      #   Incident reports (MD + PDF)
-│   ├── response/       #   SOAR playbooks + template resolver
-│   ├── security/       #   Injection detection, sanitization
-│   ├── skills/         #   Deobfuscation sandbox
-│   ├── sre/            #   Self-healing agent
-│   ├── tests/          #   302 unit tests
-│   ├── threat_intel/   #   Attack surface recon
-│   └── workflows/      #   Feedback aggregation, KEV processing
-├── dashboard/          # React 19 + Vite 7 + Tailwind 4 (55 files, 15 pages)
-├── mcp-server/         # TypeScript MCP server (25 files — 7 tools, 7 resources, 6 prompts)
-├── sandbox/            # AST prefilter + seccomp + kill timer (4 files)
-├── migrations/         # 39 SQL migration files
-├── k8s/                # Kubernetes manifests (32 files — dev/prod/airgap overlays)
-├── helm/               # Helm charts for K8s deployment
-├── terraform/          # AWS/GCP infrastructure-as-code
-├── config/             # PostgreSQL configuration (pg_hba.conf, postgresql.conf)
-├── proxy/              # Squid egress proxy configuration
-├── monitoring/         # Prometheus rules + Grafana dashboards (9 files)
-├── scripts/            # 35 operational scripts
-│   └── pov/            # 48-hour Proof of Value package
-├── security-fixes/     # Security remediation specs and reports (18 files)
-├── sdk/                # Client SDK (6 files)
-├── tests/              # Integration tests + test corpus (83 files)
-├── docs/               # Architecture, deployment, security docs (23 files)
-├── temporal-config/    # Temporal workflow engine configuration
-└── local_models/       # Downloaded LLM weights (Qwen2.5 + nomic-embed)
+├── api/                    # Go REST API (45 files) — auth, handlers, middleware, RBAC
+├── worker/                 # Python Temporal worker (124 files) — investigation pipeline
+│   ├── _legacy_activities.py  # 110 @activity.defn functions (main activities file)
+│   ├── _legacy_workflows.py   # ExecuteTaskWorkflow (main workflow)
+│   ├── activities/            # Package re-exports from _legacy_activities.py + network_analysis
+│   ├── workflows/             # Package re-exports from _legacy_workflows.py + feedback/KEV/hydra
+│   ├── database/              # Connection pool manager (psycopg2 ThreadedConnectionPool)
+│   ├── detection/             # Sigma rule generation
+│   ├── intelligence/          # Blast radius, FP analysis, cross-tenant
+│   ├── investigation/         # DeepLog LSTM, memory
+│   ├── response/              # SOAR playbooks + template resolver
+│   ├── security/              # Injection detection, adversarial review, sanitization
+│   ├── bootstrap/             # MITRE/CISA corpus loading
+│   └── tests/                 # 179 test functions
+├── dashboard/              # React 19 + Vite 7 + Tailwind 4 (33 TS/TSX files)
+├── dpo/                    # DPO training pipeline (6 files) — forge, prompts, validators
+├── mcp-server/             # TypeScript MCP server (25 files)
+├── sandbox/                # AST prefilter + seccomp + kill timer (6 files)
+├── migrations/             # PostgreSQL migrations (40 files, 001-040)
+├── k8s/                    # Kubernetes manifests (32 files — dev/prod/airgap overlays)
+├── scripts/                # Utility scripts (40 files) — accuracy, deploy, census
+├── docs/                   # Documentation (34 files)
+├── helm/                   # Helm charts for K8s deployment
+├── terraform/              # IaC for AWS/GCP
+├── config/                 # PostgreSQL configuration
+├── security-fixes/         # Remediation specs (historical)
+├── tests/                  # Integration tests + test corpus + ground truth
+├── litellm_config.yaml     # LLM routing (fast → Ollama qwen2.5:14b)
+├── docker-compose.yml      # 11 core services + monitoring stack
+└── docker-compose.enterprise.yml  # 48GB+ VRAM override (7B + 32B models)
 ```
 
-## Tech Stack
+## Version History
 
-| Layer | Technology |
-|-------|-----------|
-| API | Go 1.22 + Gin (61+ endpoints) |
-| Worker | Python 3.11 + Temporal SDK (16 workflows, 104 activities) |
-| Database | PostgreSQL 16 + pgvector (67 tables, 39 migrations) |
-| Cache | Redis 7 via go-redis/v9 (pooled) |
-| Workflows | Temporal 1.24.2 |
-| Events | NATS JetStream |
-| LLM Gateway | LiteLLM (multi-provider fallback) |
-| Inference | vLLM (Qwen2.5-1.5B-AWQ) / Ollama (air-gap) |
-| Embeddings | nomic-embed-text-v1.5 (768-dim) |
-| Frontend | React 19 + Vite 7 + Tailwind 4 |
-| MCP | TypeScript + @modelcontextprotocol/sdk |
-| Object Storage | MinIO |
-| Monitoring | Prometheus + Grafana + Jaeger |
+| Version | Commit | What Changed |
+|---------|--------|-------------|
+| v0.10.1 | `f1974bd` | Initial security fixes (JWT, OIDC, httpOnly cookies) |
+| v0.11.0 | `7bf17e9` | 30/30 security audit findings resolved |
+| v0.12.0 | `2f25c32` | 5 hardening features (Vault, egress proxy, adversarial review, MCP gate) |
+| v0.13.0 | `2785bc9` | 10 features (DeepLog, Zeek, WebSocket, DB pools, attack surface) |
+| v0.14.0 | `11539af` | Test infrastructure (44 Go + Python tests, CI pipeline, migration runner) |
+| v0.15.0 | `83d1f34` | Architectural fixes + operational readiness (template resolver, feedback, KEV) |
+| v0.16.0 | `e31d329` | Deployment hardening (CORS, vLLM, OpenAPI v1.2.0, legacy cleanup) |
+| v0.17.0 | `63df379` | 48-hour PoV package (SIEM import, report generator, deploy script) |
+| v0.18.0 | `0128f60` | CHANGELOG |
+| v1.0.0-rc1 | `377db3c` | Release candidate — runtime validated |
+| post-rc1 | `0f01672` | Compile fixes (missing json import, unused fmt import, NATS flags) |
+| post-rc1 | `388435a` | Project standardization (CLAUDE.md, AGENTS.md, .cursorrules, census) |
+| post-rc1 | `d467057` | CTO review response (accuracy benchmark, enterprise profiles, model tiers) |
+| post-rc1 | `dffc3d5` | DPO pipeline Phase 0 (forge, prompts, validators, compressor, sandbox endpoint) |
+| post-rc1 | `820e456` | Pipeline debug — 5 root causes fixed, investigations complete end-to-end |
+| post-rc1 | `e17ccad` | Updated baseline — 7 investigations scored |
+
+## Current State (What Works)
+
+- **Investigation pipeline:** OPERATIONAL — submit alert → structured verdict with findings, IOCs, risk score
+- **Auth flow:** Register → login → JWT (15min) → refresh (7d) → RBAC (admin/analyst/viewer)
+- **LLM routing:** Ollama (qwen2.5:14b) via LiteLLM on local GPU
+- **Sandbox:** Docker-in-Docker with AST prefilter v2, network isolation, read-only fs, cap-drop ALL
+- **Database:** 76 tables, pgvector embeddings, connection pooling via PgBouncer
+- **17 Docker services:** all healthy and running
+- **7 completed investigations** with baseline metrics
+- **DPO pipeline Phase 0:** committed (forge + prompts + validators + compressor)
+
+## Baseline Accuracy (7 investigations)
+
+| Metric | Value |
+|--------|-------|
+| Code generation | 100% (7/7) |
+| Mean risk score | 76 |
+| Findings rate | 86% (6/7) |
+| IOC extraction | 29% (2/7) |
+| Mean execution | 30.9s |
+
+## Known Issues (Be Honest)
+
+1. **IOC extraction is weak (29%)** — DPO training targets this specifically
+2. **Adversarial review passes through on timeout** — Intentional: AST prefilter + Docker sandbox are primary security layers. Review LLM via urllib times out against Ollama.
+3. **LiteLLM ↔ Redis auth errors** — Non-fatal (caching only). Fix: add REDIS_PASSWORD to LiteLLM env.
+4. **NATS hostname resolution** — Non-fatal warning on worker startup. Consumer initializes despite it.
+5. **fill_skill_parameters errors silently** — Ollama doesn't support `response_format:json_object`. Function catches and returns defaults. Investigation continues.
+6. **Skill template fix not in migration** — The `import os, sys` removal was via direct SQL UPDATE. Need migration for reproducibility.
+7. **429 with Ollama** — Single-threaded inference. Multi-step investigations hit rate limits. Complete but take 55s instead of 30s.
 
 ## Model Tiers
 
-HYDRA uses three model tiers. Model selection is automatic based on alert severity.
-
-| Tier | Purpose | Minimum Model | Hardware |
-|------|---------|--------------|----------|
-| Fast | Triage, classification | 1.5B-7B | RTX 3050 (4GB) |
+| Tier | Purpose | Model | Hardware |
+|------|---------|-------|----------|
+| Fast | Triage, classification | Local qwen2.5:14b via Ollama | Any NVIDIA GPU |
 | Standard | Full investigation | 32B or cloud 70B | A6000 (48GB) or cloud API |
-| Reasoning | Complex analysis, reports | 70B+ or cloud | A100 (80GB) or cloud API |
+| Reasoning | Complex analysis | 70B+ or cloud | A100 (80GB) or cloud API |
 
-The local 1.5B model handles triage only. Production investigations require Standard tier or above.
-See `docs/MODEL_TIER_STRATEGY.md` and `docs/HARDWARE_REQUIREMENTS.md` for details.
+See `docs/MODEL_TIER_STRATEGY.md` and `docs/HARDWARE_REQUIREMENTS.md`.
+
+## Coding Conventions
+
+- **Tenant isolation:** Every DB query MUST include `tenant_id` in WHERE clause
+- **Error handling (Go):** Use `respondInternalError()` — never expose `err.Error()` to clients
+- **LLM calls:** Always through LiteLLM (`LITELLM_URL`), never call Ollama directly
+- **Sandbox code:** Must pass AST prefilter — no `os`, `sys`, `subprocess`, `socket`, dunder traversal
+- **Skill templates:** Must NOT import `os`, `sys`, `subprocess`, `socket` (blocked by AST prefilter v2)
+- **New activities:** Add to `worker/_legacy_activities.py`, re-export in `worker/activities/__init__.py`, register in `main.py`
+- **New workflows:** Add to `worker/_legacy_workflows.py`, re-export in `worker/workflows/__init__.py`, register in `main.py`
+- **Migrations:** Sequential in `migrations/`, apply via `docker compose exec -T postgres psql -U hydra -d hydra < migrations/NNN_name.sql`
+- **After Python changes:** `docker compose build worker && docker compose up -d worker`
+- **After Go changes:** `docker compose build api && docker compose up -d api`
 
 ## How to Run
 
 ```bash
-# Quick deploy (generates secrets, boots 17 services, runs migrations)
-bash scripts/pov/deploy.sh
+# Start all services
+docker compose up -d
 
-# Verify
-curl http://localhost:8090/health
+# Verify health
+curl -s http://localhost:8090/health
 
-# Open dashboard at http://localhost:3000
+# Login
+TOKEN=$(curl -s -X POST http://localhost:8090/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.local","password":"TestPass2026"}' | \
+  sed 's/.*"token":"\([^"]*\)".*/\1/')
+
+# Submit investigation
+curl -s -X POST http://localhost:8090/api/v1/tasks \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"task_type":"brute_force","input":{"prompt":"Analyze SSH brute force from 10.0.0.99","severity":"high"}}'
+
+# Poll for result
+curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $TOKEN"
 ```
 
 ## How to Test
 
 ```bash
-# Go tests (44 tests) — requires golang:1.22 or Docker
+# Go tests (44 test functions)
 cd api && go test -v -count=1 ./...
 
-# Python tests (302 tests) — requires Python 3.11
+# Python tests (179 test functions)
 cd worker && python -m pytest tests/ -v
 
-# Integration (requires Docker stack running)
-python tests/integration/test_full_investigation.py
+# Or via Docker
+docker compose exec worker python -m pytest tests/ -v
 ```
-
-## API
-
-61+ REST endpoints. Full OpenAPI spec at `docs/openapi.yaml` (v1.2.0).
-
-Key endpoints:
-- `POST /api/v1/auth/login` — authenticate (returns JWT)
-- `POST /api/v1/auth/register` — create user (requires email, password, display_name, tenant_id)
-- `POST /api/v1/tasks` — submit investigation task
-- `GET /api/v1/tasks/{id}` — get investigation result
-- `GET /api/v1/tasks/{id}/stream` — SSE stream investigation progress
-- `POST /api/v1/siem-alerts/{id}/investigate` — investigate a SIEM alert
-- `GET /api/v1/stats` — dashboard statistics
-- `GET /api/v1/analytics/feedback/summary` — feedback analytics
-
-Auth: JWT access token (15min) + httpOnly refresh cookie (7d). RBAC roles: admin, analyst, viewer.
-
-## Database
-
-67 tables. PostgreSQL 16 + pgvector. Migrations in `migrations/` (001-039).
-
-Key tables: `agent_tasks`, `investigations`, `entities`, `entity_edges`, `siem_alerts`, `detection_candidates`, `response_playbooks`, `investigation_feedback`, `users`, `tenants`
-
-## Temporal Workflows
-
-16 workflows, 104 activities. Task queue: `hydra-tasks`.
-
-Core: `ExecuteTaskWorkflow` — the main investigation pipeline (alert → LLM code gen → AST validation → sandbox execution → entity extraction → report).
-
-## Security
-
-7-layer defense: network perimeter → JWT auth → RBAC → PII masking → sandbox (AST + seccomp + no-net + kill timer) → LLM safety (injection detection, adversarial review, approval gates) → audit logging.
-
-30/30 security audit findings resolved. See `docs/SECURITY_AUDIT_v0.10.0.md`.
 
 ## Key Docs
 
 | Doc | Path |
 |-----|------|
-| Architecture (deep) | `docs/ARCHITECTURE.md` |
-| API Spec | `docs/openapi.yaml` |
-| Deployment | `docs/DEPLOYMENT_GUIDE.md` |
+| Architecture | `docs/ARCHITECTURE.md` |
+| API Spec (v1.2.0) | `docs/openapi.yaml` |
 | Security Audit | `docs/SECURITY_AUDIT_v0.10.0.md` |
-| Changelog | `CHANGELOG.md` |
-| Release Notes | `RELEASE_NOTES.md` |
+| Model Tiers | `docs/MODEL_TIER_STRATEGY.md` |
+| Hardware Requirements | `docs/HARDWARE_REQUIREMENTS.md` |
+| Accuracy Report | `docs/ACCURACY_REPORT.md` |
+| Baseline Accuracy | `docs/BASELINE_ACCURACY.md` |
 | PoV Playbook | `scripts/pov/README.md` |
-| Codebase Census | `docs/CODEBASE_CENSUS.md` |
-| Validation Report | `VALIDATION_REPORT.md` |
+| Changelog | `CHANGELOG.md` |
+| Project Status | `docs/PROJECT_STATUS.md` |
 
-## Version History
+## DPO Training Pipeline (Phase 0 complete)
 
+Files in `dpo/`: `dpo_forge.py`, `prompts.py`, `validators.py`, `log_compressor.py`, `seed_database.json`, `requirements.txt`
+
+```bash
+# Phase 2: Generate training data (overnight, ~$50 Kimi API)
+export KIMI_API_KEY=your_key
+python dpo/dpo_forge.py
+
+# Phase 3: Train (4-6 hours on RTX 3050)
+pip install -r dpo/requirements.txt
+python scripts/dpo_train.py
+
+# Phase 4: Measure delta
+python scripts/accuracy_benchmark.py --model hydra_aligned_1.5b
 ```
-v1.0.0-rc1  Release candidate (validated: 346 tests, 17 services healthy)
-v0.18.0     Documentation + CHANGELOG
-v0.17.0     48-hour PoV package
-v0.16.0     Deployment hardening (CORS, vLLM, OpenAPI, legacy cleanup)
-v0.15.0     Architectural fixes + operational readiness
-v0.14.0     Testing + CI (44 Go + 302 Python tests, migration runner)
-v0.13.0     Platform features (ML detection, Zeek, WebSocket, 4 workflows)
-v0.12.0     Defense-in-depth (Vault, egress proxy, sanitizer, adversarial, MCP gate)
-v0.11.0     Security remediation (30/30 audit findings)
-v0.10.1     Critical security fixes (JWT, httpOnly, injection blocking)
-```
 
-## Conventions
+## Pending Work (Priority Order)
 
-- **Go:** `gofmt`, package `main` for API binary, errors via `respondInternalError()`
-- **Python:** `flake8`, type hints preferred, `@activity.defn` / `@workflow.defn` for Temporal
-- **Commits:** `feat:`, `fix:`, `security:`, `test:`, `docs:`, `release:` prefixes
-- **Migrations:** Sequential numbered `NNN_description.sql`, idempotent (IF NOT EXISTS)
-- **Tests:** Go: `*_test.go` in same package. Python: `worker/tests/test_*.py`
-- **Config:** All secrets via env vars. `.env.example` is the contract. Never hardcode.
-- **DB queries:** Always tenant-scoped (WHERE tenant_id = $X)
-- **LLM calls:** Always through LiteLLM (port 4000), never direct to model
-- **Error responses:** Never leak table names, SQL, or stack traces to clients
-- **Branches:** `master` is main development branch
+1. **DPO Phase 2-4** — Generate training data, train model, measure accuracy delta
+2. **Full corpus benchmark** — Run accuracy_benchmark.py against all 70 labeled alerts
+3. **Skill template migration** — Persist `import os,sys` removal as migration 041
+4. **LiteLLM Redis auth** — Add REDIS_PASSWORD to litellm env in docker-compose
+5. **K8s cluster test** — Deploy to real cluster via `scripts/k8s_cluster_test.sh`
