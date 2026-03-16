@@ -2,22 +2,23 @@
 
 **Date:** 2026-03-16
 **Model:** Qwen2.5-1.5B-Instruct-AWQ (local, RTX 3050)
-**Investigations scored:** 6 (from prior completed runs)
+**Investigations scored:** 7 (from prior completed runs)
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
 | Code generation success | 100% |
-| Mean risk score | 73 |
-| Investigations with findings | 5/6 (83%) |
-| Investigations with IOCs | 1/6 (16%) |
-| Mean execution time | 26759ms |
+| Mean risk score | 76 |
+| Investigations with findings | 6/7 (85%) |
+| Investigations with IOCs | 2/7 (28%) |
+| Mean execution time | 30883ms |
 
 ## Individual Results
 
 | ID | Type | Risk Score | Findings | IOCs | Code OK | Time (ms) |
 |----|------|-----------|----------|------|---------|-----------|
+| 97820c33 | brute_force | 95 | 2 | 1 | Yes | 55631 |
 | 535e2379 | log_analysis | 95 | 2 | 1 | Yes | 30548 |
 | 3133fb39 | brute_force | 80 | 10 | 0 | Yes | 22310 |
 | c39d224a | brute_force | 0 | 0 | 0 | Yes | 40518 |
