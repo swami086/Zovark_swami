@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import logging
 import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -8,6 +9,8 @@ from temporalio import activity
 import subprocess
 import sys
 import re
+
+logger = logging.getLogger(__name__)
 
 from llm_logger import log_llm_call
 from prompt_registry import get_version

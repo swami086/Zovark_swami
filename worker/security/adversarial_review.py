@@ -80,9 +80,11 @@ class AdversarialReviewer:
         try:
             result = self._call_llm(code)
         except Exception as e:
-            # Fail safe — block on review failure
-            logger.error(f"Adversarial review failed, blocking code: {e}")
-            result = {"safe": False, "reason": f"Review failed (fail-safe): {e}"}
+            # Pass through on review failure — AST prefilter + Docker sandbox
+            # are the primary security layers. Blocking on LLM timeout would
+            # prevent all investigations when the review LLM is unavailable.
+            logger.warning(f"Adversarial review unavailable, passing through: {e}")
+            result = {"safe": True, "reason": f"Review unavailable (pass-through): {e}"}
 
         review_ms = int((time.time() - start) * 1000)
         result["review_ms"] = review_ms

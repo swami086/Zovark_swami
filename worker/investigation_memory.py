@@ -112,9 +112,9 @@ class InvestigationMemory:
         cur.execute("""
             SELECT
                 e.value as entity_value,
-                e.type as entity_type,
+                e.entity_type as entity_type,
                 eo.investigation_id,
-                eo.created_at,
+                eo.observed_at,
                 i.verdict,
                 i.confidence
             FROM entities e
@@ -142,9 +142,9 @@ class InvestigationMemory:
         cur.execute("""
             SELECT
                 e.value as entity_value,
-                e.type as entity_type,
+                e.entity_type as entity_type,
                 eo.investigation_id,
-                eo.created_at,
+                eo.observed_at,
                 i.verdict,
                 i.confidence,
                 e.embedding <-> %s::vector as distance
