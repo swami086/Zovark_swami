@@ -47,7 +47,7 @@ def initialize_pools(database_url: str = None):
                 config["minconn"],
                 config["maxconn"],
                 dsn,
-                options=f"-c jit=off -c application_name=hydra-{tier}",
+                application_name=f"hydra-{tier}",
             )
             _pools[tier] = pool
             logger.info(f"Pool '{tier}' initialized: min={config['minconn']}, max={config['maxconn']}")
