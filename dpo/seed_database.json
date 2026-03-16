@@ -1,0 +1,2882 @@
+[
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059.001",
+    "ttp_name": "PowerShell Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078.004",
+    "ttp_name": "Cloud Account Compromise",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1486",
+    "ttp_name": "Data Encrypted for Impact",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1105",
+    "ttp_name": "Ingress Tool Transfer",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1003.001",
+    "ttp_name": "LSASS Memory Credential Dumping",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1190",
+    "ttp_name": "Exploit Public-Facing Application",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1110",
+    "ttp_name": "Brute Force",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1071",
+    "ttp_name": "Application Layer Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1573",
+    "ttp_name": "Encrypted Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1021",
+    "ttp_name": "Remote Services",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1566",
+    "ttp_name": "Phishing",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1059",
+    "ttp_name": "Command and Scripting Interpreter",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1053",
+    "ttp_name": "Scheduled Task/Job",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1543",
+    "ttp_name": "Create or Modify System Process",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1070",
+    "ttp_name": "Indicator Removal",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1562",
+    "ttp_name": "Impair Defenses",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1048",
+    "ttp_name": "Exfiltration Over Alternative Protocol",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1041",
+    "ttp_name": "Exfiltration Over C2 Channel",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1134",
+    "ttp_name": "Access Token Manipulation",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1558",
+    "ttp_name": "Steal or Forge Kerberos Tickets",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1087",
+    "ttp_name": "Account Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1046",
+    "ttp_name": "Network Service Discovery",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1595",
+    "ttp_name": "Active Scanning",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1078",
+    "ttp_name": "Valid Accounts",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1547",
+    "ttp_name": "Boot or Logon Autostart Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1546",
+    "ttp_name": "Event Triggered Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1055",
+    "ttp_name": "Process Injection",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1036",
+    "ttp_name": "Masquerading",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1027",
+    "ttp_name": "Obfuscated Files or Information",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Windows Enterprise",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "AWS Cloud",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Linux Server",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Linux Server",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Linux Server",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Linux Server",
+    "difficulty": "expert"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "easy"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "medium"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "hard"
+  },
+  {
+    "ttp_id": "T1218",
+    "ttp_name": "System Binary Proxy Execution",
+    "environment": "Hybrid (AD + Cloud)",
+    "difficulty": "expert"
+  }
+]

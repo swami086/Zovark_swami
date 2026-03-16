@@ -185,6 +185,9 @@ func main() {
 		api.POST("/auth/totp/setup", totpSetupHandler)
 		api.POST("/auth/totp/verify", totpVerifyHandler)
 
+		// Sandbox execution (DPO pipeline)
+		api.POST("/sandbox/execute", requireRole("admin", "analyst"), sandboxExecuteHandler)
+
 		// Feedback stats (admin only)
 		api.GET("/feedback/stats", requireRole("admin"), getFeedbackStatsHandler)
 
