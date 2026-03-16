@@ -1,0 +1,1057 @@
+{
+  "version": "1.0",
+  "generated": "2026-03-16",
+  "description": "Ground truth labels for all HYDRA test alerts from corpus log files and accuracy test suite",
+  "alerts": [
+    {
+      "id": "brute_force-easy",
+      "category": "brute_force",
+      "difficulty": "easy",
+      "source": "corpus",
+      "file": "tests/corpus/brute_force/easy.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 30,
+        "risk_score_max": 100,
+        "expected_iocs": ["203.0.113.50"],
+        "expected_mitre": ["T1110"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "brute_force-hard",
+      "category": "brute_force",
+      "difficulty": "hard",
+      "source": "corpus",
+      "file": "tests/corpus/brute_force/hard.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 20,
+        "risk_score_max": 100,
+        "expected_iocs": ["203.0.113.51"],
+        "expected_mitre": ["T1110"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "brute_force-multi_attack",
+      "category": "brute_force",
+      "difficulty": "multi_attack",
+      "source": "corpus",
+      "file": "tests/corpus/brute_force/multi_attack.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 40,
+        "risk_score_max": 100,
+        "expected_iocs": ["203.0.113.50", "203.0.113.60"],
+        "expected_mitre": ["T1110"],
+        "expected_findings_min": 2
+      }
+    },
+    {
+      "id": "brute_force-clean",
+      "category": "brute_force",
+      "difficulty": "clean",
+      "source": "corpus",
+      "file": "tests/corpus/brute_force/clean.log",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 15,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "c2-easy",
+      "category": "c2",
+      "difficulty": "easy",
+      "source": "corpus",
+      "file": "tests/corpus/c2/easy.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 30,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1071", "T1573"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "c2-hard",
+      "category": "c2",
+      "difficulty": "hard",
+      "source": "corpus",
+      "file": "tests/corpus/c2/hard.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 20,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1071", "T1573"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "c2-multi_attack",
+      "category": "c2",
+      "difficulty": "multi_attack",
+      "source": "corpus",
+      "file": "tests/corpus/c2/multi_attack.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 40,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1071", "T1573"],
+        "expected_findings_min": 2
+      }
+    },
+    {
+      "id": "c2-clean",
+      "category": "c2",
+      "difficulty": "clean",
+      "source": "corpus",
+      "file": "tests/corpus/c2/clean.log",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 15,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "lateral_movement-easy",
+      "category": "lateral_movement",
+      "difficulty": "easy",
+      "source": "corpus",
+      "file": "tests/corpus/lateral_movement/easy.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 30,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1021", "T1076"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "lateral_movement-hard",
+      "category": "lateral_movement",
+      "difficulty": "hard",
+      "source": "corpus",
+      "file": "tests/corpus/lateral_movement/hard.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 20,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1021", "T1076"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "lateral_movement-multi_attack",
+      "category": "lateral_movement",
+      "difficulty": "multi_attack",
+      "source": "corpus",
+      "file": "tests/corpus/lateral_movement/multi_attack.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 40,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1021", "T1076"],
+        "expected_findings_min": 2
+      }
+    },
+    {
+      "id": "lateral_movement-clean",
+      "category": "lateral_movement",
+      "difficulty": "clean",
+      "source": "corpus",
+      "file": "tests/corpus/lateral_movement/clean.log",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 15,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "phishing-easy",
+      "category": "phishing",
+      "difficulty": "easy",
+      "source": "corpus",
+      "file": "tests/corpus/phishing/easy.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 30,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1566"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "phishing-hard",
+      "category": "phishing",
+      "difficulty": "hard",
+      "source": "corpus",
+      "file": "tests/corpus/phishing/hard.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 20,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1566"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "phishing-multi_attack",
+      "category": "phishing",
+      "difficulty": "multi_attack",
+      "source": "corpus",
+      "file": "tests/corpus/phishing/multi_attack.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 40,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1566"],
+        "expected_findings_min": 2
+      }
+    },
+    {
+      "id": "phishing-clean",
+      "category": "phishing",
+      "difficulty": "clean",
+      "source": "corpus",
+      "file": "tests/corpus/phishing/clean.log",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 15,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "ransomware-easy",
+      "category": "ransomware",
+      "difficulty": "easy",
+      "source": "corpus",
+      "file": "tests/corpus/ransomware/easy.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 30,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1486", "T1059"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "ransomware-hard",
+      "category": "ransomware",
+      "difficulty": "hard",
+      "source": "corpus",
+      "file": "tests/corpus/ransomware/hard.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 20,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1486", "T1059"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "ransomware-multi_attack",
+      "category": "ransomware",
+      "difficulty": "multi_attack",
+      "source": "corpus",
+      "file": "tests/corpus/ransomware/multi_attack.log",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 40,
+        "risk_score_max": 100,
+        "expected_iocs": [],
+        "expected_mitre": ["T1486", "T1059"],
+        "expected_findings_min": 2
+      }
+    },
+    {
+      "id": "ransomware-clean",
+      "category": "ransomware",
+      "difficulty": "clean",
+      "source": "corpus",
+      "file": "tests/corpus/ransomware/clean.log",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 15,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-001",
+      "category": "c2_beacon",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 70,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.5.34", "185.220.101.42", "cdn-update.systemcheck[.]xyz"],
+        "expected_mitre": ["T1071", "T1573"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-002",
+      "category": "c2_beacon",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 70,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.8.107", "198.51.100.23", "a3f2b1c9.ns1.dnsresolv[.]net"],
+        "expected_mitre": ["T1071", "T1573"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-003",
+      "category": "c2_beacon",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.3.88", "91.215.85.17", "api.microsft-update[.]com"],
+        "expected_mitre": ["T1071", "T1573"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-001",
+      "category": "c2_beacon",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-002",
+      "category": "c2_beacon",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-004",
+      "category": "brute_force",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["103.136.42.78"],
+        "expected_mitre": ["T1110"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-005",
+      "category": "brute_force",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["45.33.49.12", "45.33.49.13", "45.33.49.14", "45.33.49.15"],
+        "expected_mitre": ["T1110"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-006",
+      "category": "brute_force",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.9.201", "10.12.1.10", "10.12.1.11"],
+        "expected_mitre": ["T1110"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-003",
+      "category": "brute_force",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-004",
+      "category": "brute_force",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-007",
+      "category": "phishing",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["185.174.137.42", "corp-net.com", "corpnet-sharepoint[.]com"],
+        "expected_mitre": ["T1566"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-008",
+      "category": "phishing",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["194.163.44.91", "m1crosoft-365.com", "wpsitehost[.]com"],
+        "expected_mitre": ["T1566"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-009",
+      "category": "phishing",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["corpnet-hr[.]org", "benefits-corpnet[.]com"],
+        "expected_mitre": ["T1566"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-005",
+      "category": "phishing",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-006",
+      "category": "phishing",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-010",
+      "category": "lateral_movement",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.5.88", "10.12.20.10", "10.12.20.11", "10.12.20.12", "10.12.20.15", "10.12.20.20"],
+        "expected_mitre": ["T1021", "T1076"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-011",
+      "category": "lateral_movement",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.9.201", "10.12.20.30", "10.12.20.31", "10.12.20.32"],
+        "expected_mitre": ["T1021", "T1076"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-012",
+      "category": "lateral_movement",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.3.44", "10.12.20.40", "10.12.20.41", "10.12.20.42"],
+        "expected_mitre": ["T1021", "T1076"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-007",
+      "category": "lateral_movement",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-008",
+      "category": "lateral_movement",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-013",
+      "category": "malware",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.5.34", "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"],
+        "expected_mitre": ["T1486", "T1059"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-014",
+      "category": "malware",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.6.77", "194.163.44.91", "b2c3d4e5f6a789012345678901234567890abcdef1234567890abcdef1234567"],
+        "expected_mitre": ["T1059"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-015",
+      "category": "malware",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.8.22", "45.77.65.211", "data-collect[.]xyz"],
+        "expected_mitre": ["T1059"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-009",
+      "category": "malware",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-010",
+      "category": "malware",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-016",
+      "category": "data_exfiltration",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.5.103", "104.21.45.67", "mega.nz"],
+        "expected_mitre": ["T1041"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-017",
+      "category": "data_exfiltration",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.9.44", "198.51.100.23", "exfil.datapipe[.]xyz"],
+        "expected_mitre": ["T1041", "T1048"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-011",
+      "category": "data_exfiltration",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-012",
+      "category": "data_exfiltration",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-013",
+      "category": "data_exfiltration",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-018",
+      "category": "privilege_escalation",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.9.201", "10.12.1.10"],
+        "expected_mitre": ["T1558"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-019",
+      "category": "privilege_escalation",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.20.45"],
+        "expected_mitre": ["T1134"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-014",
+      "category": "privilege_escalation",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-015",
+      "category": "privilege_escalation",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-016",
+      "category": "privilege_escalation",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-020",
+      "category": "reconnaissance",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.9.201", "10.12.1.10"],
+        "expected_mitre": ["T1595", "T1087"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-021",
+      "category": "reconnaissance",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.5.34"],
+        "expected_mitre": ["T1046"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-017",
+      "category": "reconnaissance",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-018",
+      "category": "reconnaissance",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-019",
+      "category": "reconnaissance",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-022",
+      "category": "persistence",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.5.34"],
+        "expected_mitre": ["T1053"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-023",
+      "category": "persistence",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 60,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.9.201", "91.215.85.17"],
+        "expected_mitre": ["T1546"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-020",
+      "category": "persistence",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-021",
+      "category": "persistence",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-022",
+      "category": "persistence",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "TP-024",
+      "category": "defense_evasion",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.1.10"],
+        "expected_mitre": ["T1070"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "TP-025",
+      "category": "defense_evasion",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "risk_score_min": 80,
+        "risk_score_max": 100,
+        "expected_iocs": ["10.12.9.201"],
+        "expected_mitre": ["T1562"],
+        "expected_findings_min": 1
+      }
+    },
+    {
+      "id": "FP-023",
+      "category": "defense_evasion",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 30,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-024",
+      "category": "defense_evasion",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    },
+    {
+      "id": "FP-025",
+      "category": "defense_evasion",
+      "difficulty": "n/a",
+      "source": "test_alerts",
+      "file": "worker/tests/accuracy/test_alerts.json",
+      "ground_truth": {
+        "verdict": "false_positive",
+        "risk_score_min": 0,
+        "risk_score_max": 20,
+        "expected_iocs": [],
+        "expected_mitre": [],
+        "expected_findings_min": 0
+      }
+    }
+  ]
+}

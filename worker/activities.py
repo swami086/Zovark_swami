@@ -323,6 +323,30 @@ async def execute_code(code: str) -> dict:
 async def update_task_status(task_update: dict) -> None:
     conn = get_db_connection()
     worker_id = _get_worker_id()
+
+    # Human review threshold — flag low-confidence or failed investigations
+    human_review_threshold = int(os.environ.get("HYDRA_HUMAN_REVIEW_THRESHOLD", "60"))
+    risk_score = 0
+    code_success = task_update.get("status") == "completed"
+    output = task_update.get("output", {})
+    if isinstance(output, dict):
+        risk_score = output.get("risk_score", 0) or 0
+        if isinstance(output.get("stdout"), str):
+            try:
+                parsed = json.loads(output["stdout"])
+                risk_score = parsed.get("risk_score", risk_score)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    needs_review = False
+    review_reason = None
+    if not code_success:
+        needs_review = True
+        review_reason = "Code execution failed"
+    elif risk_score < human_review_threshold:
+        needs_review = True
+        review_reason = f"Risk score {risk_score} below threshold {human_review_threshold}"
+
     try:
         with conn.cursor() as cur:
             cur.execute("""
@@ -330,6 +354,7 @@ async def update_task_status(task_update: dict) -> None:
                 SET status = %s, output = %s, error_message = %s,
                     tokens_used_input = %s, tokens_used_output = %s, execution_ms = %s,
                     severity = %s, worker_id = COALESCE(%s, worker_id),
+                    needs_human_review = %s, review_reason = %s,
                     completed_at = NOW()
                 WHERE id = %s
             """, (
@@ -341,6 +366,8 @@ async def update_task_status(task_update: dict) -> None:
                 task_update.get("execution_ms", 0),
                 task_update.get("severity", None),
                 worker_id,
+                needs_review,
+                review_reason,
                 task_update["task_id"]
             ))
         conn.commit()

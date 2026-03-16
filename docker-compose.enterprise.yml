@@ -1,0 +1,70 @@
+# Enterprise override — replaces vLLM containers with larger models
+# Usage: docker compose -f docker-compose.yml -f docker-compose.enterprise.yml up -d
+#
+# Hardware requirements:
+#   Minimum: 48GB VRAM (NVIDIA A6000 or L40S)
+#   Recommended: 80GB VRAM (NVIDIA A100) or dual-4090 (48GB combined)
+#   System RAM: 64GB minimum
+#   Storage: 100GB for model weights
+
+services:
+  hydra-vllm-fast:
+    image: vllm/vllm-openai:v0.15.1
+    container_name: hydra-vllm-fast
+    command: >
+      --model /models/chat-model-7b
+      --served-model-name fast
+      --max-model-len 8192
+      --gpu-memory-utilization 0.15
+      --dtype half
+      --quantization awq
+    volumes:
+      - ./local_models/chat-model-7b:/models/chat-model-7b:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - hydra-internal
+    restart: unless-stopped
+
+  hydra-vllm-standard:
+    image: vllm/vllm-openai:v0.15.1
+    container_name: hydra-vllm-standard
+    command: >
+      --model /models/chat-model-32b
+      --served-model-name standard
+      --max-model-len 32768
+      --gpu-memory-utilization 0.70
+      --dtype half
+      --quantization awq
+      --tensor-parallel-size 1
+    volumes:
+      - ./local_models/chat-model-32b:/models/chat-model-32b:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - hydra-internal
+    restart: unless-stopped
+
+  hydra-litellm:
+    volumes:
+      - ./litellm_config_enterprise.yaml:/app/config.yaml:ro
+
+  # Disable the 1.5B container in enterprise mode
+  hydra-vllm-chat:
+    profiles:
+      - disabled
+
+networks:
+  hydra-internal:
+    external: true
+    name: hydra-mvp_hydra-internal

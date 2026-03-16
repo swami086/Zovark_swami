@@ -367,13 +367,25 @@ Pre-built prompt templates for common SOC tasks that external AI assistants can 
 | `hydra-temporal-exporter` | Custom | -- | Temporal queue depth metrics |
 | `hydra-mcp` | Build `mcp-server/` | -- | MCP server |
 
-### GPU Allocation (RTX 3050, 4GB VRAM)
+### GPU Allocation — Developer (RTX 3050, 4GB VRAM)
 
 | Model | VRAM Fraction | Estimated Usage |
 |-------|--------------|-----------------|
 | Qwen2.5-1.5B-Instruct-AWQ (chat) | 0.40 | ~1.6 GB |
 | nomic-embed-text-v1.5 (embed) | 0.15 | ~0.6 GB |
 | **Total** | **0.55** | **~2.2 GB** |
+
+### GPU Allocation — Enterprise (A6000, 48GB VRAM)
+
+| Model | VRAM | Purpose |
+|-------|------|---------|
+| Qwen2.5-7B-Instruct-AWQ (fast) | ~4 GB | Quick triage |
+| Qwen2.5-32B-Instruct-AWQ (standard/reasoning) | ~18 GB | Full investigations |
+| nomic-embed-text-v1.5 (embed) | ~0.6 GB | Embeddings |
+| KV cache (32k context) | ~4 GB | Investigation context |
+| **Total** | **~27 GB** | **Headroom: 21 GB** |
+
+See `docs/HARDWARE_REQUIREMENTS.md` for full tier comparison.
 
 ---
 

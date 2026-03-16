@@ -1,0 +1,65 @@
+# HYDRA Enterprise — 32B+ local model on 48GB+ VRAM (A6000/L40S/dual-4090)
+# This config replaces cloud fallbacks with local inference for all tiers.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.enterprise.yml up -d
+
+model_list:
+  # Fast tier — local 7B for quick triage and entity extraction
+  # Runs on ~4GB VRAM, leaves headroom for standard tier
+  - model_name: fast
+    litellm_params:
+      model: openai/Qwen2.5-7B-Instruct-AWQ
+      api_base: http://hydra-vllm-fast:8000/v1
+      api_key: os.environ/LITELLM_MASTER_KEY
+    model_info:
+      max_tokens: 8192
+      input_cost_per_token: 0
+      output_cost_per_token: 0
+
+  # Standard tier — local 32B for full investigations
+  # Requires ~18GB VRAM (4-bit quantized)
+  - model_name: standard
+    litellm_params:
+      model: openai/Qwen2.5-32B-Instruct-AWQ
+      api_base: http://hydra-vllm-standard:8002/v1
+      api_key: os.environ/LITELLM_MASTER_KEY
+    model_info:
+      max_tokens: 32768
+      input_cost_per_token: 0
+      output_cost_per_token: 0
+
+  # Reasoning tier — same 32B model with higher temperature and longer context
+  # Or 70B model if hardware supports it (dual-4090 / A100)
+  - model_name: reasoning
+    litellm_params:
+      model: openai/Qwen2.5-32B-Instruct-AWQ
+      api_base: http://hydra-vllm-standard:8002/v1
+      api_key: os.environ/LITELLM_MASTER_KEY
+      temperature: 0.3
+      max_tokens: 65536
+    model_info:
+      max_tokens: 65536
+      input_cost_per_token: 0
+      output_cost_per_token: 0
+
+  # Embedding — same nomic model, runs on CPU or minimal GPU
+  - model_name: embed
+    litellm_params:
+      model: openai/nomic-embed-text-v1.5
+      api_base: http://hydra-vllm-embed:8001/v1
+      api_key: os.environ/LITELLM_MASTER_KEY
+    model_info:
+      max_tokens: 8192
+      input_cost_per_token: 0
+      output_cost_per_token: 0
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  telemetry: false
+  cache: true
+  cache_params:
+    type: redis
+    host: hydra-redis
+    port: 6379

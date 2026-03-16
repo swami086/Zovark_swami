@@ -87,6 +87,19 @@ hydra-mvp/
 | Object Storage | MinIO |
 | Monitoring | Prometheus + Grafana + Jaeger |
 
+## Model Tiers
+
+HYDRA uses three model tiers. Model selection is automatic based on alert severity.
+
+| Tier | Purpose | Minimum Model | Hardware |
+|------|---------|--------------|----------|
+| Fast | Triage, classification | 1.5B-7B | RTX 3050 (4GB) |
+| Standard | Full investigation | 32B or cloud 70B | A6000 (48GB) or cloud API |
+| Reasoning | Complex analysis, reports | 70B+ or cloud | A100 (80GB) or cloud API |
+
+The local 1.5B model handles triage only. Production investigations require Standard tier or above.
+See `docs/MODEL_TIER_STRATEGY.md` and `docs/HARDWARE_REQUIREMENTS.md` for details.
+
 ## How to Run
 
 ```bash
