@@ -21,15 +21,17 @@ from security.alert_sanitizer import sanitize_alert
 from security.adversarial_review import review_code
 from database.pool_manager import _pools
 
-# RAG-augmented IOC extraction prompts (dpo/ mounted at /app/dpo via docker-compose)
+# Prompt v2: modular assembler with IOC extraction, retry loop, specialist personas
+# (dpo/ mounted at /app/dpo via docker-compose volume)
 try:
-    from dpo.prompts import build_rag_context, format_rag_investigation, TECHNIQUE_IOC_MAP
+    from dpo.prompts_v2 import PromptAssembler, TECHNIQUE_IOC_MAP, should_retry, generate_retry_hints
+    _prompt_assembler = PromptAssembler()
 except ImportError:
-    # Fallback: not fatal — generate_code works without RAG augmentation
-    build_rag_context = None
-    format_rag_investigation = None
+    _prompt_assembler = None
     TECHNIQUE_IOC_MAP = {}
-    logger.warning("dpo.prompts not available — RAG IOC augmentation disabled")
+    should_retry = None
+    generate_retry_hints = None
+    logger.warning("dpo.prompts_v2 not available — v2 prompt assembler disabled")
 
 # Add the /app level to path so we can import sandbox.ast_prefilter
 sys.path.append("/app")
@@ -171,32 +173,18 @@ async def generate_code(task_data: dict) -> dict:
         wrapped_siem, siem_safety_instruction = wrap_untrusted_data(siem_context, "siem_alert")
         system_prompt += f"\n\n{siem_safety_instruction}"
 
-        # RAG-augmented IOC extraction: inject technique-specific IOC patterns
-        # so the LLM generates code with proper extract_iocs() calls
-        technique_category = task_type.lower().replace(" ", "_")
-        if build_rag_context and technique_category in TECHNIQUE_IOC_MAP:
-            rag_context = build_rag_context(
-                technique_category=technique_category,
-                similar_investigations=[],  # pgvector retrieval comes later
-            )
-            augmented_prompt = format_rag_investigation(
+        # Prompt v2: modular assembler with IOC patterns, specialist personas, objective recitation
+        if _prompt_assembler:
+            skill_type_normalized = task_type.lower().replace(" ", "_")
+            augmented_prompt = _prompt_assembler.build_investigation_prompt(
                 alert_json=wrapped_siem,
-                rag_context=rag_context,
-            )
-            augmented_prompt += f"\n\nTask: {prompt}"
-        elif build_rag_context:
-            # Unknown task type — use malware as broadest IOC coverage
-            rag_context = build_rag_context(
-                technique_category="malware",
-                similar_investigations=[],
-            )
-            augmented_prompt = format_rag_investigation(
-                alert_json=wrapped_siem,
-                rag_context=rag_context,
+                skill_type=skill_type_normalized,
+                skill_template="",  # no template in this code path
+                rag_examples=[],    # pgvector retrieval comes later
             )
             augmented_prompt += f"\n\nTask: {prompt}"
         else:
-            # RAG not available — original prompt
+            # Fallback: original prompt when v2 not available
             augmented_prompt = (
                 f"SIEM ALERT DATA:\n{wrapped_siem}\n\n"
                 f"Task: {prompt}\n\n"

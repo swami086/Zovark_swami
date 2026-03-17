@@ -18,6 +18,14 @@ with workflow.unsafe.imports_passed_through():
     from intelligence.cross_tenant import get_entity_intelligence
     from reporting.incident_report import generate_incident_report
     from response.workflow import ResponsePlaybookWorkflow, find_matching_playbooks
+    # Prompt v2: retry loop for IOC extraction
+    try:
+        from dpo.prompts_v2 import PromptAssembler as _PromptAssembler, should_retry as _should_retry, generate_retry_hints as _generate_retry_hints
+        _retry_assembler = _PromptAssembler()
+    except ImportError:
+        _retry_assembler = None
+        _should_retry = None
+        _generate_retry_hints = None
     from response.auto_trigger import auto_trigger_playbooks
     from security.injection_detector import scan_for_injection
     from security.prompt_sanitizer import wrap_untrusted_data
@@ -821,6 +829,68 @@ If something has worked in past investigations for this threat type, apply those
                         tokens_input=total_tokens_input, tokens_output=total_tokens_output, exec_ms=total_exec_ms
                     )
                 break
+
+            # --- IOC RETRY LOOP (prompts v2) ---
+            # If step 1 succeeded but extracted 0 IOCs, retry once with the failure visible.
+            # Manus principle: "keep the wrong stuff in" — show model its own output and ask to fix.
+            if (step_num == 1 and _should_retry is not None and _retry_assembler is not None
+                    and not is_template):
+                try:
+                    parsed_for_retry = json.loads(stdout_str)
+                    if isinstance(parsed_for_retry, dict):
+                        # Normalize: check both "iocs" and "indicators_of_compromise"
+                        retry_check = dict(parsed_for_retry)
+                        if "iocs" not in retry_check and "indicators_of_compromise" in retry_check:
+                            retry_check["iocs"] = retry_check["indicators_of_compromise"]
+
+                        skill_type_norm = task_type.lower().replace(" ", "_")
+                        if _should_retry(retry_check, skill_type_norm):
+                            ioc_count = len(retry_check.get("iocs", []))
+                            workflow.logger.info(f"IOC retry triggered: output has {ioc_count} IOCs, retrying once")
+
+                            siem_event_data = task_data.get("input", {}).get("siem_event", {})
+                            hints = _generate_retry_hints(retry_check, siem_event_data) if siem_event_data else ""
+                            retry_prompt_text = _retry_assembler.build_retry_prompt(
+                                original_prompt=current_prompt,
+                                previous_output=json.dumps(retry_check),
+                                skill_type=skill_type_norm,
+                                missed_hints=hints,
+                            )
+                            # Re-generate code with retry context
+                            retry_task = dict(task_data)
+                            retry_task["input"] = dict(retry_task.get("input", {}))
+                            retry_task["input"]["prompt"] = retry_prompt_text
+                            retry_gen = await workflow.execute_activity(
+                                generate_code,
+                                retry_task,
+                                schedule_to_close_timeout=timedelta(minutes=5)
+                            )
+                            retry_code = retry_gen["code"]
+
+                            # Validate retry code
+                            retry_val = await workflow.execute_activity(
+                                validate_code,
+                                retry_code,
+                                schedule_to_close_timeout=timedelta(seconds=10)
+                            )
+                            if retry_val["is_safe"]:
+                                retry_exec = await workflow.execute_activity(
+                                    execute_code,
+                                    retry_code,
+                                    schedule_to_close_timeout=timedelta(minutes=2)
+                                )
+                                if retry_exec["status"] == "completed":
+                                    retry_usage = retry_gen["usage"]
+                                    total_tokens_input += retry_usage.get("prompt_tokens", 0)
+                                    total_tokens_output += retry_usage.get("completion_tokens", 0)
+                                    total_exec_ms += retry_gen["execution_ms"] + retry_exec["execution_ms"]
+                                    stdout_str = retry_exec["stdout"]
+                                    final_stdout = stdout_str
+                                    final_code = retry_code
+                                    code = retry_code
+                                    workflow.logger.info("IOC retry succeeded — using retry output")
+                except Exception as retry_err:
+                    workflow.logger.info(f"IOC retry failed (non-fatal): {retry_err}")
 
             # --- CHECK FOR FOLLOW-UP ---
             if playbook_steps:
