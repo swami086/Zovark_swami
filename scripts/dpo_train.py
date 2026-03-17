@@ -37,11 +37,14 @@ def main():
 
     PatchDPOTrainer()
 
-    max_seq_length = 2048  # Bumped from 1024 — adds 24MB KV cache, fits RTX 3050
+    # RTX 3050 4GB: use 0.5B + 1024 seq for DPO (DPO needs 2x forward passes)
+    # Production training on A6000 48GB: use 1.5B with max_seq_length=2048, r=16
+    model_name = "unsloth/Qwen2.5-0.5B-Instruct"
+    max_seq_length = 1024
 
-    print("Loading model...")
+    print(f"Loading model {model_name}...")
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="unsloth/Qwen2.5-1.5B-Instruct",
+        model_name=model_name,
         max_seq_length=max_seq_length,
         dtype=None,
         load_in_4bit=True,
@@ -79,7 +82,11 @@ def main():
     else:
         print("All rows within token budget")
 
-    print("Starting DPO training...")
+    # Detect bfloat16 support (RTX 30xx+ / A-series)
+    import torch
+    bf16_supported = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+
+    print(f"Starting DPO training... (bf16={bf16_supported})")
     dpo_trainer = DPOTrainer(
         model=model,
         ref_model=None,  # Unsloth handles this internally
@@ -94,9 +101,9 @@ def main():
             warmup_ratio=0.1,
             num_train_epochs=args.epochs,
             learning_rate=5e-6,
-            fp16=not FastLanguageModel.is_bfloat16_supported(),
-            bf16=FastLanguageModel.is_bfloat16_supported(),
-            logging_steps=10,
+            fp16=not bf16_supported,
+            bf16=bf16_supported,
+            logging_steps=1,  # Log every step for smoke test visibility
             optim="adamw_8bit",
             output_dir=args.output_dir,
         ),

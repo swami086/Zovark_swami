@@ -1,0 +1,15 @@
+{
+  "total_attempts": 12,
+  "pairs_saved": 5,
+  "path_a_count": 0,
+  "path_b_count": 0,
+  "path_c_discards": 7,
+  "parse_failures": 0,
+  "token_budget_skips": 0,
+  "api_retries": 0,
+  "last_seed_index": 12,
+  "started_at": "2026-03-16T18:23:03.676504+00:00",
+  "last_save_at": "2026-03-16T20:43:07.288534+00:00",
+  "discard_rate": "58.3%",
+  "elapsed_hours": 2.33
+}
