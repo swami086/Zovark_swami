@@ -517,6 +517,20 @@ try:
 except Exception as _e:
     print(f"Warning: Could not load network_beaconing skill: {_e}")
 
+# Load lateral_movement template from skill file
+try:
+    _lm_path = os.path.join(os.path.dirname(__file__), "..", "worker", "skills", "lateral_movement.py")
+    _lm_spec = importlib.util.spec_from_file_location("lateral_movement", _lm_path)
+    _lm_mod = importlib.util.module_from_spec(_lm_spec)
+    _lm_spec.loader.exec_module(_lm_mod)
+    # Replace the skeleton entry for lateral-movement-detection
+    for _idx, (_slug, _tmpl, _params) in enumerate(UPDATES):
+        if _slug == "lateral-movement-detection":
+            UPDATES[_idx] = ("lateral-movement-detection", _lm_mod.LATERAL_MOVEMENT_TEMPLATE, _lm_mod.LATERAL_MOVEMENT_PARAMS)
+            break
+except Exception as _e:
+    print(f"Warning: Could not load lateral_movement skill: {_e}")
+
 def main():
     try:
         conn = psycopg2.connect(DB_URL)

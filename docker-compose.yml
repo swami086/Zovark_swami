@@ -355,7 +355,7 @@ services:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
-      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-}
+      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-fast}
       - PYTHONUNBUFFERED=1
       - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
       - HTTP_PROXY=http://squid-proxy:3128
