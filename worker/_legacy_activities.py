@@ -25,12 +25,10 @@ from database.pool_manager import _pools
 # (dpo/ mounted at /app/dpo via docker-compose volume)
 try:
     from dpo.prompts_v2 import PromptAssembler, TECHNIQUE_IOC_MAP, should_retry, generate_retry_hints
-    _prompt_assembler = PromptAssembler()
+    _rag_available = True
 except ImportError:
-    _prompt_assembler = None
+    _rag_available = False
     TECHNIQUE_IOC_MAP = {}
-    should_retry = None
-    generate_retry_hints = None
     logger.warning("dpo.prompts_v2 not available — v2 prompt assembler disabled")
 
 # Add the /app level to path so we can import sandbox.ast_prefilter
@@ -174,24 +172,19 @@ async def generate_code(task_data: dict) -> dict:
         system_prompt += f"\n\n{siem_safety_instruction}"
 
         # Prompt v2: modular assembler with IOC patterns, specialist personas, objective recitation
-        if _prompt_assembler:
-            skill_type_normalized = task_type.lower().replace(" ", "_")
-            augmented_prompt = _prompt_assembler.build_investigation_prompt(
+        if _rag_available:
+            assembler = PromptAssembler()
+            technique = task_type.lower().replace(" ", "_")
+            augmented_prompt = assembler.build_investigation_prompt(
                 alert_json=wrapped_siem,
-                skill_type=skill_type_normalized,
+                skill_type=technique,
                 skill_template="",  # no template in this code path
                 rag_examples=[],    # pgvector retrieval comes later
             )
             augmented_prompt += f"\n\nTask: {prompt}"
         else:
-            # Fallback: original prompt when v2 not available
-            augmented_prompt = (
-                f"SIEM ALERT DATA:\n{wrapped_siem}\n\n"
-                f"Task: {prompt}\n\n"
-                "IMPORTANT: This is a real SIEM alert. Embed the alert data in your script and analyze it. "
-                "Generate detection logic and IOC extraction based on the alert details. "
-                "Include the source IP, destination IP, and rule name in your analysis."
-            )
+            # Fallback to original prompt
+            augmented_prompt = f"SIEM ALERT DATA:\n{wrapped_siem}\n\nTask: {prompt}\n\nIMPORTANT: Extract all IOCs."
     else:
         augmented_prompt = prompt + "\n\nCRITICAL CONSTRAINTS FOR THIS SCRIPT:\n1. You MUST define a multi-line string variable containing mock mock file data instead of trying to open files.\n2. You MUST define a hardcoded mock dictionary for any web request output instead of fetching it.\n3. You MUST use 'urllib.request' if you ever need networking.\n4. You MUST hardcode user choices instead of using an input function."
 

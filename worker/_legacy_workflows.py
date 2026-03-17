@@ -20,10 +20,10 @@ with workflow.unsafe.imports_passed_through():
     from response.workflow import ResponsePlaybookWorkflow, find_matching_playbooks
     # Prompt v2: retry loop for IOC extraction
     try:
-        from dpo.prompts_v2 import PromptAssembler as _PromptAssembler, should_retry as _should_retry, generate_retry_hints as _generate_retry_hints
-        _retry_assembler = _PromptAssembler()
+        from dpo.prompts_v2 import PromptAssembler, should_retry as _should_retry, generate_retry_hints as _generate_retry_hints
+        _rag_retry_available = True
     except ImportError:
-        _retry_assembler = None
+        _rag_retry_available = False
         _should_retry = None
         _generate_retry_hints = None
     from response.auto_trigger import auto_trigger_playbooks
@@ -833,8 +833,7 @@ If something has worked in past investigations for this threat type, apply those
             # --- IOC RETRY LOOP (prompts v2) ---
             # If step 1 succeeded but extracted 0 IOCs, retry once with the failure visible.
             # Manus principle: "keep the wrong stuff in" — show model its own output and ask to fix.
-            if (step_num == 1 and _should_retry is not None and _retry_assembler is not None
-                    and not is_template):
+            if (step_num == 1 and _rag_retry_available and not is_template):
                 try:
                     parsed_for_retry = json.loads(stdout_str)
                     if isinstance(parsed_for_retry, dict):
@@ -850,7 +849,7 @@ If something has worked in past investigations for this threat type, apply those
 
                             siem_event_data = task_data.get("input", {}).get("siem_event", {})
                             hints = _generate_retry_hints(retry_check, siem_event_data) if siem_event_data else ""
-                            retry_prompt_text = _retry_assembler.build_retry_prompt(
+                            retry_prompt_text = PromptAssembler().build_retry_prompt(
                                 original_prompt=current_prompt,
                                 previous_output=json.dumps(retry_check),
                                 skill_type=skill_type_norm,
