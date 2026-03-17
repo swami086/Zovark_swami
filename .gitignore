@@ -6,3 +6,5 @@ __pycache__/
 k8s/**/secrets.yaml
 data/
 .claude/worktrees/
+unsloth_compiled_cache/
+security-fixes/
