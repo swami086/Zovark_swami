@@ -258,3 +258,212 @@ MUTATION_TYPES = [
     "RISK_INVERT",
     "CONFIDENCE_WRONG",
 ]
+
+
+# ─── IOC REGEX PATTERNS ─────────────────────────────────────────────
+
+IOC_REGEX_PATTERNS = {
+    "ipv4": r'\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b',
+    "ipv6": r'\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b',
+    "domain": r'\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+(?:com|net|org|io|ru|cn|xyz|top|info|biz|cc|tk)\b',
+    "url": r'https?://[^\s<>"\']+',
+    "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+    "md5": r'\b[a-fA-F0-9]{32}\b',
+    "sha1": r'\b[a-fA-F0-9]{40}\b',
+    "sha256": r'\b[a-fA-F0-9]{64}\b',
+    "mac_address": r'\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b',
+    "cve": r'CVE-\d{4}-\d{4,7}',
+    "base64_blob": r'(?:[A-Za-z0-9+/]{4}){8,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?',
+    "windows_path": r'[A-Z]:\\(?:[^\\\/:*?"<>|\r\n]+\\)*[^\\\/:*?"<>|\r\n]*',
+    "unix_path": r'(?:/[a-zA-Z0-9._-]+){2,}',
+    "registry_key": r'(?:HKLM|HKCU|HKU|HKCR|HKCC)\\[^\s]+',
+}
+
+
+# ─── TECHNIQUE → IOC MAP ────────────────────────────────────────────
+
+TECHNIQUE_IOC_MAP = {
+    "brute_force": {
+        "required_iocs": ["ipv4", "email"],
+        "optional_iocs": ["domain", "url"],
+        "description": "Authentication attacks — extract source IPs, targeted accounts, timestamps",
+    },
+    "malware": {
+        "required_iocs": ["md5", "sha256", "ipv4", "domain"],
+        "optional_iocs": ["url", "registry_key", "windows_path", "unix_path"],
+        "description": "Malware execution — extract hashes, C2 IPs/domains, file paths, registry persistence",
+    },
+    "phishing": {
+        "required_iocs": ["email", "url", "domain", "ipv4"],
+        "optional_iocs": ["md5", "sha256"],
+        "description": "Phishing campaigns — extract sender addresses, malicious URLs, payload hashes",
+    },
+    "exfiltration": {
+        "required_iocs": ["ipv4", "domain", "url"],
+        "optional_iocs": ["base64_blob", "email"],
+        "description": "Data exfiltration — extract destination IPs, domains, encoded payloads",
+    },
+    "lateral_movement": {
+        "required_iocs": ["ipv4", "mac_address"],
+        "optional_iocs": ["domain", "windows_path", "registry_key"],
+        "description": "Lateral movement — extract internal IPs, compromised hosts, service accounts",
+    },
+    "command_and_control": {
+        "required_iocs": ["ipv4", "domain", "url"],
+        "optional_iocs": ["base64_blob", "cve"],
+        "description": "C2 beaconing — extract callback IPs/domains, beacon intervals, encoded payloads",
+    },
+    "privilege_escalation": {
+        "required_iocs": ["ipv4", "cve", "windows_path"],
+        "optional_iocs": ["registry_key", "unix_path"],
+        "description": "Privilege escalation — extract exploit CVEs, modified files, escalated accounts",
+    },
+    "defense_evasion": {
+        "required_iocs": ["md5", "sha256", "base64_blob"],
+        "optional_iocs": ["windows_path", "registry_key", "unix_path"],
+        "description": "Defense evasion — extract obfuscated payloads, modified security tools, encoded commands",
+    },
+}
+
+
+# ─── IOC CORPUS CATEGORIES ──────────────────────────────────────────
+
+IOC_CORPUS_CATEGORIES = {
+    "network": {
+        "patterns": ["ipv4", "ipv6", "domain", "url", "mac_address"],
+        "description": "Network-layer indicators",
+    },
+    "file": {
+        "patterns": ["md5", "sha1", "sha256", "windows_path", "unix_path"],
+        "description": "File-system and hash indicators",
+    },
+    "identity": {
+        "patterns": ["email", "registry_key"],
+        "description": "Identity and system configuration indicators",
+    },
+    "encoded": {
+        "patterns": ["base64_blob", "cve"],
+        "description": "Encoded payloads and vulnerability references",
+    },
+}
+
+
+# ─── EXTRACT_IOCS TEMPLATE (injected into generated code) ───────────
+
+EXTRACT_IOCS_TEMPLATE = '''def extract_iocs(text, ioc_types=None):
+    """Extract IOCs from text using regex patterns."""
+    import re
+    patterns = {
+        "ipv4": r'\\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\b',
+        "domain": r'\\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+(?:com|net|org|io|ru|cn|xyz|top|info|biz|cc|tk)\\b',
+        "url": r'https?://[^\\s<>"\\']+',
+        "email": r'\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b',
+        "md5": r'\\b[a-fA-F0-9]{32}\\b',
+        "sha1": r'\\b[a-fA-F0-9]{40}\\b',
+        "sha256": r'\\b[a-fA-F0-9]{64}\\b',
+        "base64_blob": r'(?:[A-Za-z0-9+/]{4}){8,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?',
+        "registry_key": r'(?:HKLM|HKCU|HKU|HKCR|HKCC)\\\\\\\\[^\\s]+',
+        "cve": r'CVE-\\d{4}-\\d{4,7}',
+    }
+    if ioc_types:
+        patterns = {k: v for k, v in patterns.items() if k in ioc_types}
+    iocs = []
+    seen = set()
+    for ioc_type, pattern in patterns.items():
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            value = match.group()
+            key = (ioc_type, value.lower())
+            if key not in seen:
+                seen.add(key)
+                iocs.append({"type": ioc_type, "value": value, "malicious": True})
+    return iocs'''
+
+
+# ─── PROMPT 7: RAG IOC CONTEXT ──────────────────────────────────────
+
+RAG_IOC_CONTEXT_PROMPT = """## IOC Extraction Requirements
+
+Your investigation code MUST extract Indicators of Compromise (IOCs) from the alert data.
+Use the extract_iocs() helper function defined below to scan all text fields in the alert.
+
+{extract_iocs_function}
+
+### Required IOC Types for This Alert Category ({technique_category}):
+{required_iocs}
+
+### How to Use:
+1. Flatten all string values from alert_data (including nested dicts) into a single text blob
+2. Call extract_iocs(text_blob, ioc_types={ioc_type_list}) to get structured IOCs
+3. Add the results to your return dict under "indicators_of_compromise"
+4. Also decode any Base64 content and scan the decoded text for additional IOCs
+
+### Similar Past Investigations:
+{similar_investigations}"""
+
+
+# ─── PROMPT 8: RAG INVESTIGATION ────────────────────────────────────
+
+RAG_INVESTIGATION_PROMPT = """Investigate this SIEM alert. Write a Python function.
+
+Alert:
+{alert_json}
+
+{rag_context}
+
+Function: def investigate_alert(alert_data: dict) -> dict
+Use .get() for all dict access. No eval/exec/subprocess/socket/importlib.
+Allowed: re, json, datetime, collections, hashlib, ipaddress, base64, binascii.
+
+CRITICAL: Your function MUST:
+1. Include the extract_iocs() function from the IOC Requirements above
+2. Call extract_iocs() on ALL text fields in alert_data (CommandLine, SourceIP, DestIP, etc.)
+3. Decode any Base64 content and extract IOCs from decoded text
+4. Return ALL extracted IOCs in indicators_of_compromise list
+
+Return dict keys: status, risk_score, extracted_entities, mitre_techniques, confidence, summary, indicators_of_compromise.
+
+Output JSON: {{"chain_of_thought": "reasoning", "python_code": "def investigate_alert(alert_data: dict) -> dict:\\n    ..."}}"""
+
+
+# ─── RAG HELPERS ────────────────────────────────────────────────────
+
+def build_rag_context(technique_category, retrieved_patterns=None, similar_investigations=None):
+    """Build RAG context string for IOC-augmented investigation prompt."""
+    technique_info = TECHNIQUE_IOC_MAP.get(
+        technique_category,
+        TECHNIQUE_IOC_MAP.get("malware")  # sensible default
+    )
+
+    required = technique_info["required_iocs"]
+    optional = technique_info.get("optional_iocs", [])
+    all_iocs = required + optional
+
+    required_text = (
+        f"- Primary: {', '.join(required)}\n"
+        f"- Secondary: {', '.join(optional)}\n"
+        f"- Focus: {technique_info['description']}"
+    )
+
+    if similar_investigations:
+        similar_text = "\n".join(
+            f"- Investigation {inv.get('id', 'N/A')}: {inv.get('summary', 'No summary')}"
+            for inv in similar_investigations[:3]
+        )
+    else:
+        similar_text = "No similar past investigations available yet."
+
+    return RAG_IOC_CONTEXT_PROMPT.format(
+        extract_iocs_function=EXTRACT_IOCS_TEMPLATE,
+        technique_category=technique_category,
+        required_iocs=required_text,
+        ioc_type_list=all_iocs,
+        similar_investigations=similar_text,
+    )
+
+
+def format_rag_investigation(alert_json, rag_context):
+    """Format the complete RAG-augmented investigation prompt."""
+    return RAG_INVESTIGATION_PROMPT.format(
+        alert_json=alert_json,
+        rag_context=rag_context,
+    )

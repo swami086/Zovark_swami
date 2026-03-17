@@ -365,6 +365,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro
       - ./data/bootstrap:/app/bootstrap_data:ro
+      - ./dpo:/app/dpo:ro
     depends_on:
       temporal:
         condition: service_started
