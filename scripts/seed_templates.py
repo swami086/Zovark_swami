@@ -501,8 +501,21 @@ UPDATES = [
     ("data-exfiltration-detection", skeleton_template, skeleton_params),
     ("insider-threat-detection", skeleton_template, skeleton_params),
     ("supply-chain-compromise", skeleton_template, skeleton_params),
-    ("cloud-infrastructure-attack", skeleton_template, skeleton_params)
+    ("cloud-infrastructure-attack", skeleton_template, skeleton_params),
+    ("network-beaconing", None, None),  # loaded from worker/skills/network_beaconing.py
 ]
+
+# Load network_beaconing template from skill file
+try:
+    import importlib.util
+    _nb_path = os.path.join(os.path.dirname(__file__), "..", "worker", "skills", "network_beaconing.py")
+    _nb_spec = importlib.util.spec_from_file_location("network_beaconing", _nb_path)
+    _nb_mod = importlib.util.module_from_spec(_nb_spec)
+    _nb_spec.loader.exec_module(_nb_mod)
+    # Replace the None entry with actual template
+    UPDATES[-1] = ("network-beaconing", _nb_mod.NETWORK_BEACONING_TEMPLATE, _nb_mod.NETWORK_BEACONING_PARAMS)
+except Exception as _e:
+    print(f"Warning: Could not load network_beaconing skill: {_e}")
 
 def main():
     try:
