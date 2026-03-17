@@ -934,6 +934,23 @@ async def fill_skill_parameters(data: dict) -> dict:
         print(f"Error in fill_skill_parameters: {e}")
         if "log_data" in defaults and log_data:
             defaults["log_data"] = log_data
+        elif "log_data" in defaults and siem_event:
+            # LLM parameter filling failed — inject SIEM event as log_data
+            # so the skill template analyzes real alert data instead of mock
+            raw_log = siem_event.get("raw_log", "")
+            if raw_log:
+                # Prepend key fields so the template can parse them
+                header = (
+                    f"# SIEM Alert: {siem_event.get('title', 'N/A')}\n"
+                    f"# Source IP: {siem_event.get('source_ip', 'N/A')}\n"
+                    f"# Dest IP: {siem_event.get('destination_ip', 'N/A')}\n"
+                    f"# Hostname: {siem_event.get('hostname', 'N/A')}\n"
+                    f"# Username: {siem_event.get('username', 'N/A')}\n"
+                    f"# Rule: {siem_event.get('rule_name', 'N/A')}\n"
+                )
+                defaults["log_data"] = header + raw_log
+            else:
+                defaults["log_data"] = json.dumps(siem_event, indent=2)
         return {
             "filled_parameters": defaults,
             "execution_ms": int((time.time() - start_time) * 1000),

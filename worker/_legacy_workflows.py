@@ -833,14 +833,27 @@ If something has worked in past investigations for this threat type, apply those
             # --- IOC RETRY LOOP (prompts v2) ---
             # If step 1 succeeded but extracted 0 IOCs, retry once with the failure visible.
             # Manus principle: "keep the wrong stuff in" — show model its own output and ask to fix.
-            if (step_num == 1 and _rag_retry_available and not is_template):
+            # Applies to BOTH template and generated code paths.
+            if (step_num == 1 and _rag_retry_available):
                 try:
                     parsed_for_retry = json.loads(stdout_str)
                     if isinstance(parsed_for_retry, dict):
-                        # Normalize: check both "iocs" and "indicators_of_compromise"
+                        # Normalize IOC formats for should_retry():
+                        # Template output: {"iocs": {"ips": [...], "domains": [...], "hashes": [...]}}
+                        # v2 output:       {"iocs": [{"type": "ipv4", "value": "x"}, ...]}
+                        # should_retry expects a flat list.
                         retry_check = dict(parsed_for_retry)
                         if "iocs" not in retry_check and "indicators_of_compromise" in retry_check:
                             retry_check["iocs"] = retry_check["indicators_of_compromise"]
+                        raw_iocs = retry_check.get("iocs", [])
+                        if isinstance(raw_iocs, dict):
+                            # Flatten nested dict format into list
+                            flat = []
+                            for ioc_type, values in raw_iocs.items():
+                                if isinstance(values, list):
+                                    for v in values:
+                                        flat.append({"type": ioc_type.rstrip("s"), "value": v})
+                            retry_check["iocs"] = flat
 
                         skill_type_norm = task_type.lower().replace(" ", "_")
                         if _should_retry(retry_check, skill_type_norm):
