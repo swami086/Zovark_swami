@@ -82,7 +82,7 @@ def run_test(test):
     payload = json.dumps({"model": MODEL, "messages": [
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": user_msg}
-    ], "temperature": 0.3, "max_tokens": 2048}).encode()
+    ], "temperature": 0.3, "max_tokens": 1500}).encode()
 
     req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})
     print(f"\n{'='*60}")
@@ -91,7 +91,7 @@ def run_test(test):
 
     start = time.time()
     try:
-        with urllib.request.urlopen(req, timeout=600) as resp:
+        with urllib.request.urlopen(req, timeout=900) as resp:
             result = json.loads(resp.read())
     except Exception as e:
         print(f"  LLM FAILED: {e}")
@@ -185,9 +185,9 @@ if __name__ == "__main__":
         s = r.get("status","?")
         ioc_str = f"{r.get('iocs_matched',0)}/{r.get('iocs_expected',0)}" if s == "completed" else "-"
         f = r.get("findings", 0)
-        risk = r.get("risk_score", "-")
+        risk = str(r.get("risk_score", "-"))
         t = f"{r.get('time',0)}s"
-        print(f"{r['name']:<20} {s:<12} {ioc_str:<10} {f:<10} {risk:<6} {t}")
+        print(f"{r['name']:<20} {s:<12} {ioc_str:<10} {str(f):<10} {risk:<6} {t}")
         if s == "completed":
             completed += 1
             total_hits += r.get("iocs_matched", 0)

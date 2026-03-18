@@ -1,0 +1,100 @@
+{
+  "test_date": "2026-03-18",
+  "model": "qwen2.5-14b-instruct Q4_K_M",
+  "server": "llama.cpp b8407",
+  "hardware": "RTX 3050 4GB VRAM, 20/49 layers on GPU (3901 MiB), rest CPU (24GB RAM)",
+  "inference_speed": "3.3 tok/s generation, 15-29 tok/s prompt processing",
+  "results": [
+    {
+      "name": "B1_apt_intrusion",
+      "status": "completed",
+      "findings": 4,
+      "iocs_found": 20,
+      "iocs_matched": 4,
+      "iocs_expected": 4,
+      "ioc_rate": "100%",
+      "risk_score": 85,
+      "tokens_out": 699,
+      "time_s": 694,
+      "notes": "All expected IOCs found: 203.0.113.42, svc_exchange, CORP-DC-01, MD5 hash. No special token leaks."
+    },
+    {
+      "name": "B2_lolbin",
+      "status": "exec_failed",
+      "error": "json.loads parse error in generated code — code tried to parse alert data with json.loads but string wasn't valid JSON",
+      "tokens_out": 814,
+      "time_s": 697,
+      "notes": "Code generated cleanly (no token leaks) but had a runtime JSON parsing bug."
+    },
+    {
+      "name": "B3_firmware",
+      "status": "completed",
+      "findings": 3,
+      "iocs_found": 125,
+      "iocs_matched": 5,
+      "iocs_expected": 5,
+      "ioc_rate": "100%",
+      "risk_score": 80,
+      "tokens_out": 726,
+      "time_s": 779,
+      "notes": "All 5 expected IOCs found including both IPs, hostname, hash, and username. Overly broad regex caused 125 total IOC matches (many false positives from username pattern)."
+    },
+    {
+      "name": "B4_ssh_brute",
+      "status": "completed",
+      "findings": 2,
+      "iocs_found": 10,
+      "iocs_matched": 2,
+      "iocs_expected": 4,
+      "ioc_rate": "50%",
+      "risk_score": 80,
+      "tokens_out": 776,
+      "time_s": 802,
+      "notes": "Found 10.0.0.99 and admin. Missed 10.0.0.5 (destination IP) and WEB-PROD-01 (hostname). Duplicate IOCs in output."
+    },
+    {
+      "name": "B5_pth",
+      "status": "completed",
+      "findings": 2,
+      "iocs_found": 19,
+      "iocs_matched": 5,
+      "iocs_expected": 5,
+      "ioc_rate": "100%",
+      "risk_score": 90,
+      "tokens_out": 669,
+      "time_s": 579,
+      "notes": "All 5 expected IOCs found: both IPs, svc_backup, NTLM hash, mimikatz.exe. Clean code, no token leaks."
+    }
+  ],
+  "summary": {
+    "completed": 4,
+    "exec_failed": 1,
+    "total": 5,
+    "exec_success_rate": "80%",
+    "ioc_hits_on_completed": 16,
+    "ioc_expected_on_completed": 18,
+    "ioc_rate_on_completed": "89%",
+    "effective_ioc_rate": "70% (16/23 across all 5 tests)",
+    "avg_time_s": 710,
+    "avg_tokens": 737,
+    "total_test_time_min": 59
+  },
+  "comparison_vs_deepseek": {
+    "deepseek_coder_6.7b": {
+      "exec_rate": "40% (2/5)",
+      "ioc_rate_completed": "57%",
+      "effective_ioc_rate": "19%",
+      "special_token_leaks": "2/5 tests",
+      "avg_time_s": 146
+    },
+    "qwen2.5_14b_llamacpp": {
+      "exec_rate": "80% (4/5)",
+      "ioc_rate_completed": "89%",
+      "effective_ioc_rate": "70%",
+      "special_token_leaks": "0/5 tests",
+      "avg_time_s": 710
+    },
+    "improvement": "exec_rate: 2x, ioc_rate: 3.7x, zero token leaks"
+  },
+  "conclusion": "qwen2.5:14b via llama.cpp is a massive improvement over deepseek-coder:6.7b. 80% execution rate (vs 40%), 89% IOC rate on completed (vs 57%), zero special token leaks (vs 2/5). GPU upgrade to 8GB+ VRAM is justified — would reduce inference from ~12 min to ~2 min per investigation. Path B is viable for production with this model quality."
+}
