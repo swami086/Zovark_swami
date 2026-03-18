@@ -531,6 +531,32 @@ try:
 except Exception as _e:
     print(f"Warning: Could not load lateral_movement skill: {_e}")
 
+# Load privilege_escalation template from skill file
+try:
+    _pe_path = os.path.join(os.path.dirname(__file__), "..", "worker", "skills", "privilege_escalation.py")
+    _pe_spec = importlib.util.spec_from_file_location("privilege_escalation", _pe_path)
+    _pe_mod = importlib.util.module_from_spec(_pe_spec)
+    _pe_spec.loader.exec_module(_pe_mod)
+    for _idx, (_slug, _tmpl, _params) in enumerate(UPDATES):
+        if _slug == "privilege-escalation-hunt":
+            UPDATES[_idx] = ("privilege-escalation-hunt", _pe_mod.PRIVILEGE_ESCALATION_TEMPLATE, _pe_mod.PRIVILEGE_ESCALATION_PARAMS)
+            break
+except Exception as _e:
+    print(f"Warning: Could not load privilege_escalation skill: {_e}")
+
+# Load data_exfiltration template from skill file
+try:
+    _de_path = os.path.join(os.path.dirname(__file__), "..", "worker", "skills", "data_exfiltration.py")
+    _de_spec = importlib.util.spec_from_file_location("data_exfiltration", _de_path)
+    _de_mod = importlib.util.module_from_spec(_de_spec)
+    _de_spec.loader.exec_module(_de_mod)
+    for _idx, (_slug, _tmpl, _params) in enumerate(UPDATES):
+        if _slug == "data-exfiltration-detection":
+            UPDATES[_idx] = ("data-exfiltration-detection", _de_mod.DATA_EXFILTRATION_TEMPLATE, _de_mod.DATA_EXFILTRATION_PARAMS)
+            break
+except Exception as _e:
+    print(f"Warning: Could not load data_exfiltration skill: {_e}")
+
 def main():
     try:
         conn = psycopg2.connect(DB_URL)
