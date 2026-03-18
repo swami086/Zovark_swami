@@ -208,7 +208,7 @@ async def generate_code(task_data: dict) -> dict:
     }
 
     start_time = time.time()
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=600.0) as client:
         response = await client.post(litellm_url, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
@@ -589,7 +589,7 @@ async def generate_followup_code(task_data: dict) -> dict:
     }
 
     start_time = time.time()
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=600.0) as client:
         response = await client.post(litellm_url, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
@@ -801,8 +801,8 @@ async def retrieve_skill(task_type: str, prompt: str) -> dict:
                 conn.commit()
                 return dict(exact)
 
-            # --- Priority 3: Keyword ILIKE fallback ---
-            like_words = [f"%{w}%" for w in prompt_words] if prompt_words else ["%impossible_match_xyz%"]
+            # --- Priority 3: Keyword phrase match (prompt must contain the keyword) ---
+            prompt_lower = prompt.lower()
             cur.execute("""
                 SELECT id, skill_name, skill_slug, investigation_methodology, detection_patterns,
                        mitre_techniques, follow_up_chain, embedding, code_template, parameters
@@ -810,10 +810,10 @@ async def retrieve_skill(task_type: str, prompt: str) -> dict:
                 WHERE is_active = true AND code_template IS NOT NULL
                 AND EXISTS (
                     SELECT 1 FROM unnest(keywords) k
-                    WHERE k ILIKE ANY(%s)
+                    WHERE %s LIKE '%%' || lower(k) || '%%'
                 )
                 ORDER BY times_used DESC
-            """, (like_words,))
+            """, (prompt_lower,))
             keyword_matches = cur.fetchall()
 
             if keyword_matches:
@@ -824,40 +824,8 @@ async def retrieve_skill(task_type: str, prompt: str) -> dict:
                 conn.commit()
                 return dict(best_match)
 
-        # 2. Only try vector similarity if keyword matching returns 0 results
-        print("DEBUG retrieve_skill: 0 keyword matches. Falling back to vector similarity.")
-
-        # Fetch embedding for prompt
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(tei_url, json={"inputs": prompt})
-            resp.raise_for_status()
-            data = resp.json()
-            if isinstance(data, list) and len(data) > 0:
-                prompt_embedding = data[0]
-                print(f"DEBUG retrieve_skill: got prompt_embedding of length {len(prompt_embedding)}")
-            else:
-                print(f"DEBUG retrieve_skill: data is not a list. data={data}")
-                return None
-
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            # We filter candidates by threat_types or keywords loosely first to avoid scanning whole DB (optional, but keeping previous logic)
-            query_candidates = """
-                SELECT id, skill_name, investigation_methodology, detection_patterns, mitre_techniques, follow_up_chain, code_template, parameters
-                FROM agent_skills
-                WHERE is_active = true
-                AND code_template IS NOT NULL
-                ORDER BY embedding <=> %s::vector
-                LIMIT 1
-            """
-            cur.execute(query_candidates, (prompt_embedding,))
-            best_match = cur.fetchone()
-
-            if best_match:
-                print(f"DEBUG retrieve_skill: found vector match {best_match['skill_name']}")
-                cur.execute("UPDATE agent_skills SET times_used = times_used + 1 WHERE id = %s", (best_match['id'],))
-                conn.commit()
-                return dict(best_match)
-
+        # No keyword matches — fall through to Path B (LLM generation)
+        print(f"DEBUG retrieve_skill: no match for task_type='{task_type}' -> Path B (LLM generation)")
         return None
     except Exception as e:
         print(f"Error in retrieve_skill: {e}")

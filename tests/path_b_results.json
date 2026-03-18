@@ -1,0 +1,80 @@
+{
+  "test_date": "2026-03-18",
+  "model": "deepseek-coder:6.7b",
+  "hardware": "RTX 3050 4GB VRAM (partial CPU offload)",
+  "qwen2.5_14b_note": "Could not test — 14B model only 33% in VRAM, all requests timed out. Need 8GB+ VRAM GPU.",
+  "results": [
+    {
+      "name": "B1_apt_intrusion",
+      "status": "exec_failed",
+      "error": "deepseek-coder special token <begin_of_sentence> leaked into generated Python code",
+      "llm_time_s": 161,
+      "tokens_out": 954
+    },
+    {
+      "name": "B2_lolbin",
+      "status": "completed",
+      "findings": 49,
+      "iocs_found": 4,
+      "iocs_matched": 1,
+      "iocs_expected": 4,
+      "ioc_rate": "25%",
+      "risk_score": 100,
+      "llm_time_s": 175,
+      "tokens_out": 1071,
+      "notes": "IP extracted as split octets ['10','0','0','33'] instead of '10.0.0.33'. Missed both IPs and domain."
+    },
+    {
+      "name": "B3_firmware",
+      "status": "exec_failed",
+      "error": "AttributeError: regex match returned None, no null check in generated code",
+      "llm_time_s": 159,
+      "tokens_out": 977
+    },
+    {
+      "name": "B4_ssh_brute",
+      "status": "completed",
+      "findings": 43,
+      "iocs_found": 4,
+      "iocs_matched": 3,
+      "iocs_expected": 3,
+      "ioc_rate": "100%",
+      "risk_score": null,
+      "llm_time_s": 114,
+      "tokens_out": 727,
+      "notes": "Perfect IOC extraction. risk_score was None instead of integer."
+    },
+    {
+      "name": "B5_pth",
+      "status": "exec_failed",
+      "error": "deepseek-coder special token <begin_of_sentence> leaked into generated Python code",
+      "llm_time_s": 122,
+      "tokens_out": 777
+    }
+  ],
+  "summary": {
+    "completed": 2,
+    "total": 5,
+    "exec_success_rate": "40%",
+    "ioc_hits_on_completed": 4,
+    "ioc_expected_on_completed": 7,
+    "ioc_rate_on_completed": "57%",
+    "effective_ioc_rate": "19% (4/21 expected across all 5 tests)",
+    "avg_llm_time_s": 146,
+    "avg_tokens": 901
+  },
+  "comparison": {
+    "path_a_template_ioc_rate": "79% (hand-coded, always executes)",
+    "path_b_llm_ioc_rate": "57% on completed, 19% effective",
+    "path_a_exec_rate": "100%",
+    "path_b_exec_rate": "40%"
+  },
+  "root_causes": [
+    "deepseek-coder:6.7b leaks special tokens (<begin_of_sentence>) into code output (2/5 tests)",
+    "Generated code lacks null checks on regex matches (1/5 tests)",
+    "IP regex extraction buggy — split into octets instead of full address (1/5 tests)",
+    "risk_score sometimes None instead of integer",
+    "RTX 3050 4GB VRAM insufficient for qwen2.5:14b — could not test production model"
+  ],
+  "conclusion": "Path B (LLM generation) is NOT production-ready with current hardware and models. The 6.7B model has a 40% code execution rate and 19% effective IOC rate vs Path A's 100% execution and 79% IOC rate. Need either: (1) 8GB+ VRAM GPU for qwen2.5:14b, (2) DPO fine-tuning to improve code quality, or (3) post-processing to strip special tokens and add error handling."
+}

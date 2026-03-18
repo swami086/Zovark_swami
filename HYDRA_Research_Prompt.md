@@ -1,7 +1,7 @@
 # HYDRA Research Prompt — Session Context for LLMs
 
 > Paste this into any LLM session to give it full context on the HYDRA project state.
-> Last updated: 2026-03-18, commit d0dbf58
+> Last updated: 2026-03-18, Session 7 (Path B evaluation)
 
 ## Project Overview
 
@@ -202,26 +202,68 @@ SIEM Alert → Go API (:8090) → PostgreSQL → Temporal Workflow →
    - supply_chain: 9 IOCs, 4 findings, risk 95
    - insider_threat: timed out (workflow status stuck at pending)
 
+### Session 7 (2026-03-18) — Path B (LLM Generate) Evaluation
+
+**Goal:** Test whether the LLM can generate investigation code from scratch (Path B) with SIEM data, bypassing templates.
+
+**Infrastructure fixes required before testing:**
+1. **retrieve_skill keyword matching was backwards** — single prompt words like "threat" matched keyword phrases like "insider threat detection" via `k ILIKE ANY(prompt_words)`. Fixed to `prompt LIKE '%' || keyword || '%'` (prompt must contain the keyword phrase).
+2. **Vector similarity fallback had no threshold** — always returned closest template regardless of relevance (APT→Insider Threat at distance 0.27). **Removed entirely** — 3-tier matching (exact/prefix/keyword) is sufficient.
+3. **LiteLLM database auth broken** — `litellm-database` image needs DATABASE_URL but none configured. Bypassed by pointing worker directly to Ollama (`host.docker.internal:11434`).
+4. **Squid proxy blocking Ollama** — `host.docker.internal` not in NO_PROXY. Fixed.
+5. **httpx timeout too short** — 120s insufficient for 14B model on 4GB VRAM GPU. Increased to 600s.
+6. **qwen2.5:14b untestable** — only 33% in VRAM (3.4GB of 10GB), rest CPU offloaded. All requests timed out. Tested with deepseek-coder:6.7b instead.
+
+**Path B Results (deepseek-coder:6.7b):**
+
+| Test | Status | IOCs | Findings | Risk | Time |
+|------|--------|------|----------|------|------|
+| B1 apt_intrusion | EXEC FAILED | - | - | - | 161s |
+| B2 lolbin | completed | 1/4 (25%) | 49 | 100 | 175s |
+| B3 firmware | EXEC FAILED | - | - | - | 159s |
+| B4 ssh_brute | completed | 3/3 (100%) | 43 | None | 114s |
+| B5 pth | EXEC FAILED | - | - | - | 122s |
+
+**Failure modes:**
+- B1, B5: `<｜begin▁of▁sentence｜>` special tokens leaked into generated Python code (deepseek-coder artifact)
+- B3: AttributeError — regex match returned None, no null check in generated code
+- B2: IP extracted as split octets `['10','0','0','33']` instead of `'10.0.0.33'`
+- B4: Perfect — all 3 expected IOCs found (10.0.0.99, admin, WEB-PROD-01)
+
+**Honest assessment:**
+- Code execution success: 40% (2/5)
+- IOC extraction on completed: 57% (4/7)
+- Effective IOC rate: 19% (4/21 across all tests)
+- vs Path A template: 100% execution, 79% IOC rate
+- **Path B is NOT production-ready** with current hardware (4GB VRAM) and models
+
+**What we proved:**
+1. SIEM injection fix WORKS — data reaches the LLM prompt correctly
+2. retrieve_skill routing FIXED — 3-tier matching prevents false positives, vector similarity removed
+3. When the LLM generates good code (B4), IOC extraction can be perfect
+4. But code quality is unreliable — 3/5 scripts had runtime errors
+5. The 14B production model is untestable on RTX 3050 — need A6000 or cloud
+
 ## Known Issues
 
-1. **v2 generate_code path unreachable** — All task types match a skill template via keyword in `retrieve_skill`. Path B (PromptAssembler) never fires. The retry loop is the only way v2 prompts get used.
+1. **LLM code generation unreliable on 6.7B** — 40% execution rate, special token leaks, missing null checks. Path A templates remain the correct approach for the RTX 3050 hardware tier.
 
-2. **All templates now real** — 11/11 skill templates have full detection logic. Some still need keyword/threat_type tuning for correct routing.
+2. **qwen2.5:14b untestable on RTX 3050** — Only 33% fits in 4GB VRAM. Need 8GB+ VRAM (RTX 3060/4060 or better) or A6000 for standard tier.
 
-3. **fill_skill_parameters always fails** — Ollama doesn't support `response_format:json_object`. Falls back to defaults every time. Our SIEM injection fix covers this, but parameter extraction from prompts doesn't work.
+3. **LiteLLM database auth broken** — Worker now calls Ollama directly. LiteLLM proxy needs DATABASE_URL configured to restore multi-provider fallback.
 
-4. **Adversarial review times out** — urllib-based LLM call against Ollama times out. AST prefilter + Docker sandbox are the actual security layers.
+4. **fill_skill_parameters always fails** — Ollama doesn't support `response_format:json_object`. Falls back to defaults. SIEM injection fix covers this.
 
-5. **generate_followup_code uses fast model** — Now routes through Ollama (was failing on dead cloud providers). May succeed but quality depends on qwen2.5:14b capability.
+5. **Adversarial review times out** — AST prefilter + Docker sandbox are the actual security layers.
 
-6. **Ground truth corpus doesn't use siem_event** — The 70-alert benchmark submits alerts without SIEM events, so IOC extraction via the SIEM injection fix isn't tested by the benchmark.
+6. **Ground truth corpus doesn't use siem_event** — Benchmark submits alerts without SIEM events.
 
-7. **NATS hostname resolution** — Non-fatal warning on worker startup. Consumer initializes despite it.
+7. **NATS hostname resolution** — Non-fatal warning on worker startup.
 
 ## Recommended Next Steps
 
-1. **Fix threat_types in DB** — update agent_skills threat_types arrays to match task_type values (e.g. add 'data_exfiltration' to data-exfiltration-detection)
-2. **Update ground truth corpus** to include `siem_event` payloads so the benchmark tests the SIEM injection path
-3. **DPO Phase 2-4** — Generate training data, train model, measure accuracy delta
-4. **Fix retrieve_skill** to fall through to generate_code when template produces 0 IOCs (alternative to retry loop)
-5. **Full benchmark** with updated corpus
+1. **GPU upgrade** — Get 8GB+ VRAM GPU to test qwen2.5:14b on Path B properly
+2. **Post-processing for Path B** — Strip special tokens, add null checks, validate generated code before sandbox
+3. **DPO training** — Fine-tune on IOC extraction examples to improve code quality
+4. **Fix LiteLLM** — Add DATABASE_URL to litellm service in docker-compose for proper multi-provider routing
+5. **Update benchmark corpus** — Add siem_event payloads to test the real investigation path
