@@ -7,16 +7,17 @@
 
 HYDRA is an air-gapped, on-premise AI SOC platform. It receives SIEM alerts, generates Python investigation code via LLM, executes it in a sandboxed Docker container, and delivers structured verdicts with findings, IOCs, risk scores, and recommendations.
 
-**Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + NATS + LiteLLM + Ollama
+**Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + NATS + llama.cpp
 
 ## Current State
 
 - **Version:** post v1.0.0-rc1
-- **Latest commit:** `d0dbf58` (all 11 templates real + retrieve_skill fix)
+- **Latest commit:** `e120cb9` (Path B retest with qwen2.5:14b)
 - **Pipeline:** OPERATIONAL — investigations complete end-to-end
-- **LLM:** Ollama qwen2.5:14b (local, RTX 3050) via LiteLLM
+- **LLM:** llama.cpp server, qwen2.5-14b-instruct Q4_K_M (replaces Ollama)
+- **GPU offload:** 20/49 layers on RTX 3050 4GB, rest CPU (3.3 tok/s)
 - **Tests:** 44 Go + 179 Python = 223 test functions
-- **Services:** 17 Docker containers
+- **Services:** 17 Docker containers (Ollama replaced by host-side llama.cpp)
 - **Skills:** 11 in DB (all 11 with real templates)
 - **DPO dataset:** 5 validated pairs (format verified)
 - **Migrations:** 001-041
@@ -71,7 +72,18 @@ SIEM Alert → Go API (:8090) → PostgreSQL → Temporal Workflow →
 - **Path A (Template):** `retrieve_skill` matches task_type → `fill_skill_parameters` (LLM) → `render_skill_template` → sandbox. Used when a skill template exists.
 - **Path B (Generated):** `generate_code` with PromptAssembler v2 → sandbox. Used when no skill template matches.
 
-**Current reality:** All 12 task type categories match a skill via keyword, so Path B (v2 prompts) is unreachable. Path A always runs.
+**Current reality:** 11 task types match skill templates (Path A). Novel task types fall through to Path B. With qwen2.5:14b via llama.cpp, Path B achieves 80% execution rate and 89% IOC extraction.
+
+### Architecture Decision (Session 8): Replace Ollama with llama.cpp
+
+**Why:** Ollama auto-offloads layers but provides no control. On 4GB VRAM, it loaded only 33% of the model and all inference timed out. llama.cpp with explicit `--n-gpu-layers 20` loads 41% and achieves 3.3 tok/s — slow but functional.
+
+**What changed:**
+- Worker calls llama.cpp on host via `http://host.docker.internal:11434/v1/chat/completions`
+- `HYDRA_LLM_MODEL=qwen2.5:14b` (llama.cpp ignores model name, serves loaded model)
+- LLM special token stripping added to both `generate_code` and `generate_followup_code`
+- Ollama Docker service moved to `airgap-ollama` profile (kept as fallback)
+- `scripts/start_llama_server.sh` auto-detects VRAM and sets optimal GPU layers
 
 ## Key Files
 

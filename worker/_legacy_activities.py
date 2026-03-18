@@ -240,6 +240,10 @@ async def generate_code(task_data: dict) -> dict:
     if code.endswith("```"):
         code = code[:-3]
 
+    # Strip LLM special tokens that leak into generated code (deepseek-coder, qwen, llama)
+    code = re.sub(r'<[｜|][^>]*[｜|]>', '', code)
+    code = re.sub(r'<\|(?:im_start|im_end|endoftext|begin_of_sentence|end_of_sentence|fim_prefix|fim_middle|fim_suffix)\|>', '', code)
+
     # Post-generation code scrubber to remove catastrophic LLM hallucinations that crash the read-only, non-interactive sandbox
     code = code.replace("import requests", "import urllib.request as urllib2")
     code = code.replace("requests.get", "urllib2.urlopen")
@@ -620,6 +624,10 @@ async def generate_followup_code(task_data: dict) -> dict:
         code = code[3:]
     if code.endswith("```"):
         code = code[:-3]
+
+    # Strip LLM special tokens that leak into generated code
+    code = re.sub(r'<[｜|][^>]*[｜|]>', '', code)
+    code = re.sub(r'<\|(?:im_start|im_end|endoftext|begin_of_sentence|end_of_sentence|fim_prefix|fim_middle|fim_suffix)\|>', '', code)
 
     # Post-generation code scrubber
     code = code.replace("import requests", "import urllib.request as urllib2")

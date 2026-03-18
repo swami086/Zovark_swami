@@ -289,7 +289,14 @@ services:
     networks:
       - hydra-internal
 
-  # ─── LOCAL LLM (Air-Gap) ──────────────────────────────
+  # ─── LOCAL LLM ───────────────────────────────────────
+  # Primary: llama.cpp server running on host (not in Docker)
+  #   Start with: scripts/start_llama_server.sh
+  #   Endpoint: http://host.docker.internal:11434/v1/chat/completions
+  #   Model: qwen2.5-14b-instruct Q4_K_M via llama.cpp
+  #   GPU: --n-gpu-layers 20 for RTX 3050 4GB, 49 for 16GB+
+  #
+  # Fallback (air-gap without host GPU): Ollama in Docker
   ollama:
     image: ollama/ollama:latest
     container_name: hydra-ollama
@@ -302,7 +309,7 @@ services:
     ports:
       - "11434:11434"
     profiles:
-      - airgap
+      - airgap-ollama
     restart: unless-stopped
     networks:
       - hydra-internal
