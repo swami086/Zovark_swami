@@ -766,28 +766,59 @@ async def retrieve_skill(task_type: str, prompt: str) -> dict:
             # but let's just use the existing fields and prefer those with templates.
             # Actually, I will explicitly require `code_template IS NOT NULL` in the query to guarantee template mode.
 
-            query = """
-                SELECT id, skill_name, investigation_methodology, detection_patterns, mitre_techniques, follow_up_chain, embedding, code_template, parameters
-                FROM agent_skills
-                WHERE is_active = true
-                AND code_template IS NOT NULL
-                AND (
-                    %s = ANY(threat_types) OR
-                    EXISTS (
-                        SELECT 1 FROM unnest(keywords) k
-                        WHERE k ILIKE ANY(%s)
-                    )
-                )
-                ORDER BY (CASE WHEN %s = ANY(threat_types) THEN 0 ELSE 1 END), times_used DESC
-            """
-            # Create a list of %word% for ILIKE ANY
-            like_words = [f"%{w}%" for w in prompt_words] if prompt_words else ["%impossible_match_xyz%"]
             tt = task_type.lower().replace(" ", "_")
-            cur.execute(query, (tt, like_words, tt))
+
+            # --- Priority 1: Exact threat_type match (task_type = ANY(threat_types)) ---
+            cur.execute("""
+                SELECT id, skill_name, skill_slug, investigation_methodology, detection_patterns,
+                       mitre_techniques, follow_up_chain, embedding, code_template, parameters
+                FROM agent_skills
+                WHERE is_active = true AND code_template IS NOT NULL
+                AND %s = ANY(threat_types)
+                ORDER BY times_used DESC LIMIT 1
+            """, (tt,))
+            exact = cur.fetchone()
+
+            # --- Priority 2: Prefix match (task_type starts with a threat_type or vice versa) ---
+            if not exact:
+                cur.execute("""
+                    SELECT id, skill_name, skill_slug, investigation_methodology, detection_patterns,
+                           mitre_techniques, follow_up_chain, embedding, code_template, parameters
+                    FROM agent_skills
+                    WHERE is_active = true AND code_template IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1 FROM unnest(threat_types) t
+                        WHERE t LIKE %s || '%%' OR %s LIKE t || '%%'
+                    )
+                    ORDER BY times_used DESC LIMIT 1
+                """, (tt, tt))
+                exact = cur.fetchone()
+
+            if exact:
+                slug = exact.get('skill_slug', exact.get('skill_name', '?'))
+                print(f"DEBUG retrieve_skill: exact threat_type match -> {slug}")
+                cur.execute("UPDATE agent_skills SET times_used = times_used + 1 WHERE id = %s", (exact['id'],))
+                conn.commit()
+                return dict(exact)
+
+            # --- Priority 3: Keyword ILIKE fallback ---
+            like_words = [f"%{w}%" for w in prompt_words] if prompt_words else ["%impossible_match_xyz%"]
+            cur.execute("""
+                SELECT id, skill_name, skill_slug, investigation_methodology, detection_patterns,
+                       mitre_techniques, follow_up_chain, embedding, code_template, parameters
+                FROM agent_skills
+                WHERE is_active = true AND code_template IS NOT NULL
+                AND EXISTS (
+                    SELECT 1 FROM unnest(keywords) k
+                    WHERE k ILIKE ANY(%s)
+                )
+                ORDER BY times_used DESC
+            """, (like_words,))
             keyword_matches = cur.fetchall()
 
             if keyword_matches:
-                print(f"DEBUG retrieve_skill: found {len(keyword_matches)} keyword matches, returning top matched by times_used.")
+                slug = keyword_matches[0].get('skill_slug', keyword_matches[0].get('skill_name', '?'))
+                print(f"DEBUG retrieve_skill: keyword match ({len(keyword_matches)} candidates) -> {slug}")
                 best_match = keyword_matches[0]
                 cur.execute("UPDATE agent_skills SET times_used = times_used + 1 WHERE id = %s", (best_match['id'],))
                 conn.commit()

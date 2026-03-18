@@ -557,6 +557,32 @@ try:
 except Exception as _e:
     print(f"Warning: Could not load data_exfiltration skill: {_e}")
 
+# Load insider_threat template from skill file
+try:
+    _it_path = os.path.join(os.path.dirname(__file__), "..", "worker", "skills", "insider_threat.py")
+    _it_spec = importlib.util.spec_from_file_location("insider_threat", _it_path)
+    _it_mod = importlib.util.module_from_spec(_it_spec)
+    _it_spec.loader.exec_module(_it_mod)
+    for _idx, (_slug, _tmpl, _params) in enumerate(UPDATES):
+        if _slug == "insider-threat-detection":
+            UPDATES[_idx] = ("insider-threat-detection", _it_mod.INSIDER_THREAT_TEMPLATE, _it_mod.INSIDER_THREAT_PARAMS)
+            break
+except Exception as _e:
+    print(f"Warning: Could not load insider_threat skill: {_e}")
+
+# Load supply_chain template from skill file
+try:
+    _sc_path = os.path.join(os.path.dirname(__file__), "..", "worker", "skills", "supply_chain.py")
+    _sc_spec = importlib.util.spec_from_file_location("supply_chain", _sc_path)
+    _sc_mod = importlib.util.module_from_spec(_sc_spec)
+    _sc_spec.loader.exec_module(_sc_mod)
+    for _idx, (_slug, _tmpl, _params) in enumerate(UPDATES):
+        if _slug == "supply-chain-compromise":
+            UPDATES[_idx] = ("supply-chain-compromise", _sc_mod.SUPPLY_CHAIN_TEMPLATE, _sc_mod.SUPPLY_CHAIN_PARAMS)
+            break
+except Exception as _e:
+    print(f"Warning: Could not load supply_chain skill: {_e}")
+
 def main():
     try:
         conn = psycopg2.connect(DB_URL)
