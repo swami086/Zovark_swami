@@ -1,7 +1,7 @@
 # HYDRA Research Prompt — Session Context for LLMs
 
 > Paste this into any LLM session to give it full context on the HYDRA project state.
-> Last updated: 2026-03-17, commit 73222e2
+> Last updated: 2026-03-18, commit cddf7e1
 
 ## Project Overview
 
@@ -12,12 +12,12 @@ HYDRA is an air-gapped, on-premise AI SOC platform. It receives SIEM alerts, gen
 ## Current State
 
 - **Version:** post v1.0.0-rc1
-- **Latest commit:** `73222e2` (lateral_movement real skill template + LiteLLM fix)
+- **Latest commit:** `cddf7e1` (privilege_escalation + data_exfiltration real templates)
 - **Pipeline:** OPERATIONAL — investigations complete end-to-end
 - **LLM:** Ollama qwen2.5:14b (local, RTX 3050) via LiteLLM
 - **Tests:** 44 Go + 179 Python = 223 test functions
 - **Services:** 17 Docker containers
-- **Skills:** 11 in DB (7 with real templates, 4 skeleton)
+- **Skills:** 11 in DB (9 with real templates, 2 skeleton)
 - **DPO dataset:** 5 validated pairs (format verified)
 - **Migrations:** 001-041
 
@@ -37,10 +37,13 @@ HYDRA is an air-gapped, on-premise AI SOC platform. It receives SIEM alerts, gen
 
 | Test | IOCs | Findings | Risk | Time |
 |------|------|----------|------|------|
-| brute_force (SIEM) | 1 (10.0.0.99) | 2 | 95 | 30.6s |
-| lateral_movement (SIEM) | 5 (NTLM hash, svc_backup, Administrator, WS-FINANCE-03, DC-PRIMARY) | 8 | 95 | 30.6s |
+| brute_force (S4) | 1 (10.0.0.99) | 2 | 95 | 30.6s |
+| lateral_movement (S4) | 5 (NTLM hash, svc_backup, Administrator, hostnames) | 8 | 95 | 30.6s |
+| privilege_escalation (S5) | 11 (SeDebugPrivilege, exploit.exe, backdoor.exe, lsass.exe, jsmith, IPs) | 4 | 95 | 31.0s |
+| data_exfiltration (S5) | 5 (185.220.101.45, exfil-c2.net, 10.0.0.45) | 1 | 0 | 30.6s |
 
-**IOC extraction on SIEM events: 100% (2/2 had IOCs)**
+**IOC extraction on SIEM events: 100% (4/4 had IOCs)**
+**Mean IOCs per investigation: 5.5**
 
 ### Full Corpus (70 alerts, offline scoring)
 
@@ -131,11 +134,44 @@ SIEM Alert → Go API (:8090) → PostgreSQL → Temporal Workflow →
    - hydra_dpo_dataset.jsonl validated (5 pairs, ChatML format, within 2048 budget)
    - smoke_test_dpo.py for zero-dependency validation
 
+### Session 5 (2026-03-18)
+
+**Commits:** `cddf7e1`
+
+**What was done:**
+1. **privilege_escalation real skill template** (`worker/skills/privilege_escalation.py`)
+   - Token theft (EventID 4672, SeDebugPrivilege, SeTcbPrivilege)
+   - LSASS access detection (EventID 10, Sysmon)
+   - UAC bypass process patterns (eventvwr, fodhelper, sdclt, cmstp)
+   - Local admin group changes (EventID 4732/4728)
+   - Scheduled task creation (EventID 4698)
+   - Service creation (EventID 4697/7045)
+   - Compiled regex IOC extraction (IP, hash, username, hostname, filepath)
+   - Test: 11 IOCs, 4 findings, risk 95
+
+2. **data_exfiltration real skill template** (`worker/skills/data_exfiltration.py`)
+   - Large outbound transfer detection (bytes_out threshold)
+   - DNS exfiltration via Shannon entropy scoring
+   - File staging/compression detection (7zip, WinRAR)
+   - Cloud storage upload detection (dropbox, mega.nz, etc.)
+   - Compiled regex IOC extraction
+   - Test: 5 IOCs extracted, but matched wrong skill (c2 template via keyword)
+
+3. **Template string escaping patterns documented**
+   - Non-raw `"""` strings: use `\\b` for regex word boundaries (renders as `\b`)
+   - Mock data paths: `C:\\\\` (renders as `C:\\`)
+   - Nested triple quotes: `\"\"\"` (renders as `"""`)
+   - Compiled `re.compile()` preferred over IOC_PATTERNS dict for reliability
+
+4. **Skill template count:** 9/11 real templates (was 7/11)
+   - Real: brute_force, c2_comm, ransomware, phishing, lateral_movement, network_beaconing, privilege_escalation, data_exfiltration, (deobfuscation as activity)
+   - Skeleton: insider_threat, supply_chain_compromise
+
 ## Known Issues
 
 1. **v2 generate_code path unreachable** — All task types match a skill template via keyword in `retrieve_skill`. Path B (PromptAssembler) never fires. The retry loop is the only way v2 prompts get used.
 
-2. **4 skeleton templates remain** — privilege_escalation, data_exfiltration, insider_threat, cloud_infrastructure have placeholder templates with no real detection logic. They produce 0 IOCs and 0 findings.
+2. **2 skeleton templates remain** — insider_threat, supply_chain_compromise have placeholder templates with no real detection logic. They produce 0 IOCs and 0 findings.
 
 3. **fill_skill_parameters always fails** — Ollama doesn't support `response_format:json_object`. Falls back to defaults every time. Our SIEM injection fix covers this, but parameter extraction from prompts doesn't work.
 
@@ -149,7 +185,7 @@ SIEM Alert → Go API (:8090) → PostgreSQL → Temporal Workflow →
 
 ## Recommended Next Steps
 
-1. **Write real skill templates** for remaining 4 skeleton types (privilege_escalation, data_exfiltration, insider_threat, cloud_infrastructure)
+1. **Write real skill templates** for remaining 2 skeleton types (insider_threat, supply_chain_compromise)
 2. **Update ground truth corpus** to include `siem_event` payloads so the benchmark tests the SIEM injection path
 3. **DPO Phase 2-4** — Generate training data, train model, measure accuracy delta
 4. **Fix retrieve_skill** to fall through to generate_code when template produces 0 IOCs (alternative to retry loop)
