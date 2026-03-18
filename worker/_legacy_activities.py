@@ -208,7 +208,7 @@ async def generate_code(task_data: dict) -> dict:
     }
 
     start_time = time.time()
-    async with httpx.AsyncClient(timeout=600.0) as client:
+    async with httpx.AsyncClient(timeout=900.0) as client:
         response = await client.post(litellm_url, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
@@ -593,7 +593,7 @@ async def generate_followup_code(task_data: dict) -> dict:
     }
 
     start_time = time.time()
-    async with httpx.AsyncClient(timeout=600.0) as client:
+    async with httpx.AsyncClient(timeout=900.0) as client:
         response = await client.post(litellm_url, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()

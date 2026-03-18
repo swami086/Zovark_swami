@@ -339,7 +339,7 @@ If something has worked in past investigations for this threat type, apply those
                     gen_result = await workflow.execute_activity(
                         generate_code,
                         task_data,
-                        schedule_to_close_timeout=timedelta(minutes=5)
+                        schedule_to_close_timeout=timedelta(minutes=15)
                     )
                     code = gen_result["code"]
                     usage = gen_result["usage"]
@@ -458,7 +458,7 @@ If something has worked in past investigations for this threat type, apply those
                         gen_result2 = await workflow.execute_activity(
                             generate_code,
                             retry_data,
-                            schedule_to_close_timeout=timedelta(minutes=5)
+                            schedule_to_close_timeout=timedelta(minutes=15)
                         )
                         code = gen_result2["code"]
                         usage2 = gen_result2["usage"]
@@ -823,12 +823,58 @@ If something has worked in past investigations for this threat type, apply those
                 pass
 
             if exec_result["status"] == "failed":
-                if step_num == 1:
-                    return await self._fail_task(
-                        task_id, tenant_id, f"Sandbox failed: {exec_result['stderr']}",
-                        tokens_input=total_tokens_input, tokens_output=total_tokens_output, exec_ms=total_exec_ms
+                # --- CODE EXECUTION RETRY (Path B fix) ---
+                # If sandbox failed and this is step 1 and we haven't retried yet, retry once
+                if step_num == 1 and not is_template and not task_data.get("_exec_retried"):
+                    error_snippet = (exec_result.get("stderr") or "")[:500]
+                    workflow.logger.info(f"CODE_EXEC_RETRY: sandbox failed, retrying generate_code. Error: {error_snippet[:100]}")
+                    retry_data = dict(task_data)
+                    retry_data["_exec_retried"] = True
+                    if "input" not in retry_data:
+                        retry_data["input"] = {}
+                    retry_data["input"]["validation_feedback"] = (
+                        f"Your previous code crashed with this error:\n{error_snippet}\n"
+                        "Fix the bug and regenerate. Ensure json.dumps output is valid."
                     )
-                break
+                    try:
+                        retry_gen = await workflow.execute_activity(
+                            generate_code,
+                            retry_data,
+                            schedule_to_close_timeout=timedelta(minutes=15)
+                        )
+                        retry_code = retry_gen["code"]
+                        total_tokens_input += retry_gen["usage"].get("prompt_tokens", 0)
+                        total_tokens_output += retry_gen["usage"].get("completion_tokens", 0)
+
+                        retry_val = await workflow.execute_activity(
+                            validate_code, retry_code,
+                            schedule_to_close_timeout=timedelta(seconds=10)
+                        )
+                        if retry_val["is_safe"]:
+                            retry_exec = await workflow.execute_activity(
+                                execute_code, retry_code,
+                                schedule_to_close_timeout=timedelta(minutes=2)
+                            )
+                            if retry_exec["status"] == "completed":
+                                workflow.logger.info("CODE_EXEC_RETRY: succeeded on retry")
+                                exec_result = retry_exec
+                                code = retry_code
+                                final_stdout = retry_exec["stdout"]
+                                final_code = retry_code
+                                # Fall through to IOC retry loop below
+                            else:
+                                workflow.logger.info("CODE_EXEC_RETRY: retry also failed")
+                    except Exception as retry_err:
+                        workflow.logger.info(f"CODE_EXEC_RETRY: error during retry: {retry_err}")
+
+                # If still failed after retry (or no retry attempted), fail the task
+                if exec_result["status"] == "failed":
+                    if step_num == 1:
+                        return await self._fail_task(
+                            task_id, tenant_id, f"Sandbox failed: {exec_result['stderr']}",
+                            tokens_input=total_tokens_input, tokens_output=total_tokens_output, exec_ms=total_exec_ms
+                        )
+                    break
 
             # --- IOC RETRY LOOP (prompts v2) ---
             # If step 1 succeeded but extracted 0 IOCs, retry once with the failure visible.
@@ -875,7 +921,7 @@ If something has worked in past investigations for this threat type, apply those
                             retry_gen = await workflow.execute_activity(
                                 generate_code,
                                 retry_task,
-                                schedule_to_close_timeout=timedelta(minutes=5)
+                                schedule_to_close_timeout=timedelta(minutes=15)
                             )
                             retry_code = retry_gen["code"]
 
