@@ -132,7 +132,7 @@ def call_llm(prompt):
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.1,
-        "max_tokens": 800,
+        "max_tokens": 1200,
     }).encode()
     req = urllib.request.Request(
         API_URL,

@@ -910,49 +910,80 @@ If something has worked in past investigations for this threat type, apply those
                 pass
 
             if exec_result["status"] == "failed":
-                # --- CODE EXECUTION RETRY (Path B fix) ---
-                # If sandbox failed and this is step 1 and we haven't retried yet, retry once
-                if step_num == 1 and not is_template and not task_data.get("_exec_retried"):
-                    error_snippet = (exec_result.get("stderr") or "")[:500]
-                    workflow.logger.info(f"CODE_EXEC_RETRY: sandbox failed, retrying generate_code. Error: {error_snippet[:100]}")
-                    retry_data = dict(task_data)
-                    retry_data["_exec_retried"] = True
-                    if "input" not in retry_data:
-                        retry_data["input"] = {}
-                    retry_data["input"]["validation_feedback"] = (
-                        f"Your previous code crashed with this error:\n{error_snippet}\n"
-                        "Fix the bug and regenerate. Ensure json.dumps output is valid."
-                    )
-                    try:
-                        retry_gen = await workflow.execute_activity(
-                            generate_code,
-                            retry_data,
-                            schedule_to_close_timeout=timedelta(minutes=15)
+                # --- CODE EXECUTION RETRY LOOP (max 2 retries) ---
+                # Feeds error message + broken code back to LLM for self-correction
+                max_retries = 2
+                if step_num == 1 and not is_template:
+                    broken_code = code
+                    for retry_attempt in range(1, max_retries + 1):
+                        if exec_result["status"] != "failed":
+                            break
+                        error_snippet = (exec_result.get("stderr") or "")[:800]
+                        error_type = "Unknown"
+                        for etype in ["NameError", "SyntaxError", "AttributeError", "TypeError", "KeyError", "IndexError", "ValueError"]:
+                            if etype in error_snippet:
+                                error_type = etype
+                                break
+                        workflow.logger.info(
+                            f"CODE_RETRY attempt {retry_attempt}/{max_retries}: {error_type} — {error_snippet[:120]}"
                         )
-                        retry_code = retry_gen["code"]
-                        total_tokens_input += retry_gen["usage"].get("prompt_tokens", 0)
-                        total_tokens_output += retry_gen["usage"].get("completion_tokens", 0)
-
-                        retry_val = await workflow.execute_activity(
-                            validate_code, retry_code,
-                            schedule_to_close_timeout=timedelta(seconds=10)
+                        retry_data = dict(task_data)
+                        if "input" not in retry_data:
+                            retry_data["input"] = {}
+                        retry_data["input"]["validation_feedback"] = (
+                            f"Your previous code FAILED with this error:\n"
+                            f"{error_snippet}\n\n"
+                            f"BROKEN CODE (do NOT reuse as-is):\n{broken_code[:2000]}\n\n"
+                            f"FIX INSTRUCTIONS:\n"
+                            f"1. The code must be completely self-contained — define ALL variables before use\n"
+                            f"2. Do NOT wrap code in markdown fences (no ```python)\n"
+                            f"3. Embed alert data as a Python dict literal, NOT json.loads()\n"
+                            f"4. Print ONLY valid JSON to stdout via json.dumps()\n"
+                            f"5. Use only stdlib: re, json, collections\n"
+                            f"6. Extract ALL IOCs: IPs, hashes, domains, usernames, filenames\n"
+                            f"Write the COMPLETE corrected script:"
                         )
-                        if retry_val["is_safe"]:
-                            retry_exec = await workflow.execute_activity(
-                                execute_code, retry_code,
-                                schedule_to_close_timeout=timedelta(minutes=2)
+                        try:
+                            retry_gen = await workflow.execute_activity(
+                                generate_code,
+                                retry_data,
+                                schedule_to_close_timeout=timedelta(minutes=15)
                             )
-                            if retry_exec["status"] == "completed":
-                                workflow.logger.info("CODE_EXEC_RETRY: succeeded on retry")
-                                exec_result = retry_exec
-                                code = retry_code
-                                final_stdout = retry_exec["stdout"]
-                                final_code = retry_code
-                                # Fall through to IOC retry loop below
+                            retry_code = retry_gen["code"]
+                            total_tokens_input += retry_gen["usage"].get("prompt_tokens", 0)
+                            total_tokens_output += retry_gen["usage"].get("completion_tokens", 0)
+
+                            retry_val = await workflow.execute_activity(
+                                validate_code, retry_code,
+                                schedule_to_close_timeout=timedelta(seconds=10)
+                            )
+                            if retry_val["is_safe"]:
+                                retry_exec = await workflow.execute_activity(
+                                    execute_code, retry_code,
+                                    schedule_to_close_timeout=timedelta(minutes=2)
+                                )
+                                if retry_exec["status"] == "completed":
+                                    workflow.logger.info(
+                                        f"CODE_RETRY attempt {retry_attempt}: {error_type} → FIXED"
+                                    )
+                                    exec_result = retry_exec
+                                    code = retry_code
+                                    final_stdout = retry_exec["stdout"]
+                                    final_code = retry_code
+                                else:
+                                    workflow.logger.info(
+                                        f"CODE_RETRY attempt {retry_attempt}: {error_type} → still failed"
+                                    )
+                                    exec_result = retry_exec
+                                    broken_code = retry_code
                             else:
-                                workflow.logger.info("CODE_EXEC_RETRY: retry also failed")
-                    except Exception as retry_err:
-                        workflow.logger.info(f"CODE_EXEC_RETRY: error during retry: {retry_err}")
+                                workflow.logger.info(
+                                    f"CODE_RETRY attempt {retry_attempt}: validation failed — {retry_val.get('reason','')}"
+                                )
+                        except Exception as retry_err:
+                            workflow.logger.info(
+                                f"CODE_RETRY attempt {retry_attempt}: exception — {retry_err}"
+                            )
 
                 # If still failed after retry (or no retry attempted), fail the task
                 if exec_result["status"] == "failed":
