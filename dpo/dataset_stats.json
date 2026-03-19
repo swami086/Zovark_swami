@@ -1,21 +1,25 @@
 {
-  "total_pairs": 5,
+  "total_pairs": 45,
   "sources": {
     "dpo/path_b_pairs.jsonl": 3,
-    "dpo/rejected_examples.jsonl": 2
+    "dpo/rejected_examples.jsonl": 42
   },
   "by_category": {
     "manual": 3,
-    "brute_force": 2
+    "brute_force": 10,
+    "lateral_movement": 8,
+    "privilege_escalation": 8,
+    "data_exfiltration": 8,
+    "novel_attack": 8
   },
   "by_degradation": {
     "manual": 3,
-    "remove_iocs": 1,
-    "fake_values": 1
+    "remove_iocs": 21,
+    "fake_values": 21
   },
   "quality_scores": {
-    "mean": 4.2,
-    "min": 4.0,
-    "max": 4.5
+    "mean": 4.03,
+    "min": 3.5,
+    "max": 5.0
   }
 }
