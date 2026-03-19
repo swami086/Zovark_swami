@@ -10,7 +10,8 @@ with workflow.unsafe.imports_passed_through():
         check_requires_approval, create_approval_request, update_approval_request,
         retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template,
         check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity,
-        validate_generated_code, enrich_alert_with_memory
+        validate_generated_code, enrich_alert_with_memory,
+        check_semantic_dedup_activity, store_fingerprint_activity
     )
     from entity_graph import extract_entities, write_entity_graph, embed_investigation
     from intelligence.blast_radius import compute_blast_radius
@@ -110,6 +111,21 @@ class ExecuteTaskWorkflow:
             },
             schedule_to_close_timeout=timedelta(seconds=10)
         )
+
+        # --- SEMANTIC DEDUP CHECK (Stage 3) ---
+        siem_event = task_data.get("input", {}).get("siem_event", {})
+        if siem_event:
+            try:
+                dedup_result = await workflow.execute_activity(
+                    check_semantic_dedup_activity,
+                    {**siem_event, "task_type": task_type},
+                    schedule_to_close_timeout=timedelta(seconds=10),
+                )
+                if dedup_result.get("match"):
+                    workflow.logger.info(f"Semantic dedup: similar investigation {dedup_result['match']}")
+                    # Don't block — just log. Could return existing result in future.
+            except Exception as e:
+                workflow.logger.info(f"Semantic dedup check failed non-fatally: {e}")
 
         # --- SKILLS RAG RETRIEVAL ---
         skill_used_id = None

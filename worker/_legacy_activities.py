@@ -72,6 +72,38 @@ def _sync_commit(cur):
 
 
 @activity.defn
+async def check_semantic_dedup_activity(alert: dict) -> dict:
+    """Check if a semantically similar investigation already exists."""
+    try:
+        from dedup.stage3_semantic import check_semantic_dedup, store_fingerprint
+        conn = get_db_connection()
+        try:
+            match = check_semantic_dedup(alert, conn)
+            return {"match": match, "action": "similar" if match else "new"}
+        finally:
+            _return_connection(conn)
+    except Exception as e:
+        print(f"Semantic dedup failed non-fatally: {e}")
+        return {"match": None, "action": "new"}
+
+
+@activity.defn
+async def store_fingerprint_activity(data: dict) -> dict:
+    """Store investigation fingerprint after successful completion."""
+    try:
+        from dedup.stage3_semantic import store_fingerprint
+        conn = get_db_connection()
+        try:
+            store_fingerprint(data["alert"], data["task_id"], conn)
+            return {"stored": True}
+        finally:
+            _return_connection(conn)
+    except Exception as e:
+        print(f"Store fingerprint failed non-fatally: {e}")
+        return {"stored": False}
+
+
+@activity.defn
 async def fetch_task(task_id: str) -> dict:
     conn = get_db_connection()
     try:

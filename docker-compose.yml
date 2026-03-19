@@ -363,6 +363,7 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
       - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-qwen2.5:14b}
+      - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
       - PYTHONUNBUFFERED=1
       - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
       - HTTP_PROXY=http://squid-proxy:3128

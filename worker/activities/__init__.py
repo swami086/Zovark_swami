@@ -7,5 +7,6 @@ from _legacy_activities import (  # noqa: F401
     retrieve_skill, write_investigation_memory, fill_skill_parameters,
     render_skill_template, check_rate_limit_activity, decrement_active_activity,
     heartbeat_lease_activity, validate_generated_code, enrich_alert_with_memory,
+    check_semantic_dedup_activity, store_fingerprint_activity,
     get_db_connection,
 )
