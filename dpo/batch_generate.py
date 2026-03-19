@@ -25,14 +25,21 @@ OUTPUT_PATH = Path("dpo/chosen_examples.jsonl")
 PROGRESS_PATH = Path("dpo/batch_progress.json")
 
 SYSTEM_PROMPT = (
-    "You are a senior security analyst. Generate a SHORT, self-contained Python script that: "
-    "1. Embeds the SIEM alert data as a string variable. "
-    "2. Uses regex to extract ALL IOCs: IP addresses, usernames, hostnames, file hashes (MD5/SHA), file paths, domains, email addresses. "
-    "3. Analyzes the events for security findings. "
-    "4. Prints valid JSON to stdout with keys: findings (array of {title, details}), "
-    "iocs (array of {type, value, confidence}), risk_score (int 0-100), recommendations (array of strings). "
-    "IOC types: ipv4, username, hostname, hash_md5, file_path, domain, email. "
-    "Use ONLY Python stdlib. Keep it under 80 lines. No input(), no subprocess, no network, no file reads."
+    "You are a security analyst writing Python investigation scripts.\n\n"
+    "RULES — follow exactly:\n"
+    "1. Embed the SIEM alert data as a Python DICTIONARY LITERAL assigned to a variable.\n"
+    "   NEVER use json.loads() to parse the alert data.\n"
+    "   CORRECT:   alert = {'source_ip': '10.0.0.50', 'raw_log': 'EventID=4624...'}\n"
+    "   WRONG:     alert = json.loads('{\"source_ip\": \"10.0.0.50\"}')\n"
+    "2. Assign raw_log = alert['raw_log'] then use regex (re module) to extract IOCs from it.\n"
+    "3. Extract ALL of: IP addresses, hostnames, usernames, file hashes, file paths, domains.\n"
+    "4. Print ONLY valid JSON to stdout using json.dumps() with keys:\n"
+    "   findings (array of {title, details}), iocs (array of {type, value, confidence}),\n"
+    "   risk_score (int 0-100), recommendations (array of strings).\n"
+    "   IOC types: ipv4, hostname, username, hash_md5, file_path, domain, email.\n"
+    "5. Use ONLY stdlib (re, json, collections). No os, sys, subprocess, socket, requests.\n"
+    "6. No input(), no network calls, no file I/O.\n"
+    "7. Keep it SHORT — under 80 lines."
 )
 
 # Simplified AST prefilter check
@@ -120,9 +127,32 @@ def score_iocs(found_iocs, expected):
     return hits, len(expected)
 
 
+def fix_json_loads_bug(code, alert):
+    """Replace json.loads() on alert data with dict literal access."""
+    if 'json.loads(' not in code:
+        return code
+    # Wrap all json.loads calls in try/except as safety net
+    lines = code.split('\n')
+    fixed = []
+    for line in lines:
+        if 'json.loads(' in line and '=' in line.split('json.loads')[0]:
+            # This line assigns json.loads result to a variable — wrap in try/except
+            indent = len(line) - len(line.lstrip())
+            pad = ' ' * indent
+            fixed.append(f"{pad}try:")
+            fixed.append(f"{pad}    {line.lstrip()}")
+            fixed.append(f"{pad}except (json.JSONDecodeError, ValueError):")
+            # Provide the alert as a fallback dict
+            raw_log = alert.get('raw_log', '').replace("'", "\\'").replace('\n', '\\n')
+            fixed.append(f"{pad}    alert_data = {{'raw_log': '{raw_log}', 'source_ip': '{alert.get('source_ip','')}', 'hostname': '{alert.get('hostname','')}', 'username': '{alert.get('username','')}'}}")
+        else:
+            fixed.append(line)
+    return '\n'.join(fixed)
+
+
 def process_alert(alert):
     """Generate and validate code for one alert."""
-    siem_json = json.dumps({
+    alert_dict = {
         "title": alert["title"],
         "source_ip": alert["source_ip"],
         "destination_ip": alert["destination_ip"],
@@ -130,9 +160,16 @@ def process_alert(alert):
         "username": alert["username"],
         "rule_name": alert["rule_name"],
         "raw_log": alert["raw_log"],
-    }, indent=2)
+    }
 
-    user_msg = f"SIEM ALERT:\n{siem_json}\n\nAnalyze this {alert['category']} incident. Extract ALL IOCs. Output JSON."
+    # Pass alert as Python dict literal so model copies it directly
+    user_msg = (
+        f"SIEM ALERT (embed as Python dict literal, do NOT use json.loads):\n"
+        f"alert = {repr(alert_dict)}\n\n"
+        f"raw_log = alert['raw_log']\n\n"
+        f"Write a Python script that extracts ALL IOCs from raw_log using regex.\n"
+        f"Analyze this {alert['category']} incident. Output JSON."
+    )
 
     # Call LLM
     content, elapsed, usage = call_llm(SYSTEM_PROMPT, user_msg)
@@ -142,6 +179,7 @@ def process_alert(alert):
     # Extract and clean code
     code = extract_code(content)
     code = strip_special_tokens(code)
+    code = fix_json_loads_bug(code, alert)
 
     # Safety check
     safe, reason = is_safe_code(code)
@@ -190,8 +228,21 @@ def process_alert(alert):
 
 
 def main():
-    max_alerts = int(os.environ.get("MAX_ALERTS", "25"))
-    resume = os.environ.get("RESUME", "1") == "1"
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--limit", type=int, default=int(os.environ.get("MAX_ALERTS", "25")))
+    parser.add_argument("--force-redo", action="store_true", help="Clear progress and redo all")
+    parser.add_argument("--resume", action="store_true", default=os.environ.get("RESUME", "1") == "1")
+    args = parser.parse_args()
+
+    max_alerts = args.limit
+    resume = args.resume and not args.force_redo
+    if args.force_redo:
+        # Clear progress and output
+        if PROGRESS_PATH.exists():
+            PROGRESS_PATH.unlink()
+        if OUTPUT_PATH.exists():
+            OUTPUT_PATH.unlink()
 
     # Load corpus
     with open(CORPUS_PATH) as f:
