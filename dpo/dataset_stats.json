@@ -1,0 +1,21 @@
+{
+  "total_pairs": 5,
+  "sources": {
+    "dpo/path_b_pairs.jsonl": 3,
+    "dpo/rejected_examples.jsonl": 2
+  },
+  "by_category": {
+    "manual": 3,
+    "brute_force": 2
+  },
+  "by_degradation": {
+    "manual": 3,
+    "remove_iocs": 1,
+    "fake_values": 1
+  },
+  "quality_scores": {
+    "mean": 4.2,
+    "min": 4.0,
+    "max": 4.5
+  }
+}
