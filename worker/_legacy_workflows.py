@@ -3,6 +3,8 @@ from datetime import timedelta
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    import os
+    _DEDUP_ENABLED = os.environ.get('DEDUP_ENABLED', 'true').lower() == 'true'
     from activities import (
         fetch_task, generate_code, validate_code, execute_code,
         update_task_status, log_audit, log_audit_event, record_usage,
@@ -11,7 +13,8 @@ with workflow.unsafe.imports_passed_through():
         retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template,
         check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity,
         validate_generated_code, enrich_alert_with_memory,
-        check_semantic_dedup_activity, store_fingerprint_activity
+        check_semantic_dedup_activity, store_fingerprint_activity,
+        check_exact_dedup_activity, check_correlation_activity, register_dedup_activity
     )
     from entity_graph import extract_entities, write_entity_graph, embed_investigation
     from intelligence.blast_radius import compute_blast_radius
@@ -112,20 +115,88 @@ class ExecuteTaskWorkflow:
             schedule_to_close_timeout=timedelta(seconds=10)
         )
 
-        # --- SEMANTIC DEDUP CHECK (Stage 3) ---
+        # --- DEDUP PIPELINE (3 stages) ---
         siem_event = task_data.get("input", {}).get("siem_event", {})
-        if siem_event:
+        alert_for_dedup = {**siem_event, "task_type": task_type} if siem_event else {}
+
+        if alert_for_dedup and _DEDUP_ENABLED:
+            # Stage 1: Exact dedup (< 1ms)
             try:
-                dedup_result = await workflow.execute_activity(
-                    check_semantic_dedup_activity,
-                    {**siem_event, "task_type": task_type},
-                    schedule_to_close_timeout=timedelta(seconds=10),
+                exact_result = await workflow.execute_activity(
+                    check_exact_dedup_activity,
+                    alert_for_dedup,
+                    start_to_close_timeout=timedelta(seconds=5),
                 )
-                if dedup_result.get("match"):
-                    workflow.logger.info(f"Semantic dedup: similar investigation {dedup_result['match']}")
-                    # Don't block — just log. Could return existing result in future.
+                if exact_result.get("match"):
+                    workflow.logger.info(
+                        f"DEDUP Stage1 exact: suppressing, existing={exact_result['match']}"
+                    )
+                    await workflow.execute_activity(
+                        update_task_status,
+                        {"task_id": task_id, "status": "deduplicated",
+                         "existing_task_id": exact_result["match"],
+                         "dedup_reason": "exact_duplicate"},
+                        start_to_close_timeout=timedelta(seconds=10),
+                    )
+                    return
             except Exception as e:
-                workflow.logger.info(f"Semantic dedup check failed non-fatally: {e}")
+                workflow.logger.info(f"Stage 1 dedup error (non-fatal): {e}")
+
+            # Stage 2: Correlation window (< 5ms)
+            try:
+                corr_result = await workflow.execute_activity(
+                    check_correlation_activity,
+                    alert_for_dedup,
+                    start_to_close_timeout=timedelta(seconds=5),
+                )
+                if corr_result.get("match"):
+                    workflow.logger.info(
+                        f"DEDUP Stage2 correlated: merging into {corr_result['match']}"
+                    )
+                    await workflow.execute_activity(
+                        update_task_status,
+                        {"task_id": task_id, "status": "deduplicated",
+                         "existing_task_id": corr_result["match"],
+                         "dedup_reason": "correlated_campaign"},
+                        start_to_close_timeout=timedelta(seconds=10),
+                    )
+                    return
+            except Exception as e:
+                workflow.logger.info(f"Stage 2 dedup error (non-fatal): {e}")
+
+            # Stage 3: Semantic fingerprint (~50ms)
+            try:
+                semantic_result = await workflow.execute_activity(
+                    check_semantic_dedup_activity,
+                    alert_for_dedup,
+                    start_to_close_timeout=timedelta(seconds=15),
+                )
+                if semantic_result.get("match"):
+                    workflow.logger.info(
+                        f"DEDUP Stage3 semantic: routing to {semantic_result['match']}"
+                    )
+                    await workflow.execute_activity(
+                        update_task_status,
+                        {"task_id": task_id, "status": "deduplicated",
+                         "existing_task_id": semantic_result["match"],
+                         "dedup_reason": "semantic_match"},
+                        start_to_close_timeout=timedelta(seconds=10),
+                    )
+                    return
+            except Exception as e:
+                workflow.logger.info(f"Stage 3 dedup error (non-fatal): {e}")
+
+        # --- All dedup stages passed: novel alert ---
+        # Register in dedup layers BEFORE starting investigation
+        if alert_for_dedup:
+            try:
+                await workflow.execute_activity(
+                    register_dedup_activity,
+                    {"alert": alert_for_dedup, "task_id": task_id},
+                    start_to_close_timeout=timedelta(seconds=10),
+                )
+            except Exception as e:
+                workflow.logger.info(f"Register dedup error (non-fatal): {e}")
 
         # --- SKILLS RAG RETRIEVAL ---
         skill_used_id = None

@@ -104,6 +104,61 @@ async def store_fingerprint_activity(data: dict) -> dict:
 
 
 @activity.defn
+async def check_exact_dedup_activity(alert: dict) -> dict:
+    """Stage 1: Exact hash dedup via Redis."""
+    try:
+        import os
+        if os.environ.get('DEDUP_ENABLED', 'true').lower() != 'true':
+            return {"match": None, "action": "new"}
+        from dedup.stage1_exact import check_exact_dedup
+        import redis
+        r = redis.from_url(os.environ.get('REDIS_URL', 'redis://redis:6379/0'))
+        match = check_exact_dedup(alert, r)
+        return {"match": match, "action": "duplicate" if match else "new"}
+    except Exception as e:
+        print(f"Exact dedup failed non-fatally: {e}")
+        return {"match": None, "action": "new"}
+
+
+@activity.defn
+async def check_correlation_activity(alert: dict) -> dict:
+    """Stage 2: Rule correlation sliding window via Redis."""
+    try:
+        import os
+        if os.environ.get('DEDUP_ENABLED', 'true').lower() != 'true':
+            return {"match": None, "action": "new"}
+        from dedup.stage2_correlate import check_correlation, merge_alert
+        import redis
+        r = redis.from_url(os.environ.get('REDIS_URL', 'redis://redis:6379/0'))
+        task_id, count = check_correlation(alert, r)
+        if task_id:
+            merge_alert(alert, task_id, r)
+            return {"match": task_id, "action": "correlated", "count": count}
+        return {"match": None, "action": "new"}
+    except Exception as e:
+        print(f"Correlation dedup failed non-fatally: {e}")
+        return {"match": None, "action": "new"}
+
+
+@activity.defn
+async def register_dedup_activity(data: dict) -> dict:
+    """Register alert in all dedup layers after spawning new investigation."""
+    try:
+        import os, redis
+        alert = data["alert"]
+        task_id = data["task_id"]
+        r = redis.from_url(os.environ.get('REDIS_URL', 'redis://redis:6379/0'))
+        from dedup.stage1_exact import register_alert
+        from dedup.stage2_correlate import register_correlation
+        register_alert(alert, task_id, r)
+        register_correlation(alert, task_id, r)
+        return {"registered": True}
+    except Exception as e:
+        print(f"Register dedup failed non-fatally: {e}")
+        return {"registered": False}
+
+
+@activity.defn
 async def fetch_task(task_id: str) -> dict:
     conn = get_db_connection()
     try:
@@ -406,27 +461,42 @@ async def update_task_status(task_update: dict) -> None:
 
     try:
         with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE agent_tasks
-                SET status = %s, output = %s, error_message = %s,
-                    tokens_used_input = %s, tokens_used_output = %s, execution_ms = %s,
-                    severity = %s, worker_id = COALESCE(%s, worker_id),
-                    needs_human_review = %s, review_reason = %s,
-                    completed_at = NOW()
-                WHERE id = %s
-            """, (
-                task_update["status"],
-                json.dumps(task_update.get("output", {})),
-                task_update.get("error_message", None),
-                task_update.get("tokens_input", 0),
-                task_update.get("tokens_output", 0),
-                task_update.get("execution_ms", 0),
-                task_update.get("severity", None),
-                worker_id,
-                needs_review,
-                review_reason,
-                task_update["task_id"]
-            ))
+            if task_update["status"] == "deduplicated":
+                # Fast path for dedup — only update status + dedup metadata
+                cur.execute("""
+                    UPDATE agent_tasks
+                    SET status = %s, dedup_reason = %s, existing_task_id = %s,
+                        worker_id = COALESCE(%s, worker_id), completed_at = NOW()
+                    WHERE id = %s
+                """, (
+                    task_update["status"],
+                    task_update.get("dedup_reason"),
+                    task_update.get("existing_task_id"),
+                    worker_id,
+                    task_update["task_id"]
+                ))
+            else:
+                cur.execute("""
+                    UPDATE agent_tasks
+                    SET status = %s, output = %s, error_message = %s,
+                        tokens_used_input = %s, tokens_used_output = %s, execution_ms = %s,
+                        severity = %s, worker_id = COALESCE(%s, worker_id),
+                        needs_human_review = %s, review_reason = %s,
+                        completed_at = NOW()
+                    WHERE id = %s
+                """, (
+                    task_update["status"],
+                    json.dumps(task_update.get("output", {})),
+                    task_update.get("error_message", None),
+                    task_update.get("tokens_input", 0),
+                    task_update.get("tokens_output", 0),
+                    task_update.get("execution_ms", 0),
+                    task_update.get("severity", None),
+                    worker_id,
+                    needs_review,
+                    review_reason,
+                    task_update["task_id"]
+                ))
         conn.commit()
     finally:
         _return_connection(conn)

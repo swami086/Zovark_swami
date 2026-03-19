@@ -11,7 +11,7 @@ from workflows.hydra_workflows import (
     ZeekIngestionWorkflow, DeepLogAnalysisWorkflow,
     SandboxAnalysisWorkflow, InvestigationEnrichmentWorkflow,
 )
-from activities import fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, validate_generated_code, enrich_alert_with_memory, check_semantic_dedup_activity, store_fingerprint_activity
+from activities import fetch_task, generate_code, validate_code, execute_code, update_task_status, log_audit, log_audit_event, record_usage, save_investigation_step, check_followup_needed, generate_followup_code, check_requires_approval, create_approval_request, update_approval_request, retrieve_skill, write_investigation_memory, fill_skill_parameters, render_skill_template, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, validate_generated_code, enrich_alert_with_memory, check_semantic_dedup_activity, store_fingerprint_activity, check_exact_dedup_activity, check_correlation_activity, register_dedup_activity
 from entity_graph import extract_entities, write_entity_graph, embed_investigation
 from bootstrap.activities import load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques
 from bootstrap.workflow import BootstrapCorpusWorkflow
@@ -139,6 +139,7 @@ async def main():
             render_skill_template, check_rate_limit_activity, decrement_active_activity,
             heartbeat_lease_activity, validate_generated_code, enrich_alert_with_memory,
             check_semantic_dedup_activity, store_fingerprint_activity,
+            check_exact_dedup_activity, check_correlation_activity, register_dedup_activity,
             # Entity graph
             extract_entities, write_entity_graph, embed_investigation,
             # Bootstrap corpus
