@@ -8,3 +8,5 @@ data/
 .claude/worktrees/
 unsloth_compiled_cache/
 security-fixes/
+models/hydra-merged/
+*.gguf
