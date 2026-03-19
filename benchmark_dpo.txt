@@ -1,0 +1,44 @@
+=== HYDRA Benchmark: http://host.docker.internal:11434/v1/chat/completions ===
+Model: Qwen2.5-14B-Instruct Q4_K_M (llama-server)
+Investigations: 7
+
+[1/7] SSH Brute Force...
+  Code: OK | Findings: 1 | IOCs: 3/3 | Risk: 85 | Time: 190.1s
+[2/7] Lateral Movement PtH...
+  Exec error: Traceback (most recent call last):
+  File "<string>", line 29, in <module>
+AttributeError: 'NoneType
+  FAILED | Time: 199.9s
+[3/7] C2 Beaconing...
+  Code: OK | Findings: 1 | IOCs: 3/3 | Risk: 85 | Time: 246.3s
+[4/7] Ransomware Encryption...
+  Exec error:   File "<string>", line 1
+    ```python
+    ^
+SyntaxError: invalid syntax
+
+  FAILED | Time: 245.5s
+[5/7] Phishing Email...
+  Code: OK | Findings: 1 | IOCs: 3/3 | Risk: 85 | Time: 212.9s
+[6/7] Data Exfiltration...
+  Exec error:   File "<string>", line 54
+    'iocs
+    ^
+SyntaxError: unterminated string literal (detected at lin
+  FAILED | Time: 263.2s
+[7/7] Privilege Escalation...
+  Code: OK | Findings: 1 | IOCs: 4/4 | Risk: 85 | Time: 282.3s
+
+==================================================
+BENCHMARK RESULTS
+==================================================
+Code gen:     7/7 (100%)
+Execution:    4/7 (57%)
+Findings:     4/7 (57%)
+IOC extract:  4/7 (57%)
+IOC accuracy: 13/13 (100%)
+Mean risk:    85
+Mean exec:    234.3s
+
+Baseline:     Code 100% | Findings 86% | IOC 29% | Risk 76
+Saved: benchmark_results.json
