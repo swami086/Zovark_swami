@@ -1,0 +1,38 @@
+=== PIPELINE BENCHMARK (with retry loop) ===
+Date: 2026-03-20
+Model: Qwen2.5-14B-Instruct-Q4_K_M.gguf (base, no DPO)
+Pipeline: Full Temporal workflow + PromptAssembler v2 + retry loop (max 2)
+
+  Investigation          Status     Seconds  Task ID
+  ──────────────────────────────────────────────────────────────────────────
+  1. SSH Brute Force     completed  250s     4f66611b-b3ba-4fee-ac6f-0ee81420f65a
+  2. Lateral Movement    completed  344s     5e95d6f8-51ec-4718-9638-80acc6beaba2
+  3. C2 Beaconing        completed  493s     63bc1f4d-7098-4844-b374-9c7177d793c8
+  4. Ransomware          completed  613s     543bb4ac-9109-4943-8d41-e1b85098a20a
+  5. Phishing            completed  792s     18440c09-7ab6-4cda-bc04-909334fe6757
+  6. Data Exfiltration   completed   43s     61d24a10-11e4-4ebb-9301-38745ff1e221
+  7. Priv Escalation     completed  342s     6f644712-adc8-4971-b4fd-2550773ef4ed
+  ──────────────────────────────────────────────────────────────────────────
+
+  Execution rate:  7/7  (100%)
+  Retries used:    0/7  (no failures needed retrying)
+  Mean execution:  411s (6.8 min)
+
+=== COMPARISON ===
+
+  Metric           Benchmark (direct API)    Pipeline (Temporal)    Delta
+  ────────────────────────────────────────────────────────────────────────
+  Code gen         7/7  (100%)               7/7  (100%)            same
+  Execution        4/7  (57%)                7/7  (100%)            +43%
+  Mean exec        369s                      411s                   +42s
+  ────────────────────────────────────────────────────────────────────────
+
+  Why pipeline wins:
+  - PromptAssembler v2 with structured IOC patterns and specialist personas
+  - Skill RAG retrieval (matched brute-force-investigation skill)
+  - SIEM event sanitization + data wrapping (randomized delimiters)
+  - Full system prompt with sandbox constraints
+  - Retry loop available (not triggered - first attempts all succeeded)
+
+  The benchmark script simplified prompt caused 3/7 failures (NameError, SyntaxError).
+  The full pipeline prompt engineering prevents those failures entirely.
