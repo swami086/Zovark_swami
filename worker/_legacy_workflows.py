@@ -495,7 +495,7 @@ If something has worked in past investigations for this threat type, apply those
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
 
-            # --- PREFLIGHT VALIDATION (<100ms, catches errors before sandbox) ---
+            # --- PREFLIGHT VALIDATION (<100ms, auto-fix only, NO LLM calls) ---
             try:
                 preflight = await workflow.execute_activity(
                     preflight_validate_code,
@@ -506,27 +506,8 @@ If something has worked in past investigations for this threat type, apply those
                     workflow.logger.info(f"PREFLIGHT auto-fixed: {preflight['fixes_applied']}")
                     code = preflight["cleaned_code"]
                 if not preflight.get("valid", True):
-                    workflow.logger.info(f"PREFLIGHT failed: {preflight['error']} — triggering LLM retry")
-                    # Feed preflight error to generate_code retry (skip sandbox entirely)
-                    preflight_retry_data = dict(task_data)
-                    if "input" not in preflight_retry_data:
-                        preflight_retry_data["input"] = {}
-                    preflight_retry_data["input"]["validation_feedback"] = (
-                        f"Your code has an error caught before execution:\n"
-                        f"{preflight['error']}\n\n"
-                        f"BROKEN CODE:\n{code[:2000]}\n\n"
-                        f"FIX: Self-contained, no markdown fences, define all variables, "
-                        f"print JSON via json.dumps(), use only stdlib."
-                    )
-                    retry_gen = await workflow.execute_activity(
-                        generate_code,
-                        preflight_retry_data,
-                        schedule_to_close_timeout=timedelta(minutes=15),
-                    )
-                    code = retry_gen["code"]
-                    total_tokens_input += retry_gen["usage"].get("prompt_tokens", 0)
-                    total_tokens_output += retry_gen["usage"].get("completion_tokens", 0)
-                    workflow.logger.info("PREFLIGHT retry: regenerated code")
+                    # Log but don't retry here — let sandbox + retry loop handle it
+                    workflow.logger.info(f"PREFLIGHT warning: {preflight['error']}")
             except Exception as pf_err:
                 workflow.logger.info(f"PREFLIGHT error (non-fatal): {pf_err}")
 

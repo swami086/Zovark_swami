@@ -359,8 +359,7 @@ class MockRequests:
     @staticmethod
     def post(*args, **kwargs): return MockResponse({"status": "success"})
 
-import sys
-sys.modules['requests'] = MockRequests()
+requests = MockRequests()
 """
     code = mock_requests + "\n" + code
 
@@ -808,8 +807,7 @@ class MockRequests:
     @staticmethod
     def post(*args, **kwargs): return MockResponse({"status": "success"})
 
-import sys
-sys.modules['requests'] = MockRequests()
+requests = MockRequests()
 """
     code = mock_requests + "\n" + code
 
