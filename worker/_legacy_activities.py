@@ -1001,19 +1001,49 @@ async def fill_skill_parameters(data: dict) -> dict:
     import json
     import os
     import httpx
-
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
-    tier_config = get_tier_config("fill_skill_parameters")
-    model_name = tier_config["model"]
-
     import time
+
     start_time = time.time()
 
     skill_params = data.get("skill_params", [])
     prompt = data.get("prompt", "")
     log_data = data.get("log_data", "")
     siem_event = data.get("siem_event", {})
+
+    # --- FAST FILL: bypass LLM for stress testing ---
+    if os.environ.get('HYDRA_FAST_FILL', '') == 'true':
+        defaults = {p["name"]: p.get("default") for p in skill_params}
+        filled = dict(defaults)
+        if siem_event:
+            field_map = {
+                "log_data": siem_event.get("raw_log", ""),
+                "raw_log": siem_event.get("raw_log", ""),
+                "source_ip": siem_event.get("source_ip", "10.0.0.1"),
+                "src_ip": siem_event.get("source_ip", "10.0.0.1"),
+                "destination_ip": siem_event.get("destination_ip", "10.0.0.2"),
+                "dst_ip": siem_event.get("destination_ip", "10.0.0.2"),
+                "hostname": siem_event.get("hostname", "UNKNOWN-HOST"),
+                "username": siem_event.get("username", "unknown_user"),
+                "rule_name": siem_event.get("rule_name", ""),
+                "title": siem_event.get("title", ""),
+            }
+            for k in filled:
+                if k in field_map and field_map[k]:
+                    filled[k] = field_map[k]
+                elif k in siem_event:
+                    filled[k] = siem_event[k]
+            if "log_data" in filled and not filled["log_data"] and siem_event.get("raw_log"):
+                filled["log_data"] = siem_event["raw_log"]
+        return {
+            "filled_parameters": filled,
+            "execution_ms": int((time.time() - start_time) * 1000),
+            "input_tokens": 0, "output_tokens": 0,
+        }
+
+    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
+    tier_config = get_tier_config("fill_skill_parameters")
+    model_name = tier_config["model"]
 
     # Sanitize SIEM event before embedding or passing to LLM (prevents memory poisoning)
     if siem_event:
@@ -1264,6 +1294,25 @@ async def write_investigation_memory(memory_data: dict) -> None:
         iocs = final_output.get("key_iocs", {})
         risk_score = final_output.get("risk_score", 0)
         recommended = final_output.get("recommendations", [])
+
+        # --- FAST FILL: skip LLM summarization for stress testing ---
+        if os.environ.get('HYDRA_FAST_FILL', '') == 'true':
+            memory_summary = f"Investigated {threat_type}. Found {len(findings)} findings. Risk {risk_score}."
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO investigation_memories (tenant_id, task_id, skill_used_id, threat_type, memory_summary, key_findings, key_iocs, risk_score)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT DO NOTHING
+                    """, (tenant_id, task_id, skill_used_id, threat_type, memory_summary,
+                          json.dumps(findings), json.dumps(iocs), risk_score))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+            finally:
+                _return_connection(conn)
+            return
 
         # Build synthesis prompt
         summary_prompt = (

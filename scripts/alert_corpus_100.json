@@ -1,0 +1,1402 @@
+[
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "C2 Beacon #6",
+      "source_ip": "10.0.0.80",
+      "destination_ip": "21.1.170.198",
+      "hostname": "WS-017",
+      "username": "db_admin",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: data-exfil.net from 10.0.0.199\nHTTP POST http://123.218.4.29/beacon interval=30s size=835b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "Lateral Movement #6",
+      "source_ip": "10.0.0.41",
+      "destination_ip": "10.0.0.212",
+      "hostname": "WS-025",
+      "username": "temp_user",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.67 TargetHost=WS-018 TargetIP=10.0.0.227 User=mwilson NTLM_hash=6d26a3ca80f0366b113590489063dfce Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #6",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Data Exfil #6",
+      "source_ip": "10.0.0.63",
+      "destination_ip": "147.112.249.57",
+      "hostname": "WS-035",
+      "username": "alice",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.72 -> 17.199.172.172 size=7.0GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-52\nUser=mwilson elevated=true"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "Ransomware #6",
+      "source_ip": "10.0.0.82",
+      "destination_ip": "10.0.0.161",
+      "hostname": "WS-015",
+      "username": "jsmith",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_411.docx -> report_504.docx.locked\nFileRename: data_76.xlsx -> data_591.xlsx.locked\nProcess=cryptor.exe MD5=f83f109db48d33d01af4f4bf3f67242a\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #1",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Phishing #1",
+      "source_ip": "192.168.1.111",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "rthompson@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@malware.co To: scada_svc@corp.local Subject: Account Suspended\nURL: http://phish.evil.com/steal-creds\nAttachment: invoice.exe MD5=6e3d478f2efd0234a6a3a0719fa03460"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #2",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #2",
+      "source_ip": "10.0.0.65",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-028",
+      "username": "temp_user",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=jsmith\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.59\nNew service created: svc_690 path=C:/Windows/Temp/f6bc68ff.exe"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #5",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #5",
+      "source_ip": "10.0.0.48",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-015",
+      "username": "db_admin",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=alice\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.51\nNew service created: svc_512 path=C:/Windows/Temp/67d77397.exe"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "C2 Beacon #2",
+      "source_ip": "10.0.0.158",
+      "destination_ip": "162.20.41.108",
+      "hostname": "SRV-035",
+      "username": "scada_svc",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: c2-beacon.io from 10.0.0.76\nHTTP POST http://62.160.122.68/beacon interval=60s size=262b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #7",
+    "severity": "high",
+    "siem_event": {
+      "title": "Ransomware #7",
+      "source_ip": "10.0.0.69",
+      "destination_ip": "10.0.0.119",
+      "hostname": "SRV-023",
+      "username": "db_admin",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_88.docx -> report_255.docx.locked\nFileRename: data_122.xlsx -> data_572.xlsx.locked\nProcess=cryptor.exe MD5=3966939499284f161a84979302c61d6b\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #4",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Insider Threat #4",
+      "source_ip": "10.0.0.92",
+      "destination_ip": "10.0.0.209",
+      "hostname": "WS-035",
+      "username": "mwilson",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=jsmith SourceIP=10.0.0.17 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=439\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #8",
+    "severity": "critical",
+    "siem_event": {
+      "title": "DNS Beacon #8",
+      "source_ip": "10.0.0.33",
+      "destination_ip": "179.108.10.13",
+      "hostname": "WS-043",
+      "username": "rthompson",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: 48ea10cd7549c695.phish.evil.com from 10.0.0.27\nDNS query: 4ea590afa041f295.phish.evil.com from 10.0.0.160\nDNS query: 9922c34ffce30ed3.phish.evil.com from 10.0.0.94\nDNS query: 04950481dbc037a1.evil-c2.xyz from 10.0.0.80\nDNS query: 4bc344366cc9c18f.data-exfil.net from 10.0.0.43"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Supply Chain #2",
+      "source_ip": "10.0.0.42",
+      "destination_ip": "92.59.206.222",
+      "hostname": "SRV-016",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/0005fac6d621.dll\nOutbound: 10.236.211.14:443 SNI=phish.evil.com\nCert: CN=*.c2-beacon.io Serial=f3fcc7f19dd62332"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #9",
+    "severity": "high",
+    "siem_event": {
+      "title": "C2 Beacon #9",
+      "source_ip": "10.0.0.78",
+      "destination_ip": "50.55.195.224",
+      "hostname": "WS-005",
+      "username": "bob.jones",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: phish.evil.com from 10.0.0.61\nHTTP POST http://127.179.156.211/beacon interval=30s size=356b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #8",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #8",
+      "source_ip": "10.0.0.66",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-007",
+      "username": "rthompson",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=temp_user\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.70\nNew service created: svc_912 path=C:/Windows/Temp/c227d111.exe"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #9",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Insider Threat #9",
+      "source_ip": "10.0.0.83",
+      "destination_ip": "10.0.0.202",
+      "hostname": "SRV-048",
+      "username": "mwilson",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=bob.jones SourceIP=10.0.0.76 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=1434\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #4",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #4",
+      "source_ip": "10.0.0.56",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-006",
+      "username": "jsmith",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=svc_backup\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.89\nNew service created: svc_421 path=C:/Windows/Temp/392b8e11.exe"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #1",
+    "severity": "high",
+    "siem_event": {
+      "title": "C2 Beacon #1",
+      "source_ip": "10.0.0.24",
+      "destination_ip": "22.244.80.15",
+      "hostname": "SRV-016",
+      "username": "jsmith",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: data-exfil.net from 10.0.0.27\nHTTP POST http://162.34.120.104/beacon interval=30s size=711b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #3",
+    "severity": "high",
+    "siem_event": {
+      "title": "SSH Brute Force #3",
+      "source_ip": "164.135.22.187",
+      "destination_ip": "10.0.0.30",
+      "hostname": "SRV-019",
+      "username": "admin",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[7201]: Failed password for admin from 151.150.185.148 port 13625 ssh2\nsshd[7201]: Failed password for admin from 151.150.185.148 port 13625 ssh2\nsshd[7201]: Failed password for admin from 151.150.185.148 port 13625 ssh2\nsshd[2139]: Accepted password for admin from 21.116.148.253 port 6253 ssh2"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #8",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Ransomware #8",
+      "source_ip": "10.0.0.149",
+      "destination_ip": "10.0.0.166",
+      "hostname": "WS-049",
+      "username": "bob.jones",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_931.docx -> report_454.docx.locked\nFileRename: data_305.xlsx -> data_881.xlsx.locked\nProcess=cryptor.exe MD5=7def709d9684b9b3f0f704ee8bfa536a\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "Supply Chain #6",
+      "source_ip": "10.0.0.10",
+      "destination_ip": "82.152.250.222",
+      "hostname": "WS-020",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/8c438cbb16b8.dll\nOutbound: 133.176.170.142:443 SNI=steal-creds.com\nCert: CN=*.update.evil.net Serial=3f984446540e6866"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #5",
+    "severity": "critical",
+    "siem_event": {
+      "title": "SSH Brute Force #5",
+      "source_ip": "173.112.166.216",
+      "destination_ip": "10.0.0.50",
+      "hostname": "SRV-050",
+      "username": "admin",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[4752]: Failed password for admin from 90.205.137.17 port 14850 ssh2\nsshd[4752]: Failed password for admin from 90.205.137.17 port 14850 ssh2\nsshd[4752]: Failed password for admin from 90.205.137.17 port 14850 ssh2\nsshd[6155]: Accepted password for admin from 64.255.202.227 port 60959 ssh2"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #7",
+    "severity": "high",
+    "siem_event": {
+      "title": "Supply Chain #7",
+      "source_ip": "10.0.0.99",
+      "destination_ip": "71.196.119.220",
+      "hostname": "SRV-050",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/c977c2eb4a19.dll\nOutbound: 91.242.195.99:443 SNI=data-exfil.net\nCert: CN=*.update.evil.net Serial=42f3f86e9a19bae6"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #5",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Supply Chain #5",
+      "source_ip": "10.0.0.70",
+      "destination_ip": "72.233.74.99",
+      "hostname": "WS-025",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/1d29f9235b05.dll\nOutbound: 140.69.35.71:443 SNI=steal-creds.com\nCert: CN=*.c2-beacon.io Serial=09d676939e206b67"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #10",
+    "severity": "high",
+    "siem_event": {
+      "title": "Ransomware #10",
+      "source_ip": "10.0.0.130",
+      "destination_ip": "10.0.0.127",
+      "hostname": "WS-034",
+      "username": "jsmith",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_161.docx -> report_246.docx.locked\nFileRename: data_178.xlsx -> data_566.xlsx.locked\nProcess=cryptor.exe MD5=4f033e61c632ead8a98c335acc81bbbb\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #1",
+    "severity": "high",
+    "siem_event": {
+      "title": "DNS Beacon #1",
+      "source_ip": "10.0.0.85",
+      "destination_ip": "101.191.220.38",
+      "hostname": "WS-032",
+      "username": "temp_user",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: bce50357369d6ff8.data-exfil.net from 10.0.0.53\nDNS query: 606df8f87800350a.steal-creds.com from 10.0.0.168\nDNS query: 8c9800e636d49464.update.evil.net from 10.0.0.159\nDNS query: 459e15948ebe4178.update.evil.net from 10.0.0.173\nDNS query: 51f5e37939b1159d.bad-dns.org from 10.0.0.180"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #5",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Data Exfil #5",
+      "source_ip": "10.0.0.63",
+      "destination_ip": "114.169.238.107",
+      "hostname": "WS-008",
+      "username": "rthompson",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.63 -> 109.10.194.123 size=0.6GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-46\nUser=db_admin elevated=true"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #5",
+    "severity": "critical",
+    "siem_event": {
+      "title": "C2 Beacon #5",
+      "source_ip": "10.0.0.37",
+      "destination_ip": "200.79.139.73",
+      "hostname": "SRV-028",
+      "username": "rthompson",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: c2-beacon.io from 10.0.0.62\nHTTP POST http://185.135.250.65/beacon interval=30s size=222b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #10",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #10",
+      "source_ip": "10.0.0.40",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-037",
+      "username": "db_admin",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=rthompson\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.35\nNew service created: svc_250 path=C:/Windows/Temp/5416e0d9.exe"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #3",
+    "severity": "high",
+    "siem_event": {
+      "title": "Insider Threat #3",
+      "source_ip": "10.0.0.90",
+      "destination_ip": "10.0.0.237",
+      "hostname": "SRV-035",
+      "username": "rthompson",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=alice SourceIP=10.0.0.24 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=1215\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "SSH Brute Force #6",
+      "source_ip": "46.135.71.64",
+      "destination_ip": "10.0.0.48",
+      "hostname": "SRV-022",
+      "username": "mwilson",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[5304]: Failed password for mwilson from 159.219.204.93 port 15397 ssh2\nsshd[5304]: Failed password for mwilson from 159.219.204.93 port 15397 ssh2\nsshd[5304]: Failed password for mwilson from 159.219.204.93 port 15397 ssh2\nsshd[3266]: Accepted password for admin from 140.252.46.194 port 4111 ssh2"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #1",
+    "severity": "critical",
+    "siem_event": {
+      "title": "SSH Brute Force #1",
+      "source_ip": "173.57.12.190",
+      "destination_ip": "10.0.0.18",
+      "hostname": "WS-032",
+      "username": "admin",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[3286]: Failed password for mwilson from 36.44.216.9 port 2976 ssh2\nsshd[3286]: Failed password for mwilson from 36.44.216.9 port 2976 ssh2\nsshd[3286]: Failed password for mwilson from 36.44.216.9 port 2976 ssh2\nsshd[2535]: Accepted password for admin from 65.119.13.144 port 14055 ssh2"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #3",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Supply Chain #3",
+      "source_ip": "10.0.0.90",
+      "destination_ip": "123.26.104.69",
+      "hostname": "SRV-021",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/4a0a3c662e9f.dll\nOutbound: 83.224.248.32:443 SNI=evil-c2.xyz\nCert: CN=*.phish.evil.com Serial=169042a56b635fb7"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "SSH Brute Force #2",
+      "source_ip": "66.229.142.208",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-048",
+      "username": "admin",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[7924]: Failed password for jsmith from 81.79.110.246 port 51060 ssh2\nsshd[7924]: Failed password for jsmith from 81.79.110.246 port 51060 ssh2\nsshd[7924]: Failed password for jsmith from 81.79.110.246 port 51060 ssh2\nsshd[6514]: Accepted password for admin from 36.47.194.25 port 24550 ssh2"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "DNS Beacon #2",
+      "source_ip": "10.0.0.129",
+      "destination_ip": "83.80.37.114",
+      "hostname": "WS-045",
+      "username": "scada_svc",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: a4d8316604feec68.steal-creds.com from 10.0.0.186\nDNS query: d1f514f6c41675e3.bad-dns.org from 10.0.0.60\nDNS query: 3dff9fbaba344f5d.update.evil.net from 10.0.0.37\nDNS query: 003b0ba75a581e93.c2-beacon.io from 10.0.0.157\nDNS query: 1e46697334d51ab2.bad-dns.org from 10.0.0.15"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Data Exfil #2",
+      "source_ip": "10.0.0.64",
+      "destination_ip": "66.90.237.13",
+      "hostname": "SRV-022",
+      "username": "rthompson",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.25 -> 126.68.237.171 size=5.5GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-72\nUser=scada_svc elevated=true"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #8",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Lateral Movement #8",
+      "source_ip": "10.0.0.31",
+      "destination_ip": "10.0.0.226",
+      "hostname": "SRV-013",
+      "username": "bob.jones",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.37 TargetHost=SRV-002 TargetIP=10.0.0.203 User=mwilson NTLM_hash=24e708becf23807793b6ca825bfc9515 Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Ransomware #2",
+      "source_ip": "10.0.0.74",
+      "destination_ip": "10.0.0.127",
+      "hostname": "SRV-045",
+      "username": "bob.jones",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_284.docx -> report_742.docx.locked\nFileRename: data_604.xlsx -> data_779.xlsx.locked\nProcess=cryptor.exe MD5=d657bbdf9131665ea32326612beccd42\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #4",
+    "severity": "high",
+    "siem_event": {
+      "title": "C2 Beacon #4",
+      "source_ip": "10.0.0.104",
+      "destination_ip": "82.80.224.214",
+      "hostname": "SRV-020",
+      "username": "db_admin",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: evil-c2.xyz from 10.0.0.180\nHTTP POST http://151.153.53.241/beacon interval=30s size=398b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #6",
+      "source_ip": "10.0.0.34",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-004",
+      "username": "alice",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=mwilson\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.88\nNew service created: svc_682 path=C:/Windows/Temp/cc07bbe6.exe"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #10",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Data Exfil #10",
+      "source_ip": "10.0.0.69",
+      "destination_ip": "189.131.188.43",
+      "hostname": "SRV-028",
+      "username": "scada_svc",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.24 -> 51.159.55.149 size=0.7GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-40\nUser=scada_svc elevated=true"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #7",
+    "severity": "high",
+    "siem_event": {
+      "title": "Phishing #7",
+      "source_ip": "192.168.1.100",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "db_admin@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@c2-beacon.io To: db_admin@corp.local Subject: Account Suspended\nURL: http://bad-dns.org/steal-creds\nAttachment: update.exe MD5=7c452a7b4dbde9dc5b24a15025d16dfd"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #4",
+    "severity": "critical",
+    "siem_event": {
+      "title": "DNS Beacon #4",
+      "source_ip": "10.0.0.197",
+      "destination_ip": "43.46.151.84",
+      "hostname": "SRV-046",
+      "username": "alice",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: 03526c12164ad137.data-exfil.net from 10.0.0.148\nDNS query: d9b934606451465e.c2-beacon.io from 10.0.0.145\nDNS query: 2828cc4d5f7c8c1c.bad-dns.org from 10.0.0.52\nDNS query: 86be814e38a35574.update.evil.net from 10.0.0.85\nDNS query: 613f0d34f2e6ce29.c2-beacon.io from 10.0.0.39"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #1",
+    "severity": "critical",
+    "siem_event": {
+      "title": "PrivEsc #1",
+      "source_ip": "10.0.0.32",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-025",
+      "username": "db_admin",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=admin\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.23\nNew service created: svc_710 path=C:/Windows/Temp/2c69062f.exe"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #8",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Supply Chain #8",
+      "source_ip": "10.0.0.74",
+      "destination_ip": "161.169.51.224",
+      "hostname": "SRV-007",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/f2b3ed537847.dll\nOutbound: 126.7.73.105:443 SNI=data-exfil.net\nCert: CN=*.malware.co Serial=60f41dce3d007980"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #10",
+    "severity": "critical",
+    "siem_event": {
+      "title": "SSH Brute Force #10",
+      "source_ip": "77.216.108.238",
+      "destination_ip": "10.0.0.35",
+      "hostname": "SRV-047",
+      "username": "mwilson",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[4295]: Failed password for mwilson from 89.204.191.113 port 59981 ssh2\nsshd[4295]: Failed password for mwilson from 89.204.191.113 port 59981 ssh2\nsshd[4295]: Failed password for mwilson from 89.204.191.113 port 59981 ssh2\nsshd[9479]: Accepted password for admin from 125.61.126.58 port 5220 ssh2"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #4",
+    "severity": "high",
+    "siem_event": {
+      "title": "Lateral Movement #4",
+      "source_ip": "10.0.0.22",
+      "destination_ip": "10.0.0.206",
+      "hostname": "SRV-035",
+      "username": "alice",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.55 TargetHost=SRV-005 TargetIP=10.0.0.226 User=bob.jones NTLM_hash=c116ae13ac99c6d77aebf07942e9095a Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #7",
+    "severity": "high",
+    "siem_event": {
+      "title": "Insider Threat #7",
+      "source_ip": "10.0.0.86",
+      "destination_ip": "10.0.0.202",
+      "hostname": "SRV-006",
+      "username": "svc_backup",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=scada_svc SourceIP=10.0.0.42 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=152\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #7",
+    "severity": "critical",
+    "siem_event": {
+      "title": "PrivEsc #7",
+      "source_ip": "10.0.0.48",
+      "destination_ip": "10.0.0.1",
+      "hostname": "WS-037",
+      "username": "rthompson",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=alice\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.84\nNew service created: svc_721 path=C:/Windows/Temp/e81db9de.exe"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #7",
+    "severity": "critical",
+    "siem_event": {
+      "title": "SSH Brute Force #7",
+      "source_ip": "49.81.216.153",
+      "destination_ip": "10.0.0.5",
+      "hostname": "WS-050",
+      "username": "jsmith",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[8668]: Failed password for mwilson from 74.5.58.175 port 59009 ssh2\nsshd[8668]: Failed password for mwilson from 74.5.58.175 port 59009 ssh2\nsshd[8668]: Failed password for mwilson from 74.5.58.175 port 59009 ssh2\nsshd[9797]: Accepted password for admin from 202.136.174.29 port 20258 ssh2"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #10",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Phishing #10",
+      "source_ip": "192.168.1.131",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "temp_user@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@c2-beacon.io To: alice@corp.local Subject: Account Suspended\nURL: http://c2-beacon.io/steal-creds\nAttachment: report.exe MD5=2205dc1f538cd4940727a9ff6258df6b"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #5",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Insider Threat #5",
+      "source_ip": "10.0.0.86",
+      "destination_ip": "10.0.0.247",
+      "hostname": "SRV-023",
+      "username": "db_admin",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=bob.jones SourceIP=10.0.0.25 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=1059\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #9",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #9",
+      "source_ip": "10.0.0.94",
+      "destination_ip": "10.0.0.1",
+      "hostname": "WS-011",
+      "username": "db_admin",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=temp_user\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.94\nNew service created: svc_748 path=C:/Windows/Temp/8555dd52.exe"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #9",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Lateral Movement #9",
+      "source_ip": "10.0.0.43",
+      "destination_ip": "10.0.0.250",
+      "hostname": "SRV-009",
+      "username": "db_admin",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.64 TargetHost=SRV-040 TargetIP=10.0.0.246 User=temp_user NTLM_hash=983ce6fcdb456f3fdab5fb10ea65b4d9 Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #4",
+    "severity": "critical",
+    "siem_event": {
+      "title": "SSH Brute Force #4",
+      "source_ip": "35.194.142.117",
+      "destination_ip": "10.0.0.41",
+      "hostname": "WS-047",
+      "username": "admin",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[7065]: Failed password for jsmith from 63.136.36.156 port 42637 ssh2\nsshd[7065]: Failed password for jsmith from 63.136.36.156 port 42637 ssh2\nsshd[7065]: Failed password for jsmith from 63.136.36.156 port 42637 ssh2\nsshd[3803]: Accepted password for admin from 146.125.83.119 port 25891 ssh2"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #7",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Data Exfil #7",
+      "source_ip": "10.0.0.26",
+      "destination_ip": "169.13.201.152",
+      "hostname": "SRV-023",
+      "username": "admin",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.20 -> 174.219.69.222 size=4.9GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-7\nUser=db_admin elevated=true"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #5",
+    "severity": "critical",
+    "siem_event": {
+      "title": "DNS Beacon #5",
+      "source_ip": "10.0.0.29",
+      "destination_ip": "46.115.203.248",
+      "hostname": "SRV-022",
+      "username": "svc_backup",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: 4912a7f484d627d3.steal-creds.com from 10.0.0.13\nDNS query: 45f13f46d2a0782c.malware.co from 10.0.0.126\nDNS query: 02ededde74def00d.bad-dns.org from 10.0.0.159\nDNS query: 4af051f39a15b8e9.c2-beacon.io from 10.0.0.37\nDNS query: 1c0c85986864e3fb.update.evil.net from 10.0.0.16"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #9",
+    "severity": "high",
+    "siem_event": {
+      "title": "Data Exfil #9",
+      "source_ip": "10.0.0.54",
+      "destination_ip": "67.35.20.194",
+      "hostname": "WS-004",
+      "username": "rthompson",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.35 -> 15.78.122.33 size=5.0GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-15\nUser=scada_svc elevated=true"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #3",
+    "severity": "high",
+    "siem_event": {
+      "title": "Ransomware #3",
+      "source_ip": "10.0.0.62",
+      "destination_ip": "10.0.0.124",
+      "hostname": "WS-038",
+      "username": "rthompson",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_370.docx -> report_184.docx.locked\nFileRename: data_310.xlsx -> data_15.xlsx.locked\nProcess=cryptor.exe MD5=6bdad463c7036982b4149c2a998a7114\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #9",
+    "severity": "high",
+    "siem_event": {
+      "title": "Ransomware #9",
+      "source_ip": "10.0.0.89",
+      "destination_ip": "10.0.0.172",
+      "hostname": "SRV-030",
+      "username": "admin",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_625.docx -> report_984.docx.locked\nFileRename: data_758.xlsx -> data_102.xlsx.locked\nProcess=cryptor.exe MD5=412134d774a6a7265cea40273a231b0a\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #3",
+    "severity": "high",
+    "siem_event": {
+      "title": "C2 Beacon #3",
+      "source_ip": "10.0.0.127",
+      "destination_ip": "90.37.4.118",
+      "hostname": "SRV-030",
+      "username": "scada_svc",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: malware.co from 10.0.0.28\nHTTP POST http://147.109.135.34/beacon interval=60s size=198b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #7",
+    "severity": "high",
+    "siem_event": {
+      "title": "C2 Beacon #7",
+      "source_ip": "10.0.0.149",
+      "destination_ip": "19.189.75.111",
+      "hostname": "WS-017",
+      "username": "admin",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: bad-dns.org from 10.0.0.103\nHTTP POST http://20.183.107.175/beacon interval=30s size=810b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #9",
+    "severity": "high",
+    "siem_event": {
+      "title": "DNS Beacon #9",
+      "source_ip": "10.0.0.54",
+      "destination_ip": "38.13.67.4",
+      "hostname": "WS-046",
+      "username": "rthompson",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: 7cec4c4a16e7f4fa.evil-c2.xyz from 10.0.0.54\nDNS query: bab11e866a887dca.data-exfil.net from 10.0.0.199\nDNS query: 6098503096a4eeb4.malware.co from 10.0.0.200\nDNS query: 2d2392998c997b38.update.evil.net from 10.0.0.102\nDNS query: 3d7190f0b53914be.malware.co from 10.0.0.125"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #4",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Ransomware #4",
+      "source_ip": "10.0.0.85",
+      "destination_ip": "10.0.0.105",
+      "hostname": "WS-007",
+      "username": "temp_user",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_300.docx -> report_715.docx.locked\nFileRename: data_967.xlsx -> data_130.xlsx.locked\nProcess=cryptor.exe MD5=ba9ba797e0a02f68bcc302afe77fb5c1\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #3",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Data Exfil #3",
+      "source_ip": "10.0.0.66",
+      "destination_ip": "166.218.228.230",
+      "hostname": "WS-021",
+      "username": "bob.jones",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.67 -> 76.126.141.197 size=7.9GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-63\nUser=rthompson elevated=true"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #8",
+    "severity": "high",
+    "siem_event": {
+      "title": "SSH Brute Force #8",
+      "source_ip": "50.232.1.245",
+      "destination_ip": "10.0.0.47",
+      "hostname": "SRV-043",
+      "username": "jsmith",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[9201]: Failed password for admin from 139.54.152.216 port 42898 ssh2\nsshd[9201]: Failed password for admin from 139.54.152.216 port 42898 ssh2\nsshd[9201]: Failed password for admin from 139.54.152.216 port 42898 ssh2\nsshd[9317]: Accepted password for admin from 165.101.78.96 port 50995 ssh2"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #7",
+    "severity": "high",
+    "siem_event": {
+      "title": "Lateral Movement #7",
+      "source_ip": "10.0.0.19",
+      "destination_ip": "10.0.0.228",
+      "hostname": "SRV-021",
+      "username": "jsmith",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.16 TargetHost=SRV-034 TargetIP=10.0.0.234 User=admin NTLM_hash=5a7777cfd76d358dc2ee7c25f03f89b8 Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "Insider Threat #6",
+      "source_ip": "10.0.0.99",
+      "destination_ip": "10.0.0.225",
+      "hostname": "WS-035",
+      "username": "temp_user",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=temp_user SourceIP=10.0.0.73 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=996\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #1",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Supply Chain #1",
+      "source_ip": "10.0.0.62",
+      "destination_ip": "95.164.53.220",
+      "hostname": "WS-021",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/e77c95617be3.dll\nOutbound: 187.253.147.170:443 SNI=steal-creds.com\nCert: CN=*.evil-c2.xyz Serial=c085a93cc3ee4ad0"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #9",
+    "severity": "high",
+    "siem_event": {
+      "title": "Supply Chain #9",
+      "source_ip": "10.0.0.53",
+      "destination_ip": "169.203.41.219",
+      "hostname": "WS-043",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/3fb03e72f5ac.dll\nOutbound: 146.194.162.161:443 SNI=update.evil.net\nCert: CN=*.evil-c2.xyz Serial=60d52c335cb61f68"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Insider Threat #2",
+      "source_ip": "10.0.0.46",
+      "destination_ip": "10.0.0.245",
+      "hostname": "WS-037",
+      "username": "bob.jones",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=jsmith SourceIP=10.0.0.97 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=578\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #1",
+    "severity": "high",
+    "siem_event": {
+      "title": "Lateral Movement #1",
+      "source_ip": "10.0.0.12",
+      "destination_ip": "10.0.0.237",
+      "hostname": "SRV-021",
+      "username": "rthompson",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.85 TargetHost=WS-029 TargetIP=10.0.0.200 User=jsmith NTLM_hash=f24ef2d8f3117a4d19a0ad0ecabbc149 Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #2",
+    "severity": "high",
+    "siem_event": {
+      "title": "Lateral Movement #2",
+      "source_ip": "10.0.0.39",
+      "destination_ip": "10.0.0.204",
+      "hostname": "WS-005",
+      "username": "svc_backup",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.19 TargetHost=SRV-016 TargetIP=10.0.0.215 User=db_admin NTLM_hash=6983d7ea910580c89de7858130e5e70b Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "brute_force_investigation",
+    "prompt": "Investigate SSH Brute Force #9",
+    "severity": "high",
+    "siem_event": {
+      "title": "SSH Brute Force #9",
+      "source_ip": "148.0.165.126",
+      "destination_ip": "10.0.0.2",
+      "hostname": "WS-015",
+      "username": "jsmith",
+      "rule_name": "SSH_Brute_Force",
+      "raw_log": "sshd[6038]: Failed password for admin from 24.123.40.22 port 48990 ssh2\nsshd[6038]: Failed password for admin from 24.123.40.22 port 48990 ssh2\nsshd[6038]: Failed password for admin from 24.123.40.22 port 48990 ssh2\nsshd[8962]: Accepted password for admin from 27.64.65.169 port 32172 ssh2"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #1",
+    "severity": "high",
+    "siem_event": {
+      "title": "Ransomware #1",
+      "source_ip": "10.0.0.89",
+      "destination_ip": "10.0.0.132",
+      "hostname": "WS-030",
+      "username": "jsmith",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_739.docx -> report_198.docx.locked\nFileRename: data_324.xlsx -> data_123.xlsx.locked\nProcess=cryptor.exe MD5=f41fbc2fc4f14ca80008298dd563c1b2\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #10",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Lateral Movement #10",
+      "source_ip": "10.0.0.29",
+      "destination_ip": "10.0.0.212",
+      "hostname": "WS-038",
+      "username": "rthompson",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.17 TargetHost=SRV-025 TargetIP=10.0.0.247 User=temp_user NTLM_hash=10d6b4929408023a0d0c2e2104387f76 Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #8",
+    "severity": "high",
+    "siem_event": {
+      "title": "Data Exfil #8",
+      "source_ip": "10.0.0.51",
+      "destination_ip": "64.232.167.87",
+      "hostname": "SRV-048",
+      "username": "alice",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.45 -> 202.215.129.214 size=1.3GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-3\nUser=temp_user elevated=true"
+    }
+  },
+  {
+    "task_type": "privilege_escalation_hunt",
+    "prompt": "Investigate PrivEsc #3",
+    "severity": "high",
+    "siem_event": {
+      "title": "PrivEsc #3",
+      "source_ip": "10.0.0.100",
+      "destination_ip": "10.0.0.1",
+      "hostname": "SRV-006",
+      "username": "admin",
+      "rule_name": "PrivEsc_Detected",
+      "raw_log": "EventID=4672 PrivilegesAssigned=SeDebugPrivilege User=temp_user\nProcess=psexec.exe -s cmd.exe\nEventID=4624 LogonType=2 User=SYSTEM Source=10.0.0.78\nNew service created: svc_803 path=C:/Windows/Temp/637c05ec.exe"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #10",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Insider Threat #10",
+      "source_ip": "10.0.0.45",
+      "destination_ip": "10.0.0.211",
+      "hostname": "SRV-025",
+      "username": "alice",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=bob.jones SourceIP=10.0.0.21 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=1062\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #5",
+    "severity": "high",
+    "siem_event": {
+      "title": "Phishing #5",
+      "source_ip": "192.168.1.129",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "alice@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@bad-dns.org To: svc_backup@corp.local Subject: Urgent Invoice\nURL: http://malware.co/steal-creds\nAttachment: report.exe MD5=1e4a94f172f3865e4d45d646d85eb0bf"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #1",
+    "severity": "high",
+    "siem_event": {
+      "title": "Data Exfil #1",
+      "source_ip": "10.0.0.70",
+      "destination_ip": "166.37.233.107",
+      "hostname": "SRV-031",
+      "username": "scada_svc",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.34 -> 193.196.253.103 size=2.8GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-84\nUser=admin elevated=true"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "DNS Beacon #6",
+      "source_ip": "10.0.0.166",
+      "destination_ip": "66.32.237.233",
+      "hostname": "SRV-040",
+      "username": "db_admin",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: a3a5e3238d7f6974.malware.co from 10.0.0.45\nDNS query: a2ecd4a4044184ee.evil-c2.xyz from 10.0.0.87\nDNS query: 07dd96968d4de34f.malware.co from 10.0.0.34\nDNS query: 1c9af0b409945eb8.data-exfil.net from 10.0.0.109\nDNS query: cafc854782839dc3.steal-creds.com from 10.0.0.160"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #4",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Phishing #4",
+      "source_ip": "192.168.1.172",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "bob.jones@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@data-exfil.net To: alice@corp.local Subject: Urgent Invoice\nURL: http://bad-dns.org/steal-creds\nAttachment: update.exe MD5=cdfb838cbe0e7066e5ff41016395b7c8"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #2",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Phishing #2",
+      "source_ip": "192.168.1.185",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "scada_svc@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@malware.co To: scada_svc@corp.local Subject: Urgent Invoice\nURL: http://c2-beacon.io/steal-creds\nAttachment: update.exe MD5=ce4708ecaa27f56b1e2644ca63241248"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #10",
+    "severity": "critical",
+    "siem_event": {
+      "title": "DNS Beacon #10",
+      "source_ip": "10.0.0.167",
+      "destination_ip": "21.154.234.165",
+      "hostname": "WS-004",
+      "username": "admin",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: 922baac06de10715.steal-creds.com from 10.0.0.119\nDNS query: dd52a7091f59dea8.update.evil.net from 10.0.0.192\nDNS query: 79b2c069fbd29fa9.malware.co from 10.0.0.30\nDNS query: 222567f3a1827c1a.data-exfil.net from 10.0.0.26\nDNS query: aab1d5bfffa96adb.c2-beacon.io from 10.0.0.107"
+    }
+  },
+  {
+    "task_type": "data_exfiltration_detection",
+    "prompt": "Investigate Data Exfil #4",
+    "severity": "high",
+    "siem_event": {
+      "title": "Data Exfil #4",
+      "source_ip": "10.0.0.66",
+      "destination_ip": "29.146.120.70",
+      "hostname": "WS-043",
+      "username": "svc_backup",
+      "rule_name": "Data_Exfil",
+      "raw_log": "Outbound transfer: 10.0.0.79 -> 30.70.77.60 size=4.1GB protocol=HTTPS\nProcess=rclone.exe args=copy /data s3://ext-bucket-20\nUser=rthompson elevated=true"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #3",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Phishing #3",
+      "source_ip": "192.168.1.27",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "temp_user@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@c2-beacon.io To: admin@corp.local Subject: Password Reset\nURL: http://update.evil.net/steal-creds\nAttachment: invoice.exe MD5=8b43f8c630b891a95bf363ad2bcee3ec"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #10",
+    "severity": "critical",
+    "siem_event": {
+      "title": "C2 Beacon #10",
+      "source_ip": "10.0.0.178",
+      "destination_ip": "59.204.168.72",
+      "hostname": "WS-009",
+      "username": "db_admin",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: c2-beacon.io from 10.0.0.174\nHTTP POST http://140.204.169.241/beacon interval=30s size=246b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #8",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Phishing #8",
+      "source_ip": "192.168.1.31",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "rthompson@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@steal-creds.com To: bob.jones@corp.local Subject: Account Suspended\nURL: http://phish.evil.com/steal-creds\nAttachment: update.exe MD5=4653c896ac67fb92f3a06d4ebeee69f9"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #7",
+    "severity": "critical",
+    "siem_event": {
+      "title": "DNS Beacon #7",
+      "source_ip": "10.0.0.116",
+      "destination_ip": "177.50.250.158",
+      "hostname": "SRV-003",
+      "username": "db_admin",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: a5b2bdd3024991e4.c2-beacon.io from 10.0.0.65\nDNS query: cf3b02477650e43f.phish.evil.com from 10.0.0.102\nDNS query: f810ab1bdf0ac54f.c2-beacon.io from 10.0.0.149\nDNS query: 2555b6a079a7133d.c2-beacon.io from 10.0.0.25\nDNS query: 8685352c6c3b659e.phish.evil.com from 10.0.0.41"
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "prompt": "Investigate C2 Beacon #8",
+    "severity": "high",
+    "siem_event": {
+      "title": "C2 Beacon #8",
+      "source_ip": "10.0.0.100",
+      "destination_ip": "153.208.79.237",
+      "hostname": "WS-031",
+      "username": "mwilson",
+      "rule_name": "C2_Beacon",
+      "raw_log": "DNS query: data-exfil.net from 10.0.0.115\nHTTP POST http://16.91.170.201/beacon interval=60s size=949b\nUserAgent=Mozilla/5.0 (compatible; bot)"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #1",
+    "severity": "high",
+    "siem_event": {
+      "title": "Insider Threat #1",
+      "source_ip": "10.0.0.62",
+      "destination_ip": "10.0.0.228",
+      "hostname": "SRV-039",
+      "username": "scada_svc",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=bob.jones SourceIP=10.0.0.47 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=166\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "c2_communication",
+    "prompt": "Investigate DNS Beacon #3",
+    "severity": "critical",
+    "siem_event": {
+      "title": "DNS Beacon #3",
+      "source_ip": "10.0.0.80",
+      "destination_ip": "12.25.254.214",
+      "hostname": "WS-037",
+      "username": "rthompson",
+      "rule_name": "DNS_Beacon",
+      "raw_log": "DNS query: a6d539b9c8521808.c2-beacon.io from 10.0.0.66\nDNS query: 43f0a0b39bae65dc.bad-dns.org from 10.0.0.183\nDNS query: 8d01bb1971403c18.data-exfil.net from 10.0.0.170\nDNS query: 74050ab5571fde5e.evil-c2.xyz from 10.0.0.89\nDNS query: fb5fcecf407e0aa6.evil-c2.xyz from 10.0.0.158"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #4",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Supply Chain #4",
+      "source_ip": "10.0.0.80",
+      "destination_ip": "13.208.47.58",
+      "hostname": "WS-015",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/d9f246681e00.dll\nOutbound: 40.78.255.239:443 SNI=bad-dns.org\nCert: CN=*.bad-dns.org Serial=88982aaf20b95de6"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #5",
+    "severity": "high",
+    "siem_event": {
+      "title": "Lateral Movement #5",
+      "source_ip": "10.0.0.96",
+      "destination_ip": "10.0.0.241",
+      "hostname": "SRV-033",
+      "username": "jsmith",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.17 TargetHost=SRV-002 TargetIP=10.0.0.246 User=svc_backup NTLM_hash=3765fc7f0c26cb38208a9b2eb95e0da0 Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "prompt": "Investigate Supply Chain #10",
+    "severity": "high",
+    "siem_event": {
+      "title": "Supply Chain #10",
+      "source_ip": "10.0.0.90",
+      "destination_ip": "185.147.116.192",
+      "hostname": "WS-012",
+      "username": "SYSTEM",
+      "rule_name": "Supply_Chain_Compromise",
+      "raw_log": "Process: SolarWinds.BusinessLayerHost.exe Child: rundll32.exe DLL: C:/Windows/SysWOW64/71c5717a9686.dll\nOutbound: 35.51.227.43:443 SNI=bad-dns.org\nCert: CN=*.evil-c2.xyz Serial=6d4d61479a7f3bd0"
+    }
+  },
+  {
+    "task_type": "lateral_movement_detection",
+    "prompt": "Investigate Lateral Movement #3",
+    "severity": "high",
+    "siem_event": {
+      "title": "Lateral Movement #3",
+      "source_ip": "10.0.0.79",
+      "destination_ip": "10.0.0.208",
+      "hostname": "SRV-043",
+      "username": "scada_svc",
+      "rule_name": "PtH_Detected",
+      "raw_log": "EventID=4624 LogonType=9 SourceIP=10.0.0.83 TargetHost=SRV-011 TargetIP=10.0.0.215 User=bob.jones NTLM_hash=0dfdfa09b62af11d0d587c3bb5386413 Process=svchost.exe ParentProcess=mimikatz.exe"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #6",
+    "severity": "high",
+    "siem_event": {
+      "title": "Phishing #6",
+      "source_ip": "192.168.1.128",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "scada_svc@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@steal-creds.com To: svc_backup@corp.local Subject: Urgent Invoice\nURL: http://update.evil.net/steal-creds\nAttachment: report.exe MD5=9d370f8e09920ec88ec1878c8f1b5be4"
+    }
+  },
+  {
+    "task_type": "insider_threat_detection",
+    "prompt": "Investigate Insider Threat #8",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Insider Threat #8",
+      "source_ip": "10.0.0.39",
+      "destination_ip": "10.0.0.243",
+      "hostname": "SRV-024",
+      "username": "scada_svc",
+      "rule_name": "Insider_Threat",
+      "raw_log": "EventID=4624 LogonType=2 User=admin SourceIP=10.0.0.96 Time=23:45:12\nEventID=4663 ObjectName=C:/Finance/Payroll/ AccessCount=1782\nUSB device connected: VendorID=0781 ProductID=5583"
+    }
+  },
+  {
+    "task_type": "ransomware_triage",
+    "prompt": "Investigate Ransomware #5",
+    "severity": "high",
+    "siem_event": {
+      "title": "Ransomware #5",
+      "source_ip": "10.0.0.63",
+      "destination_ip": "10.0.0.101",
+      "hostname": "SRV-024",
+      "username": "db_admin",
+      "rule_name": "Ransomware_Detected",
+      "raw_log": "FileRename: report_481.docx -> report_491.docx.locked\nFileRename: data_452.xlsx -> data_349.xlsx.locked\nProcess=cryptor.exe MD5=eeebc2cf5bfd37413248f3a5284d6c20\nRegistryWrite: HKLM/Software/Ransom/key=INFECTED"
+    }
+  },
+  {
+    "task_type": "phishing_investigation",
+    "prompt": "Investigate Phishing #9",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Phishing #9",
+      "source_ip": "192.168.1.124",
+      "destination_ip": "192.168.1.1",
+      "hostname": "MAIL-SERVER",
+      "username": "admin@corp.local",
+      "rule_name": "Phishing_Detected",
+      "raw_log": "From: attacker@malware.co To: db_admin@corp.local Subject: Urgent Invoice\nURL: http://steal-creds.com/steal-creds\nAttachment: update.exe MD5=e65d30bc1031da6c9938b753dee56e29"
+    }
+  }
+]
