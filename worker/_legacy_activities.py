@@ -381,6 +381,60 @@ async def validate_code(code: str) -> dict:
 
 
 @activity.defn
+async def preflight_validate_code(code: str) -> dict:
+    """Preflight validation — runs in <100ms, no sandbox needed."""
+    from validation.preflight import preflight_validate, auto_fix_code
+
+    # Try auto-fix first
+    fixed_code, fixes = auto_fix_code(code)
+    if fixes:
+        print(f"PREFLIGHT auto-fix: {fixes}")
+
+    is_valid, error_or_cleaned, warnings = preflight_validate(fixed_code)
+
+    if warnings:
+        print(f"PREFLIGHT warnings: {warnings}")
+
+    return {
+        "valid": is_valid,
+        "error": error_or_cleaned if not is_valid else "",
+        "cleaned_code": fixed_code if is_valid else code,
+        "fixes_applied": fixes,
+        "warnings": warnings,
+    }
+
+
+@activity.defn
+async def save_investigation_pattern(data: dict) -> dict:
+    """Save successful investigation pattern to memory table."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO investigation_memory
+                (task_type, alert_signature, code_template, iocs_found,
+                 findings_found, risk_score, success, error_type)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                data.get('task_type', ''),
+                data.get('alert_signature', ''),
+                data.get('code', '')[:10000],
+                json.dumps(data.get('iocs', [])),
+                json.dumps(data.get('findings', [])),
+                data.get('risk_score', 0),
+                data.get('success', True),
+                data.get('error_type'),
+            ))
+        conn.commit()
+        return {"saved": True}
+    except Exception as e:
+        print(f"Pattern save failed (non-fatal): {e}")
+        return {"saved": False, "error": str(e)}
+    finally:
+        _return_connection(conn)
+
+
+@activity.defn
 async def execute_code(code: str) -> dict:
     # Stage 1: Adversarial review — red-team LLM checks for sandbox escape attempts
     # Must run BEFORE AST prefilter (Stage 2) and Docker execution (Stage 3)

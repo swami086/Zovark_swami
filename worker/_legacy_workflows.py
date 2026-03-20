@@ -14,7 +14,8 @@ with workflow.unsafe.imports_passed_through():
         check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity,
         validate_generated_code, enrich_alert_with_memory,
         check_semantic_dedup_activity, store_fingerprint_activity,
-        check_exact_dedup_activity, check_correlation_activity, register_dedup_activity
+        check_exact_dedup_activity, check_correlation_activity, register_dedup_activity,
+        preflight_validate_code, save_investigation_pattern
     )
     from entity_graph import extract_entities, write_entity_graph, embed_investigation
     from intelligence.blast_radius import compute_blast_radius
@@ -494,7 +495,42 @@ If something has worked in past investigations for this threat type, apply those
                 schedule_to_close_timeout=timedelta(seconds=10)
             )
 
-            # --- VALIDATE CODE ---
+            # --- PREFLIGHT VALIDATION (<100ms, catches errors before sandbox) ---
+            try:
+                preflight = await workflow.execute_activity(
+                    preflight_validate_code,
+                    code,
+                    start_to_close_timeout=timedelta(seconds=10),
+                )
+                if preflight.get("fixes_applied"):
+                    workflow.logger.info(f"PREFLIGHT auto-fixed: {preflight['fixes_applied']}")
+                    code = preflight["cleaned_code"]
+                if not preflight.get("valid", True):
+                    workflow.logger.info(f"PREFLIGHT failed: {preflight['error']} — triggering LLM retry")
+                    # Feed preflight error to generate_code retry (skip sandbox entirely)
+                    preflight_retry_data = dict(task_data)
+                    if "input" not in preflight_retry_data:
+                        preflight_retry_data["input"] = {}
+                    preflight_retry_data["input"]["validation_feedback"] = (
+                        f"Your code has an error caught before execution:\n"
+                        f"{preflight['error']}\n\n"
+                        f"BROKEN CODE:\n{code[:2000]}\n\n"
+                        f"FIX: Self-contained, no markdown fences, define all variables, "
+                        f"print JSON via json.dumps(), use only stdlib."
+                    )
+                    retry_gen = await workflow.execute_activity(
+                        generate_code,
+                        preflight_retry_data,
+                        schedule_to_close_timeout=timedelta(minutes=15),
+                    )
+                    code = retry_gen["code"]
+                    total_tokens_input += retry_gen["usage"].get("prompt_tokens", 0)
+                    total_tokens_output += retry_gen["usage"].get("completion_tokens", 0)
+                    workflow.logger.info("PREFLIGHT retry: regenerated code")
+            except Exception as pf_err:
+                workflow.logger.info(f"PREFLIGHT error (non-fatal): {pf_err}")
+
+            # --- VALIDATE CODE (AST security prefilter) ---
             val_result = await workflow.execute_activity(
                 validate_code,
                 code,
@@ -1182,6 +1218,32 @@ If something has worked in past investigations for this threat type, apply those
         except Exception as e:
             workflow.logger.info(f"Memory write failed non-fatally: {str(e)}")
             pass
+
+        # --- SAVE INVESTIGATION PATTERN (for future prompt enrichment) ---
+        try:
+            siem_event_data = task_data.get("input", {}).get("siem_event", {})
+            pattern_data = {
+                "task_type": task_type,
+                "alert_signature": siem_event_data.get("rule_name", ""),
+                "code": final_code[:10000] if final_code else "",
+                "risk_score": previous_risk_score or 0,
+                "success": True,
+            }
+            # Extract IOCs and findings from parsed output
+            try:
+                p = json.loads(final_stdout) if final_stdout else {}
+                if isinstance(p, dict):
+                    pattern_data["iocs"] = p.get("iocs", [])
+                    pattern_data["findings"] = p.get("findings", [])
+            except Exception:
+                pass
+            await workflow.execute_activity(
+                save_investigation_pattern,
+                pattern_data,
+                start_to_close_timeout=timedelta(seconds=10),
+            )
+        except Exception as e:
+            workflow.logger.info(f"Pattern save failed non-fatally: {e}")
 
         # --- ENTITY GRAPH + INVESTIGATION EMBEDDING (Sprint 1G) ---
         entity_result = {}

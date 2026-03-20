@@ -9,5 +9,6 @@ from _legacy_activities import (  # noqa: F401
     heartbeat_lease_activity, validate_generated_code, enrich_alert_with_memory,
     check_semantic_dedup_activity, store_fingerprint_activity,
     check_exact_dedup_activity, check_correlation_activity, register_dedup_activity,
+    preflight_validate_code, save_investigation_pattern,
     get_db_connection,
 )
