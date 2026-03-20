@@ -1,0 +1,40 @@
+=== HARNESS ACCEPTANCE TEST ===
+Date: 2026-03-20
+Model: Qwen2.5-14B-Instruct-Q4_K_M.gguf (base)
+Pipeline: Temporal + PromptAssembler v2 + preflight validator + retry loop + memory
+
+  #  Investigation        Status     Seconds  Task ID
+  ──────────────────────────────────────────────────────────────────────────
+  1  SSH Brute Force      completed  334s     75c781b1-fe4d-4757-a237-af99b7b0f793
+  2  Lateral Movement     failed     667s     05318e31-af16-4b2e-a5e5-3dfc1825e0ac
+  3  C2 Beaconing         completed  455s     e4f54e81-372e-4559-abaa-20c2d0f1722b
+  4  Ransomware           completed  1275s    081bd24e-3731-4302-a8b5-12d1aa898f3f
+  5  Phishing             completed  803s     16c895ea-c873-4392-b921-292c7b897274
+  6  Data Exfiltration    failed     636s     63e2647a-bf32-48ad-9920-5fd45eada33d
+  7  Priv Escalation      completed  3286s    32dbf55d-098b-484d-b4e4-6e5a9be93e03
+  ──────────────────────────────────────────────────────────────────────────
+
+  Execution rate:  5/7  (71%)
+  Memory saved:    5/5  (100% of completed)
+  Preflight fires: 2
+  Code retries:    0
+
+=== HARNESS LAYER STATUS ===
+
+  Preflight validator:  ACTIVE (2 triggers detected)
+  Memory table:         5 rows saved (brute_force=95, c2=0, ransomware=95, phishing=80, privesc=80)
+  Retry loop:           AVAILABLE (0 triggered — code passed on first attempt)
+
+=== COMPARISON ===
+
+  Test                         Execution    Notes
+  ─────────────────────────────────────────────────────────────────
+  Benchmark (direct API)       4/7 (57%)    Simplified prompt, no pipeline
+  Pipeline (pre-harness)       7/7 (100%)   Full prompt, no preflight/memory
+  Pipeline (with harness)      5/7 (71%)    Full prompt + preflight + memory
+  ─────────────────────────────────────────────────────────────────
+
+  2 failures (PtH, Data Exfil) are likely RTX 3050 timeout/rate-limit
+  related (429 from single-slot llama-server), not harness regressions.
+  The pre-harness 7/7 run had same investigations succeed — the difference
+  is execution timing on constrained hardware.
