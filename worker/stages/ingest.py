@@ -16,6 +16,7 @@ from dataclasses import asdict
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+from temporalio import activity
 from stages import IngestOutput
 
 # --- Config ---
@@ -129,6 +130,7 @@ def _retrieve_skill(task_type: str, prompt: str, conn) -> Optional[dict]:
 
 
 # --- Main entry point ---
+@activity.defn
 async def ingest_alert(task_data: dict) -> dict:
     """
     Stage 1: Validate, deduplicate, prepare alert for analysis.

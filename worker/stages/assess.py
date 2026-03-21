@@ -17,6 +17,7 @@ from dataclasses import asdict
 
 import httpx
 
+from temporalio import activity
 from stages import AssessOutput
 
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
@@ -101,6 +102,7 @@ def _fp_confidence(risk_score: int, ioc_count: int) -> float:
 
 
 # --- Main entry point ---
+@activity.defn
 async def assess_results(data: dict) -> dict:
     """
     Stage 4: Generate verdict and investigation summary.

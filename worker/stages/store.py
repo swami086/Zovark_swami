@@ -12,6 +12,7 @@ from dataclasses import asdict
 
 import psycopg2
 
+from temporalio import activity
 from stages import StoreOutput
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
@@ -124,6 +125,7 @@ def _severity_from_risk(risk_score: int) -> str:
 
 
 # --- Main entry point ---
+@activity.defn
 async def store_investigation(data: dict) -> dict:
     """
     Stage 5: Persist all investigation artifacts.

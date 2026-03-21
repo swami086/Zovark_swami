@@ -30,6 +30,7 @@ from typing import Optional, Dict, List, Tuple
 import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from temporalio import activity
 
 from stages import AnalyzeOutput, IngestOutput
 
@@ -385,24 +386,41 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
 # ENTRY POINT
 # ============================================================
 
-async def analyze_alert(ingest: IngestOutput) -> AnalyzeOutput:
+@activity.defn
+async def analyze_alert(data) -> dict:
     """
     Main entry point for Stage 2.
 
+    Accepts dict (from workflow) or IngestOutput dataclass.
     Routes to the appropriate code generation path:
       A. FAST_FILL=true  → regex stub (no LLM)
       B. skill_template  → LLM param fill + template render
       C. no template     → full LLM code generation
-
-    This function is the SINGLE decision point for all code generation.
     """
+    if isinstance(data, dict):
+        ingest = IngestOutput(
+            task_id=data.get("task_id", ""),
+            tenant_id=data.get("tenant_id", ""),
+            task_type=data.get("task_type", ""),
+            siem_event=data.get("siem_event", {}),
+            prompt=data.get("prompt", ""),
+            skill_id=data.get("skill_id"),
+            skill_template=data.get("skill_template"),
+            skill_params=data.get("skill_params", []),
+            skill_methodology=data.get("skill_methodology", ""),
+        )
+    else:
+        ingest = data
+
+    from dataclasses import asdict
+
     # Path A: stress test mode
     if FAST_FILL:
-        return generate_fast_fill_stub(ingest.siem_event, ingest.task_type)
+        return asdict(generate_fast_fill_stub(ingest.siem_event, ingest.task_type))
 
     # Path B: template available
     if ingest.skill_template and ingest.skill_params:
-        return await _analyze_template(ingest)
+        return asdict(await _analyze_template(ingest))
 
     # Path C: LLM fallback
-    return await _analyze_llm(ingest)
+    return asdict(await _analyze_llm(ingest))

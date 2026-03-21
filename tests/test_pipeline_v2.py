@@ -70,10 +70,10 @@ class TestStage2Analyze:
             prompt="Analyze SSH brute force",
         )
         result = asyncio.run(analyze_alert(ingest))
-        assert result.code != ""
-        assert result.source == "fast_fill"
-        assert "import re" in result.code
-        assert "json.dumps" in result.code
+        assert result["code"] != ""
+        assert result["source"] == "fast_fill"
+        assert "import re" in result["code"]
+        assert "json.dumps" in result["code"]
 
     def test_fast_fill_code_is_valid_python(self):
         from stages.analyze import analyze_alert
@@ -86,7 +86,7 @@ class TestStage2Analyze:
         )
         result = asyncio.run(analyze_alert(ingest))
         # Should parse without SyntaxError
-        ast.parse(result.code)
+        ast.parse(result["code"])
 
     def test_fast_fill_no_llm_calls(self):
         from stages.analyze import analyze_alert
@@ -97,9 +97,9 @@ class TestStage2Analyze:
             siem_event=SAMPLE_TASK["input"]["siem_event"],
         )
         result = asyncio.run(analyze_alert(ingest))
-        assert result.tokens_in == 0
-        assert result.tokens_out == 0
-        assert result.generation_ms == 0
+        assert result["tokens_in"] == 0
+        assert result["tokens_out"] == 0
+        assert result["generation_ms"] == 0
 
 
 class TestStage3Execute:
@@ -195,12 +195,12 @@ class TestFullPipeline:
             if k in ingested
         })
         analyzed = asyncio.run(analyze_alert(ingest_obj))
-        assert analyzed.code != ""
-        assert analyzed.source == "fast_fill"
+        assert analyzed["code"] != ""
+        assert analyzed["source"] == "fast_fill"
 
         # Stage 3: Execute
         executed = asyncio.run(execute_investigation({
-            "code": analyzed.code,
+            "code": analyzed["code"],
             "task_type": ingested["task_type"],
         }))
         assert executed["status"] == "completed"

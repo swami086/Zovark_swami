@@ -17,6 +17,7 @@ import subprocess
 from typing import List, Dict, Tuple
 from dataclasses import asdict
 
+from temporalio import activity
 from stages import ExecuteOutput
 
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
@@ -144,6 +145,7 @@ def _run_fast_fill(code: str) -> Dict:
 
 
 # --- Main entry point ---
+@activity.defn
 async def execute_investigation(data: dict) -> dict:
     """
     Stage 3: Execute investigation code in sandbox.
