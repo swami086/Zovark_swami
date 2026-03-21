@@ -1,10 +1,14 @@
-export const API_BASE_URL = 'http://localhost:8090/api/v1';
+export const API_BASE_URL = '/api/v1';
 
 // Access token stored in memory only (never localStorage) — XSS-safe
 let jwtToken: string | null = null;
 let currentUser: any = null;
 
-// Restore user info from sessionStorage (survives page refresh, not tab close)
+// Restore token and user from sessionStorage (survives page navigation, cleared on tab close)
+const savedToken = sessionStorage.getItem('hydra_token');
+if (savedToken) {
+    jwtToken = savedToken;
+}
 const savedUser = sessionStorage.getItem('hydra_user');
 if (savedUser) {
     try { currentUser = JSON.parse(savedUser); } catch { /* ignore */ }
@@ -13,13 +17,15 @@ if (savedUser) {
 export const setToken = (token: string, user: any) => {
     jwtToken = token;
     currentUser = user;
-    // Only store non-sensitive user info in sessionStorage for UI state
+    // Store in sessionStorage so token survives page navigation (cleared on tab close)
+    sessionStorage.setItem('hydra_token', token);
     sessionStorage.setItem('hydra_user', JSON.stringify(user));
 };
 
 export const clearToken = () => {
     jwtToken = null;
     currentUser = null;
+    sessionStorage.removeItem('hydra_token');
     sessionStorage.removeItem('hydra_user');
     // Also clear any legacy localStorage tokens
     localStorage.removeItem('hydra_token');
