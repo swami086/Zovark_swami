@@ -5,33 +5,45 @@
 
 ## Quick Reference
 
-- **Version:** post v1.0.0-rc1 (latest: `e17ccad`)
-- **Status:** Pipeline OPERATIONAL — investigations complete end-to-end
-- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + NATS + LiteLLM + Ollama
-- **LOC:** Go 45 files, Python 124 files, TypeScript 33 files, 40 migrations
-- **Tests:** 44 Go + 179 Python = 223 test functions passing
-- **Services:** 17 Docker containers running (11 core + 6 monitoring/exporters)
+- **Version:** post v1.0.0-rc1 (latest: `2f99e9c`)
+- **Status:** V2 Pipeline OPERATIONAL — 100/100 stress test, 10/10 LLM test
+- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + NATS + llama.cpp (Qwen2.5-14B)
+- **Pipeline:** V2 5-stage (1392 lines) — replaced legacy (2916 lines)
+- **Tests:** 44 Go + 179 Python + 15 V2 pipeline = 238 test functions
+- **Services:** 8 Docker containers (core stack, monitoring optional)
 
-## Architecture
+## Architecture (V2 Pipeline)
 
 ```
-SIEM Alert → Go API (:8090, auth/RBAC/rate-limit) → PostgreSQL → Temporal Workflow →
-  → Skill Matching → PII Masking → LLM (Ollama via LiteLLM) → fill_skill_parameters →
-  → render_skill_template → AST Prefilter → Adversarial Review → Docker Sandbox →
-  → Entity Extraction → Knowledge Graph → Sigma Rule Gen → Investigation Memory →
+SIEM Alert → Go API (:8090) → Temporal: InvestigationWorkflowV2 →
+  Stage 1 INGEST:  dedup (Redis) → PII mask → skill retrieval     [NO LLM]
+  Stage 2 ANALYZE: template fill OR full LLM code generation       [LLM ①]
+  Stage 3 EXECUTE: AST prefilter → Docker sandbox                  [NO LLM]
+  Stage 4 ASSESS:  verdict → LLM summary → FP confidence           [LLM ②]
+  Stage 5 STORE:   agent_tasks + investigations + memory            [NO LLM]
   → Structured Verdict (findings, IOCs, recommendations, risk score)
 ```
+
+LLM contained in exactly 2 files: `worker/stages/analyze.py` + `worker/stages/assess.py`
 
 ## Directory Map
 
 ```
 hydra-mvp/
 ├── api/                    # Go REST API (45 files) — auth, handlers, middleware, RBAC
-├── worker/                 # Python Temporal worker (124 files) — investigation pipeline
-│   ├── _legacy_activities.py  # 110 @activity.defn functions (main activities file)
-│   ├── _legacy_workflows.py   # ExecuteTaskWorkflow (main workflow)
-│   ├── activities/            # Package re-exports from _legacy_activities.py + network_analysis
-│   ├── workflows/             # Package re-exports from _legacy_workflows.py + feedback/KEV/hydra
+├── worker/                 # Python Temporal worker — investigation pipeline
+│   ├── stages/                # V2 pipeline (5 stages, 1392 lines total)
+│   │   ├── __init__.py        # Typed dataclass contracts (IngestOutput, AnalyzeOutput, etc.)
+│   │   ├── ingest.py          # Stage 1: dedup, PII mask, skill retrieval (NO LLM)
+│   │   ├── analyze.py         # Stage 2: template/LLM/stub code generation (LLM HERE)
+│   │   ├── execute.py         # Stage 3: AST prefilter + Docker sandbox (NO LLM)
+│   │   ├── assess.py          # Stage 4: verdict + LLM summary (LLM HERE)
+│   │   ├── store.py           # Stage 5: DB writes (NO LLM)
+│   │   ├── investigation_workflow.py  # InvestigationWorkflowV2 (~40 lines)
+│   │   └── register.py        # get_v2_activities() + get_v2_workflows()
+│   ├── _legacy_activities.py  # Shared activities (fetch_task, log_audit, etc.)
+│   ├── activities/            # Package re-exports shared activities
+│   ├── workflows/             # Non-investigation workflows (feedback/KEV/hydra)
 │   ├── database/              # Connection pool manager (psycopg2 ThreadedConnectionPool)
 │   ├── detection/             # Sigma rule generation
 │   ├── intelligence/          # Blast radius, FP analysis, cross-tenant
@@ -81,34 +93,30 @@ hydra-mvp/
 
 ## Current State (What Works)
 
-- **Investigation pipeline:** OPERATIONAL — submit alert → structured verdict with findings, IOCs, risk score
+- **V2 Investigation pipeline:** 100/100 FAST_FILL, 10/10 with LLM, avg 52s/investigation
 - **Auth flow:** Register → login → JWT (15min) → refresh (7d) → RBAC (admin/analyst/viewer)
-- **LLM routing:** Ollama (qwen2.5:14b) via LiteLLM on local GPU
-- **Sandbox:** Docker-in-Docker with AST prefilter v2, network isolation, read-only fs, cap-drop ALL
-- **Database:** 76 tables, pgvector embeddings, connection pooling via PgBouncer
-- **17 Docker services:** all healthy and running
-- **7 completed investigations** with baseline metrics
-- **DPO pipeline Phase 0:** committed (forge + prompts + validators + compressor)
+- **LLM:** Qwen2.5-14B-Instruct Q4_K_M via llama.cpp (native Windows, NOT Docker)
+- **LITELLM_URL:** `http://host.docker.internal:11434/v1/chat/completions` (bypasses LiteLLM container)
+- **Sandbox:** Docker with AST prefilter, network isolation, read-only fs, cap-drop ALL
+- **Database:** 76+ tables, pgvector embeddings, connection pooling via PgBouncer
+- **DPO:** Trained adapter available (`models/hydra-dpo-adapter/`, 48MB), GGUF at `models/hydra-dpo-Q4_K_M.gguf`
+- **V2 unit tests:** 15/15 passing in <1s
 
-## Baseline Accuracy (7 investigations)
+## Performance (V2 Pipeline)
 
-| Metric | Value |
-|--------|-------|
-| Code generation | 100% (7/7) |
-| Mean risk score | 76 |
-| Findings rate | 86% (6/7) |
-| IOC extraction | 29% (2/7) |
-| Mean execution | 30.9s |
+| Test | Completion | Avg Time |
+|------|-----------|----------|
+| V2 + FAST_FILL (100 investigations) | 100/100 | <2s each |
+| V2 + LLM (10 investigations) | 10/10 | 52s each |
+| Legacy pipeline (100 investigations) | 61/100 | 368s each |
 
-## Known Issues (Be Honest)
+## Known Issues
 
-1. **IOC extraction is weak (29%)** — DPO training targets this specifically
-2. **Adversarial review passes through on timeout** — Intentional: AST prefilter + Docker sandbox are primary security layers. Review LLM via urllib times out against Ollama.
-3. **LiteLLM ↔ Redis auth errors** — Non-fatal (caching only). Fix: add REDIS_PASSWORD to LiteLLM env.
-4. **NATS hostname resolution** — Non-fatal warning on worker startup. Consumer initializes despite it.
-5. **fill_skill_parameters errors silently** — Ollama doesn't support `response_format:json_object`. Function catches and returns defaults. Investigation continues.
-6. **Skill template fix not in migration** — The `import os, sys` removal was via direct SQL UPDATE. Need migration for reproducibility.
-7. **429 with Ollama** — Single-threaded inference. Multi-step investigations hit rate limits. Complete but take 55s instead of 30s.
+1. **NATS hostname resolution** — Non-fatal warning on worker startup. Consumer initializes despite it.
+2. **Old Temporal workflows** — Stale `ExecuteTaskWorkflow` replays in Temporal history cause non-blocking errors. Terminate via `tctl workflow terminate`.
+3. **`investigations` table source constraint** — Only allows `production`, `bootstrap`, `synthetic`. V2 uses `production`.
+4. **`investigation_memory` table** — Name is SINGULAR. Code that references `investigation_memories` (plural) silently fails.
+5. **`fetch_task` dependency** — V2 workflow still calls legacy `fetch_task` by string name. Tech debt — should be moved to stages/ingest.py.
 
 ## Model Tiers
 
@@ -127,8 +135,9 @@ See `docs/MODEL_TIER_STRATEGY.md` and `docs/HARDWARE_REQUIREMENTS.md`.
 - **LLM calls:** Always through LiteLLM (`LITELLM_URL`), never call Ollama directly
 - **Sandbox code:** Must pass AST prefilter — no `os`, `sys`, `subprocess`, `socket`, dunder traversal
 - **Skill templates:** Must NOT import `os`, `sys`, `subprocess`, `socket` (blocked by AST prefilter v2)
-- **New activities:** Add to `worker/_legacy_activities.py`, re-export in `worker/activities/__init__.py`, register in `main.py`
-- **New workflows:** Add to `worker/_legacy_workflows.py`, re-export in `worker/workflows/__init__.py`, register in `main.py`
+- **New V2 activities:** Add to the appropriate `worker/stages/*.py` file, register in `worker/stages/register.py`
+- **New workflows:** Add to `worker/stages/`, register in `worker/stages/register.py`
+- **Legacy activities:** Still in `worker/_legacy_activities.py` (shared by non-investigation workflows). Do NOT add new code here.
 - **Migrations:** Sequential in `migrations/`, apply via `docker compose exec -T postgres psql -U hydra -d hydra < migrations/NNN_name.sql`
 - **After Python changes:** `docker compose build worker && docker compose up -d worker`
 - **After Go changes:** `docker compose build api && docker compose up -d api`
@@ -203,10 +212,21 @@ python scripts/dpo_train.py
 python scripts/accuracy_benchmark.py --model hydra_aligned_1.5b
 ```
 
+## Key Docs
+
+| Doc | Path |
+|-----|------|
+| Architecture Snapshot | `docs/ARCHITECTURE_SNAPSHOT.md` |
+| Session Prompts | `docs/SESSION_PROMPTS.md` |
+| Pipeline Map | `docs/pipeline_map.md` |
+| Pipeline Stages | `docs/pipeline_stages.md` |
+| API Spec (v1.2.0) | `docs/openapi.yaml` |
+| Security Audit | `docs/SECURITY_AUDIT_v0.10.0.md` |
+
 ## Pending Work (Priority Order)
 
-1. **DPO Phase 2-4** — Generate training data, train model, measure accuracy delta
-2. **Full corpus benchmark** — Run accuracy_benchmark.py against all 70 labeled alerts
-3. **Skill template migration** — Persist `import os,sys` removal as migration 041
-4. **LiteLLM Redis auth** — Add REDIS_PASSWORD to litellm env in docker-compose
-5. **K8s cluster test** — Deploy to real cluster via `scripts/k8s_cluster_test.sh`
+1. **Remove `_legacy_activities.py`** — Migrate shared activities (fetch_task, log_audit, etc.) to V2 modules
+2. **Multi-worker scaling test** — Run V2 with `docker compose --scale worker=3`
+3. **DPO Phase 2** — Expand training data from 33 to 200+ pairs, retrain
+4. **K8s cluster test** — Deploy to real cluster via `scripts/k8s_cluster_test.sh`
+5. **Full corpus benchmark** — Run 70 labeled alerts through V2 pipeline
