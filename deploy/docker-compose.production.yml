@@ -1,0 +1,295 @@
+# ============================================================
+# HYDRA Production Docker Compose
+# Usage: cd deploy && docker compose -f docker-compose.production.yml up -d
+# Prerequisites: Copy .env.example to .env and fill in values
+# ============================================================
+
+services:
+
+  # --- DATABASE ---
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hydra-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hydra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-hydra}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ../config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hydra -d hydra"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+  # --- CACHE ---
+  redis:
+    image: redis:7-alpine
+    container_name: hydra-redis
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+      --rename-command FLUSHALL ""
+      --rename-command CONFIG ""
+      --rename-command DEBUG ""
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+  # --- CONNECTION POOLER ---
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: hydra-pgbouncer
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-hydra}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hydra}
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: 400
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 20
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+  # --- WORKFLOW ENGINE ---
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    container_name: hydra-temporal
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-hydra}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    volumes:
+      - ../temporal-config:/etc/temporal/config/dynamicconfig:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "localhost:7233", "cluster", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+  # --- GO API ---
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    container_name: hydra-api
+    ports:
+      - "${API_PORT:-8090}:8090"
+    environment:
+      - PORT=8090
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-hydra}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-hydra}
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - HYDRA_ENCRYPTION_KEY=${HYDRA_ENCRYPTION_KEY:-}
+      - HYDRA_WORKFLOW_VERSION=InvestigationWorkflowV2
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+  # --- PYTHON TEMPORAL WORKER ---
+  worker:
+    build:
+      context: ../worker
+      dockerfile: Dockerfile
+    # No container_name — allows docker compose --scale worker=N
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-hydra}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-hydra}
+      - TEMPORAL_ADDRESS=temporal:7233
+      - LITELLM_URL=${LITELLM_URL}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - HOST_SANDBOX_DIR=${PWD}/../sandbox
+      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-qwen2.5:14b}
+      - DEDUP_ENABLED=true
+      - PYTHONUNBUFFERED=1
+      - HTTP_PROXY=http://squid-proxy:3128
+      - HTTPS_PROXY=http://squid-proxy:3128
+      - NO_PROXY=postgres,redis,temporal,pgbouncer,localhost,host.docker.internal
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../sandbox:/app/sandbox:ro
+    depends_on:
+      temporal:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import temporalio; print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+  # --- REACT DASHBOARD ---
+  dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
+    container_name: hydra-dashboard
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+  # --- EGRESS PROXY ---
+  squid-proxy:
+    image: ubuntu/squid:latest
+    container_name: hydra-egress-proxy
+    volumes:
+      - ../proxy/squid.conf:/etc/squid/squid.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "squidclient -h localhost mgr:info | head -1 | grep -q HTTP"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hydra-internal
+
+networks:
+  hydra-internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
