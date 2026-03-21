@@ -33,6 +33,7 @@ from psycopg2.extras import RealDictCursor
 from temporalio import activity
 
 from stages import AnalyzeOutput, IngestOutput
+from stages.llm_gateway import llm_call
 
 # --- Configuration (read once at import) ---
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
@@ -230,7 +231,8 @@ def _fill_parameters_fast(skill_params: list, siem_event: dict) -> dict:
     return filled
 
 
-async def _fill_parameters_llm(skill_params: list, prompt: str, siem_event: dict) -> Tuple[dict, int, int]:
+async def _fill_parameters_llm(skill_params: list, prompt: str, siem_event: dict,
+                               task_id: str = "", task_type: str = "", tenant_id: str = "") -> Tuple[dict, int, int]:
     """LLM-based parameter extraction. Returns (filled_params, tokens_in, tokens_out)."""
     defaults = {p["name"]: p.get("default") for p in skill_params}
 
@@ -241,33 +243,26 @@ async def _fill_parameters_llm(skill_params: list, prompt: str, siem_event: dict
         user_msg += f"Available SIEM Context:\n{wrapped}\n\n"
     user_msg += "Respond ONLY with a JSON object where keys are parameter names and values are the extracted values."
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(
-            LITELLM_URL,
-            headers={"Authorization": f"Bearer {LITELLM_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": TIER_FILL["model"],
-                "messages": [
-                    {"role": "system", "content": PARAM_FILL_SYSTEM},
-                    {"role": "user", "content": user_msg},
-                ],
-                "temperature": TIER_FILL["temperature"],
-                "max_tokens": TIER_FILL["max_tokens"],
-                "response_format": {"type": "json_object"},
-            },
-        )
-        resp.raise_for_status()
-        resp_json = resp.json()
+    result = await llm_call(
+        prompt=user_msg,
+        system_prompt=PARAM_FILL_SYSTEM,
+        model_config=TIER_FILL,
+        task_id=task_id,
+        stage="analyze",
+        task_type=task_type,
+        tenant_id=tenant_id,
+        timeout=30.0,
+        response_format={"type": "json_object"},
+    )
 
-    usage = resp_json.get("usage", {})
-    content = resp_json["choices"][0]["message"]["content"].strip()
+    content = result["content"]
     extracted = json.loads(content)
 
     for k, v in defaults.items():
         if k not in extracted or extracted[k] is None:
             extracted[k] = v
 
-    return extracted, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
+    return extracted, result["tokens_in"], result["tokens_out"]
 
 
 def _render_template(template: str, parameters: dict) -> str:
@@ -296,6 +291,7 @@ async def _analyze_template(ingest: IngestOutput) -> AnalyzeOutput:
         try:
             filled, tokens_in, tokens_out = await _fill_parameters_llm(
                 ingest.skill_params, ingest.prompt, ingest.siem_event,
+                task_id=ingest.task_id, task_type=ingest.task_type, tenant_id=ingest.tenant_id,
             )
         except Exception as e:
             print(f"LLM param fill failed, falling back to fast fill: {e}")
@@ -346,26 +342,18 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
         augmented_prompt = prompt
 
     # Call LLM
-    async with httpx.AsyncClient(timeout=900.0) as client:
-        resp = await client.post(
-            LITELLM_URL,
-            headers={"Authorization": f"Bearer {LITELLM_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": TIER_GENERATE["model"],
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": augmented_prompt},
-                ],
-                "temperature": TIER_GENERATE["temperature"],
-                "max_tokens": TIER_GENERATE["max_tokens"],
-            },
-        )
-        resp.raise_for_status()
-        result = resp.json()
+    result = await llm_call(
+        prompt=augmented_prompt,
+        system_prompt=system_prompt,
+        model_config=TIER_GENERATE,
+        task_id=ingest.task_id,
+        stage="analyze",
+        task_type=task_type,
+        tenant_id=ingest.tenant_id,
+        timeout=900.0,
+    )
 
-    usage = result.get("usage", {})
-    code = result["choices"][0]["message"]["content"].strip()
-    code = _scrub_code(code)
+    code = _scrub_code(result["content"])
     generation_ms = int((time.time() - t0) * 1000)
 
     # Preflight
@@ -376,8 +364,8 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
         source="llm",
         preflight_passed=passed,
         preflight_fixes=fixes,
-        tokens_in=usage.get("prompt_tokens", 0),
-        tokens_out=usage.get("completion_tokens", 0),
+        tokens_in=result["tokens_in"],
+        tokens_out=result["tokens_out"],
         generation_ms=generation_ms,
     )
 

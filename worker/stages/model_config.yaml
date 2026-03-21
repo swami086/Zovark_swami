@@ -1,0 +1,46 @@
+# HYDRA Model Routing Configuration
+# Maps investigation parameters to model endpoints
+version: "2026-03"
+
+models:
+  fast:
+    name: "hydra-fast"
+    endpoint: "http://host.docker.internal:11434/v1/chat/completions"
+    model: "hydra-fast"
+    max_tokens: 4096
+    temperature: 0.1
+    timeout_seconds: 120
+    description: "Fast tier — small model for simple triage"
+
+  standard:
+    name: "hydra-standard"
+    endpoint: "http://host.docker.internal:11434/v1/chat/completions"
+    model: "hydra-standard"
+    max_tokens: 8192
+    temperature: 0.1
+    timeout_seconds: 300
+    description: "Standard tier — Qwen2.5-14B for full investigation"
+
+  enterprise:
+    name: "hydra-enterprise"
+    endpoint: "http://localhost:8080/v1/chat/completions"
+    model: "hydra-enterprise"
+    max_tokens: 16384
+    temperature: 0.1
+    timeout_seconds: 600
+    description: "Enterprise tier — large model for complex analysis (requires A100)"
+
+routing:
+  default: "standard"
+
+  severity_overrides:
+    low: "fast"
+    medium: "standard"
+    high: "standard"
+    critical: "standard"
+
+  # Override by task type (optional, uncomment to enable)
+  # task_type_overrides:
+  #   phishing_investigation: "fast"
+  #   ransomware_triage: "standard"
+  #   supply_chain_compromise: "enterprise"

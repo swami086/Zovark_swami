@@ -20,19 +20,40 @@ from dataclasses import asdict
 from temporalio import activity
 from stages import ExecuteOutput
 
+import yaml
+from pathlib import Path
+
+# Load sandbox policy (YAML-driven, customer-auditable)
+_POLICY_PATH = Path(__file__).parent / "sandbox_policy.yaml"
+try:
+    with open(_POLICY_PATH) as f:
+        SANDBOX_POLICY = yaml.safe_load(f)
+    _POLICY_VERSION = SANDBOX_POLICY.get("version", "unknown")
+except Exception:
+    SANDBOX_POLICY = None
+    _POLICY_VERSION = "hardcoded-fallback"
+
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
 
 # --- AST Prefilter (inlined from sandbox/ast_prefilter.py concepts) ---
-FORBIDDEN_IMPORTS = frozenset({
-    'os', 'sys', 'subprocess', 'socket', 'shutil', 'importlib',
-    'pickle', 'marshal', 'ctypes', 'pty', 'signal',
-})
+if SANDBOX_POLICY:
+    FORBIDDEN_IMPORTS = frozenset(SANDBOX_POLICY["ast_prefilter"]["blocked_imports"])
+else:
+    FORBIDDEN_IMPORTS = frozenset({
+        'os', 'sys', 'subprocess', 'socket', 'shutil', 'importlib',
+        'pickle', 'marshal', 'ctypes', 'pty', 'signal',
+    })
 
-FORBIDDEN_PATTERNS = [
-    r'\b__import__\s*\(',
-    r'\beval\s*\(',
-    r'\bexec\s*\(',
-]
+if SANDBOX_POLICY:
+    _raw_patterns = SANDBOX_POLICY["ast_prefilter"]["blocked_patterns"]
+    FORBIDDEN_PATTERNS = [rf'\b{re.escape(p.rstrip("("))}\s*\(' if p.endswith("(") else rf'\b{re.escape(p)}\b'
+                          for p in _raw_patterns]
+else:
+    FORBIDDEN_PATTERNS = [
+        r'\b__import__\s*\(',
+        r'\beval\s*\(',
+        r'\bexec\s*\(',
+    ]
 
 
 def _ast_check(code: str) -> Tuple[bool, str]:
@@ -81,14 +102,17 @@ def _parse_stdout(stdout: str) -> Dict:
 
 
 # --- Docker sandbox execution ---
-def _run_in_sandbox(code: str, timeout: int = 60) -> Dict:
-    """Execute code in Docker sandbox. No LLM calls."""
+def _run_in_sandbox(code: str, timeout: int = None) -> Dict:
+    """Execute code in Docker sandbox. No LLM calls. Policy: v{_POLICY_VERSION}."""
+    if timeout is None:
+        timeout = SANDBOX_POLICY["process"]["max_execution_seconds"] if SANDBOX_POLICY else 120
+    memory_mb = SANDBOX_POLICY["process"]["max_memory_mb"] if SANDBOX_POLICY else 512
     seccomp_path = "/app/sandbox/seccomp_profile.json"
 
     cmd = [
         "docker", "run", "--rm", "-i", "--network=none", "--read-only",
         "--tmpfs", "/tmp:size=64m,noexec,nosuid", "--workdir", "/tmp",
-        "--cpus=0.5", "--memory=512m", "--memory-swap=512m",
+        "--cpus=0.5", f"--memory={memory_mb}m", f"--memory-swap={memory_mb}m",
         "--pids-limit=64", "--cap-drop=ALL",
         "--user", "65534:65534",
         "--security-opt=no-new-privileges",
@@ -168,6 +192,8 @@ async def execute_investigation(data: dict) -> dict:
         return asdict(ExecuteOutput(
             stderr=f"AST prefilter blocked: {reason}", exit_code=1, status="failed"
         ))
+
+    activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}")
 
     # Step 2: Execute
     if FAST_FILL:

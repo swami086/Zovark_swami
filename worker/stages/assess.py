@@ -19,6 +19,7 @@ import httpx
 
 from temporalio import activity
 from stages import AssessOutput
+from stages.llm_gateway import llm_call
 
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
@@ -63,25 +64,20 @@ def _template_summary(task_type: str, findings: list, iocs: list, risk_score: in
 
 
 # --- LLM summary (optional) ---
-async def _llm_summary(stdout: str, task_type: str) -> str:
+async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id: str = "") -> str:
     """Call LLM to generate a 2-3 sentence investigation summary."""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                LITELLM_URL,
-                headers={"Authorization": f"Bearer {LITELLM_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "hydra-fast",
-                    "messages": [
-                        {"role": "system", "content": "Summarize this investigation in 2-3 sentences."},
-                        {"role": "user", "content": stdout[:2000]},
-                    ],
-                    "temperature": 0.1,
-                    "max_tokens": 200,
-                },
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
+        result = await llm_call(
+            prompt=stdout[:2000],
+            system_prompt="Summarize this investigation in 2-3 sentences.",
+            model_config={"model": "hydra-fast", "temperature": 0.1, "max_tokens": 200},
+            task_id=task_id,
+            stage="assess",
+            task_type=task_type,
+            tenant_id=tenant_id,
+            timeout=30.0,
+        )
+        return result["content"]
     except Exception as e:
         print(f"LLM summary failed (non-fatal): {e}")
         return ""
@@ -130,7 +126,7 @@ async def assess_results(data: dict) -> dict:
     if FAST_FILL:
         summary = _template_summary(task_type, findings, iocs, risk_score)
     else:
-        summary = await _llm_summary(stdout, task_type)
+        summary = await _llm_summary(stdout, task_type, task_id=task_id, tenant_id=tenant_id)
         if not summary:
             summary = _template_summary(task_type, findings, iocs, risk_score)
 

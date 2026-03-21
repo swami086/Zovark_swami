@@ -1,0 +1,51 @@
+# HYDRA Sandbox Security Policy v1.0
+# This file defines what investigation code can and cannot do.
+# Customers can audit and customize this file.
+version: "2026-03"
+
+filesystem:
+  allow:
+    - "/sandbox/**"
+    - "/tmp/**"
+  deny:
+    - "/etc/**"
+    - "/proc/**"
+    - "/sys/**"
+    - "/var/**"
+    - "/home/**"
+  mode: "read-only-root"
+
+network:
+  mode: "deny-all"
+
+process:
+  blocked_syscalls:
+    - "ptrace"
+    - "mount"
+    - "reboot"
+  blocked_capabilities:
+    - "ALL"
+  max_execution_seconds: 120
+  max_memory_mb: 512
+
+ast_prefilter:
+  blocked_imports:
+    - "os"
+    - "sys"
+    - "subprocess"
+    - "socket"
+    - "shutil"
+    - "ctypes"
+    - "importlib"
+    - "pickle"
+    - "marshal"
+    - "pty"
+    - "signal"
+  blocked_patterns:
+    - "__import__("
+    - "eval("
+    - "exec("
+    - "compile("
+    - "getattr("
+    - "__subclasses__"
+    - "__builtins__"
