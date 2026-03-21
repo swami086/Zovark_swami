@@ -275,7 +275,7 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 	}
 
 	wfStart := time.Now()
-	_, err = tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow", map[string]interface{}{
+	_, err = tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName, map[string]interface{}{
 		"task_type": taskType,
 		"input":     input,
 	})

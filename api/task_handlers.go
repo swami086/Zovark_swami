@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -18,6 +19,16 @@ import (
 	"github.com/google/uuid"
 	"go.temporal.io/sdk/client"
 )
+
+// Workflow version toggle — set HYDRA_WORKFLOW_VERSION=InvestigationWorkflowV2 for V2 pipeline
+var workflowName = getWorkflowName()
+
+func getWorkflowName() string {
+	if v := os.Getenv("HYDRA_WORKFLOW_VERSION"); v != "" {
+		return v
+	}
+	return "ExecuteTaskWorkflow"
+}
 
 // Types
 type TaskRequest struct {
@@ -155,7 +166,7 @@ func createTaskHandler(c *gin.Context) {
 	}
 
 	wfStart := time.Now()
-	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow", req)
+	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName, req)
 	wfLatency := int(time.Since(wfStart).Milliseconds())
 
 	if err != nil {
@@ -514,7 +525,7 @@ func uploadTaskHandler(c *gin.Context) {
 		Input:    inputMap,
 	}
 
-	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow", req)
+	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName, req)
 	if err != nil {
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		respondInternalError(c, err, "start upload workflow")
@@ -829,7 +840,7 @@ func bulkCreateTasksHandler(c *gin.Context) {
 			TaskQueue: "hydra-tasks",
 		}
 
-		we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, "ExecuteTaskWorkflow",
+		we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName,
 			TaskRequest{TaskType: task.TaskType, Input: task.Input})
 		if err != nil {
 			log.Printf("Failed to start workflow for bulk task %s: %v", taskID, err)

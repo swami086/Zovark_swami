@@ -331,6 +331,7 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-hydra-redis-dev-2026}
       - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
       - HYDRA_ENCRYPTION_KEY=${HYDRA_ENCRYPTION_KEY:-}
+      - HYDRA_WORKFLOW_VERSION=${HYDRA_WORKFLOW_VERSION:-ExecuteTaskWorkflow}
     depends_on:
       pgbouncer:
         condition: service_healthy
