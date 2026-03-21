@@ -27,9 +27,24 @@ class InvestigationWorkflowV2:
 
     @workflow.run
     async def run(self, task_data: dict) -> dict:
+        # Extract task_id from Temporal workflow ID (same as legacy)
+        info = workflow.info()
+        task_id = info.workflow_id.replace("task-", "")
+
+        # Fetch full task from DB via legacy fetch_task activity
+        full_task = await workflow.execute_activity(
+            "fetch_task", task_id,
+            start_to_close_timeout=timedelta(seconds=10),
+        )
+        if not full_task:
+            return {"status": "failed", "task_id": task_id, "error": "Task not found"}
+
+        # Inject task_id and tenant_id into task_data
+        full_task["task_id"] = task_id
+
         # Stage 1: INGEST — dedup, PII mask, skill match (no LLM)
         ingested = await workflow.execute_activity(
-            ingest_alert, task_data,
+            ingest_alert, full_task,
             start_to_close_timeout=timedelta(seconds=30),
         )
 
