@@ -339,6 +339,11 @@ ${recommendations.length ? '<h3>Recommendations</h3><ul>' + recommendations.slic
                     )}
                     {task.severity && <SeverityBadge severity={task.severity} />}
                     <StatusBadge status={task.status} />
+                    {task.output?.model_used && (
+                        <span className="px-2 py-0.5 bg-slate-700/50 text-slate-400 text-xs font-mono rounded">
+                            Model: {task.output.model_used}
+                        </span>
+                    )}
                 </div>
             </div>
 

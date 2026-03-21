@@ -34,7 +34,7 @@ def _get_worker_id():
 def _update_task_status(conn, task_id: str, status: str, output: dict,
                         tokens_in: int = 0, tokens_out: int = 0,
                         execution_ms: int = 0, severity: str = None,
-                        error_message: str = None):
+                        error_message: str = None, model_name: str = "unknown"):
     """Update agent_tasks with final status."""
     worker_id = _get_worker_id()
     human_review_threshold = int(os.environ.get("HYDRA_HUMAN_REVIEW_THRESHOLD", "60"))
@@ -59,6 +59,7 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
                 tokens_used_input = %s, tokens_used_output = %s, execution_ms = %s,
                 severity = %s, worker_id = COALESCE(%s, worker_id),
                 needs_human_review = %s, review_reason = %s,
+                model_name = %s,
                 completed_at = NOW()
             WHERE id = %s
         """, (
@@ -66,6 +67,7 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
             tokens_in, tokens_out, execution_ms,
             severity, worker_id,
             needs_review, review_reason,
+            model_name,
             task_id,
         ))
 
@@ -92,18 +94,19 @@ def _save_pattern(conn, task_type: str, alert_sig: str, code: str,
 
 # --- Investigation row (no embedding) ---
 def _create_investigation(conn, tenant_id: str, task_id: str, verdict: str,
-                          risk_score: int, confidence: float, summary: str):
+                          risk_score: int, confidence: float, summary: str,
+                          model_name: str = "unknown"):
     """Insert investigations row without embedding. Returns investigation_id."""
     try:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO investigations
                 (tenant_id, task_id, verdict, risk_score, confidence,
-                 summary, source)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                 summary, source, model_name)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (tenant_id, task_id, verdict, risk_score, confidence,
-                  (summary or "")[:2000], "production"))
+                  (summary or "")[:2000], "production", model_name))
             row = cur.fetchone()
             return str(row[0]) if row else None
     except Exception as e:
@@ -150,6 +153,7 @@ async def store_investigation(data: dict) -> dict:
     tokens_out = data.get("tokens_out", 0)
     execution_ms = data.get("execution_ms", 0)
     task_type = data.get("task_type", "")
+    model_name = data.get("model_name", "unknown")
     siem_event = data.get("siem_event", {})
 
     severity = _severity_from_risk(risk_score)
@@ -164,11 +168,13 @@ async def store_investigation(data: dict) -> dict:
             "findings": findings,
             "risk_score": risk_score,
             "recommendations": recommendations,
+            "model_used": model_name,
         }
         _update_task_status(
             conn, task_id, status, output,
             tokens_in=tokens_in, tokens_out=tokens_out,
             execution_ms=execution_ms, severity=severity,
+            model_name=model_name,
         )
 
         # 2. Save investigation pattern (no LLM)
@@ -183,6 +189,7 @@ async def store_investigation(data: dict) -> dict:
             investigation_id = _create_investigation(
                 conn, tenant_id, task_id, verdict,
                 risk_score, confidence, memory_summary or stdout[:2000],
+                model_name=model_name,
             )
 
         conn.commit()

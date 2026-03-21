@@ -34,6 +34,7 @@ from temporalio import activity
 
 from stages import AnalyzeOutput, IngestOutput
 from stages.llm_gateway import llm_call
+from stages.model_router import get_model_config
 
 # --- Configuration (read once at import) ---
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
@@ -243,10 +244,14 @@ async def _fill_parameters_llm(skill_params: list, prompt: str, siem_event: dict
         user_msg += f"Available SIEM Context:\n{wrapped}\n\n"
     user_msg += "Respond ONLY with a JSON object where keys are parameter names and values are the extracted values."
 
+    routed_config = get_model_config(severity="", task_type=task_type)
+    # Override with TIER_FILL settings for param extraction (always fast tier)
+    fill_config = {**routed_config, **TIER_FILL}
+    activity.logger.info(f"Model selected: {fill_config.get('name', 'unknown')} for {task_type} param fill")
     result = await llm_call(
         prompt=user_msg,
         system_prompt=PARAM_FILL_SYSTEM,
-        model_config=TIER_FILL,
+        model_config=fill_config,
         task_id=task_id,
         stage="analyze",
         task_type=task_type,
@@ -342,10 +347,15 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
         augmented_prompt = prompt
 
     # Call LLM
+    severity = ingest.siem_event.get("severity", "high") if isinstance(ingest.siem_event, dict) else "high"
+    routed_config = get_model_config(severity=severity, task_type=task_type)
+    # Override with TIER_GENERATE settings for full code gen
+    gen_config = {**routed_config, **TIER_GENERATE}
+    activity.logger.info(f"Model selected: {gen_config.get('name', 'unknown')} for {task_type} (severity: {severity})")
     result = await llm_call(
         prompt=augmented_prompt,
         system_prompt=system_prompt,
-        model_config=TIER_GENERATE,
+        model_config=gen_config,
         task_id=ingest.task_id,
         stage="analyze",
         task_type=task_type,

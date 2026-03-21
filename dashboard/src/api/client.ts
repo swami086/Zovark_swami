@@ -110,6 +110,7 @@ export interface TaskDetail extends Task {
         code?: string;
         stdout?: string;
         step_count?: number;
+        model_used?: string;
     };
     tokens_used_input?: number;
     tokens_used_output?: number;

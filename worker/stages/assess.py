@@ -20,6 +20,7 @@ import httpx
 from temporalio import activity
 from stages import AssessOutput
 from stages.llm_gateway import llm_call
+from stages.model_router import get_model_config
 
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
@@ -67,10 +68,12 @@ def _template_summary(task_type: str, findings: list, iocs: list, risk_score: in
 async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id: str = "") -> str:
     """Call LLM to generate a 2-3 sentence investigation summary."""
     try:
+        summary_config = get_model_config(severity="low", task_type=task_type)
+        summary_config.update({"temperature": 0.1, "max_tokens": 200})
         result = await llm_call(
             prompt=stdout[:2000],
             system_prompt="Summarize this investigation in 2-3 sentences.",
-            model_config={"model": "hydra-fast", "temperature": 0.1, "max_tokens": 200},
+            model_config=summary_config,
             task_id=task_id,
             stage="assess",
             task_type=task_type,
