@@ -5,12 +5,13 @@
 
 ## Quick Reference
 
-- **Version:** post v1.0.0-rc1 (latest: `2f99e9c`)
-- **Status:** V2 Pipeline OPERATIONAL — 100/100 stress test, 10/10 LLM test
-- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + NATS + llama.cpp (Qwen2.5-14B)
-- **Pipeline:** V2 5-stage (1392 lines) — replaced legacy (2916 lines)
+- **Version:** v1.1.0 (latest: `5f264a7`)
+- **Status:** V2 Pipeline OPERATIONAL — 5/5 template investigations completing, dashboard live
+- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + llama.cpp (Qwen2.5-14B)
+- **Pipeline:** V2 5-stage with LLM audit gateway + model routing
 - **Tests:** 44 Go + 179 Python + 15 V2 pipeline = 238 test functions
-- **Services:** 8 Docker containers (core stack, monitoring optional)
+- **Services:** 6 core Docker containers (NATS/LiteLLM/TEI moved to optional)
+- **Dashboard:** React 19 + Vite 7 + Tailwind 4, 15 pages, dark mode, live polling
 
 ## Architecture (V2 Pipeline)
 
@@ -24,7 +25,9 @@ SIEM Alert → Go API (:8090) → Temporal: InvestigationWorkflowV2 →
   → Structured Verdict (findings, IOCs, recommendations, risk score)
 ```
 
-LLM contained in exactly 2 files: `worker/stages/analyze.py` + `worker/stages/assess.py`
+LLM calls routed through `worker/stages/llm_gateway.py` (audit logging, timeout handling)
+LLM model selection via `worker/stages/model_router.py` + `worker/stages/model_config.yaml`
+Sandbox policy: `worker/stages/sandbox_policy.yaml` (declarative, customer-auditable)
 
 ## Directory Map
 
@@ -213,21 +216,10 @@ python scripts/dpo_train.py
 python scripts/accuracy_benchmark.py --model hydra_aligned_1.5b
 ```
 
-## Key Docs
-
-| Doc | Path |
-|-----|------|
-| Architecture Snapshot | `docs/ARCHITECTURE_SNAPSHOT.md` |
-| Session Prompts | `docs/SESSION_PROMPTS.md` |
-| Pipeline Map | `docs/pipeline_map.md` |
-| Pipeline Stages | `docs/pipeline_stages.md` |
-| API Spec (v1.2.0) | `docs/openapi.yaml` |
-| Security Audit | `docs/SECURITY_AUDIT_v0.10.0.md` |
-
 ## Pending Work (Priority Order)
 
-1. **Remove `_legacy_activities.py`** — Migrate shared activities (fetch_task, log_audit, etc.) to V2 modules
-2. **Multi-worker scaling test** — Run V2 with `docker compose --scale worker=3`
-3. **DPO Phase 2** — Expand training data from 33 to 200+ pairs, retrain
-4. **K8s cluster test** — Deploy to real cluster via `scripts/k8s_cluster_test.sh`
-5. **Full corpus benchmark** — Run 70 labeled alerts through V2 pipeline
+1. **Fix fetch_task race condition** — Temporal workflow starts before API commits task to DB
+2. **Remove `_legacy_activities.py`** — Migrate shared activities to V2 modules
+3. **Multi-worker scaling test** — Run V2 with `docker compose --scale worker=3`
+4. **Run Juice Shop benchmark** — 100 real-traffic alerts through pipeline
+5. **Nemotron 4B benchmark** — Head-to-head vs Qwen2.5-14B
