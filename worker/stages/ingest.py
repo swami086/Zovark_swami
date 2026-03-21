@@ -129,6 +129,23 @@ def _retrieve_skill(task_type: str, prompt: str, conn) -> Optional[dict]:
     return None
 
 
+# --- Fetch task from DB (not @activity.defn — legacy fetch_task is registered) ---
+async def fetch_task(task_id: str) -> dict:
+    """Load task from agent_tasks table. Shared by V2 workflow."""
+    conn = _get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT id, tenant_id, task_type, input, status FROM agent_tasks WHERE id = %s", (task_id,))
+            row = cur.fetchone()
+            if not row:
+                raise ValueError(f"Task {task_id} not found")
+            row['id'] = str(row['id'])
+            row['tenant_id'] = str(row['tenant_id'])
+            return dict(row)
+    finally:
+        conn.close()
+
+
 # --- Main entry point ---
 @activity.defn
 async def ingest_alert(task_data: dict) -> dict:
