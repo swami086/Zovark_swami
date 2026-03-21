@@ -1,0 +1,709 @@
+{
+  "total": 100,
+  "passed": 100,
+  "failed": 0,
+  "timeout": 0,
+  "dedup": 0,
+  "results": [
+    {
+      "idx": 0,
+      "task_type": "c2_communication_hunt",
+      "task_id": "b706b841-9eb8-40cc-9e3c-711fa46650af",
+      "status": "completed",
+      "duration": 30.315202713012695
+    },
+    {
+      "idx": 1,
+      "task_type": "lateral_movement_detection",
+      "task_id": "83109521-70ae-42a4-a362-3ecae1a8c8c9",
+      "status": "completed",
+      "duration": 30.295101165771484
+    },
+    {
+      "idx": 2,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "3e2fb489-fde2-49af-8734-9f0aa5abadcb",
+      "status": "completed",
+      "duration": 30.327986001968384
+    },
+    {
+      "idx": 3,
+      "task_type": "ransomware_triage",
+      "task_id": "03727547-6ee4-46f5-ac66-acfd22c1eece",
+      "status": "completed",
+      "duration": 30.33610486984253
+    },
+    {
+      "idx": 4,
+      "task_type": "phishing_investigation",
+      "task_id": "b07b271e-4190-4dfc-86f0-16f595efacab",
+      "status": "completed",
+      "duration": 30.290444374084473
+    },
+    {
+      "idx": 5,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "47dcc253-653c-4505-a4e0-444adc6a1ff0",
+      "status": "completed",
+      "duration": 30.181164264678955
+    },
+    {
+      "idx": 6,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "7a55fe86-75ac-4b69-8470-397bb2e76336",
+      "status": "completed",
+      "duration": 30.27006435394287
+    },
+    {
+      "idx": 7,
+      "task_type": "c2_communication_hunt",
+      "task_id": "4058617f-dd33-4c65-903d-845894a89015",
+      "status": "completed",
+      "duration": 30.199276447296143
+    },
+    {
+      "idx": 8,
+      "task_type": "ransomware_triage",
+      "task_id": "42d99046-b6fa-43ff-8fe1-b5c12f2671a0",
+      "status": "completed",
+      "duration": 30.284000873565674
+    },
+    {
+      "idx": 9,
+      "task_type": "insider_threat_detection",
+      "task_id": "709b8842-8c7d-400f-86cc-2bade0053071",
+      "status": "completed",
+      "duration": 30.323246002197266
+    },
+    {
+      "idx": 10,
+      "task_type": "c2_communication",
+      "task_id": "3dd32222-7cea-4d30-a626-a170113ec390",
+      "status": "completed",
+      "duration": 30.228839874267578
+    },
+    {
+      "idx": 11,
+      "task_type": "supply_chain_compromise",
+      "task_id": "bda84649-d193-4af8-a848-17a0e2e34e90",
+      "status": "completed",
+      "duration": 30.278290033340454
+    },
+    {
+      "idx": 12,
+      "task_type": "c2_communication_hunt",
+      "task_id": "f1f1beef-cd65-465c-8f44-c889cdc7c259",
+      "status": "completed",
+      "duration": 30.395447969436646
+    },
+    {
+      "idx": 13,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "fa4d1b4d-00f6-45e5-a26d-75da67293b48",
+      "status": "completed",
+      "duration": 30.368784427642822
+    },
+    {
+      "idx": 14,
+      "task_type": "insider_threat_detection",
+      "task_id": "dd8a4dec-4ded-4e20-b0a8-4e1b660a8053",
+      "status": "completed",
+      "duration": 30.287522315979004
+    },
+    {
+      "idx": 15,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "9df768fe-24d7-4e27-8107-b07258a0b2ee",
+      "status": "completed",
+      "duration": 30.306585550308228
+    },
+    {
+      "idx": 16,
+      "task_type": "c2_communication_hunt",
+      "task_id": "c903e8db-9d87-453e-957c-584504c746c4",
+      "status": "completed",
+      "duration": 30.293148279190063
+    },
+    {
+      "idx": 17,
+      "task_type": "brute_force_investigation",
+      "task_id": "65979482-6b61-466e-a91a-0952d790f0a2",
+      "status": "completed",
+      "duration": 30.30753469467163
+    },
+    {
+      "idx": 18,
+      "task_type": "ransomware_triage",
+      "task_id": "e518d985-c331-443a-9d8e-de169dcdd2fa",
+      "status": "completed",
+      "duration": 30.280428171157837
+    },
+    {
+      "idx": 19,
+      "task_type": "supply_chain_compromise",
+      "task_id": "117b89ec-9c0e-40dc-b83c-a2388e9af236",
+      "status": "completed",
+      "duration": 30.23629641532898
+    },
+    {
+      "idx": 20,
+      "task_type": "brute_force_investigation",
+      "task_id": "c984ed96-7490-4650-a1df-4a662fd31453",
+      "status": "completed",
+      "duration": 30.19934844970703
+    },
+    {
+      "idx": 21,
+      "task_type": "supply_chain_compromise",
+      "task_id": "a5ea6341-1bd5-4ef3-b5f9-c2ba292568d9",
+      "status": "completed",
+      "duration": 30.2662672996521
+    },
+    {
+      "idx": 22,
+      "task_type": "supply_chain_compromise",
+      "task_id": "9766d3ad-be85-47af-a7f4-1b9d4e3f9346",
+      "status": "completed",
+      "duration": 30.2369384765625
+    },
+    {
+      "idx": 23,
+      "task_type": "ransomware_triage",
+      "task_id": "4f51b70b-b14f-485b-8b0d-5ee50cc83be6",
+      "status": "completed",
+      "duration": 30.282079219818115
+    },
+    {
+      "idx": 24,
+      "task_type": "c2_communication",
+      "task_id": "de64b348-9df3-4f9a-abb2-bc298497aff0",
+      "status": "completed",
+      "duration": 30.313236713409424
+    },
+    {
+      "idx": 25,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "49905cac-8b48-40d7-a99b-aa19ba3c9a77",
+      "status": "completed",
+      "duration": 30.29362964630127
+    },
+    {
+      "idx": 26,
+      "task_type": "c2_communication_hunt",
+      "task_id": "a6b04b93-df47-488d-881d-e075baa4f121",
+      "status": "completed",
+      "duration": 30.31197237968445
+    },
+    {
+      "idx": 27,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "ed426b29-3086-4d60-aee2-5130e0924cc3",
+      "status": "completed",
+      "duration": 30.287025690078735
+    },
+    {
+      "idx": 28,
+      "task_type": "insider_threat_detection",
+      "task_id": "548b36a6-65b1-4137-9526-bc9f3c218193",
+      "status": "completed",
+      "duration": 30.217349529266357
+    },
+    {
+      "idx": 29,
+      "task_type": "brute_force_investigation",
+      "task_id": "a27e35cf-0c0b-48bd-b523-5108c866078c",
+      "status": "completed",
+      "duration": 30.307268619537354
+    },
+    {
+      "idx": 30,
+      "task_type": "brute_force_investigation",
+      "task_id": "fa6b4191-9d89-4c50-a646-8d89e206b720",
+      "status": "completed",
+      "duration": 30.259993314743042
+    },
+    {
+      "idx": 31,
+      "task_type": "supply_chain_compromise",
+      "task_id": "5fbdd07f-e336-438c-b99e-143b8727e46d",
+      "status": "completed",
+      "duration": 30.27513861656189
+    },
+    {
+      "idx": 32,
+      "task_type": "brute_force_investigation",
+      "task_id": "931a2fda-47f3-4f69-af8a-6691a37261f2",
+      "status": "completed",
+      "duration": 30.325533390045166
+    },
+    {
+      "idx": 33,
+      "task_type": "c2_communication",
+      "task_id": "414a66fb-cc59-4810-9f5c-b2a7c807e449",
+      "status": "completed",
+      "duration": 30.247710704803467
+    },
+    {
+      "idx": 34,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "fb9a952b-4a90-46ad-bd4e-7cd4dd92bf1f",
+      "status": "completed",
+      "duration": 30.249059200286865
+    },
+    {
+      "idx": 35,
+      "task_type": "lateral_movement_detection",
+      "task_id": "7a7c9642-87c8-4fda-aa9f-066aa09c26d5",
+      "status": "completed",
+      "duration": 30.260701179504395
+    },
+    {
+      "idx": 36,
+      "task_type": "ransomware_triage",
+      "task_id": "5f45f9c8-c0e5-464d-a060-3a3fef4d0542",
+      "status": "completed",
+      "duration": 30.301811695098877
+    },
+    {
+      "idx": 37,
+      "task_type": "c2_communication_hunt",
+      "task_id": "c279f16c-93c4-41ab-a472-82071090d68f",
+      "status": "completed",
+      "duration": 30.294910430908203
+    },
+    {
+      "idx": 38,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "5b8f80a0-2be4-40b9-879c-22bec3f03813",
+      "status": "completed",
+      "duration": 30.238489151000977
+    },
+    {
+      "idx": 39,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "d3a1b4e7-b3a7-464c-8e48-2ee42a7bfd4d",
+      "status": "completed",
+      "duration": 30.27081799507141
+    },
+    {
+      "idx": 40,
+      "task_type": "phishing_investigation",
+      "task_id": "6bbec1da-ed01-4363-98d5-f0b1fbce00ec",
+      "status": "completed",
+      "duration": 30.231862783432007
+    },
+    {
+      "idx": 41,
+      "task_type": "c2_communication",
+      "task_id": "5c2764d2-ad73-4b19-b748-d46bc2dc6082",
+      "status": "completed",
+      "duration": 30.248979091644287
+    },
+    {
+      "idx": 42,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "f11f7180-ed5b-4df9-8b93-cf53d21f0bfa",
+      "status": "completed",
+      "duration": 30.220406770706177
+    },
+    {
+      "idx": 43,
+      "task_type": "supply_chain_compromise",
+      "task_id": "23220e23-4aa8-4fda-bb5b-262db8e7e44f",
+      "status": "completed",
+      "duration": 30.258764028549194
+    },
+    {
+      "idx": 44,
+      "task_type": "brute_force_investigation",
+      "task_id": "d7470ae1-bbfe-4e60-bf5d-c4a3111a23f5",
+      "status": "completed",
+      "duration": 30.239423751831055
+    },
+    {
+      "idx": 45,
+      "task_type": "lateral_movement_detection",
+      "task_id": "b64409f0-2192-4e08-b20c-5e8686e28071",
+      "status": "completed",
+      "duration": 30.299283504486084
+    },
+    {
+      "idx": 46,
+      "task_type": "insider_threat_detection",
+      "task_id": "67a9fdea-05dd-469d-b915-60528b80b671",
+      "status": "completed",
+      "duration": 30.22743272781372
+    },
+    {
+      "idx": 47,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "04a91622-ce2f-4318-95dd-8b74cf5e76d9",
+      "status": "completed",
+      "duration": 30.27637767791748
+    },
+    {
+      "idx": 48,
+      "task_type": "brute_force_investigation",
+      "task_id": "77f790bd-c3f6-443f-b6db-a0cd5a645544",
+      "status": "completed",
+      "duration": 30.2038631439209
+    },
+    {
+      "idx": 49,
+      "task_type": "phishing_investigation",
+      "task_id": "f3654fb2-a07a-4faa-9589-84e30f22896f",
+      "status": "completed",
+      "duration": 30.235017776489258
+    },
+    {
+      "idx": 50,
+      "task_type": "insider_threat_detection",
+      "task_id": "30cfbc30-0094-4f02-9cca-8663ba0d671b",
+      "status": "completed",
+      "duration": 30.27824640274048
+    },
+    {
+      "idx": 51,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "93ccc2af-7132-4735-a2db-3ad3ae619688",
+      "status": "completed",
+      "duration": 30.327008724212646
+    },
+    {
+      "idx": 52,
+      "task_type": "lateral_movement_detection",
+      "task_id": "739e0eab-569a-4df6-a1ba-ab834220d896",
+      "status": "completed",
+      "duration": 30.224631786346436
+    },
+    {
+      "idx": 53,
+      "task_type": "brute_force_investigation",
+      "task_id": "6c4f92ff-c361-4998-a056-186e2a8e9800",
+      "status": "completed",
+      "duration": 30.25624370574951
+    },
+    {
+      "idx": 54,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "7e0bafba-91a2-4a8c-9aca-273c45f566d3",
+      "status": "completed",
+      "duration": 30.22787117958069
+    },
+    {
+      "idx": 55,
+      "task_type": "c2_communication",
+      "task_id": "77506f53-7851-4962-ad43-6a12a8b26fff",
+      "status": "completed",
+      "duration": 30.2539324760437
+    },
+    {
+      "idx": 56,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "7c9f197f-d60c-4653-89e9-72d98d3bd680",
+      "status": "completed",
+      "duration": 30.289222717285156
+    },
+    {
+      "idx": 57,
+      "task_type": "ransomware_triage",
+      "task_id": "9db49283-8114-4fac-9879-5596eb9b2923",
+      "status": "completed",
+      "duration": 30.213045835494995
+    },
+    {
+      "idx": 58,
+      "task_type": "ransomware_triage",
+      "task_id": "45eab73b-32d9-4a68-99f5-086f53c0433b",
+      "status": "completed",
+      "duration": 30.37506890296936
+    },
+    {
+      "idx": 59,
+      "task_type": "c2_communication_hunt",
+      "task_id": "c88c41c5-b502-41bc-9742-f05930be1a3d",
+      "status": "completed",
+      "duration": 30.317222595214844
+    },
+    {
+      "idx": 60,
+      "task_type": "c2_communication_hunt",
+      "task_id": "9e51620a-2d6b-4827-ab56-f99d0f1a2014",
+      "status": "completed",
+      "duration": 30.255452156066895
+    },
+    {
+      "idx": 61,
+      "task_type": "c2_communication",
+      "task_id": "d61426b7-a656-4700-bf79-f6be2bdc1245",
+      "status": "completed",
+      "duration": 30.185319185256958
+    },
+    {
+      "idx": 62,
+      "task_type": "ransomware_triage",
+      "task_id": "e87e25c3-988f-497b-adca-e47d953d8a9a",
+      "status": "completed",
+      "duration": 30.21130919456482
+    },
+    {
+      "idx": 63,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "bb98192c-056c-4535-9d65-4493f69a52f6",
+      "status": "completed",
+      "duration": 30.264629125595093
+    },
+    {
+      "idx": 64,
+      "task_type": "brute_force_investigation",
+      "task_id": "cc92f5a6-ad2f-4de5-a3eb-3c69ccffcb5e",
+      "status": "completed",
+      "duration": 30.28695797920227
+    },
+    {
+      "idx": 65,
+      "task_type": "lateral_movement_detection",
+      "task_id": "d065ec35-bb8c-40ef-b7a1-a19ca7d97a66",
+      "status": "completed",
+      "duration": 30.261772394180298
+    },
+    {
+      "idx": 66,
+      "task_type": "insider_threat_detection",
+      "task_id": "81ce9ee1-6f25-4b17-8907-affe7bd851f0",
+      "status": "completed",
+      "duration": 30.302242517471313
+    },
+    {
+      "idx": 67,
+      "task_type": "supply_chain_compromise",
+      "task_id": "1eb28d17-fa60-4840-9905-1a88b3979fee",
+      "status": "completed",
+      "duration": 30.241711139678955
+    },
+    {
+      "idx": 68,
+      "task_type": "supply_chain_compromise",
+      "task_id": "2be81e1d-8d94-4f43-a16c-b920557d5e72",
+      "status": "completed",
+      "duration": 30.249865531921387
+    },
+    {
+      "idx": 69,
+      "task_type": "insider_threat_detection",
+      "task_id": "08a6d212-70f1-4658-a84b-c80a37c404a2",
+      "status": "completed",
+      "duration": 30.281736373901367
+    },
+    {
+      "idx": 70,
+      "task_type": "lateral_movement_detection",
+      "task_id": "1277fba7-f3a6-47b9-931a-70ab566b3559",
+      "status": "completed",
+      "duration": 30.210052490234375
+    },
+    {
+      "idx": 71,
+      "task_type": "lateral_movement_detection",
+      "task_id": "472b8a11-d304-4109-a385-a234117fc5c3",
+      "status": "completed",
+      "duration": 30.306576013565063
+    },
+    {
+      "idx": 72,
+      "task_type": "brute_force_investigation",
+      "task_id": "a39ce6a8-1ee9-4fbf-a239-f37814ab44ee",
+      "status": "completed",
+      "duration": 30.255248069763184
+    },
+    {
+      "idx": 73,
+      "task_type": "ransomware_triage",
+      "task_id": "b8b82dae-be7a-4731-884e-f73cd2ea409a",
+      "status": "completed",
+      "duration": 30.257203340530396
+    },
+    {
+      "idx": 74,
+      "task_type": "lateral_movement_detection",
+      "task_id": "582f40d6-1a57-4536-84a1-c0a7e7f549a3",
+      "status": "completed",
+      "duration": 30.204047441482544
+    },
+    {
+      "idx": 75,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "326584f8-89d6-42bc-9d4e-a253bb28e5e1",
+      "status": "completed",
+      "duration": 30.261014938354492
+    },
+    {
+      "idx": 76,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "06e5e16a-8172-4207-bf09-df54c8804f7f",
+      "status": "completed",
+      "duration": 30.21519708633423
+    },
+    {
+      "idx": 77,
+      "task_type": "insider_threat_detection",
+      "task_id": "97d5fa6d-f8d9-4269-b4b7-e028d3d37104",
+      "status": "completed",
+      "duration": 30.229119777679443
+    },
+    {
+      "idx": 78,
+      "task_type": "phishing_investigation",
+      "task_id": "94251ba7-9da3-43fe-a798-5296fbcbfd68",
+      "status": "completed",
+      "duration": 30.322813034057617
+    },
+    {
+      "idx": 79,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "738a937e-6d9d-4975-b059-880c53109a62",
+      "status": "completed",
+      "duration": 30.21530842781067
+    },
+    {
+      "idx": 80,
+      "task_type": "c2_communication",
+      "task_id": "b7866561-a8fe-41b2-8fbc-3970a526a024",
+      "status": "completed",
+      "duration": 30.21196460723877
+    },
+    {
+      "idx": 81,
+      "task_type": "phishing_investigation",
+      "task_id": "9f1e5f4c-f71d-42ae-896b-c222d5ff05ac",
+      "status": "completed",
+      "duration": 30.31587052345276
+    },
+    {
+      "idx": 82,
+      "task_type": "phishing_investigation",
+      "task_id": "f4709050-baec-4edb-9932-e101f33dc7cd",
+      "status": "completed",
+      "duration": 30.23245930671692
+    },
+    {
+      "idx": 83,
+      "task_type": "c2_communication",
+      "task_id": "e203f3db-e861-4419-904f-2e68021c8679",
+      "status": "completed",
+      "duration": 30.261818885803223
+    },
+    {
+      "idx": 84,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "1c2e2062-a71d-4521-8df1-4d43a0c27ece",
+      "status": "completed",
+      "duration": 30.235089540481567
+    },
+    {
+      "idx": 85,
+      "task_type": "phishing_investigation",
+      "task_id": "5339b808-af4b-4cd1-9822-4b280ab97775",
+      "status": "completed",
+      "duration": 30.251916646957397
+    },
+    {
+      "idx": 86,
+      "task_type": "c2_communication_hunt",
+      "task_id": "541c813c-b87a-43f4-901a-6414c0469a3a",
+      "status": "completed",
+      "duration": 30.256396770477295
+    },
+    {
+      "idx": 87,
+      "task_type": "phishing_investigation",
+      "task_id": "5432e50c-cf25-44ed-acfb-ab9f60fe3393",
+      "status": "completed",
+      "duration": 30.24130153656006
+    },
+    {
+      "idx": 88,
+      "task_type": "c2_communication",
+      "task_id": "19ed6ad7-4310-4485-a3bf-d3760cf3ff4d",
+      "status": "completed",
+      "duration": 30.194149255752563
+    },
+    {
+      "idx": 89,
+      "task_type": "c2_communication_hunt",
+      "task_id": "f32cc2c1-3725-45f7-bc89-1c3c7f4fa1fa",
+      "status": "completed",
+      "duration": 30.269336700439453
+    },
+    {
+      "idx": 90,
+      "task_type": "insider_threat_detection",
+      "task_id": "ab8c09f6-7e4d-434f-9e87-7f201c346f68",
+      "status": "completed",
+      "duration": 30.30529522895813
+    },
+    {
+      "idx": 91,
+      "task_type": "c2_communication",
+      "task_id": "f80f9d4a-cdb4-443b-90be-c87be4be565d",
+      "status": "completed",
+      "duration": 30.22726821899414
+    },
+    {
+      "idx": 92,
+      "task_type": "supply_chain_compromise",
+      "task_id": "479b7d0c-e180-40b0-abff-b90b2a5575d2",
+      "status": "completed",
+      "duration": 30.3441219329834
+    },
+    {
+      "idx": 93,
+      "task_type": "lateral_movement_detection",
+      "task_id": "4e0f679c-8e97-4f07-8743-8265a411acf6",
+      "status": "completed",
+      "duration": 30.268055200576782
+    },
+    {
+      "idx": 94,
+      "task_type": "supply_chain_compromise",
+      "task_id": "d9ba52eb-1106-4794-92b5-b474fdebcf2b",
+      "status": "completed",
+      "duration": 30.354902029037476
+    },
+    {
+      "idx": 95,
+      "task_type": "lateral_movement_detection",
+      "task_id": "7fd7b61e-22ba-4178-8ca2-4b5073223c87",
+      "status": "completed",
+      "duration": 30.253197193145752
+    },
+    {
+      "idx": 96,
+      "task_type": "phishing_investigation",
+      "task_id": "da0bc784-061c-4555-8954-837d06f0854b",
+      "status": "completed",
+      "duration": 30.315764904022217
+    },
+    {
+      "idx": 97,
+      "task_type": "insider_threat_detection",
+      "task_id": "c8a6523f-ad87-4968-bc5c-7dd85d14bdf0",
+      "status": "completed",
+      "duration": 30.311049222946167
+    },
+    {
+      "idx": 98,
+      "task_type": "ransomware_triage",
+      "task_id": "304fa582-4782-446c-a59e-78bb6bd9d117",
+      "status": "completed",
+      "duration": 30.318349838256836
+    },
+    {
+      "idx": 99,
+      "task_type": "phishing_investigation",
+      "task_id": "ce8214fc-a995-4cad-8d98-c0ca1e6a9f05",
+      "status": "completed",
+      "duration": 30.258336305618286
+    }
+  ]
+}
