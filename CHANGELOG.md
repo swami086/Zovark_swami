@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.1.0 — 2026-03-22 — Demo-Ready Release
+
+### Pipeline
+- V2 pipeline: 5/5 investigation types completing with real findings
+- LLM audit gateway: all LLM calls logged to `llm_audit_log` table
+- Model routing: severity-based model selection via `model_config.yaml`
+- Sandbox policy: declarative YAML configuration (`sandbox_policy.yaml`)
+- LLM timeout fix: 30s → 120s for RTX 3050 single-slot queueing
+- All 11 skill templates producing valid investigation output
+
+### Dashboard
+- 15-page React 19 + Vite 7 + Tailwind 4 dark-mode dashboard
+- Live polling: 5s alert queue, 2s investigation detail
+- Investigation detail: verdict, risk score, IOCs, findings, pipeline timeline
+- Auth: JWT in sessionStorage, httpOnly refresh cookies, CORS configured
+- API proxy via Vite dev server and nginx production config
+
+### Benchmarking
+- 200-alert synthetic benchmark corpus with ground-truth labels
+- 100-alert OWASP Juice Shop real-traffic benchmark corpus
+- Automated scoring with per-attack-type accuracy breakdown
+- Nemotron 3 Nano 4B benchmark scripts (model download pending)
+
+### Security
+- Credentials removed from documentation (env var references)
+- Dead services removed from docker-compose (NATS, LiteLLM, TEI → optional)
+- Temporal stale workflow cleanup script
+
+### Deployment
+- Production Docker Compose with 8 core services
+- Install/health/backup/demo shell scripts in `deploy/`
+- Dashboard served via nginx in Docker
+- Windows startup script (`scripts/start_hydra.bat`)
+- Hardware tier documentation
+- SIEM integration guide (Splunk, Elastic, Sentinel)
+
+### Documentation
+- Updated CLAUDE.md to v1.1.0
+- Demo script for 2-minute CISO presentation
+- Landing page copy with positioning and CTA
+
+### 67 commits since v1.0.0-rc1
+
 ## v0.18.0 — Documentation + Polish
 - Updated ARCHITECTURE.md with full feature coverage through v0.17.0
 - CHANGELOG documenting all versions from v0.10.1 to v0.18.0
