@@ -56,7 +56,9 @@ async def llm_call(
     content = ""
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        # Use explicit timeout config matching original httpx usage
+        timeout_config = httpx.Timeout(timeout, connect=10.0)
+        async with httpx.AsyncClient(timeout=timeout_config) as client:
             resp = await client.post(
                 endpoint,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
@@ -69,9 +71,13 @@ async def llm_call(
         tokens_in = usage.get("prompt_tokens", 0)
         tokens_out = usage.get("completion_tokens", 0)
         content = result["choices"][0]["message"]["content"].strip()
+    except httpx.TimeoutException as e:
+        status = "error"
+        error_message = f"LLM timeout after {int(time.time() - t0)}s (limit={timeout}s) endpoint={endpoint}"
+        raise RuntimeError(error_message) from e
     except Exception as e:
         status = "error"
-        error_message = str(e)[:500]
+        error_message = f"{type(e).__name__}: {e}"[:500]
         raise
     finally:
         latency_ms = int((time.time() - t0) * 1000)

@@ -256,7 +256,7 @@ async def _fill_parameters_llm(skill_params: list, prompt: str, siem_event: dict
         stage="analyze",
         task_type=task_type,
         tenant_id=tenant_id,
-        timeout=30.0,
+        timeout=120.0,
         response_format={"type": "json_object"},
     )
 

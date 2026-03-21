@@ -78,11 +78,11 @@ async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id
             stage="assess",
             task_type=task_type,
             tenant_id=tenant_id,
-            timeout=30.0,
+            timeout=120.0,
         )
         return result["content"]
     except Exception as e:
-        print(f"LLM summary failed (non-fatal): {e}")
+        print(f"LLM summary failed (non-fatal): {type(e).__name__}: {e}")
         return ""
 
 
