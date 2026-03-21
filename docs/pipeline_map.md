@@ -118,6 +118,10 @@ Every activity the workflow calls, in execution order.
 
 **Total: 7 LLM call sites across 4 files.**
 
+**Indirect trigger**: `check_followup_needed` (pure JSON parsing, no LLM) can trigger
+`generate_followup_code` (#3) when the sandbox output contains `follow_up_needed: true`.
+This is not a new LLM call site — it's an indirect trigger of call site #3.
+
 ---
 
 ## Database Tables (17 tables)
