@@ -332,6 +332,22 @@ services:
     networks:
       - hydra-internal
 
+  # ─── OWASP JUICE SHOP (benchmark target) ────────────────
+  juice-shop:
+    image: bkimminich/juice-shop:latest
+    container_name: hydra-juice-shop
+    ports:
+      - "3001:3000"
+    profiles: ["benchmark"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
   temporal-exporter:
     build:
       context: ./worker

