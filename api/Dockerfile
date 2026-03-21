@@ -23,8 +23,8 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Add CA certificates for HTTPS requests if needed by Temporal/LiteLLM calls
-RUN apk --no-cache add ca-certificates tzdata
+# Add CA certificates, Python3 (for sandbox code execution), timezone data
+RUN apk --no-cache add ca-certificates tzdata python3
 
 COPY --from=builder /app/hydra-api .
 
