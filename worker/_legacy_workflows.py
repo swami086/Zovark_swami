@@ -5,6 +5,7 @@ from temporalio import workflow
 with workflow.unsafe.imports_passed_through():
     import os
     _DEDUP_ENABLED = os.environ.get('DEDUP_ENABLED', 'true').lower() == 'true'
+    _FAST_FILL = os.environ.get('HYDRA_FAST_FILL', 'false').lower() == 'true'
     from activities import (
         fetch_task, generate_code, validate_code, execute_code,
         update_task_status, log_audit, log_audit_event, record_usage,
@@ -422,6 +423,31 @@ If something has worked in past investigations for this threat type, apply those
                     llm_exec_ms = fill_result["execution_ms"]
                     step_tokens_in = fill_result["input_tokens"]
                     step_tokens_out = fill_result["output_tokens"]
+
+                elif step_num == 1 and _FAST_FILL:
+                    # FAST_FILL: generate regex-based IOC extraction stub (no LLM)
+                    is_template = True  # Skip dry-run validation gate
+                    siem_ev = task_data.get("input", {}).get("siem_event", {})
+                    raw_log_escaped = (siem_ev.get("raw_log", "") or "").replace('\\', '\\\\').replace('"""', '\\"\\"\\"')
+                    code = (
+                        'import re, json\n\n'
+                        f'raw_log = """{raw_log_escaped}"""\n\n'
+                        'ips = list(set(re.findall(r"\\d+\\.\\d+\\.\\d+\\.\\d+", raw_log)))\n'
+                        'users = list(set(re.findall(r"User[=:]\\s*(\\S+)", raw_log)))\n'
+                        'hashes = list(set(re.findall(r"\\b[a-fA-F0-9]{32,64}\\b", raw_log)))\n'
+                        'domains = list(set(re.findall(r"(?:https?://|DNS query: )([\\w.-]+)", raw_log)))\n'
+                        'iocs = []\n'
+                        'for ip in ips: iocs.append({"type":"ipv4","value":ip,"confidence":"high"})\n'
+                        'for u in users: iocs.append({"type":"username","value":u,"confidence":"high"})\n'
+                        'for h in hashes: iocs.append({"type":"hash","value":h,"confidence":"medium"})\n'
+                        'for d in domains: iocs.append({"type":"domain","value":d,"confidence":"high"})\n'
+                        f'print(json.dumps({{"findings":[{{"title":"Alert analyzed","details":"{task_type}"}}],'
+                        f'"iocs":iocs,"risk_score":75,"recommendations":["Investigate further"]}}))\n'
+                    )
+                    llm_exec_ms = 0
+                    step_tokens_in = 0
+                    step_tokens_out = 0
+                    workflow.logger.info(f"FAST_FILL: generated regex stub for {task_type}")
 
                 elif step_num == 1:
                     gen_result = await workflow.execute_activity(
@@ -1015,7 +1041,7 @@ If something has worked in past investigations for this threat type, apply those
             # If step 1 succeeded but extracted 0 IOCs, retry once with the failure visible.
             # Manus principle: "keep the wrong stuff in" — show model its own output and ask to fix.
             # Applies to BOTH template and generated code paths.
-            if (step_num == 1 and _rag_retry_available):
+            if (step_num == 1 and _rag_retry_available and not _FAST_FILL):
                 try:
                     parsed_for_retry = json.loads(stdout_str)
                     if isinstance(parsed_for_retry, dict):
@@ -1092,7 +1118,7 @@ If something has worked in past investigations for this threat type, apply those
                 else:
                     break
             else:
-                if step_num < MAX_STEPS:
+                if step_num < MAX_STEPS and not _FAST_FILL:
                     followup = await workflow.execute_activity(
                         check_followup_needed,
                         {"stdout": stdout_str, "previous_prompt": current_prompt},

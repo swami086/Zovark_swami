@@ -110,6 +110,10 @@ async def extract_entities(data: dict) -> dict:
     Input: {investigation_output, task_type, tenant_id, task_id}
     Returns: {entities, edges, usage_tokens, execution_ms}
     """
+    # FAST_FILL: skip LLM, return empty entities (regex fallback handles it)
+    if os.environ.get('HYDRA_FAST_FILL', '') == 'true':
+        return {"entities": [], "edges": [], "usage_tokens": {"prompt_tokens": 0, "completion_tokens": 0}, "execution_ms": 0}
+
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
     api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
     tier_config = get_tier_config("extract_entities")
@@ -345,6 +349,33 @@ async def embed_investigation(data: dict) -> dict:
             prompt_version, source, task_type}
     Returns: {investigation_id, embedding_dim, execution_ms}
     """
+    # FAST_FILL: skip embedding, still write the investigation row
+    if os.environ.get('HYDRA_FAST_FILL', '') == 'true':
+        conn = _get_db()
+        try:
+            with conn.cursor() as cur:
+                _sync_commit(cur)
+                cur.execute("""
+                    INSERT INTO investigations
+                    (tenant_id, task_id, verdict, risk_score, confidence,
+                     attack_techniques, summary, source)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (data.get("tenant_id"), data.get("task_id"),
+                      data.get("verdict", "inconclusive"), data.get("risk_score", 0),
+                      data.get("confidence", 0.5), data.get("attack_techniques", []),
+                      data.get("summary", "")[:2000], data.get("source", "fast_fill")))
+                row = cur.fetchone()
+                inv_id = str(row[0]) if row else None
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(f"embed_investigation FAST_FILL db error: {e}")
+            inv_id = None
+        finally:
+            conn.close()
+        return {"investigation_id": inv_id, "embedding_dim": 0, "execution_ms": 0}
+
     tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 
     tenant_id = data.get("tenant_id")

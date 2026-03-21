@@ -75,7 +75,12 @@ async def analyze_false_positive(data: dict) -> dict:
 
     Input: {investigation_id, tenant_id, summary, verdict, risk_score, entities}
     Returns: {confidence, verdict, reasoning, evidence, recommendation}
-    """
+
+    FAST_FILL bypass: skip LLM, return default confidence."""
+    if os.environ.get('HYDRA_FAST_FILL', '') == 'true':
+        return {"confidence": 0.75, "verdict": "suspicious", "reasoning": "fast_fill",
+                "evidence": [], "recommendation": "Investigate further"}
+
     from entity_graph import search_similar_investigations
 
     investigation_id = data.get("investigation_id")
