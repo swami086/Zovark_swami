@@ -103,7 +103,7 @@ def _create_investigation(conn, tenant_id: str, task_id: str, verdict: str,
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (tenant_id, task_id, verdict, risk_score, confidence,
-                  (summary or "")[:2000], "v2_pipeline"))
+                  (summary or "")[:2000], "production"))
             row = cur.fetchone()
             return str(row[0]) if row else None
     except Exception as e:

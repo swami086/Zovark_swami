@@ -1,0 +1,79 @@
+{
+  "total": 10,
+  "passed": 10,
+  "failed": 0,
+  "timeout": 0,
+  "dedup": 0,
+  "results": [
+    {
+      "idx": 0,
+      "task_type": "c2_communication_hunt",
+      "task_id": "e4c28b7e-bad4-4461-ab8a-0719801fe535",
+      "status": "completed",
+      "duration": 60.36894083023071
+    },
+    {
+      "idx": 1,
+      "task_type": "lateral_movement_detection",
+      "task_id": "c3bab215-445c-4dae-bb3c-d1019bfda19b",
+      "status": "completed",
+      "duration": 60.41891884803772
+    },
+    {
+      "idx": 2,
+      "task_type": "data_exfiltration_detection",
+      "task_id": "d98f2d0c-9b4f-462d-9240-4869b53d6a65",
+      "status": "completed",
+      "duration": 60.41015863418579
+    },
+    {
+      "idx": 3,
+      "task_type": "ransomware_triage",
+      "task_id": "894cfadd-ef8b-42ca-9721-d06144e3eeb0",
+      "status": "completed",
+      "duration": 60.36912250518799
+    },
+    {
+      "idx": 4,
+      "task_type": "phishing_investigation",
+      "task_id": "c8bf05a1-429d-4a86-8512-1861b7014954",
+      "status": "completed",
+      "duration": 60.29802942276001
+    },
+    {
+      "idx": 5,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "506129b1-90be-4883-9ff4-5bf0b26b23f2",
+      "status": "completed",
+      "duration": 60.325955867767334
+    },
+    {
+      "idx": 6,
+      "task_type": "privilege_escalation_hunt",
+      "task_id": "3eaeeda3-a070-4045-a58b-b8ddf7e4ecd8",
+      "status": "completed",
+      "duration": 60.3263783454895
+    },
+    {
+      "idx": 7,
+      "task_type": "c2_communication_hunt",
+      "task_id": "94bd05b6-75ba-408b-9a7f-ebe3de42ce2e",
+      "status": "completed",
+      "duration": 60.40140128135681
+    },
+    {
+      "idx": 8,
+      "task_type": "ransomware_triage",
+      "task_id": "8055ae52-e29b-4052-b1a9-416ba0888c1d",
+      "status": "completed",
+      "duration": 60.421180963516235
+    },
+    {
+      "idx": 9,
+      "task_type": "insider_threat_detection",
+      "task_id": "1ffb55af-fbd7-4c23-83f9-6a9a36518ef8",
+      "status": "completed",
+      "duration": 60.40422964096069
+    }
+  ]
+}
