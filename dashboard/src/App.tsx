@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
-import { Hexagon, LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play, ShieldAlert, DollarSign, Share2, AlertTriangle, Workflow, Sun, Moon, Users } from 'lucide-react';
+import { Hexagon, LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play, ShieldAlert, DollarSign, Share2, AlertTriangle, Sun, Moon, Users } from 'lucide-react';
 import { getUser, clearToken, fetchPendingApprovals } from './api/client';
 import { ThemeContext, useThemeProvider, useTheme } from './hooks/useTheme';
 

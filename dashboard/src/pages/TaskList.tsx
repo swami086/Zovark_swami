@@ -120,6 +120,9 @@ const TaskList = () => {
     useEffect(() => {
         loadData();
         document.title = 'Investigations | Hydra';
+        // Auto-refresh every 5 seconds for live updates
+        const interval = window.setInterval(() => loadData(), 5000);
+        return () => clearInterval(interval);
     }, [loadData]);
 
     const handleSearchInput = (value: string) => {

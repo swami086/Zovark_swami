@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Share2, Filter, Loader2, Info, X } from 'lucide-react';
-import { fetchEntities, type Entity, type EntityEdge, type EntityGraphData } from '../api/client';
-import { Skeleton } from '../components/Skeleton';
+import { fetchEntities, type Entity, type EntityGraphData } from '../api/client';
 
 const ENTITY_COLORS: Record<string, { fill: string; stroke: string; text: string; bg: string }> = {
     ip: { fill: '#06b6d4', stroke: '#0891b2', text: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' },
