@@ -10,3 +10,5 @@ unsloth_compiled_cache/
 security-fixes/
 models/hydra-merged/
 *.gguf
+secrets.env
+!secrets.env.example

@@ -152,9 +152,10 @@ docker compose up -d
 curl -s http://localhost:8090/health
 
 # Login
+# Set HYDRA_ADMIN_EMAIL and HYDRA_ADMIN_PASSWORD env vars
 TOKEN=$(curl -s -X POST http://localhost:8090/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@test.local","password":"TestPass2026"}' | \
+  -d '{"email":"'"${HYDRA_ADMIN_EMAIL}"'","password":"'"${HYDRA_ADMIN_PASSWORD}"'"}' | \
   sed 's/.*"token":"\([^"]*\)".*/\1/')
 
 # Submit investigation

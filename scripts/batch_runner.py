@@ -16,7 +16,9 @@ RESULTS_FILE = "batch_results_100.json"
 
 # Auth
 def get_token():
-    payload = json.dumps({"email": "admin@test.local", "password": "TestPass2026"}).encode()
+    email = os.environ.get("HYDRA_TEST_EMAIL", "admin@test.local")
+    password = os.environ.get("HYDRA_TEST_PASSWORD", "TestPass2026")
+    payload = json.dumps({"email": email, "password": password}).encode()
     req = urllib.request.Request(f"{API}/api/v1/auth/login", data=payload,
                                  headers={"Content-Type": "application/json"})
     resp = urllib.request.urlopen(req, timeout=10)

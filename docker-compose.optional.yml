@@ -1,0 +1,87 @@
+# ============================================================
+# HYDRA Optional Services
+# These services are not required for the core V2 pipeline.
+# Enable with: docker compose -f docker-compose.yml -f docker-compose.optional.yml up -d
+# ============================================================
+
+services:
+
+  # ─── LLM GATEWAY (bypassed — LITELLM_URL goes direct to llama-server) ────
+  litellm:
+    image: docker.litellm.ai/berriai/litellm-database:main-stable
+    container_name: hydra-litellm
+    command: --config /app/config.yaml --port 4000
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    expose:
+      - "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    restart: unless-stopped
+    networks:
+      - hydra-internal
+
+  # ─── MESSAGE BROKER (non-functional, graceful fallback exists) ────
+  nats:
+    image: nats:2.10-alpine
+    container_name: hydra-nats
+    command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER:-hydra}", "--pass", "${NATS_PASSWORD:-hydra-nats-dev-2026}"]
+    expose:
+      - "4222"
+      - "8222"
+    volumes:
+      - nats-data:/data
+    networks:
+      - hydra-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget -q --spider http://localhost:8222/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ─── EMBEDDING SERVER (not used by V2 pipeline) ────
+  embedding-server:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: hydra-embedding
+    environment:
+      - MODEL_ID=BAAI/bge-base-en-v1.5
+    expose:
+      - "80"
+    networks:
+      - hydra-internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+    restart: unless-stopped
+
+volumes:
+  nats-data:
+
+networks:
+  hydra-internal:
+    driver: bridge

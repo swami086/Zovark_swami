@@ -147,41 +147,6 @@ services:
       - hydra-internal
 
 
-  # ─── LLM GATEWAY ────────────────────────────────────
-  litellm:
-    # FIX #4: wrong registry + 37 versions behind → official optimized image
-    image: docker.litellm.ai/berriai/litellm-database:main-stable
-    container_name: hydra-litellm
-    command: --config /app/config.yaml --port 4000
-    environment:
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    volumes:
-      - ./litellm_config.yaml:/app/config.yaml:ro
-    expose:
-      - "4000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      # FIX #5: /health doesn't exist → /health/liveliness
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')\""]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '0.5'
-    restart: unless-stopped
-    networks:
-      - hydra-internal
-
   # ─── OBJECT STORAGE ─────────────────────────────────
   minio:
     image: minio/minio:latest
@@ -204,46 +169,6 @@ services:
     restart: unless-stopped
     networks:
       - hydra-internal
-
-  # ─── MESSAGE BROKER ────────────────────────────────────
-  nats:
-    image: nats:2.10-alpine
-    container_name: hydra-nats
-    command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER:-hydra}", "--pass", "${NATS_PASSWORD:-hydra-nats-dev-2026}"]
-    expose:
-      - "4222"
-      - "8222"
-    volumes:
-      - nats-data:/data
-    networks:
-      - hydra-internal
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "sh", "-c", "wget -q --spider http://localhost:8222/healthz || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
-  # ─── EMBEDDING SERVER ─────────────────────────────────
-  embedding-server:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
-    container_name: hydra-embedding
-    environment:
-      - MODEL_ID=BAAI/bge-base-en-v1.5
-    expose:
-      - "80"
-    networks:
-      - hydra-internal
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-    restart: unless-stopped
 
   # ─── OBSERVABILITY (lightweight for Week 1) ──────────
   # Full Prometheus + Grafana added in Week 6
@@ -337,10 +262,6 @@ services:
         condition: service_healthy
       temporal:
         condition: service_started
-      litellm:
-        condition: service_started
-      nats:
-        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -379,10 +300,6 @@ services:
       temporal:
         condition: service_started
       postgres:
-        condition: service_healthy
-      litellm:
-        condition: service_started
-      nats:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import temporalio; print('ok')"]
@@ -608,7 +525,6 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
-  nats-data:
   ollama_data:
   prometheus_data:
   grafana_data:

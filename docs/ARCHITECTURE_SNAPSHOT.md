@@ -195,8 +195,8 @@ TestFullPipeline:   1/1 (all 5 stages in sequence)
 - **llama-server:** `C:\Users\vinay\llama-cpp\llama-server.exe` (native Windows, NOT Docker)
 - **Model:** `Qwen2.5-14B-Instruct-Q4_K_M.gguf` (8.4GB, base — DPO adapter also available)
 - **LITELLM_URL:** `http://host.docker.internal:11434/v1/chat/completions` (bypasses LiteLLM container)
-- **Redis password:** `hydra-redis-dev-2026`
-- **Admin credentials:** `admin@test.local` / `TestPass2026`
+- **Redis password:** `<REDACTED — set via REDIS_PASSWORD env var>`
+- **Admin credentials:** `<REDACTED — set via HYDRA_ADMIN_EMAIL env var>` / `<REDACTED — set via HYDRA_ADMIN_PASSWORD env var>`
 - **API port:** `localhost:8090`
 - **`investigations` table source constraint:** `production`, `bootstrap`, `synthetic` only
 - **`investigation_memory` table name:** singular (NOT `investigation_memories`)

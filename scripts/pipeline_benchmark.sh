@@ -8,7 +8,7 @@ API="http://localhost:8090"
 # Login
 TOKEN=$(curl -s -X POST "$API/api/v1/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@test.local","password":"TestPass2026"}' \
+  -d "{\"email\":\"${HYDRA_TEST_EMAIL:-admin@test.local}\",\"password\":\"${HYDRA_TEST_PASSWORD:-TestPass2026}\"}" \
   | sed 's/.*"token":"\([^"]*\)".*/\1/')
 echo "Token: ${TOKEN:0:20}..."
 

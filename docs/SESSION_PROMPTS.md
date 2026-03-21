@@ -17,11 +17,11 @@ Report: git HEAD, containers, V2 active, worker healthy, LLM loaded.
 ## Prompt 2: Smoke Test (one investigation with LLM)
 
 ```bash
-docker compose exec redis redis-cli -a hydra-redis-dev-2026 FLUSHDB 2>/dev/null
+docker compose exec redis redis-cli -a ${REDIS_PASSWORD} FLUSHDB 2>/dev/null
 
 TOKEN=$(curl -s http://localhost:8090/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@test.local","password":"TestPass2026"}' | \
+  -d '{"email":"'"${HYDRA_ADMIN_EMAIL}"'","password":"'"${HYDRA_ADMIN_PASSWORD}"'"}' | \
   sed 's/.*"token":"\([^"]*\)".*/\1/')
 
 TID=$(curl -s -X POST http://localhost:8090/api/v1/tasks \
@@ -46,7 +46,7 @@ Expected: completed in ~50-60s with IOCs and findings.
 ## Prompt 3: Batch Test (10 or 100 investigations)
 
 ```bash
-docker compose exec redis redis-cli -a hydra-redis-dev-2026 FLUSHDB 2>/dev/null
+docker compose exec redis redis-cli -a ${REDIS_PASSWORD} FLUSHDB 2>/dev/null
 docker compose exec -T worker python -c "import sys; open('batch_runner.py','w').write(sys.stdin.read())" < scripts/batch_runner.py
 docker compose exec -T worker python -c "import sys; open('alert_corpus_100.py','w').write(sys.stdin.read())" < scripts/alert_corpus_100.py
 docker compose exec worker python -c "exec(open('alert_corpus_100.py').read().replace('scripts/alert_corpus_100.json', 'alert_corpus_100.json'))"
@@ -96,9 +96,9 @@ grep -rn "_legacy" worker/stages/investigation_workflow.py
 ```
 
 ## Key Reference
-- Admin: `admin@test.local` / `TestPass2026`
+- Admin: `${HYDRA_ADMIN_EMAIL}` / `${HYDRA_ADMIN_PASSWORD}` (set in .env)
 - API: `http://localhost:8090`
 - LLM: `http://localhost:11434` (llama-server, native Windows)
-- Redis: password `hydra-redis-dev-2026`
+- Redis: password `${REDIS_PASSWORD}` (set in .env)
 - Workflow default: `InvestigationWorkflowV2`
 - FAST_FILL: set `HYDRA_FAST_FILL=true` on `docker compose up` for stress tests
