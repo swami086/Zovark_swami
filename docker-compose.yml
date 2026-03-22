@@ -290,12 +290,13 @@ services:
       - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
       - HTTP_PROXY=http://squid-proxy:3128
       - HTTPS_PROXY=http://squid-proxy:3128
-      - NO_PROXY=litellm,postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,hydra-api,pgbouncer,host.docker.internal
+      - NO_PROXY=litellm,postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,hydra-api,pgbouncer,host.docker.internal,api
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro
       - ./data/bootstrap:/app/bootstrap_data:ro
       - ./dpo:/app/dpo:ro
+      - ./scripts/benchmark:/app/benchmark:ro
     depends_on:
       temporal:
         condition: service_started

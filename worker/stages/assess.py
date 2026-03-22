@@ -94,6 +94,113 @@ async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id
         return ""
 
 
+# --- Comprehensive IOC extraction ---
+def _is_valid_ioc_ip(ip: str) -> bool:
+    """Check if IP is valid and not a boring internal/broadcast address."""
+    try:
+        parts = ip.split('.')
+        if len(parts) != 4:
+            return False
+        nums = [int(p) for p in parts]
+        if any(n < 0 or n > 255 for n in nums):
+            return False
+        if ip in ('0.0.0.0', '255.255.255.255', '127.0.0.1'):
+            return False
+        if nums[0] == 0 or nums[0] >= 224:
+            return False
+        return True
+    except (ValueError, IndexError):
+        return False
+
+
+def _looks_like_uuid(h: str) -> bool:
+    """Check if a 32-char hex string is likely a UUID."""
+    if len(h) == 32:
+        return h[12] == '4' and h[16] in '89ab'
+    return False
+
+
+def _extract_iocs_from_signals(siem_event: dict, stdout: str, prompt: str = "") -> list:
+    """Extract IOCs from SIEM data and sandbox output."""
+    iocs = []
+    seen = set()
+
+    combined_text = f"{stdout} {prompt}"
+    if isinstance(siem_event, dict):
+        combined_text += f" {siem_event.get('raw_log', '')}"
+        combined_text += f" {siem_event.get('title', '')}"
+        combined_text += f" {siem_event.get('rule_name', '')}"
+
+    # Structured SIEM fields (highest confidence)
+    if isinstance(siem_event, dict):
+        for field in ('source_ip', 'src_ip', 'attacker_ip', 'remote_ip'):
+            ip = siem_event.get(field, '')
+            if ip and _is_valid_ioc_ip(ip) and ip not in seen:
+                iocs.append({"type": "ipv4", "value": ip, "context": f"{field} from SIEM event"})
+                seen.add(ip)
+        for field in ('destination_ip', 'dst_ip', 'dest_ip', 'target_ip'):
+            ip = siem_event.get(field, '')
+            if ip and _is_valid_ioc_ip(ip) and ip not in seen:
+                iocs.append({"type": "ipv4", "value": ip, "context": f"{field} from SIEM event"})
+                seen.add(ip)
+        for field in ('username', 'user', 'account', 'email', 'src_user', 'target_user'):
+            val = siem_event.get(field, '')
+            if val and '@' in val and val not in seen:
+                iocs.append({"type": "email", "value": val, "context": f"{field} from SIEM event"})
+                seen.add(val)
+            elif val and val not in seen and val not in ('root', 'admin', 'system', 'unknown', 'N/A', '-', 'attacker'):
+                iocs.append({"type": "username", "value": val, "context": f"{field} from SIEM event"})
+                seen.add(val)
+
+    # IPs from raw text
+    for ip in re.findall(r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b', combined_text):
+        if ip not in seen and _is_valid_ioc_ip(ip):
+            iocs.append({"type": "ipv4", "value": ip, "context": "extracted from log/analysis"})
+            seen.add(ip)
+
+    # URLs
+    for url in re.findall(r'(https?://[^\s<>"\')\]]+)', combined_text):
+        url = url.rstrip('.,;:')
+        if url not in seen and len(url) > 10:
+            iocs.append({"type": "url", "value": url[:200], "context": "extracted from log/analysis"})
+            seen.add(url)
+
+    # Emails
+    for email in re.findall(r'\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b', combined_text):
+        if email not in seen and not email.endswith('.local'):
+            iocs.append({"type": "email", "value": email, "context": "extracted from log/analysis"})
+            seen.add(email)
+
+    # File hashes
+    for h in re.findall(r'\b([a-fA-F0-9]{64})\b', combined_text):
+        if h.lower() not in seen:
+            iocs.append({"type": "sha256", "value": h.lower(), "context": "hash extracted from log/analysis"})
+            seen.add(h.lower())
+    for h in re.findall(r'\b([a-fA-F0-9]{40})\b', combined_text):
+        if h.lower() not in seen:
+            iocs.append({"type": "sha1", "value": h.lower(), "context": "hash extracted from log/analysis"})
+            seen.add(h.lower())
+    for h in re.findall(r'\b([a-fA-F0-9]{32})\b', combined_text):
+        if h.lower() not in seen and not _looks_like_uuid(h):
+            iocs.append({"type": "md5", "value": h.lower(), "context": "hash extracted from log/analysis"})
+            seen.add(h.lower())
+
+    # Domains
+    domain_tlds = r'(?:com|net|org|io|xyz|ru|cn|tk|info|biz|top|cc|pw|ws|club|site|online|live|me|co|op)'
+    for domain in re.findall(rf'\b([a-zA-Z0-9](?:[a-zA-Z0-9-]{{0,61}}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{{0,61}}[a-zA-Z0-9])?)*\.{domain_tlds})\b', combined_text):
+        if domain.lower() not in seen and len(domain) > 4:
+            iocs.append({"type": "domain", "value": domain.lower(), "context": "domain extracted from log/analysis"})
+            seen.add(domain.lower())
+
+    # CVE IDs
+    for cve in re.findall(r'\b(CVE-\d{4}-\d{4,})\b', combined_text, re.IGNORECASE):
+        if cve.upper() not in seen:
+            iocs.append({"type": "cve", "value": cve.upper(), "context": "CVE reference"})
+            seen.add(cve.upper())
+
+    return iocs
+
+
 # --- FP confidence (simple rules, no LLM) ---
 def _fp_confidence(risk_score: int, ioc_count: int) -> float:
     """Rule-based FP confidence. Higher = more likely false positive."""
@@ -209,24 +316,13 @@ async def assess_results(data: dict) -> dict:
         if not any(attack_types_found[0].lower() in str(f).lower() for f in findings):
             findings.append({"title": f"Attack Signal: {', '.join(attack_types_found)}",
                              "details": f"SIEM data contains indicators of {', '.join(attack_types_found)}"})
-        # Extract IOCs from SIEM data (IPs, domains, attack payloads)
-        ip_pattern = r'\b(?:(?:25[0-5]|2[0-4]\d|1?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|1?\d\d?)\b'
-        for ip in set(re.findall(ip_pattern, raw_log)):
-            if not re.match(r'^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.)', ip):
-                if not any(isinstance(i, dict) and i.get("value") == ip for i in iocs):
-                    iocs.append({"type": "ip", "value": ip, "severity": "high", "confidence": "high",
-                                 "context": f"External IP in {attack_types_found[0]} alert"})
-        for url in set(re.findall(r'https?://[^\s<>"]+', raw_log)):
-            if not any(isinstance(i, dict) and i.get("value") == url for i in iocs):
-                iocs.append({"type": "url", "value": url[:200], "severity": "high", "confidence": "high",
-                             "context": f"URL in {attack_types_found[0]} context"})
-        siem_src = siem_event.get("source_ip", "") if isinstance(siem_event, dict) else ""
-        siem_dst = siem_event.get("destination_ip", "") if isinstance(siem_event, dict) else ""
-        for ip in [siem_src, siem_dst]:
-            if ip and not re.match(r'^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|$)', ip):
-                if not any(isinstance(i, dict) and i.get("value") == ip for i in iocs):
-                    iocs.append({"type": "ip", "value": ip, "severity": "high", "confidence": "high",
-                                 "context": "SIEM-identified endpoint"})
+    # --- Comprehensive IOC extraction from SIEM + sandbox output ---
+    extracted_iocs = _extract_iocs_from_signals(siem_event, stdout)
+    existing_values = {i.get("value", "") if isinstance(i, dict) else str(i) for i in iocs}
+    for new_ioc in extracted_iocs:
+        if new_ioc["value"] not in existing_values:
+            iocs.append(new_ioc)
+            existing_values.add(new_ioc["value"])
 
     verdict = _derive_verdict(risk_score, len(iocs), len(findings))
     severity = _severity_from_risk(risk_score)
