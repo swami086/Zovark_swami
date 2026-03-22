@@ -25,10 +25,11 @@ async def llm_call(
     tenant_id: str = "",
     timeout: float = 900.0,
     response_format: Optional[dict] = None,
+    prompt_name: str = "",
 ) -> dict:
     """
-    Makes LLM call and logs audit metadata.
-    Returns: {"content": str, "tokens_in": int, "tokens_out": int, "latency_ms": int, "model": str}
+    Makes LLM call and logs audit metadata including prompt version.
+    Returns: {"content": str, "tokens_in": int, "tokens_out": int, "latency_ms": int, "model": str, "prompt_version": str}
     """
     endpoint = model_config.get("endpoint", LITELLM_URL)
     api_key = model_config.get("api_key", LITELLM_KEY)
@@ -47,6 +48,9 @@ async def llm_call(
         request_body["response_format"] = response_format
 
     prompt_hash = hashlib.sha256(prompt.encode("utf-8", errors="replace")).hexdigest()[:32]
+    # Compute prompt version: SHA256 of system_prompt + user_prompt for tracking prompt drift
+    combined_prompt = f"{system_prompt}\n---\n{prompt}"
+    prompt_version = hashlib.sha256(combined_prompt.encode("utf-8", errors="replace")).hexdigest()[:12]
 
     t0 = time.time()
     status = "success"
@@ -93,6 +97,7 @@ async def llm_call(
                 tokens_out=tokens_out,
                 latency_ms=latency_ms,
                 prompt_hash=prompt_hash,
+                prompt_version=prompt_version,
                 status=status,
                 error_message=error_message,
             )
@@ -105,6 +110,7 @@ async def llm_call(
         "tokens_out": tokens_out,
         "latency_ms": latency_ms,
         "model": model_name,
+        "prompt_version": prompt_version,
     }
 
 
@@ -120,6 +126,7 @@ def _log_audit(
     prompt_hash: str,
     status: str,
     error_message: Optional[str],
+    prompt_version: str = "",
 ):
     """Insert audit record into llm_audit_log. Best-effort."""
     import psycopg2
@@ -130,8 +137,9 @@ def _log_audit(
                 cur.execute(
                     """INSERT INTO llm_audit_log
                        (id, task_id, tenant_id, stage, task_type, model_name,
-                        tokens_in, tokens_out, latency_ms, prompt_hash, status, error_message)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                        tokens_in, tokens_out, latency_ms, prompt_hash, prompt_version,
+                        status, error_message)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     (
                         str(uuid.uuid4()),
                         task_id or None,
@@ -143,6 +151,7 @@ def _log_audit(
                         tokens_out,
                         latency_ms,
                         prompt_hash,
+                        prompt_version,
                         status,
                         error_message,
                     ),
