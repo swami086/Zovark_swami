@@ -33,7 +33,11 @@ LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
 def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
     if risk_score >= 80 and ioc_count >= 3:
         return "true_positive"
-    elif risk_score >= 60 or ioc_count >= 2:
+    elif risk_score >= 70:
+        return "true_positive"
+    elif risk_score >= 50 or ioc_count >= 2:
+        return "suspicious"
+    elif finding_count >= 2:
         return "suspicious"
     elif finding_count == 0 and ioc_count == 0:
         return "benign"
@@ -169,6 +173,40 @@ async def assess_results(data: dict) -> dict:
         iocs = defaults["iocs"]
         risk_score = defaults["risk_score"]
         recommendations = defaults["recommendations"]
+
+    # --- Web attack signal boost ---
+    # If raw SIEM data contains obvious attack patterns, boost risk score
+    # regardless of which template ran. This handles cross-category mismatches
+    # (e.g., SQLi alert categorized as data_exfil).
+    siem_event = data.get("siem_event", {})
+    if isinstance(siem_event, dict):
+        raw_log = siem_event.get("raw_log", "")
+        siem_title = siem_event.get("title", "")
+        siem_rule = siem_event.get("rule_name", "")
+    else:
+        raw_log = siem_title = siem_rule = ""
+    combined_signal = f"{raw_log} {siem_title} {siem_rule} {stdout}".lower()
+
+    attack_signals = [
+        (r"(?:union\s+select|or\s+1\s*=\s*1|'\s*or\s*'|drop\s+table|;.*--|\bsleep\s*\(|benchmark\s*\(|sqli|sql.?inject)", "SQL injection"),
+        (r"<script|javascript:|onerror\s*=|onload\s*=|alert\s*\(|document\.cookie|\bxss\b", "Cross-site scripting"),
+        (r"\.\./|\.\.\\|%2e%2e|/etc/passwd|/etc/shadow|path.?traversal|directory.?traversal", "Path traversal"),
+        (r"admin.*bypass|auth.*bypass|broken.*auth|forced.?browsing|idor|bola|unauthorized.*access", "Auth bypass"),
+        (r"command.?injection|;\s*cat\s|;\s*ls\s|`.*`|\$\(.*\)|%0a|rce\b", "Command injection"),
+        (r"ssrf|server.?side.?request|localhost.*redirect|127\.0\.0\.1.*access", "SSRF"),
+        (r"file.?upload|unrestricted.?upload|webshell|\.php\b.*upload|\.jsp\b.*upload", "File upload attack"),
+    ]
+    attack_boost = 0
+    attack_types_found = []
+    for pattern, attack_name in attack_signals:
+        if re.search(pattern, combined_signal, re.IGNORECASE):
+            attack_boost += 45
+            attack_types_found.append(attack_name)
+    if attack_boost > 0:
+        risk_score = min(100, risk_score + attack_boost)
+        if not any(attack_types_found[0].lower() in str(f).lower() for f in findings):
+            findings.append({"title": f"Attack Signal: {', '.join(attack_types_found)}",
+                             "details": f"SIEM data contains indicators of {', '.join(attack_types_found)}"})
 
     verdict = _derive_verdict(risk_score, len(iocs), len(findings))
     severity = _severity_from_risk(risk_score)
