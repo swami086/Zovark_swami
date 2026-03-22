@@ -229,6 +229,8 @@ def _fill_parameters_fast(skill_params: list, siem_event: dict) -> dict:
             filled[k] = siem_event[k]
     if "log_data" in filled and not filled["log_data"] and siem_event.get("raw_log"):
         filled["log_data"] = siem_event["raw_log"]
+    # Always provide the full SIEM event as JSON for templates that need structured access
+    filled["siem_event_json"] = json.dumps(siem_event)
     return filled
 
 

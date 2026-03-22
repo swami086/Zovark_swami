@@ -87,11 +87,13 @@ class InvestigationWorkflowV2:
         )
 
         # Stage 5: STORE — persist everything (no LLM)
+        # assessed values (verdict, risk_score, recommendations) must take
+        # precedence over raw executed values — spread assessed LAST
         stored = await workflow.execute_activity(
             store_investigation,
             {
-                **assessed,
                 **executed,
+                **assessed,
                 "task_id": ingested["task_id"],
                 "tenant_id": ingested["tenant_id"],
                 "task_type": ingested["task_type"],

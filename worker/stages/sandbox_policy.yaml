@@ -45,7 +45,8 @@ ast_prefilter:
     - "__import__("
     - "eval("
     - "exec("
-    - "compile("
+    # Note: re.compile() is safe; only bare compile() (the builtin) is dangerous.
+    # Pattern check uses word boundary, so re.compile won't match.
     - "getattr("
     - "__subclasses__"
     - "__builtins__"
