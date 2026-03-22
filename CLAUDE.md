@@ -5,7 +5,7 @@
 
 ## Quick Reference
 
-- **Version:** v1.1.0 (latest: `5f264a7`)
+- **Version:** v1.1.0 (latest: `bd01707`)
 - **Status:** V2 Pipeline OPERATIONAL — 5/5 template investigations completing, dashboard live
 - **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + llama.cpp (Qwen2.5-14B)
 - **Pipeline:** V2 5-stage with LLM audit gateway + model routing
