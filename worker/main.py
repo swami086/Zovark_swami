@@ -74,6 +74,7 @@ from token_quota import check_token_quota, record_token_usage, reset_monthly_quo
 from nats_consumer import create_nats_consumer
 from prompt_init import init_prompts
 from database.pool_manager import initialize_pools, close_pools
+from health import start_health_server, set_temporal_connected, set_db_reachable
 import logger
 
 
@@ -90,11 +91,15 @@ os.environ["WORKER_ID"] = WORKER_ID  # Make available to logger module
 
 
 async def main():
+    # Start health/readiness HTTP server (non-blocking, daemon thread)
+    start_health_server(worker_id=WORKER_ID)
+
     # Initialize prompt registry at startup
     init_prompts()
 
     # Initialize DB connection pools at startup
     initialize_pools()
+    set_db_reachable(True)
 
     # Initialize NATS consumer if NATS_URL is configured
     nats_consumer = None
@@ -112,6 +117,7 @@ async def main():
     for _ in range(10):
         try:
             client = await Client.connect(temporal_address)
+            set_temporal_connected(True)
             break
         except Exception as e:
             logger.warn("Temporal connection failed, retrying", error=str(e))
