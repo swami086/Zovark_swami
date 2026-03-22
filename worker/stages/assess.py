@@ -37,8 +37,10 @@ def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
         return "true_positive"
     elif risk_score >= 50 or ioc_count >= 2:
         return "suspicious"
-    elif finding_count >= 2:
+    elif finding_count >= 2 and risk_score >= 40:
         return "suspicious"
+    elif risk_score <= 35 and ioc_count == 0:
+        return "benign"
     elif finding_count == 0 and ioc_count == 0:
         return "benign"
     return "inconclusive"
@@ -192,7 +194,7 @@ async def assess_results(data: dict) -> dict:
         (r"<script|javascript:|onerror\s*=|onload\s*=|alert\s*\(|document\.cookie|\bxss\b", "Cross-site scripting"),
         (r"\.\./|\.\.\\|%2e%2e|/etc/passwd|/etc/shadow|path.?traversal|directory.?traversal", "Path traversal"),
         (r"admin.*bypass|auth.*bypass|broken.*auth|forced.?browsing|idor|bola|unauthorized.*access", "Auth bypass"),
-        (r"command.?injection|;\s*cat\s|;\s*ls\s|`.*`|\$\(.*\)|%0a|rce\b", "Command injection"),
+        (r"command.?injection|cmd.?inject|;\s*cat\s|;\s*ls\s|`.*`|\$\(.*\)|%0a|rce\b", "Command injection"),
         (r"ssrf|server.?side.?request|localhost.*redirect|127\.0\.0\.1.*access", "SSRF"),
         (r"file.?upload|unrestricted.?upload|webshell|\.php\b.*upload|\.jsp\b.*upload", "File upload attack"),
     ]
@@ -207,6 +209,24 @@ async def assess_results(data: dict) -> dict:
         if not any(attack_types_found[0].lower() in str(f).lower() for f in findings):
             findings.append({"title": f"Attack Signal: {', '.join(attack_types_found)}",
                              "details": f"SIEM data contains indicators of {', '.join(attack_types_found)}"})
+        # Extract IOCs from SIEM data (IPs, domains, attack payloads)
+        ip_pattern = r'\b(?:(?:25[0-5]|2[0-4]\d|1?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|1?\d\d?)\b'
+        for ip in set(re.findall(ip_pattern, raw_log)):
+            if not re.match(r'^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.)', ip):
+                if not any(isinstance(i, dict) and i.get("value") == ip for i in iocs):
+                    iocs.append({"type": "ip", "value": ip, "severity": "high", "confidence": "high",
+                                 "context": f"External IP in {attack_types_found[0]} alert"})
+        for url in set(re.findall(r'https?://[^\s<>"]+', raw_log)):
+            if not any(isinstance(i, dict) and i.get("value") == url for i in iocs):
+                iocs.append({"type": "url", "value": url[:200], "severity": "high", "confidence": "high",
+                             "context": f"URL in {attack_types_found[0]} context"})
+        siem_src = siem_event.get("source_ip", "") if isinstance(siem_event, dict) else ""
+        siem_dst = siem_event.get("destination_ip", "") if isinstance(siem_event, dict) else ""
+        for ip in [siem_src, siem_dst]:
+            if ip and not re.match(r'^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|$)', ip):
+                if not any(isinstance(i, dict) and i.get("value") == ip for i in iocs):
+                    iocs.append({"type": "ip", "value": ip, "severity": "high", "confidence": "high",
+                                 "context": "SIEM-identified endpoint"})
 
     verdict = _derive_verdict(risk_score, len(iocs), len(findings))
     severity = _severity_from_risk(risk_score)
