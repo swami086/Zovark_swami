@@ -18,6 +18,7 @@ from workflows.hydra_workflows import (
 )
 from bootstrap.activities import load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation, process_bootstrap_entity, list_techniques
 from bootstrap.workflow import BootstrapCorpusWorkflow
+from workflows.bootstrap_workflow import BootstrapPipelineWorkflow, sync_mitre_attack, sync_cisa_kev, compute_bootstrap_stats
 from intelligence.blast_radius import compute_blast_radius
 from intelligence.fp_analyzer import analyze_false_positive
 from intelligence.cross_tenant import refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score
@@ -124,7 +125,7 @@ async def main():
         # 16 workflows
         # V2 investigation pipeline + non-investigation workflows
         workflows=get_v2_workflows() + [
-            BootstrapCorpusWorkflow, CrossTenantRefreshWorkflow,
+            BootstrapCorpusWorkflow, BootstrapPipelineWorkflow, CrossTenantRefreshWorkflow,
             DetectionGenerationWorkflow, ResponsePlaybookWorkflow, FineTuningPipelineWorkflow,
             SelfHealingWorkflow, ScheduledWorkflow, AlertCorrelationWorkflow,
             ShadowInvestigationWorkflow,
@@ -140,9 +141,11 @@ async def main():
             check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity,
             # Entity graph
             extract_entities, write_entity_graph, embed_investigation,
-            # Bootstrap corpus
+            # Bootstrap corpus (legacy activities)
             load_mitre_techniques, load_cisa_kev, generate_synthetic_investigation,
             process_bootstrap_entity, list_techniques,
+            # Bootstrap pipeline (Sprint 1H — MITRE + CISA ingestion)
+            sync_mitre_attack, sync_cisa_kev, compute_bootstrap_stats,
             # Intelligence
             compute_blast_radius, analyze_false_positive,
             refresh_cross_tenant_intel, get_entity_intelligence, compute_threat_score,
