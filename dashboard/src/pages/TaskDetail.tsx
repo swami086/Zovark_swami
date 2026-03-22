@@ -53,7 +53,123 @@ const MITRE_MAPPING: Record<string, { tactic: string, tacticId: string, techniqu
     "threat_hunt": { tactic: "Discovery", tacticId: "TA0007", technique: "Network Service Scanning", techniqueId: "T1046" },
     "incident_response": { tactic: "Response", tacticId: "TA0041", technique: "Incident Containment", techniqueId: "T1531" },
     "code_audit": { tactic: "Initial Access", tacticId: "TA0001", technique: "Exploit Public-Facing Application", techniqueId: "T1190" },
-    "ioc_scan": { tactic: "Collection", tacticId: "TA0009", technique: "Indicator Scanning", techniqueId: "T1119" }
+    "ioc_scan": { tactic: "Collection", tacticId: "TA0009", technique: "Indicator Scanning", techniqueId: "T1119" },
+    "phishing_investigation": { tactic: "Initial Access", tacticId: "TA0001", technique: "Phishing", techniqueId: "T1566" },
+    "ransomware_triage": { tactic: "Impact", tacticId: "TA0040", technique: "Data Encrypted for Impact", techniqueId: "T1486" },
+    "brute_force_investigation": { tactic: "Credential Access", tacticId: "TA0006", technique: "Brute Force", techniqueId: "T1110" },
+    "brute_force": { tactic: "Credential Access", tacticId: "TA0006", technique: "Brute Force", techniqueId: "T1110" },
+    "c2_communication_hunt": { tactic: "Command and Control", tacticId: "TA0011", technique: "Application Layer Protocol", techniqueId: "T1071" },
+    "data_exfiltration_detection": { tactic: "Exfiltration", tacticId: "TA0010", technique: "Exfiltration Over C2 Channel", techniqueId: "T1041" },
+    "privilege_escalation_hunt": { tactic: "Privilege Escalation", tacticId: "TA0004", technique: "Exploitation for Privilege Escalation", techniqueId: "T1068" },
+    "lateral_movement_detection": { tactic: "Lateral Movement", tacticId: "TA0008", technique: "Remote Services", techniqueId: "T1021" },
+    "insider_threat_detection": { tactic: "Persistence", tacticId: "TA0003", technique: "Valid Accounts", techniqueId: "T1078" },
+    "network_beaconing": { tactic: "Command and Control", tacticId: "TA0011", technique: "Web Protocols", techniqueId: "T1071.001" },
+    "cloud_infrastructure_attack": { tactic: "Persistence", tacticId: "TA0003", technique: "Cloud Accounts", techniqueId: "T1078.004" },
+    "supply_chain_compromise": { tactic: "Initial Access", tacticId: "TA0001", technique: "Supply Chain Compromise", techniqueId: "T1195" },
+    "sql_injection": { tactic: "Initial Access", tacticId: "TA0001", technique: "Exploit Public-Facing Application", techniqueId: "T1190" },
+    "xss": { tactic: "Initial Access", tacticId: "TA0001", technique: "Exploit Public-Facing Application", techniqueId: "T1190" },
+    "directory_traversal": { tactic: "Discovery", tacticId: "TA0007", technique: "File and Directory Discovery", techniqueId: "T1083" },
+    "authentication_bypass": { tactic: "Credential Access", tacticId: "TA0006", technique: "Exploitation for Credential Access", techniqueId: "T1212" },
+};
+
+// Full MITRE technique database for rendering output.mitre_attack
+interface MitreTechnique {
+    id: string;
+    name: string;
+    tactic: string;
+}
+
+const MITRE_TECHNIQUE_DB: Record<string, MitreTechnique[]> = {
+    "phishing_investigation": [
+        { id: "T1566", name: "Phishing", tactic: "Initial Access" },
+        { id: "T1566.001", name: "Spearphishing Attachment", tactic: "Initial Access" },
+        { id: "T1566.002", name: "Spearphishing Link", tactic: "Initial Access" },
+        { id: "T1204.001", name: "Malicious Link", tactic: "Execution" },
+    ],
+    "ransomware_triage": [
+        { id: "T1486", name: "Data Encrypted for Impact", tactic: "Impact" },
+        { id: "T1490", name: "Inhibit System Recovery", tactic: "Impact" },
+        { id: "T1059", name: "Command and Scripting Interpreter", tactic: "Execution" },
+        { id: "T1547", name: "Boot or Logon Autostart Execution", tactic: "Persistence" },
+    ],
+    "brute_force_investigation": [
+        { id: "T1110", name: "Brute Force", tactic: "Credential Access" },
+        { id: "T1110.001", name: "Password Guessing", tactic: "Credential Access" },
+        { id: "T1110.003", name: "Password Spraying", tactic: "Credential Access" },
+    ],
+    "brute_force": [
+        { id: "T1110", name: "Brute Force", tactic: "Credential Access" },
+        { id: "T1110.001", name: "Password Guessing", tactic: "Credential Access" },
+        { id: "T1110.003", name: "Password Spraying", tactic: "Credential Access" },
+    ],
+    "c2_communication_hunt": [
+        { id: "T1071", name: "Application Layer Protocol", tactic: "Command and Control" },
+        { id: "T1573", name: "Encrypted Channel", tactic: "Command and Control" },
+        { id: "T1105", name: "Ingress Tool Transfer", tactic: "Command and Control" },
+        { id: "T1571", name: "Non-Standard Port", tactic: "Command and Control" },
+    ],
+    "data_exfiltration_detection": [
+        { id: "T1041", name: "Exfiltration Over C2 Channel", tactic: "Exfiltration" },
+        { id: "T1567", name: "Exfiltration Over Web Service", tactic: "Exfiltration" },
+        { id: "T1048", name: "Exfiltration Over Alternative Protocol", tactic: "Exfiltration" },
+    ],
+    "privilege_escalation_hunt": [
+        { id: "T1068", name: "Exploitation for Privilege Escalation", tactic: "Privilege Escalation" },
+        { id: "T1548", name: "Abuse Elevation Control Mechanism", tactic: "Privilege Escalation" },
+        { id: "T1134", name: "Access Token Manipulation", tactic: "Privilege Escalation" },
+    ],
+    "lateral_movement_detection": [
+        { id: "T1021", name: "Remote Services", tactic: "Lateral Movement" },
+        { id: "T1021.002", name: "SMB/Windows Admin Shares", tactic: "Lateral Movement" },
+        { id: "T1570", name: "Lateral Tool Transfer", tactic: "Lateral Movement" },
+    ],
+    "insider_threat_detection": [
+        { id: "T1078", name: "Valid Accounts", tactic: "Persistence" },
+        { id: "T1530", name: "Data from Cloud Storage", tactic: "Collection" },
+        { id: "T1213", name: "Data from Information Repositories", tactic: "Collection" },
+    ],
+    "network_beaconing": [
+        { id: "T1071.001", name: "Web Protocols", tactic: "Command and Control" },
+        { id: "T1571", name: "Non-Standard Port", tactic: "Command and Control" },
+        { id: "T1573.001", name: "Symmetric Cryptography", tactic: "Command and Control" },
+    ],
+    "cloud_infrastructure_attack": [
+        { id: "T1078.004", name: "Cloud Accounts", tactic: "Persistence" },
+        { id: "T1580", name: "Cloud Infrastructure Discovery", tactic: "Discovery" },
+        { id: "T1537", name: "Transfer Data to Cloud Account", tactic: "Exfiltration" },
+    ],
+    "supply_chain_compromise": [
+        { id: "T1195", name: "Supply Chain Compromise", tactic: "Initial Access" },
+        { id: "T1195.002", name: "Compromise Software Supply Chain", tactic: "Initial Access" },
+        { id: "T1195.001", name: "Compromise Software Dependencies", tactic: "Initial Access" },
+    ],
+};
+
+const getMitreTechniques = (taskType: string, outputMitre?: MitreTechnique[]): MitreTechnique[] => {
+    if (outputMitre && outputMitre.length > 0) return outputMitre;
+    const key = (taskType || '').toLowerCase().replace(/ /g, '_').replace(/-/g, '_');
+    if (MITRE_TECHNIQUE_DB[key]) return MITRE_TECHNIQUE_DB[key];
+    for (const [k, v] of Object.entries(MITRE_TECHNIQUE_DB)) {
+        if (k.includes(key) || key.includes(k)) return v;
+    }
+    return [];
+};
+
+const getMitreAttackUrl = (techniqueId: string): string => {
+    const path = techniqueId.replace(/\./g, '/');
+    return `https://attack.mitre.org/techniques/${path}/`;
+};
+
+const IOCConfidenceBadge = ({ confidence }: { confidence?: string }) => {
+    if (!confidence) return null;
+    const c = confidence.toLowerCase();
+    if (c === 'high') {
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/25">HIGH</span>;
+    }
+    if (c === 'medium') {
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25">MED</span>;
+    }
+    return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-500/15 text-slate-400 border border-slate-500/25">LOW</span>;
 };
 
 const getMitreMapping = (taskType: string) => {
@@ -339,11 +455,6 @@ ${recommendations.length ? '<h3>Recommendations</h3><ul>' + recommendations.slic
                     )}
                     {task.severity && <SeverityBadge severity={task.severity} />}
                     <StatusBadge status={task.status} />
-                    {task.output?.model_used && (
-                        <span className="px-2 py-0.5 bg-slate-700/50 text-slate-400 text-xs font-mono rounded">
-                            Model: {task.output.model_used}
-                        </span>
-                    )}
                 </div>
             </div>
 
@@ -874,6 +985,91 @@ ${recommendations.length ? '<h3>Recommendations</h3><ul>' + recommendations.slic
                             </div>
                         </div>
                     )}
+
+                    {/* MITRE ATT&CK Techniques */}
+                    {isFinished && (() => {
+                        let outputMitre: MitreTechnique[] | undefined;
+                        try {
+                            if (task.output?.stdout) {
+                                const parsed = JSON.parse(task.output.stdout);
+                                if (parsed.mitre_attack && Array.isArray(parsed.mitre_attack)) {
+                                    outputMitre = parsed.mitre_attack;
+                                }
+                            }
+                        } catch { /* ignore parse errors */ }
+
+                        const techniques = getMitreTechniques(task.task_type, outputMitre);
+                        if (techniques.length === 0) return null;
+
+                        return (
+                            <div className="bg-[#0B1120] border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
+                                <div className="bg-[#1E293B] px-5 py-3 flex items-center border-b border-slate-700/50">
+                                    <Crosshair className="w-4 h-4 text-rose-400 mr-2.5" />
+                                    <span className="text-sm font-semibold text-slate-200 tracking-wide uppercase">MITRE ATT&CK Techniques</span>
+                                    <span className="ml-2 text-xs text-slate-500 font-mono">({techniques.length})</span>
+                                </div>
+                                <div className="p-5">
+                                    <div className="flex flex-wrap gap-2">
+                                        {techniques.map((t, idx) => (
+                                            <a
+                                                key={idx}
+                                                href={getMitreAttackUrl(t.id)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="group inline-flex items-center bg-[#1a1a1e] border border-zinc-700 rounded-lg px-3 py-2 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer"
+                                            >
+                                                <span className="font-mono text-sm font-bold text-blue-400 group-hover:text-blue-300 mr-2">{t.id}</span>
+                                                <span className="text-sm text-slate-200 mr-2">{t.name}</span>
+                                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{t.tactic}</span>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* IOCs with Confidence */}
+                    {isFinished && (() => {
+                        try {
+                            if (!task.output?.stdout) return null;
+                            const parsed = JSON.parse(task.output.stdout);
+                            const iocs = parsed.iocs || parsed.iocs_found || parsed.indicators || [];
+                            if (!Array.isArray(iocs) || iocs.length === 0) return null;
+
+                            return (
+                                <div className="bg-[#0B1120] border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
+                                    <div className="bg-[#1E293B] px-5 py-3 flex items-center border-b border-slate-700/50">
+                                        <ShieldAlert className="w-4 h-4 text-amber-400 mr-2.5" />
+                                        <span className="text-sm font-semibold text-slate-200 tracking-wide uppercase">Indicators of Compromise</span>
+                                        <span className="ml-2 text-xs text-slate-500 font-mono">({iocs.length})</span>
+                                    </div>
+                                    <div className="p-5">
+                                        <div className="space-y-2">
+                                            {iocs.map((ioc: any, idx: number) => {
+                                                const value = typeof ioc === 'string' ? ioc : (ioc.value || ioc.indicator || ioc.ioc || JSON.stringify(ioc));
+                                                const iocType = typeof ioc === 'object' ? (ioc.type || ioc.ioc_type || '') : '';
+                                                const confidence = typeof ioc === 'object' ? ioc.confidence : undefined;
+
+                                                return (
+                                                    <div key={idx} className="flex items-center justify-between bg-[#1a1a1e] border border-zinc-700 rounded-lg px-3 py-2">
+                                                        <div className="flex items-center space-x-2 min-w-0">
+                                                            {iocType && (
+                                                                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider shrink-0">{iocType}</span>
+                                                            )}
+                                                            <span className="text-sm font-mono text-slate-200 truncate">{value}</span>
+                                                        </div>
+                                                        <IOCConfidenceBadge confidence={confidence} />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        } catch { return null; }
+                    })()}
+
                     {/* MITRE ATT&CK Timeline */}
                     {steps.length > 0 && (
                         <MitreTimeline steps={steps} taskType={task.task_type} />

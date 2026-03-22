@@ -1,9 +1,9 @@
 # HYDRA Platform Architecture
 
-**Version:** v1.0.0-rc1
-**Commit:** 35b16ee
-**Date:** 2026-03-16
-**Status:** Runtime-validated release candidate
+**Version:** v1.1.0
+**Commit:** bd01707
+**Date:** 2026-03-22
+**Status:** Production-Ready (Demo-validated)
 
 ---
 
@@ -11,232 +11,314 @@
 
 1. [Overview](#overview)
 2. [System Architecture](#system-architecture)
-3. [Component Inventory](#component-inventory)
-4. [Go API Gateway](#go-api-gateway)
-5. [Python Worker](#python-worker)
-6. [Database Layer](#database-layer)
-7. [Dashboard](#dashboard)
-8. [MCP Server](#mcp-server)
-9. [Infrastructure Services](#infrastructure-services)
-10. [Network Topology](#network-topology)
-11. [Security Architecture](#security-architecture)
-12. [Authentication & Authorization](#authentication--authorization)
-13. [Sandbox Execution](#sandbox-execution)
-14. [LLM Routing](#llm-routing)
-15. [Data Flow](#data-flow)
-16. [Configuration & Environment](#configuration--environment)
-17. [Dependencies](#dependencies)
-18. [Testing](#testing)
-19. [Deployment](#deployment)
-20. [Known Gaps](#known-gaps)
+3. [V2 Investigation Pipeline](#v2-investigation-pipeline)
+4. [Component Inventory](#component-inventory)
+5. [Air-Gap Boundary](#air-gap-boundary)
+6. [Data Flow](#data-flow)
+7. [Go API Gateway](#go-api-gateway)
+8. [Python Worker](#python-worker)
+9. [Database Layer](#database-layer)
+10. [Dashboard](#dashboard)
+11. [LLM Infrastructure](#llm-infrastructure)
+12. [Sandbox Execution](#sandbox-execution)
+13. [Security Architecture](#security-architecture)
+14. [Authentication & Authorization](#authentication--authorization)
+15. [Infrastructure Services](#infrastructure-services)
+16. [Testing](#testing)
+17. [Deployment](#deployment)
+18. [Known Gaps](#known-gaps)
 
 ---
 
 ## Overview
 
-HYDRA is an AI-powered SOC (Security Operations Center) automation platform. It receives security alerts, uses local LLMs to generate investigation code, executes that code in sandboxed containers, and returns structured findings. The platform is designed for on-premises deployment with no mandatory cloud dependencies.
+HYDRA is an AI-powered SOC (Security Operations Center) automation platform. It receives security alerts from SIEM systems, uses local LLMs to generate investigation code, executes that code in sandboxed containers, and returns structured findings with MITRE ATT&CK mapping, risk scores, IOC extraction, and remediation recommendations.
 
-**Core value proposition:** Automate Tier-1 SOC analyst work -- triage alerts, investigate indicators, correlate entities, and generate incident reports -- using locally-hosted LLMs for privacy and cost control.
+**Core value proposition:** Automate Tier-1 SOC analyst work---triage alerts, investigate indicators, correlate entities, and generate incident reports---using locally-hosted LLMs with zero data egress. Designed for air-gapped, on-premises deployment in compliance-constrained environments (GDPR, HIPAA, NERC CIP, CMMC).
 
 ### Key Design Principles
 
-- **Local-first inference:** All LLM processing runs on local GPU hardware (RTX 3050 / 4GB VRAM target). Cloud providers are optional fallbacks only.
-- **Defense in depth:** Four-layer sandbox (AST prefilter, seccomp, network isolation, kill timer) protects against malicious code generation.
+- **Air-gap capable:** The complete platform runs on a single machine with no outbound network connectivity. The LLM, sandbox, database, and all services run locally.
+- **Local-first inference:** All LLM processing runs on local GPU hardware (RTX 3050 / 4GB VRAM minimum). Cloud providers are optional fallbacks only.
+- **LLM output is untrusted:** Four-layer sandbox (AST prefilter, Docker isolation, seccomp, kill timer) protects against malicious code generation.
 - **Multi-tenant isolation:** Tenant-scoped data, per-tenant rate limits, RBAC, and audit logging.
 - **Durable execution:** Temporal workflows survive restarts, retries, and partial failures.
-- **Air-gap capable:** Ollama fallback mode for fully disconnected environments.
-
----
-
-## What's New (v0.10.0 → v1.0.0-rc1)
-
-- 30/30 security audit findings resolved
-- 5 defense-in-depth features (Vault JIT, egress proxy, alert sanitizer, adversarial review, MCP approval gate)
-- 10 platform features (ML detection, Zeek ingestion, WebSocket collaboration, attack surface recon)
-- 346 automated tests (44 Go + 302 Python), all passing
-- 5 architectural fixes (CI gates, DB pooling, go-redis, handler split, workflow registration)
-- Migration runner (golang-migrate with advisory lock)
-- CI pipeline (GitHub Actions, real failure gates)
-- 48-hour PoV package for customer evaluation
-- Configurable CORS, vLLM container restoration, OpenAPI v1.2.0 refresh
-- Playbook template resolution, analyst feedback loop, CISA KEV corpus processing
+- **Complete audit trail:** Every LLM call is logged with input, output, model, tokens, and latency.
 
 ---
 
 ## System Architecture
 
-```
-                         +------------------+
-                         |    Dashboard     |
-                         |  React 19 :3000  |
-                         +--------+---------+
-                                  |
-                                  | HTTPS / REST
-                                  v
-                         +------------------+
-                         |   Go API Gateway |
-                         |   Gin :8090      |
-                         +--+----+----+---+-+
-                            |    |    |   |
-              +-------------+    |    |   +-------------+
-              |                  |    |                  |
-              v                  v    v                  v
-     +--------+------+  +-------+--+ +--+-------+  +----+------+
-     |  PostgreSQL   |  | Temporal | | Redis    |  |   NATS    |
-     |  16+pgvector  |  | 1.24.2   | | 7-alpine |  | (events)  |
-     |  :5432        |  | :7233    | | :6379    |  |           |
-     +--------+------+  +----+-----+ +----------+  +-----------+
-              |               |
-              |               v
-              |      +--------+--------+
-              |      |  Python Worker  |
-              |      |  Temporal SDK   |
-              |      +---+----+----+---+
-              |          |    |    |
-              |    +-----+    |    +-----+
-              |    |          |          |
-              v    v          v          v
-         +----+---+--+ +-----+----+ +---+--------+
-         | LiteLLM   | |  MinIO   | |  Sandbox   |
-         | :4000     | |  :9000   | |  Container |
-         +-----+-----+ +----------+ +---+--------+
-               |                         |
-        +------+------+                  |
-        |             |            AST + seccomp
-        v             v            + network=none
-   +----+----+  +-----+-----+     + kill timer
-   | vLLM    |  | vLLM      |
-   | Chat    |  | Embed     |
-   | :8000   |  | :8001     |
-   +---------+  +-----------+
+```mermaid
+graph TD
+    subgraph "Air-Gap Boundary"
+        subgraph "External Interface"
+            SIEM[SIEM / Webhook Source]
+            Browser[Dashboard Browser]
+        end
+
+        subgraph "Core Services"
+            API[Go API Gateway<br>:8090]
+            Worker[Python Temporal Worker]
+            Temporal[Temporal Server<br>:7233]
+            PG[(PostgreSQL 16<br>+ pgvector<br>:5432)]
+            PGB[PgBouncer<br>:6432]
+            Redis[(Redis 7<br>:6379)]
+            Dashboard[React Dashboard<br>:3000 / :5173]
+        end
+
+        subgraph "LLM Inference (Host)"
+            LLM[llama.cpp<br>Qwen2.5-14B-Q4_K_M<br>:11434]
+        end
+
+        subgraph "Sandbox (Ephemeral)"
+            Sandbox[Docker Container<br>python:3.11-slim<br>--network=none<br>--read-only<br>--cap-drop=ALL]
+        end
+    end
+
+    SIEM -->|POST /api/v1/webhooks| API
+    Browser -->|HTTPS| Dashboard
+    Dashboard -->|REST API| API
+    API -->|Start Workflow| Temporal
+    Temporal -->|Dispatch Activity| Worker
+    Worker -->|LLM Calls| LLM
+    Worker -->|Execute Code| Sandbox
+    Worker -->|Read/Write| PGB
+    PGB -->|Pool| PG
+    API -->|Read/Write| PG
+    API -->|Cache/Dedup| Redis
+    Worker -->|Dedup| Redis
 ```
 
-**Host-exposed ports (v0.10.1):** Only the Dashboard (3000) and API Gateway (8090) are exposed to the host network. All other services communicate exclusively over the `hydra-internal` Docker bridge network.
+### ASCII Diagram (for non-Mermaid renderers)
+
+```
+                              AIR-GAP BOUNDARY
+  ================================================================
+  |                                                              |
+  |   SIEM ──webhook──> Go API (:8090) ──> Temporal (:7233)    |
+  |                        |                    |                |
+  |   Browser ──> Dashboard (:3000)             v                |
+  |                        |            Python Worker            |
+  |                        v               |       |             |
+  |                   PostgreSQL (:5432)   |       |             |
+  |                   via PgBouncer        |       |             |
+  |                   + Redis (:6379)      v       v             |
+  |                                  llama.cpp  Sandbox          |
+  |                                  (:11434)   (Docker)         |
+  |                                  [HOST]     --network=none   |
+  |                                                              |
+  ================================================================
+                    NO OUTBOUND CONNECTIONS
+```
+
+---
+
+## V2 Investigation Pipeline
+
+The V2 pipeline is a five-stage workflow orchestrated by Temporal. Each stage is an independent activity that can be retried on failure.
+
+```
+SIEM Alert --> Go API (:8090) --> Temporal: InvestigationWorkflowV2 -->
+
+  Stage 1 INGEST:  dedup (Redis) -> PII mask -> skill retrieval     [NO LLM]
+  Stage 2 ANALYZE: template fill OR full LLM code generation        [LLM Call 1]
+  Stage 3 EXECUTE: AST prefilter -> Docker sandbox                  [NO LLM]
+  Stage 4 ASSESS:  verdict -> LLM summary -> FP confidence          [LLM Call 2]
+  Stage 5 STORE:   agent_tasks + investigations + memory            [NO LLM]
+
+  --> Structured Verdict (findings, IOCs, recommendations, risk score, MITRE mapping)
+```
+
+### Stage Details
+
+| Stage | File | LLM? | Input | Output | Latency |
+|-------|------|------|-------|--------|---------|
+| 1. INGEST | `worker/stages/ingest.py` | No | Alert JSON | IngestOutput (deduped, PII-masked, skill selected) | <100ms |
+| 2. ANALYZE | `worker/stages/analyze.py` | Yes | IngestOutput | AnalyzeOutput (Python investigation code) | 10-60s |
+| 3. EXECUTE | `worker/stages/execute.py` | No | AnalyzeOutput (code) | ExecuteOutput (stdout, stderr, exit code, IOCs) | 1-120s |
+| 4. ASSESS | `worker/stages/assess.py` | Yes | ExecuteOutput | AssessOutput (verdict, risk score, recommendations) | 10-40s |
+| 5. STORE | `worker/stages/store.py` | No | All prior outputs | Database records | <100ms |
+
+### Supporting Modules
+
+| Module | File | Purpose |
+|--------|------|---------|
+| LLM Gateway | `worker/stages/llm_gateway.py` | Audit logging, timeout handling for all LLM calls |
+| Model Router | `worker/stages/model_router.py` | Severity-based model tier selection |
+| Model Config | `worker/stages/model_config.yaml` | Model tier definitions (fast/standard/reasoning) |
+| Sandbox Policy | `worker/stages/sandbox_policy.yaml` | Declarative sandbox configuration |
+| MITRE Mapping | `worker/stages/mitre_mapping.py` | Task-type to MITRE ATT&CK technique mapping |
+| Registration | `worker/stages/register.py` | Activity and workflow registration for Temporal |
 
 ---
 
 ## Component Inventory
 
-| Component | Language | Key Files | Scale |
-|-----------|----------|-----------|-------|
-| Go API Gateway | Go 1.22+ | 45 .go files | 78 endpoints |
-| Python Worker | Python 3.11+ | 124 .py files | 16 workflows, 110 activities |
-| Database | PostgreSQL 16 | 40 migrations | 76 tables |
-| Dashboard | TypeScript 5.9 | React 19 + Vite 7 | SPA |
-| MCP Server | TypeScript | Node.js | 7 tools, 7 resources, 6 prompts |
-| Docker Stack | YAML | docker-compose.yml | ~20 services |
+| Component | Technology | Port | Docker Service | Status | Purpose |
+|-----------|-----------|------|----------------|--------|---------|
+| API Gateway | Go 1.22 + Gin | 8090 | `api` | Core | Auth, RBAC, task dispatch, 78 endpoints |
+| Worker | Python 3.11 + Temporal SDK | -- | `worker` | Core | Investigation pipeline execution |
+| Temporal | Temporal 1.24.2 | 7233 | `temporal` | Core | Durable workflow orchestration |
+| Temporal UI | Temporal Web UI | 8080 | `temporal` | Core | Workflow monitoring |
+| PostgreSQL | PostgreSQL 16 + pgvector | 5432 | `postgres` | Core | Investigation storage, 76+ tables |
+| PgBouncer | PgBouncer | 6432 | `pgbouncer` | Core | Connection pooling |
+| Redis | Redis 7 Alpine | 6379 | `redis` | Core | Dedup, rate limiting, caching |
+| Dashboard | React 19 + Vite 7 + Tailwind 4 | 3000 (Docker) / 5173 (dev) | `dashboard` | Core | Investigation management UI |
+| llama.cpp | llama-server | 11434 | Host process (not Docker) | Core | LLM inference |
+| NATS | NATS Server | 4222 | `nats` | Optional | Event streaming |
+| LiteLLM | LiteLLM Proxy | 4000 | `litellm` | Optional | LLM routing proxy |
+| TEI | HuggingFace TEI | 8001 | `tei` | Optional | Text embeddings |
+
+**Note:** As of v1.1.0, NATS, LiteLLM, and TEI are moved to `docker-compose.optional.yml`. The primary LLM path uses llama.cpp directly on the host via `http://host.docker.internal:11434/v1/chat/completions`.
+
+---
+
+## Air-Gap Boundary
+
+HYDRA is designed to run within a complete air-gap. The boundary is defined as follows:
+
+### Inside the Boundary (Required)
+
+- All 6 core Docker containers (postgres, redis, pgbouncer, temporal, api, worker)
+- llama.cpp running on the host GPU
+- Model weights stored locally on disk
+- Dashboard served via nginx (Docker) or Vite dev server (host)
+- All investigation data, LLM interactions, and audit logs
+
+### Outside the Boundary (Nothing)
+
+- No cloud API calls
+- No telemetry or usage reporting
+- No model weight downloads at runtime (pre-staged)
+- No package installations at runtime (pre-built images)
+- No DNS resolution required
+- No NTP required (system clock is sufficient)
+
+### Network Connections
+
+| Source | Destination | Protocol | Direction | Purpose |
+|--------|------------|----------|-----------|---------|
+| Browser | Dashboard (:3000) | HTTPS | Inbound | User interface |
+| SIEM | API (:8090) | HTTPS | Inbound | Alert webhooks |
+| API | PostgreSQL (:5432) | TCP | Internal | Data storage |
+| API | Redis (:6379) | TCP | Internal | Caching |
+| API | Temporal (:7233) | gRPC | Internal | Workflow dispatch |
+| Worker | Temporal (:7233) | gRPC | Internal | Activity execution |
+| Worker | PgBouncer (:6432) | TCP | Internal | Data storage |
+| Worker | Redis (:6379) | TCP | Internal | Dedup |
+| Worker | llama.cpp (:11434) | HTTP | Internal* | LLM inference |
+| Worker | Docker daemon | Unix socket | Internal | Sandbox creation |
+
+*Worker connects to llama.cpp via `host.docker.internal:11434` when running in Docker.
+
+**Zero outbound connections exist.** The sandbox containers are created with `--network=none`, removing even the internal Docker network.
+
+---
+
+## Data Flow
+
+### Investigation Lifecycle
+
+```
+1. SIEM sends alert JSON via POST /api/v1/webhooks/:source_id/alert
+   (or analyst creates task via POST /api/v1/tasks)
+
+2. Go API validates auth (JWT), extracts tenant_id, writes to agent_tasks table,
+   starts Temporal workflow InvestigationWorkflowV2
+
+3. Temporal dispatches Stage 1 (INGEST) to Python worker:
+   - Check Redis for duplicate (SHA-256 content hash)
+   - Apply PII masking (regex-based)
+   - Select skill template from library (11 templates)
+
+4. Temporal dispatches Stage 2 (ANALYZE) to Python worker:
+   - If template found: fill template with alert parameters
+   - If no template: send prompt to llama.cpp, receive Python code
+   - LLM call logged to llm_audit_log table
+
+5. Temporal dispatches Stage 3 (EXECUTE) to Python worker:
+   - AST prefilter checks code for forbidden imports/patterns
+   - Docker sandbox runs code (--network=none, --read-only, seccomp)
+   - Capture stdout (JSON), stderr, exit code, execution time
+
+6. Temporal dispatches Stage 4 (ASSESS) to Python worker:
+   - Send execution results to llama.cpp for verdict
+   - Receive risk score, findings, IOCs, recommendations
+   - LLM call logged to llm_audit_log table
+
+7. Temporal dispatches Stage 5 (STORE) to Python worker:
+   - Write investigation record to PostgreSQL
+   - Update investigation_memory for cross-correlation
+   - Mark agent_task as completed/failed
+
+8. Dashboard polls GET /api/v1/tasks/:id every 2 seconds
+   - Displays real-time progress, then final verdict
+```
+
+### Data at Rest
+
+| Data | Storage | Encryption | Retention |
+|------|---------|-----------|-----------|
+| Investigation records | PostgreSQL | TDE (if configured) | Configurable per tenant |
+| LLM audit logs | PostgreSQL (partitioned) | TDE | 90 days default |
+| Model weights | Host filesystem | At-rest encryption (OS) | Permanent |
+| Redis cache | In-memory | N/A | TTL-based eviction |
+| Sandbox output | Ephemeral (container destroyed) | N/A | Not persisted |
 
 ---
 
 ## Go API Gateway
 
 **Location:** `api/`
+**Framework:** Gin 1.9.1
+**Endpoints:** 78 across 27 handler files
 
-The API gateway is a Go service built with Gin 1.9.1. It handles all external HTTP traffic, enforces authentication and authorization, and dispatches work to Temporal.
+### Endpoint Groups
 
-### Endpoint Groups (78 endpoints across 27 files)
+| Group | Count | Auth Required | Purpose |
+|-------|-------|--------------|---------|
+| Auth | 6 | No (rate limited) | Login, register, refresh, logout, SSO |
+| Tasks | 8 | Yes | Investigation CRUD, steps, timeline, streaming |
+| Admin | 20+ | Admin role | Tenants, playbooks, models, retention, kill switch |
+| Webhooks | 4 | HMAC or JWT | SIEM alert ingestion, delivery tracking |
+| Shadow Mode | 5 | Yes | A/B model comparison |
+| Automation | 5 | Yes (admin for mutations) | Kill switch, controls |
+| Quotas | 4 | Yes (admin for mutations) | Token usage limits |
 
-| Group | Responsibilities | Key Patterns |
-|-------|-----------------|--------------|
-| **Auth** | Login, logout, token refresh, TOTP 2FA enrollment/verify | JWT access (15min) + refresh (7d httpOnly cookie) |
-| **RBAC** | Role-based access control, permission checks | admin, analyst, viewer roles |
-| **SIEM** | Alert ingestion from external SIEM platforms | Webhook receivers, alert normalization |
-| **Playbooks** | SOAR playbook management and triggering | CRUD + execution via Temporal |
-| **Tenants** | Tenant CRUD, per-tenant configuration | Multi-tenant isolation |
-| **Shadow Mode** | Run new models alongside production without affecting output | A/B comparison |
-| **Kill Switch** | Emergency disable of LLM-generated code execution | Global and per-tenant |
-| **Token Quotas** | Per-tenant LLM token usage limits | Redis-backed counters |
-| **NATS** | Event publishing for real-time notifications | Pub/sub integration |
-| **OIDC** | External identity provider integration | JWKS verification, issuer/audience validation |
-| **TOTP** | Time-based one-time password 2FA | Enrollment + verification |
-| **Webhooks** | Outbound webhook delivery on events | Configurable per tenant |
-| **Models** | Model registry management | CRUD for model configurations |
-| **A/B Tests** | Model A/B test configuration | Traffic splitting |
-| **Retention** | Data retention policy management | Per-tenant TTLs |
-| **Integrations** | External system connections | SIEM, ticketing |
-| **Feedback** | Investigation quality feedback collection | Analyst ratings |
-| **Costs** | Investigation cost tracking and reporting | Per-model cost roll-ups |
-| **Entities** | Entity graph queries (IPs, domains, users, hashes) | Cross-investigation correlation |
-| **Notifications** | Alert and status notifications | NATS-backed delivery |
+### Middleware Stack
 
-### Middleware Stack (applied in order)
-
-1. **CORS** -- Strict origin (`localhost:3000`), credentials allowed
-2. **Request ID** -- UUID per request for tracing
-3. **Structured Logging** -- JSON logs with request context
+1. **CORS** -- Origins: localhost:3000, localhost:5173
+2. **Security Headers** -- HSTS, X-Frame-Options, CSP
+3. **Structured Logging** -- JSON with request context
 4. **Auth Rate Limiting** -- 10 attempts per 15 minutes per IP
-5. **JWT Validation** -- Access token from httpOnly cookie, signing method enforcement
-6. **RBAC Check** -- Role-based endpoint access
-7. **Tenant Scoping** -- Tenant ID from JWT claims, enforced on all queries
-8. **Audit Logging** -- All mutating operations logged to `audit_events` table
+5. **JWT Validation** -- Access token from header or httpOnly cookie
+6. **RBAC Check** -- admin, analyst, viewer, api_key roles
+7. **Tenant Scoping** -- tenant_id from JWT, enforced on all queries
+8. **Audit Logging** -- All mutations logged to audit_events table
 
 ---
 
 ## Python Worker
 
 **Location:** `worker/`
-
-The worker is a Python service that connects to Temporal and executes investigation workflows. It hosts all LLM interaction, code generation, sandbox execution, and result processing.
-
-### Workflows (10)
-
-Workflows are durable, resumable execution graphs managed by Temporal. Each workflow orchestrates a sequence of activities.
-
-| Workflow | Purpose |
-|----------|---------|
-| Investigation | Full alert investigation pipeline |
-| Entity Extraction | Extract IOCs and entities from alert data |
-| Detection | Pattern mining and Sigma rule generation |
-| Response | SOAR playbook execution |
-| Bootstrap | Seed corpus data loading |
-| Entity Graph | Build and query cross-investigation entity relationships |
-| Fine-tuning Export | Generate training data from completed investigations |
-| Model Evaluation | Run evaluation suites against model versions |
-| SRE Self-Healing | Automated failure detection, diagnosis, and patching |
-| Validation | Dry-run code execution gate (5s subprocess sandbox) |
-
-### Activities (95)
-
-Activities are individual units of work. Key categories:
-
-| Category | Count | Examples |
-|----------|-------|---------|
-| LLM Interaction | ~15 | prompt_llm, generate_code, summarize_findings |
-| Sandbox Execution | ~8 | execute_sandboxed, validate_ast, apply_seccomp |
-| Entity Processing | ~12 | extract_entities, resolve_cross_tenant, score_threat |
-| Detection | ~10 | mine_patterns, generate_sigma, validate_sigma |
-| Response/SOAR | ~10 | execute_playbook, check_approval, send_notification |
-| Data Pipeline | ~10 | export_training_data, score_quality, evaluate_model |
-| SRE | ~8 | scan_failures, diagnose, generate_patch, test_patch |
-| Reporting | ~6 | generate_report, format_markdown, render_pdf |
-| Intelligence | ~6 | analyze_blast_radius, detect_false_positive, deobfuscate |
-| Cache/Memory | ~5 | check_cache, store_result, semantic_search |
-| Cost/Metrics | ~5 | calculate_cost, log_llm_call, track_tokens |
+**Framework:** Temporal Python SDK
+**Pipeline:** V2 five-stage (see above)
 
 ### Key Modules
 
 | Module | Location | Purpose |
 |--------|----------|---------|
-| `model_config.py` | `worker/` | 3-tier model routing: hydra-fast, hydra-standard, hydra-reasoning |
-| `prompt_registry.py` | `worker/` | SHA256-based prompt version tracking (16 registered prompts) |
-| `llm_logger.py` | `worker/` | Non-blocking async LLM call logging to `llm_call_log` table |
-| `context_manager.py` | `worker/` | Model-aware context window management (head/tail truncation) |
-| `cost_calculator.py` | `worker/` | Per-model cost calculation (19 model entries) |
-| `investigation_cache.py` | `worker/` | SHA-256 indicator cache with 24h TTL |
-| `investigation_memory.py` | `worker/` | Two-pass enrichment: exact match + pgvector semantic search |
-| `prompt_init.py` | `worker/` | Prompt registration at worker startup |
-| `security/` | `worker/security/` | Injection detector + prompt sanitizer |
-| `intelligence/` | `worker/intelligence/` | Blast radius analysis + false positive detection |
-| `reporting/` | `worker/reporting/` | Incident report generator (Markdown + PDF) |
-| `skills/` | `worker/skills/` | Deobfuscation sandbox skill |
-| `detection/` | `worker/detection/` | Sigma rule generation, pattern mining, validation |
-| `response/` | `worker/response/` | SOAR playbook execution, 7 action types, approval gates |
-| `models/` | `worker/models/` | Model registry, dynamic routing, A/B test support |
-| `finetuning/` | `worker/finetuning/` | Training data export, quality scoring, evaluation |
-| `sre/` | `worker/sre/` | Self-healing: monitor, diagnose, patch, test, apply |
-| `validation/` | `worker/validation/` | Dry-run gate (5s subprocess sandbox) |
-| `bootstrap/` | `worker/bootstrap/` | MITRE (691 techniques), CISA KEV (1536), synthetic investigations |
-| `prompts/` | `worker/prompts/` | LLM prompt templates (entity extraction, investigation) |
+| V2 Pipeline Stages | `worker/stages/` | Five-stage investigation pipeline (1392 lines) |
+| LLM Gateway | `worker/stages/llm_gateway.py` | Centralized audit logging for all LLM calls |
+| Model Router | `worker/stages/model_router.py` | Severity-based model selection |
+| MITRE Mapping | `worker/stages/mitre_mapping.py` | ATT&CK technique mapping per investigation type |
+| Legacy Activities | `worker/_legacy_activities.py` | Shared activities (fetch_task, log_audit) |
+| Skill Templates | `worker/skills/` | 11 pre-validated investigation templates |
+| Security | `worker/security/` | Injection detection, prompt sanitization |
+| Intelligence | `worker/intelligence/` | Blast radius, FP analysis, cross-tenant correlation |
+| Detection | `worker/detection/` | Sigma rule generation, pattern mining |
+| Response | `worker/response/` | SOAR playbook execution, approval gates |
 
 ---
 
@@ -244,32 +326,29 @@ Activities are individual units of work. Key categories:
 
 **Engine:** PostgreSQL 16 with pgvector extension
 **Connection pooling:** PgBouncer
-**Migrations:** 32 files in `migrations/` (001 through 032)
+**Migrations:** 47 files in `migrations/` (001 through 047)
+**Tables:** 76+
 
-### Table Inventory (76 tables)
+### Table Categories
 
-| Category | Tables | Purpose |
-|----------|--------|---------|
-| **Core** | `tenants`, `users`, `roles`, `permissions` | Multi-tenant identity |
-| **Investigation** | `investigations`, `investigation_steps`, `investigation_results` | Investigation lifecycle |
-| **Entity Graph** | `entities`, `entity_edges`, `entity_resolutions` | Cross-investigation IOC correlation |
-| **Detection** | `sigma_rules`, `detection_patterns` | Generated detection content |
-| **Response** | `playbooks`, `playbook_actions`, `playbook_executions`, `approval_gates` | SOAR automation |
-| **LLM** | `llm_call_log`, `prompt_versions`, `model_registry`, `ab_tests` | Model management and observability |
-| **Security** | `audit_events`, `auth_attempts`, `account_lockouts` | Security audit trail |
-| **Feedback** | `investigation_feedback`, `feedback_accuracy` (view) | Quality tracking |
-| **Cost** | `investigation_costs` (view), `token_usage` | Financial tracking |
-| **Cache** | `investigation_cache` | Indicator result caching |
-| **Config** | `tenant_config`, `webhooks`, `integrations`, `retention_policies` | Per-tenant settings |
-| **Corpus** | `mitre_techniques`, `cisa_kev`, `synthetic_investigations` | Reference data |
-| **Partitioned** | Time-range partitioned tables for high-volume data | Audit, LLM logs |
+| Category | Key Tables | Purpose |
+|----------|-----------|---------|
+| Core | tenants, users, roles, permissions | Multi-tenant identity |
+| Investigation | agent_tasks, investigations, investigation_steps | Investigation lifecycle |
+| V2 Pipeline | llm_audit_log, investigation_memory | LLM audit trail, cross-correlation |
+| Entity Graph | entities, entity_edges | IOC correlation |
+| Detection | sigma_rules, detection_patterns | Generated detection content |
+| Response | playbooks, playbook_actions, approval_gates | SOAR automation |
+| LLM | llm_call_log, model_registry, ab_tests | Model management |
+| Security | audit_events, auth_attempts | Audit trail |
+| Config | tenant_config, webhooks, retention_policies | Per-tenant settings |
 
 ### Key Schema Patterns
 
-- **Tenant scoping:** Nearly all tables include a `tenant_id` foreign key. All queries are tenant-scoped.
-- **pgvector:** `entities` and `investigation_results` tables include `embedding vector(768)` columns for semantic search via the nomic-embed-text-v1.5 model.
-- **Table partitioning:** High-volume tables (`audit_events`, `llm_call_log`) use PostgreSQL range partitioning by timestamp.
-- **Materialized views:** Cross-tenant entity resolution and threat scoring use materialized views refreshed on schedule.
+- **Tenant isolation:** Every table includes `tenant_id` in WHERE clauses
+- **pgvector:** Investigation embeddings for semantic search (768-dim)
+- **Table partitioning:** High-volume tables (audit_events, llm_call_log) use range partitioning
+- **Singular table names:** `investigation_memory` (not memories) -- see known issues
 
 ---
 
@@ -277,756 +356,189 @@ Activities are individual units of work. Key categories:
 
 **Location:** `dashboard/`
 **Stack:** React 19 + Vite 7 + Tailwind 4 + TypeScript 5.9
+**Pages:** 15
 
-### Features
+### Page Inventory
 
-| Feature | Description |
-|---------|-------------|
-| Investigation Waterfall | Step-by-step visualization of investigation progress |
-| Executive Summary | High-level ribbon with key metrics and sovereignty badges |
-| Entity Graph | Visual representation of IOC relationships |
-| C2 Beacon Demo | Built-in demo scenario for showcasing platform capabilities |
-| Admin Panel | Tenant management, approvals, cost tracking |
-| Playbook Builder | Visual SOAR playbook creation |
-| SIEM Alerts | Alert ingestion dashboard |
-| Timeline | Investigation timeline visualization |
-| Dark/Light Mode | Theme toggle |
-| Data Flow Badges | Visual indicators for data sovereignty status |
+| Page | Route | Purpose |
+|------|-------|---------|
+| TaskList | `/` | Investigation list with filters |
+| TaskDetail | `/tasks/:id` | Full investigation detail with steps, MITRE mapping, export |
+| NewTask | `/tasks/new` | Create new investigation |
+| Login | `/login` | Authentication |
+| DemoPage | `/demo` | C2 beacon demo scenario |
+| AdminPanel | `/admin` | Tenant management, approvals |
+| ApprovalQueue | `/approvals` | Pending human approvals |
+| PlaybookBuilder | `/playbooks/new` | Visual playbook creation |
+| Playbooks | `/playbooks` | Playbook management |
+| SIEMAlerts | `/siem-alerts` | Alert ingestion dashboard |
+| ThreatIntel | `/threat-intel` | Threat intelligence feeds |
+| EntityGraph | `/entities` | IOC relationship graph |
+| CostDashboard | `/costs` | Investigation cost tracking |
+| LogSources | `/log-sources` | SIEM integration management |
+| Settings | `/settings` | User preferences |
 
-### Key Directories
+### Key Components
 
-| Directory | Purpose |
+| Component | Purpose |
 |-----------|---------|
-| `dashboard/src/components/` | UI components (Waterfall, StepDetail, ExecutiveSummary, DataFlowBadge) |
-| `dashboard/src/demo/` | C2 beacon demo scenario data |
-
-### Demo Credentials
-
-| Field | Value |
-|-------|-------|
-| Email | `admin@hydra.local` |
-| Password | `hydra123` |
-| Role | admin |
-| Tenant | hydra-dev |
+| MitreTimeline | MITRE ATT&CK timeline visualization per investigation |
+| InvestigationWaterfall | Step-by-step progress visualization |
+| ExecutiveSummary | Key metrics ribbon |
+| SovereigntyBanner | Data sovereignty compliance indicator |
+| DataFlowBadge | Visual data flow indicators |
+| StepDetailPanel | Expandable investigation step details |
 
 ---
 
-## MCP Server
+## LLM Infrastructure
 
-**Location:** `mcp-server/`
-**Stack:** TypeScript + Node.js + `@modelcontextprotocol/sdk`
-
-The MCP (Model Context Protocol) server allows external AI assistants (Claude, etc.) to interact with HYDRA programmatically.
-
-### Tools (7)
-
-| Tool | Purpose |
-|------|---------|
-| `hydra_health` | Check platform health status |
-| `hydra_submit_alert` | Submit a security alert for investigation |
-| `hydra_query` | Query investigation results |
-| `hydra_get_report` | Retrieve investigation reports |
-| `hydra_logs` | Fetch platform logs |
-| `hydra_trigger_workflow` | Trigger a Temporal workflow |
-| `hydra_create_tenant` | Create a new tenant |
-
-### Resources (7)
-
-Expose read-only data for AI assistant consumption: investigation status, entity graphs, detection rules, feedback data, accuracy metrics, cost summaries, and platform configuration.
-
-### Prompts (6)
-
-Pre-built prompt templates for common SOC tasks that external AI assistants can use when interacting with HYDRA.
-
----
-
-## Infrastructure Services
-
-### Docker Compose Stack (~20 services)
-
-| Service | Image / Build | Port (internal) | Purpose |
-|---------|--------------|-----------------|---------|
-| `hydra-api` | Build `api/` | 8090 | Go API gateway |
-| `hydra-worker` | Build `worker/` | -- | Python Temporal worker |
-| `hydra-dashboard` | Build `dashboard/` | 3000 | React frontend |
-| `hydra-postgres` | PostgreSQL 16 + pgvector | 5432 | Primary database |
-| `hydra-pgbouncer` | PgBouncer | 6432 | Connection pooling |
-| `hydra-redis` | Redis 7-alpine | 6379 | Cache + rate limiting (256MB LRU) |
-| `hydra-temporal` | Temporal 1.24.2 | 7233 | Workflow engine |
-| `hydra-temporal-ui` | Temporal UI | 8080 | Workflow admin UI |
-| `hydra-litellm` | LiteLLM | 4000 | LLM gateway / router |
-| `hydra-vllm-chat` | vLLM 0.15.1 | 8000 | Chat model inference |
-| `hydra-vllm-embed` | vLLM 0.15.1 | 8001 | Embedding inference |
-| `hydra-minio` | MinIO | 9000/9001 | S3-compatible object storage |
-| `hydra-jaeger` | Jaeger 1.57 | 16686 | Distributed tracing (OTLP) |
-| `hydra-nats` | NATS | 4222 | Event streaming |
-| `hydra-prometheus` | Prometheus | 9090 | Metrics collection |
-| `hydra-grafana` | Grafana | 3001 | Metrics dashboards |
-| `hydra-postgres-exporter` | postgres_exporter | -- | PostgreSQL metrics |
-| `hydra-redis-exporter` | redis_exporter | -- | Redis metrics |
-| `hydra-temporal-exporter` | Custom | -- | Temporal queue depth metrics |
-| `hydra-mcp` | Build `mcp-server/` | -- | MCP server |
-
-### GPU Allocation — Developer (RTX 3050, 4GB VRAM)
-
-| Model | VRAM Fraction | Estimated Usage |
-|-------|--------------|-----------------|
-| Qwen2.5-1.5B-Instruct-AWQ (chat) | 0.40 | ~1.6 GB |
-| nomic-embed-text-v1.5 (embed) | 0.15 | ~0.6 GB |
-| **Total** | **0.55** | **~2.2 GB** |
-
-### GPU Allocation — Enterprise (A6000, 48GB VRAM)
-
-| Model | VRAM | Purpose |
-|-------|------|---------|
-| Qwen2.5-7B-Instruct-AWQ (fast) | ~4 GB | Quick triage |
-| Qwen2.5-32B-Instruct-AWQ (standard/reasoning) | ~18 GB | Full investigations |
-| nomic-embed-text-v1.5 (embed) | ~0.6 GB | Embeddings |
-| KV cache (32k context) | ~4 GB | Investigation context |
-| **Total** | **~27 GB** | **Headroom: 21 GB** |
-
-See `docs/HARDWARE_REQUIREMENTS.md` for full tier comparison.
-
----
-
-## Network Topology
-
-### v0.10.1 Security Hardening
-
-As of v0.10.1, only two ports are exposed to the host:
-
-| Service | Host Port | Binding |
-|---------|-----------|---------|
-| Dashboard | 3000 | `127.0.0.1:3000` |
-| API Gateway | 8090 | `127.0.0.1:8090` |
-
-All other services communicate exclusively over the `hydra-internal` Docker bridge network. This was a critical security fix -- prior versions exposed PostgreSQL (5432), Redis (6379), Temporal (7233), NATS (4222), LiteLLM (4000), MinIO (9000/9001), and vLLM embedding (8001) to the host.
-
-### Internal Network
-
-```
-hydra-internal (Docker bridge)
-├── hydra-api ──────────────► hydra-postgres:5432
-│                        ├──► hydra-pgbouncer:6432
-│                        ├──► hydra-redis:6379
-│                        ├──► hydra-temporal:7233
-│                        ├──► hydra-nats:4222
-│                        └──► hydra-minio:9000
-├── hydra-worker ───────────► hydra-postgres:5432
-│                        ├──► hydra-redis:6379
-│                        ├──► hydra-temporal:7233
-│                        ├──► hydra-litellm:4000
-│                        └──► hydra-minio:9000
-├── hydra-litellm ──────────► hydra-vllm-chat:8000
-│                        └──► hydra-vllm-embed:8001
-├── hydra-dashboard ────────► hydra-api:8090
-├── hydra-temporal ─────────► hydra-postgres:5432
-├── hydra-prometheus ───────► all exporters
-└── hydra-grafana ──────────► hydra-prometheus:9090
-```
-
----
-
-## Security Architecture
-
-### Defense Layers
-
-```
-Layer 0: Network Perimeter
-  └─ Only Dashboard (3000) and API (8090) exposed to host
-  └─ All infrastructure services internal-only
-
-Layer 1: Authentication
-  └─ JWT access tokens (15min expiry)
-  └─ Refresh tokens (7d expiry, httpOnly Strict cookie)
-  └─ OIDC with JWKS signature verification (RSA, auto-refresh)
-  └─ TOTP 2FA enrollment and verification
-  └─ Account lockout (5 failed attempts / 30 minutes)
-  └─ Auth rate limiting (10 attempts / 15 minutes / IP)
-
-Layer 2: Authorization
-  └─ RBAC (admin, analyst, viewer roles)
-  └─ Tenant-scoped queries (tenant_id enforced on all data access)
-  └─ Per-tenant rate limits (Redis-backed)
-  └─ Per-tenant token quotas
-
-Layer 3: Data Protection
-  └─ PII masking (9 regex patterns) before LLM submission
-  └─ Redis entity map for PII re-association
-  └─ SCRAM-SHA-256 for PostgreSQL authentication
-  └─ bcrypt password hashing
-
-Layer 4: Sandbox (code execution)
-  └─ AST prefilter (block eval, exec, subprocess, socket, ctypes, importlib, __import__)
-  └─ seccomp syscall whitelist
-  └─ Docker --network=none (complete network isolation)
-  └─ 30-second kill timer
-
-Layer 5: Audit
-  └─ All mutating API calls logged to audit_events table
-  └─ Structured JSON logging throughout
-  └─ Jaeger distributed tracing (OTLP)
-
-Layer 6: LLM Safety
-  └─ Injection detection (prompt sanitizer)
-  └─ Dry-run validation gate (5s subprocess sandbox)
-  └─ Kill switch (global and per-tenant)
-  └─ Shadow mode for safe model comparison
-```
-
-### CORS Policy
-
-| Setting | Value |
-|---------|-------|
-| Allowed Origins | `http://localhost:3000` |
-| Allowed Methods | GET, POST, PUT, DELETE, OPTIONS |
-| Allowed Headers | Authorization, Content-Type |
-| Allow Credentials | true |
-
----
-
-## Authentication & Authorization
-
-### JWT Token Flow
-
-```
-Client                    API Gateway              PostgreSQL
-  │                           │                        │
-  │  POST /auth/login         │                        │
-  │  {email, password, totp}  │                        │
-  │──────────────────────────►│  Verify bcrypt hash    │
-  │                           │───────────────────────►│
-  │                           │◄───────────────────────│
-  │                           │  Check lockout status  │
-  │                           │───────────────────────►│
-  │                           │◄───────────────────────│
-  │  Set-Cookie: refresh_token│                        │
-  │  (httpOnly, Secure,       │  Generate JWT pair     │
-  │   SameSite=Strict, 7d)   │                        │
-  │  Body: {access_token,15m} │                        │
-  │◄──────────────────────────│                        │
-  │                           │                        │
-  │  GET /api/investigations  │                        │
-  │  Cookie: refresh_token    │                        │
-  │  Authorization: Bearer AT │                        │
-  │──────────────────────────►│  Validate JWT          │
-  │                           │  Check signing method  │
-  │                           │  Extract tenant_id     │
-  │                           │  Check RBAC            │
-  │  200 OK (tenant-scoped)  │                        │
-  │◄──────────────────────────│                        │
-```
-
-### JWT Configuration
-
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| `JWT_SECRET` | env var | Minimum 32 characters; server fatal on weak secret |
-| Access token expiry | 15 minutes | Short-lived for security |
-| Refresh token expiry | 7 days | Stored in httpOnly Strict cookie |
-| Signing algorithm | HS256 | Signing method validated on verification |
-
-### OIDC Integration
-
-| Parameter | Description |
-|-----------|-------------|
-| `OIDC_ISSUER_URL` | Identity provider URL (e.g., Keycloak, Okta) |
-| `OIDC_CLIENT_ID` | Application client ID |
-| `OIDC_CLIENT_SECRET` | Application client secret |
-| JWKS | RSA key verification with auto-refresh |
-| Validation | Issuer + audience claims verified |
-
-### Account Lockout
+### Current Configuration (v1.1.0)
 
 | Parameter | Value |
 |-----------|-------|
-| Max failed attempts | 5 |
-| Lockout window | 30 minutes |
-| Auth rate limit | 10 requests / 15 minutes / IP |
+| Runtime | llama.cpp (native binary on host) |
+| Model | Qwen2.5-14B-Instruct-Q4_K_M |
+| Model Size | 8.1 GB |
+| GPU Layers | 20 (offloaded to GPU) |
+| VRAM Usage | ~3.8 GB |
+| Inference Speed | ~4 tokens/second |
+| Port | 11434 (host) |
+| Worker URL | `http://host.docker.internal:11434/v1/chat/completions` |
+
+### Model Tiers
+
+| Tier | Purpose | Model | Hardware Requirement |
+|------|---------|-------|---------------------|
+| Fast | Triage, classification | qwen2.5:14b (or Nemotron 4B) | Any NVIDIA GPU |
+| Standard | Full investigation | 32B or cloud 70B | A6000 (48GB) or cloud |
+| Reasoning | Complex analysis | 70B+ | A100 (80GB) or cloud |
+
+### Why Not LiteLLM/vLLM?
+
+As of v1.1.0, LiteLLM and vLLM are moved to optional services. llama.cpp provides:
+- Native Windows support (no WSL overhead for inference)
+- Lower VRAM overhead for quantized models
+- Simpler deployment (single binary)
+- OpenAI-compatible API on port 11434
 
 ---
 
 ## Sandbox Execution
 
-The sandbox provides four layers of defense for executing LLM-generated Python code.
+See `docs/SANDBOX_SECURITY.md` for the complete security model.
 
-### Execution Pipeline
+### Summary
 
-```
-LLM generates Python code
-         │
-         ▼
-┌─────────────────────┐
-│  1. AST Prefilter   │  Static analysis of Python AST
-│                     │  Blocks: eval, exec, subprocess,
-│                     │  socket, ctypes, importlib,
-│                     │  __import__
-└─────────┬───────────┘
-          │ PASS
-          ▼
-┌─────────────────────┐
-│  2. seccomp Profile │  Syscall whitelist/blacklist
-│                     │  (sandbox/seccomp_profile.json)
-└─────────┬───────────┘
-          │ APPLY
-          ▼
-┌─────────────────────┐
-│  3. Docker Container│  --network=none
-│                     │  No filesystem mounts
-│                     │  Read-only rootfs
-└─────────┬───────────┘
-          │ RUN
-          ▼
-┌─────────────────────┐
-│  4. Kill Timer      │  30-second hard timeout
-│                     │  (sandbox/kill_timer.py)
-└─────────┬───────────┘
-          │ COMPLETE / KILLED
-          ▼
-     Return results
-```
+| Layer | Mechanism | What It Blocks |
+|-------|-----------|---------------|
+| 1. AST Prefilter | Python AST analysis | Forbidden imports (os, sys, subprocess, socket), dangerous patterns (eval, exec) |
+| 2. Docker Container | Process isolation | Network access, filesystem writes, privilege escalation |
+| 3. Seccomp Profile | Syscall filtering | mount, ptrace, kexec_load, raw sockets, namespace escape |
+| 4. Kill Timer | Execution timeout | Infinite loops, resource exhaustion, cryptomining |
 
-### Blocked Python Constructs
+### Sandbox Policy
 
-| Construct | Risk |
-|-----------|------|
-| `eval()` / `exec()` | Arbitrary code execution |
-| `subprocess` | Shell command execution |
-| `socket` | Network access |
-| `ctypes` | FFI / native code |
-| `importlib` | Dynamic module loading |
-| `__import__()` | Dynamic import bypass |
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `sandbox/ast_prefilter.py` | Python AST security validator |
-| `sandbox/seccomp_profile.json` | Syscall whitelist/blacklist |
-| `sandbox/kill_timer.py` | 30-second execution timeout enforcer |
+All sandbox parameters are configured via `worker/stages/sandbox_policy.yaml`, a declarative YAML file that can be audited by customer security teams without reading source code.
 
 ---
 
-## LLM Routing
+## Security Architecture
 
-### Architecture
-
-```
-Worker ──► LiteLLM (port 4000) ──► vLLM Chat (port 8000)
-                                └──► vLLM Embed (port 8001)
-                                └──► Groq (cloud fallback)
-                                └──► OpenRouter (cloud fallback)
-                                └──► Anthropic (cloud fallback)
-                                └──► OpenAI (cloud fallback)
-                                └──► Ollama (air-gap fallback)
-```
-
-### Model Tiers
-
-| Tier | Model Name | Use Case | Primary Backend |
-|------|-----------|----------|-----------------|
-| **Fast** | `hydra-fast` | Quick triage, entity extraction | vLLM: Qwen2.5-1.5B-Instruct-AWQ |
-| **Standard** | `hydra-standard` | Full investigations | Cloud fallback chain |
-| **Reasoning** | `hydra-reasoning` | Complex analysis, report generation | Cloud fallback chain |
-
-### LiteLLM Model Aliases
-
-| Alias | Target |
-|-------|--------|
-| `fast` | vLLM chat model (Qwen2.5-1.5B-Instruct-AWQ) |
-| `embed` | vLLM embed model (nomic-embed-text-v1.5, 768 dimensions) |
-
-### Fallback Chain (Standard/Reasoning tiers)
+### Authentication Flow
 
 ```
-Groq ──► OpenRouter ──► Anthropic ──► OpenAI ──► Ollama (air-gap)
+Register -> Login -> JWT Access Token (15min) -> Refresh Token (7d, httpOnly cookie)
+                          |
+                          v
+                    RBAC Check (admin / analyst / viewer / api_key)
+                          |
+                          v
+                    Tenant Scoping (tenant_id from JWT claims)
 ```
 
-Each provider is tried in order. If all cloud providers fail and Ollama is configured, it serves as the final fallback for air-gapped environments.
+### Security Controls
 
-### LiteLLM Authentication
-
-| Setting | Value |
-|---------|-------|
-| Master Key | `sk-hydra-dev-2026` (set via `LITELLM_MASTER_KEY`) |
-
-### Prompt Management
-
-- **16 registered prompts** tracked via SHA256 hash (first 12 chars)
-- Prompt versions stored in database for reproducibility
-- Registered at worker startup via `prompt_init.py`
-
-### Cost Tracking
-
-- 19 model entries in `cost_calculator.py`
-- Per-investigation cost roll-ups via `investigation_costs` view
-- Token usage tracked per LLM call in `llm_call_log` table
+| Control | Implementation |
+|---------|---------------|
+| JWT signing | HS256 with 32+ character secret (enforced at startup) |
+| Password hashing | bcrypt |
+| Rate limiting | Redis-backed, 10 attempts / 15 min per IP |
+| CORS | Strict origin whitelist |
+| CSRF | httpOnly cookies + SameSite |
+| 2FA | TOTP (RFC 6238) |
+| SSO | OIDC with JWKS verification |
+| API keys | HMAC-signed, admin-managed |
+| Audit | All mutations logged with user, tenant, timestamp |
+| Kill switch | Emergency disable of all LLM code execution |
 
 ---
 
-## Data Flow
+## Infrastructure Services
 
-### Alert Investigation (end-to-end)
+### Docker Compose (Core)
 
-```
-1. SIEM Alert arrives via webhook
-         │
-         ▼
-2. Go API validates auth, tenant, rate limit
-         │
-         ▼
-3. API writes alert to PostgreSQL
-         │
-         ▼
-4. API starts Temporal workflow (Investigation)
-         │
-         ▼
-5. Worker picks up workflow from Temporal queue
-         │
-         ▼
-6. Worker checks investigation_cache (SHA-256 of indicator)
-         │
-         ├── CACHE HIT: return cached result (24h TTL)
-         │
-         └── CACHE MISS: continue
-                  │
-                  ▼
-7. Worker queries investigation_memory
-   (exact match + pgvector semantic search)
-         │
-         ▼
-8. Worker masks PII (9 regex patterns)
-         │
-         ▼
-9. Worker checks for prompt injection
-         │
-         ▼
-10. Worker sends prompt to LiteLLM (model tier selection)
-         │
-         ▼
-11. LLM generates investigation code
-         │
-         ▼
-12. Dry-run validation gate (5s subprocess sandbox)
-         │
-         ▼
-13. AST prefilter validates code safety
-         │
-         ▼
-14. Code executes in sandboxed Docker container
-    (seccomp + network=none + 30s kill timer)
-         │
-         ▼
-15. Worker extracts entities from results
-         │
-         ▼
-16. Worker updates entity graph
-    (entities, edges, cross-tenant resolution)
-         │
-         ▼
-17. Worker calculates cost, logs LLM call
-         │
-         ▼
-18. Worker generates incident report (Markdown/PDF)
-         │
-         ▼
-19. Results stored in PostgreSQL + MinIO (artifacts)
-         │
-         ▼
-20. NATS event published for real-time notification
-         │
-         ▼
-21. Dashboard receives update, renders waterfall
+```bash
+docker compose up -d
+# Starts: postgres, redis, pgbouncer, temporal, api, worker
 ```
 
-### Entity Resolution Flow
+### Docker Compose (Optional)
 
-```
-Investigation Results
-         │
-         ▼
-Entity Extraction (LLM)
-  ├── IPs, domains, hashes, users, emails
-         │
-         ▼
-Entity Graph Storage
-  ├── entities table (with 768-dim embeddings)
-  ├── entity_edges table (relationships)
-         │
-         ▼
-Cross-Tenant Resolution
-  ├── Materialized views for privacy-safe intelligence
-  ├── Threat scoring based on cross-tenant frequency
-         │
-         ▼
-Blast Radius Analysis
-  └── Connected component analysis for impact assessment
+```bash
+docker compose -f docker-compose.optional.yml up -d
+# Starts: nats, litellm, tei
 ```
 
----
+### Host Process (LLM)
 
-## Configuration & Environment
-
-### Required Environment Variables
-
-| Variable | Description | Notes |
-|----------|-------------|-------|
-| `JWT_SECRET` | JWT signing key | **Minimum 32 characters.** Server refuses to start if shorter. |
-| `DATABASE_URL` | PostgreSQL connection string | Used by API and Worker |
-| `POSTGRES_PASSWORD` | PostgreSQL password | SCRAM-SHA-256 authentication |
-| `LITELLM_MASTER_KEY` | LiteLLM API key | Default: `sk-hydra-dev-2026` |
-
-### Optional Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GROQ_API_KEY` | Groq cloud LLM provider | -- |
-| `OPENROUTER_API_KEY` | OpenRouter cloud LLM provider | -- |
-| `ANTHROPIC_API_KEY` | Anthropic cloud LLM provider | -- |
-| `OPENAI_API_KEY` | OpenAI cloud LLM provider | -- |
-| `OIDC_ISSUER_URL` | OIDC identity provider URL | -- |
-| `OIDC_CLIENT_ID` | OIDC client ID | -- |
-| `OIDC_CLIENT_SECRET` | OIDC client secret | -- |
-| `VAULT_ADDR` | HashiCorp Vault address | -- |
-| `VAULT_TOKEN` | HashiCorp Vault token | -- |
-| `NATS_URL` | NATS server URL | `nats://hydra-nats:4222` |
-
-### Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `docker-compose.yml` | Full service stack definition (~20 services) |
-| `.env` | Development credentials (not committed) |
-| `litellm_config.yaml` | LLM routing configuration |
-| `litellm_config_rtx3050.yaml` | RTX 3050 GPU-optimized variant |
-| `temporal-config/` | Temporal dynamic configuration |
-| `monitoring/prometheus.yml` | Prometheus scrape configuration |
-| `monitoring/alert_rules.yml` | Prometheus alert rules (6 rules) |
-
----
-
-## Dependencies
-
-### Go API (`api/`)
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `github.com/gin-gonic/gin` | 1.9.1 | HTTP framework |
-| `github.com/golang-jwt/jwt/v5` | 5.3.1 | JWT creation and validation |
-| `github.com/jackc/pgx/v5` | 5.5.3 | PostgreSQL driver |
-| `go.temporal.io/sdk` | 1.25.1 | Temporal workflow client |
-| `golang.org/x/crypto` | 0.21.0 | bcrypt password hashing |
-
-### Python Worker (`worker/`)
-
-| Package | Purpose |
-|---------|---------|
-| `temporalio` | Temporal workflow/activity SDK |
-| `psycopg2` | PostgreSQL driver |
-| `redis` | Redis client |
-| `litellm` | LLM provider abstraction |
-| `structlog` | Structured JSON logging |
-
-### Dashboard (`dashboard/`)
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| React | 19 | UI framework |
-| Vite | 7 | Build tool and dev server |
-| Tailwind CSS | 4 | Utility-first CSS |
-| TypeScript | 5.9 | Type safety |
-
-### MCP Server (`mcp-server/`)
-
-| Package | Purpose |
-|---------|---------|
-| `@modelcontextprotocol/sdk` | MCP protocol implementation |
-| TypeScript + Node.js | Runtime |
+```bash
+llama-server -m Qwen2.5-14B-Instruct-Q4_K_M.gguf -ngl 20 --port 11434
+```
 
 ---
 
 ## Testing
 
-### Current Test Coverage
-
-| Test Type | Scope | Location |
-|-----------|-------|----------|
-| **Flake8 Lint** | Python code quality | CI workflow |
-| **Core Imports** | Python module import validation | CI workflow |
-| **Migration Validation** | SQL migration syntax and ordering | CI workflow |
-| **Docker Build** | Service container build verification | CI workflow |
-| **Accuracy Suite** | 50 labeled alerts against investigation output | `worker/tests/accuracy/` |
-| **Integration Tests** | Cross-service interaction tests | `tests/integration/` |
-| **Test Harness** | 20 harness + 5 integration scenarios | `scripts/` |
-| **Air-gap Tests** | Ollama fallback verification | `scripts/test-airgap.sh` |
-
-### CI Workflows
-
-The CI pipeline runs on push and pull request events:
-
-1. **Lint:** flake8 across all Python files
-2. **Import Test:** Verify all Python modules can be imported
-3. **Migration Check:** Validate SQL migration files
-4. **Docker Build:** Build all service containers
-
-### Test Coverage (v1.0.0-rc1)
-
-| Suite | Count | Status |
-|-------|-------|--------|
-| Go unit tests (auth, RBAC, tenant isolation, security headers, errors) | 44 | Passing |
-| Python unit tests (AST prefilter, sanitizer, vault, risk validator, templates) | 302 | Passing |
-| E2E integration tests | Available | Requires Docker stack |
-| Load test script | Available | `scripts/load_test.py` |
+| Suite | Count | Location | Runner |
+|-------|-------|----------|--------|
+| Go unit tests | 44 | `api/` | `go test ./...` |
+| Python unit tests | 179 | `worker/tests/` | `pytest tests/` |
+| V2 pipeline tests | 15 | `worker/tests/` | `pytest tests/` |
+| Juice Shop benchmark | 100 alerts | `scripts/benchmark/` | Custom runner |
 
 ---
 
 ## Deployment
 
-### Local Development (Docker Compose)
+### Minimum Hardware
 
-```bash
-# Prerequisites
-# - Docker with Compose V2
-# - NVIDIA GPU with drivers (for local inference)
-# - 4GB+ VRAM (RTX 3050 or equivalent)
+| Component | Requirement |
+|-----------|------------|
+| GPU | NVIDIA GPU with 4GB+ VRAM (RTX 3050 minimum) |
+| CPU | 8 cores recommended |
+| RAM | 16GB minimum |
+| Storage | 50GB (model weights + Docker images + database) |
+| OS | Linux (production) or Windows 11 with Docker Desktop (development) |
 
-# 1. Download models
-pip install huggingface-hub
-huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-AWQ --local-dir local_models/chat-model
-huggingface-cli download nomic-ai/nomic-embed-text-v1.5 --local-dir local_models/embed-model
+### Production Deployment
 
-# 2. Configure environment
-cp .env.example .env  # Edit with your values
-# Ensure JWT_SECRET is at least 32 characters
-
-# 3. Start stack
-docker compose up -d
-
-# 4. Verify health
-docker compose ps
-curl http://localhost:8090/health
-```
-
-### Kubernetes (Kustomize)
-
-**Location:** `k8s/`
-
-Three overlay configurations:
-
-| Overlay | Purpose |
-|---------|---------|
-| `dev` | Development environment, single replicas |
-| `prod` | Production with HPA (2-50 workers), resource limits |
-| `airgap` | Air-gapped environment with Ollama, no external network |
-
-Features:
-- HPA autoscaling: 2-50 worker replicas based on CPU and Temporal queue depth
-- NetworkPolicy enforcement
-- Kustomize base + overlays pattern
-
-### Air-Gap Deployment
-
-For fully disconnected environments:
-
-```bash
-# Pull Ollama models before going offline
-./scripts/airgap-setup.sh
-
-# Verify air-gap mode
-./scripts/test-airgap.sh
-```
+See `deploy/` directory for:
+- `docker-compose.prod.yml` -- Production compose with resource limits
+- `install.sh` -- Automated installation script
+- `health_check.sh` -- Service health verification
+- `backup.sh` -- Database backup script
+- `demo.sh` -- Demo scenario runner
 
 ---
 
 ## Known Gaps
 
-| Area | Gap | Severity |
-|------|-----|----------|
-| Deployment | K8s manifests validated but not cluster-tested | Medium |
-| LLM | Qwen 1.5B has limited reasoning capability vs larger models | Accepted (VRAM constraint) |
-| ML Models | DeepLog LSTM requires training data (architecture ready) | Medium |
-| ML Models | StringSifter classifier requires training data (pipeline ready) | Medium |
-
----
-
-## Directory Reference
-
-```
-hydra-mvp/
-├── api/                          # Go API gateway (45 .go files, 78 endpoints)
-├── worker/                       # Python Temporal worker (39+ files)
-│   ├── bootstrap/                #   MITRE/CISA data + synthetic investigations
-│   ├── detection/                #   Sigma rule generation + pattern mining
-│   ├── finetuning/               #   Training data export + quality scoring
-│   ├── intelligence/             #   Blast radius + FP analysis
-│   ├── models/                   #   Model registry + A/B routing
-│   ├── prompts/                  #   LLM prompt templates
-│   ├── reporting/                #   Incident report generation (MD + PDF)
-│   ├── response/                 #   SOAR playbook execution
-│   ├── security/                 #   Injection detection + sanitization
-│   ├── skills/                   #   Deobfuscation sandbox skill
-│   ├── sre/                      #   Self-healing SRE agent
-│   ├── tests/accuracy/           #   50 labeled alerts + validation runner
-│   └── validation/               #   Dry-run execution gate
-├── dashboard/                    # React 19 + Vite 7 + Tailwind 4 SPA
-│   └── src/
-│       ├── components/           #   UI components
-│       └── demo/                 #   C2 beacon demo data
-├── sandbox/                      # AST prefilter + seccomp + kill timer
-├── mcp-server/                   # MCP server (TypeScript, 7 tools)
-├── migrations/                   # SQL migrations 001-032
-├── k8s/                          # Kubernetes manifests (Kustomize)
-│   ├── base/                     #   Base resources
-│   └── overlays/                 #   dev / prod / airgap
-├── monitoring/                   # Prometheus + Grafana + alert rules
-├── scripts/                      # Load testing, seed data, test harness
-├── tests/                        # Integration tests, test corpus
-│   ├── corpus/                   #   5 threat categories x 4 difficulties
-│   └── integration/              #   Cross-service tests
-├── temporal-config/              # Temporal dynamic configuration
-├── local_models/                 # Downloaded model weights
-│   ├── chat-model/               #   Qwen2.5-1.5B-Instruct-AWQ
-│   └── embed-model/              #   nomic-embed-text-v1.5
-├── demo/                         # Demo scenarios (3 MSSP types)
-├── docs/                         # Architecture, deployment, guides
-├── docker-compose.yml            # ~20-service stack
-├── litellm_config.yaml           # LLM routing config
-└── litellm_config_rtx3050.yaml   # RTX 3050 variant
-```
-
----
-
-## Performance Benchmarks
-
-| Metric | Single Worker | Multi-Worker | Notes |
-|--------|--------------|--------------|-------|
-| Investigation throughput | 17 inv/min | 21 inv/min | Baseline load test |
-| Stress test | -- | 100 concurrent tasks | Completed successfully |
-| K8s HPA range | -- | 2-50 replicas | Based on CPU + queue depth |
-
----
-
-## Monitoring & Observability
-
-### Stack
-
-| Service | Port | Purpose |
-|---------|------|---------|
-| Prometheus | 9090 (internal) | Metrics collection and alerting |
-| Grafana | 3001 (internal) | 3 dashboards for visualization |
-| Jaeger | 16686 (internal) | Distributed tracing (OTLP) |
-| postgres_exporter | internal | PostgreSQL metrics |
-| redis_exporter | internal | Redis metrics |
-| temporal_exporter | internal | Temporal queue depth + worker metrics |
-
-### Alert Rules (6)
-
-Prometheus alert rules configured in `monitoring/alert_rules.yml` covering service health, resource utilization, and SLA thresholds.
-
-### Grafana Dashboards (3)
-
-Pre-configured dashboards for infrastructure health, investigation pipeline metrics, and LLM performance tracking.
-
----
-
-*Document generated for HYDRA v0.10.1 (commit f1974bd, 2026-03-13).*
+1. **NATS hostname resolution** -- Non-fatal warning on worker startup. NATS is optional but env vars still reference it.
+2. **Old Temporal workflows** -- Stale ExecuteTaskWorkflow replays cause non-blocking errors. Terminate via `tctl workflow terminate`.
+3. **investigations table source constraint** -- Only allows `production`, `bootstrap`, `synthetic`. V2 uses `production`.
+4. **investigation_memory table** -- Name is SINGULAR. Code referencing `investigation_memories` (plural) silently fails.
+5. **fetch_task dependency** -- V2 workflow still calls legacy `fetch_task` by string name. Should be moved to stages/ingest.py.
+6. **Single-GPU bottleneck** -- RTX 3050 processes one LLM request at a time. Multi-GPU or model tiering needed for production throughput.
+7. **DPO training** -- Pipeline exists (`dpo/`) but has not been applied to production model weights.
+8. **PCAP analysis** -- Not supported. HYDRA operates on structured alert JSON only.
