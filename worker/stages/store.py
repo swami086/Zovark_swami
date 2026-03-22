@@ -35,7 +35,7 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
                         tokens_in: int = 0, tokens_out: int = 0,
                         execution_ms: int = 0, severity: str = None,
                         error_message: str = None, model_name: str = "unknown"):
-    """Update agent_tasks with final status."""
+    """Update agent_tasks with final status. Uses synchronous_commit for durability."""
     worker_id = _get_worker_id()
     human_review_threshold = int(os.environ.get("HYDRA_HUMAN_REVIEW_THRESHOLD", "60"))
 
@@ -53,6 +53,8 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
         review_reason = f"Risk score {risk_score} below threshold {human_review_threshold}"
 
     with conn.cursor() as cur:
+        # Critical write: ensure WAL flush before acknowledging
+        cur.execute("SET LOCAL synchronous_commit = on;")
         cur.execute("""
             UPDATE agent_tasks
             SET status = %s, output = %s, error_message = %s,
@@ -96,9 +98,12 @@ def _save_pattern(conn, task_type: str, alert_sig: str, code: str,
 def _create_investigation(conn, tenant_id: str, task_id: str, verdict: str,
                           risk_score: int, confidence: float, summary: str,
                           model_name: str = "unknown"):
-    """Insert investigations row without embedding. Returns investigation_id."""
+    """Insert investigations row without embedding. Uses synchronous_commit for durability.
+    Returns investigation_id."""
     try:
         with conn.cursor() as cur:
+            # Critical write: ensure WAL flush before acknowledging
+            cur.execute("SET LOCAL synchronous_commit = on;")
             cur.execute("""
                 INSERT INTO investigations
                 (tenant_id, task_id, verdict, risk_score, confidence,
@@ -112,6 +117,25 @@ def _create_investigation(conn, tenant_id: str, task_id: str, verdict: str,
     except Exception as e:
         print(f"Investigation insert failed (non-fatal): {e}")
         return None
+
+
+# --- Audit event ---
+def _insert_audit_event(conn, tenant_id: str, event_type: str,
+                        resource_type: str, resource_id: str,
+                        metadata: dict = None):
+    """Insert audit_events row. Non-fatal on failure."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO audit_events
+                (tenant_id, event_type, actor_type, resource_type, resource_id, metadata)
+                VALUES (%s, %s, 'worker', %s, %s, %s)
+            """, (
+                tenant_id, event_type, resource_type,
+                resource_id, json.dumps(metadata or {}),
+            ))
+    except Exception as e:
+        print(f"Audit event insert failed (non-fatal): {e}")
 
 
 # --- Severity from risk score ---
@@ -161,6 +185,14 @@ async def store_investigation(data: dict) -> dict:
 
     conn = _get_db()
     try:
+        # 0. Audit: investigation_started
+        if tenant_id:
+            _insert_audit_event(
+                conn, tenant_id, "investigation_started",
+                "agent_task", task_id,
+                {"task_type": task_type, "severity": severity, "model": model_name},
+            )
+
         # 1. Update task status
         output = {
             "stdout": stdout,
@@ -193,6 +225,19 @@ async def store_investigation(data: dict) -> dict:
                 conn, tenant_id, task_id, verdict,
                 risk_score, confidence, memory_summary or stdout[:2000],
                 model_name=model_name,
+            )
+
+        # 4. Audit: investigation_completed
+        if tenant_id:
+            _insert_audit_event(
+                conn, tenant_id, "investigation_completed",
+                "agent_task", task_id,
+                {
+                    "verdict": verdict, "risk_score": risk_score,
+                    "status": status, "execution_ms": execution_ms,
+                    "investigation_id": investigation_id,
+                    "ioc_count": len(iocs), "finding_count": len(findings),
+                },
             )
 
         conn.commit()
