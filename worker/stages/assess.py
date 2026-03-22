@@ -31,6 +31,9 @@ LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
 
 # --- Verdict derivation ---
 def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
+    # Low risk = benign regardless of IOCs (SIEM fields always produce IOCs)
+    if risk_score <= 35:
+        return "benign"
     if risk_score >= 80 and ioc_count >= 3:
         return "true_positive"
     elif risk_score >= 70:
@@ -39,8 +42,6 @@ def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
         return "suspicious"
     elif finding_count >= 2 and risk_score >= 40:
         return "suspicious"
-    elif risk_score <= 35 and ioc_count == 0:
-        return "benign"
     elif finding_count == 0 and ioc_count == 0:
         return "benign"
     return "inconclusive"
