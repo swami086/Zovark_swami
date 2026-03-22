@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import urllib.request
+import urllib.error
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
@@ -31,6 +32,32 @@ def login(api_url):
                                  headers={"Content-Type": "application/json"})
     resp = urllib.request.urlopen(req, timeout=10)
     return json.loads(resp.read())["token"]
+
+
+# --- JWT auto-refresh state ---
+_token_state = {"token": None, "api_url": None, "submit_count": 0}
+
+
+def get_fresh_token(api_url, force=False):
+    """Get a valid JWT token, refreshing every 10 submissions or on demand.
+
+    Auto-refreshes to avoid 15-minute JWT expiry during long benchmarks.
+    """
+    _token_state["api_url"] = api_url
+    _token_state["submit_count"] += 1
+
+    if force or _token_state["token"] is None or _token_state["submit_count"] % 10 == 0:
+        try:
+            _token_state["token"] = login(api_url)
+            if force:
+                print("  [Token refreshed after 401]")
+        except Exception as e:
+            print(f"  Warning: Token refresh failed: {e}")
+            # Keep using old token if refresh fails
+            if _token_state["token"] is None:
+                raise
+
+    return _token_state["token"]
 
 
 def flush_redis():
@@ -52,11 +79,18 @@ def submit_alert(api_url, token, alert):
             "siem_event": alert["siem_event"],
         }
     }).encode()
-    req = urllib.request.Request(f"{api_url}/api/v1/tasks", data=payload,
-                                 headers={"Authorization": f"Bearer {token}",
-                                           "Content-Type": "application/json"})
-    resp = urllib.request.urlopen(req, timeout=30)
-    return json.loads(resp.read())
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(f"{api_url}/api/v1/tasks", data=payload,
+                                         headers={"Authorization": f"Bearer {token}",
+                                                   "Content-Type": "application/json"})
+            resp = urllib.request.urlopen(req, timeout=30)
+            return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            if e.code == 401 and attempt == 0:
+                token = get_fresh_token(api_url, force=True)
+                continue
+            raise
 
 
 def poll_task(api_url, token, task_id, timeout_s=300):
@@ -70,6 +104,11 @@ def poll_task(api_url, token, task_id, timeout_s=300):
             status = data.get("status", "unknown")
             if status not in ("pending", "executing"):
                 return data
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                # Auto-refresh token on 401 during polling
+                token = get_fresh_token(api_url, force=True)
+                continue
         except Exception:
             pass
         time.sleep(15)
@@ -220,7 +259,7 @@ def main():
     print("Flushing Redis dedup cache...")
     flush_redis()
 
-    token = login(args.api_url)
+    token = get_fresh_token(args.api_url)
     print("Authenticated.\n")
 
     results = []
@@ -231,6 +270,9 @@ def main():
         attack_type = gt.get("attack_type", "benign") or "benign"
 
         print(f"[{idx+1}/{len(corpus)}] {attack_type:20s} (expect: {gt_verdict})...", end=" ", flush=True)
+
+        # Auto-refresh token every 10 submissions (JWT expires every 15 min)
+        token = get_fresh_token(args.api_url)
 
         t0 = time.time()
         try:
@@ -270,11 +312,6 @@ def main():
             print(f"ERROR ({elapsed:.0f}s): {e}")
             results.append({"idx": idx, "task_type": task_type, "status": "error",
                            "duration": elapsed, "error": str(e), "ground_truth": gt})
-
-        # Refresh token every 5 alerts
-        if (idx + 1) % 5 == 0:
-            try: token = login(args.api_url)
-            except: pass
 
         if idx < len(corpus) - 1:
             time.sleep(args.spacing)

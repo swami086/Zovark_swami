@@ -21,6 +21,7 @@ from temporalio import activity
 from stages import AssessOutput
 from stages.llm_gateway import llm_call
 from stages.model_router import get_model_config
+from stages.output_validator import validate_investigation_output, safe_default_output
 
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
@@ -100,6 +101,31 @@ def _fp_confidence(risk_score: int, ioc_count: int) -> float:
     return 0.6
 
 
+# --- Validation failure logging ---
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+
+
+def _log_validation_failure(task_id: str, tenant_id: str, task_type: str, error_msg: str):
+    """Log validation failure to llm_audit_log (best-effort, never raises)."""
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO llm_audit_log
+                       (tenant_id, task_id, stage, task_type, model_name, status, error_message, created_at)
+                       VALUES (%s, %s, 'assess', %s, 'output_validator', 'validation_failed', %s, NOW())""",
+                    (tenant_id, task_id, task_type, error_msg),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        # Never let audit logging break the pipeline
+        print(f"Validation failure logging failed (non-fatal): {e}")
+
+
 # --- Main entry point ---
 @activity.defn
 async def assess_results(data: dict) -> dict:
@@ -121,9 +147,35 @@ async def assess_results(data: dict) -> dict:
     recommendations = data.get("recommendations", [])
     task_type = data.get("task_type", "")
 
+    # --- Schema validation of sandbox output ---
+    # Validate the data coming from execute stage (findings, iocs, risk_score, recommendations)
+    sandbox_output = {
+        "findings": findings,
+        "iocs": iocs,
+        "risk_score": risk_score,
+        "recommendations": recommendations,
+    }
+    is_valid, validation_error = validate_investigation_output(sandbox_output)
+    if not is_valid:
+        activity.logger.warning(
+            f"Sandbox output validation failed for task {task_id}: {validation_error}"
+        )
+        # Log validation failure to llm_audit_log (best-effort)
+        _log_validation_failure(task_id, tenant_id, task_type, validation_error)
+        # Use safe defaults — NEVER let invalid output reach the dashboard
+        defaults = safe_default_output()
+        findings = defaults["findings"]
+        iocs = defaults["iocs"]
+        risk_score = defaults["risk_score"]
+        recommendations = defaults["recommendations"]
+
     verdict = _derive_verdict(risk_score, len(iocs), len(findings))
     severity = _severity_from_risk(risk_score)
     fp_conf = _fp_confidence(risk_score, len(iocs))
+
+    # If validation failed, override verdict
+    if not is_valid:
+        verdict = "needs_manual_review"
 
     # Summary
     if FAST_FILL:

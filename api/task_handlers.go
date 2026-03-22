@@ -132,12 +132,21 @@ func createTaskHandler(c *gin.Context) {
 		tenantID, fingerprint, req.TaskType, rawSample,
 	)
 
-	// 3. Insert into agent_tasks (with 5s lock timeout)
+	// 3. Insert into agent_tasks inside explicit transaction
+	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid
+	// race condition where the worker's fetch_task can't find the row.
 	priority := extractPriority(req.Input)
 	dbCtx, dbCancel := dbContextWithTimeout(c.Request.Context())
 	defer dbCancel()
 
-	_, err := dbPool.Exec(dbCtx,
+	tx, err := dbPool.Begin(dbCtx)
+	if err != nil {
+		respondInternalError(c, err, "begin task transaction")
+		return
+	}
+	defer tx.Rollback(dbCtx) // no-op after commit
+
+	_, err = tx.Exec(dbCtx,
 		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
 		taskID, tenantID, req.TaskType, req.Input, "pending", time.Now(),
 	)
@@ -150,16 +159,19 @@ func createTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// 4. Log to agent_audit_log
-	_, errAudit := dbPool.Exec(c.Request.Context(),
+	// 4. Log to agent_audit_log (inside same transaction)
+	_, _ = tx.Exec(dbCtx,
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id) VALUES ($1, $2, $3, $4)",
 		tenantID, "task_created", "task", taskID,
 	)
-	if errAudit != nil {
-		log.Printf("Failed to insert audit log for task_created: %v", errAudit)
+
+	// 5. COMMIT — data now visible to all connections (including worker's fetch_task)
+	if err := tx.Commit(dbCtx); err != nil {
+		respondInternalError(c, err, "commit task transaction")
+		return
 	}
 
-	// 5. Start Temporal Workflow (with timeout detection for model failover)
+	// 6. Start Temporal Workflow AFTER commit (with timeout detection for model failover)
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
 		TaskQueue: "hydra-tasks",
@@ -498,8 +510,16 @@ func uploadTaskHandler(c *gin.Context) {
 	// Generate task ID
 	taskID := uuid.New().String()
 
-	// Insert into agent_tasks
-	_, err = dbPool.Exec(c.Request.Context(),
+	// Insert into agent_tasks inside explicit transaction
+	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid race condition
+	tx, err := dbPool.Begin(c.Request.Context())
+	if err != nil {
+		respondInternalError(c, err, "begin upload task transaction")
+		return
+	}
+	defer tx.Rollback(c.Request.Context()) // no-op after commit
+
+	_, err = tx.Exec(c.Request.Context(),
 		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
 		taskID, tenantID, taskType, inputJSON, "pending", time.Now(),
 	)
@@ -508,13 +528,19 @@ func uploadTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// Audit log
-	_, _ = dbPool.Exec(c.Request.Context(),
+	// Audit log (inside same transaction)
+	_, _ = tx.Exec(c.Request.Context(),
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id) VALUES ($1, $2, $3, $4)",
 		tenantID, "task_created", "task", taskID,
 	)
 
-	// Start Temporal workflow
+	// COMMIT — data now visible to all connections (including worker's fetch_task)
+	if err := tx.Commit(c.Request.Context()); err != nil {
+		respondInternalError(c, err, "commit upload task transaction")
+		return
+	}
+
+	// Start Temporal workflow AFTER commit
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
 		TaskQueue: "hydra-tasks",

@@ -254,21 +254,44 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 		"siem_event":    normalized,
 	}
 
-	// Insert task with 5s lock timeout
+	// Insert task inside explicit transaction
+	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid race condition
 	dbCtx, dbCancel := dbContextWithTimeout(ctx)
-	_, err := dbPool.Exec(dbCtx,
+	tx, err := dbPool.Begin(dbCtx)
+	if err != nil {
+		dbCancel()
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(dbCtx) // no-op after commit
+
+	_, err = tx.Exec(dbCtx,
 		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
 		taskID, tenantID, taskType, input, "pending", time.Now(),
 	)
-	dbCancel()
 	if err != nil {
+		dbCancel()
 		if isLockTimeout(err) {
 			HandlePostgresLock(nil, tenantID, taskID, severity, "INSERT", "agent_tasks", 5000)
 		}
 		return "", fmt.Errorf("failed to create task: %w", err)
 	}
 
-	// Start Temporal workflow (with timeout detection)
+	// Audit log (inside same transaction)
+	auditDetails, _ := json.Marshal(map[string]string{"task_id": taskID, "alert_name": alertName})
+	_, _ = tx.Exec(dbCtx,
+		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
+		tenantID, "task_created", "task", taskID,
+		string(auditDetails),
+	)
+
+	// COMMIT — data now visible to all connections (including worker's fetch_task)
+	if err := tx.Commit(dbCtx); err != nil {
+		dbCancel()
+		return "", fmt.Errorf("failed to commit task transaction: %w", err)
+	}
+	dbCancel()
+
+	// Start Temporal workflow AFTER commit (with timeout detection)
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
 		TaskQueue: "hydra-tasks",
@@ -294,12 +317,12 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 		taskID, alertID,
 	)
 
-	// Audit log (use json.Marshal to prevent JSON injection — Security H11)
-	auditDetails, _ := json.Marshal(map[string]string{"task_id": taskID, "alert_name": alertName})
+	// Audit log for auto-investigate action (use json.Marshal to prevent JSON injection — Security H11)
+	auditDetails2, _ := json.Marshal(map[string]string{"task_id": taskID, "alert_name": alertName})
 	_, _ = dbPool.Exec(ctx,
 		"INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id, details) VALUES ($1, $2, $3, $4, $5)",
 		tenantID, "auto_investigate", "siem_alert", alertID,
-		string(auditDetails),
+		string(auditDetails2),
 	)
 
 	return taskID, nil

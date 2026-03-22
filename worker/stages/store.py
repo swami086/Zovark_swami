@@ -167,6 +167,7 @@ async def store_investigation(data: dict) -> dict:
             "iocs": iocs,
             "findings": findings,
             "risk_score": risk_score,
+            "verdict": verdict,
             "recommendations": recommendations,
             "model_used": model_name,
         }
