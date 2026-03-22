@@ -32,9 +32,10 @@ class InvestigationWorkflowV2:
         task_id = info.workflow_id.replace("task-", "")
 
         # Fetch full task from DB via legacy fetch_task activity
+        # Timeout allows for retry loop (8 retries × ~1-3s each = up to 15s)
         full_task = await workflow.execute_activity(
             "fetch_task", task_id,
-            start_to_close_timeout=timedelta(seconds=10),
+            start_to_close_timeout=timedelta(seconds=30),
         )
         if not full_task:
             return {"status": "failed", "task_id": task_id, "error": "Task not found"}

@@ -160,19 +160,35 @@ async def register_dedup_activity(data: dict) -> dict:
 
 @activity.defn
 async def fetch_task(task_id: str) -> dict:
-    conn = get_db_connection()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT id, tenant_id, task_type, input, status FROM agent_tasks WHERE id = %s", (task_id,))
-            row = cur.fetchone()
-            if not row:
-                raise ValueError("Task not found")
+    """Fetch task from DB with retry loop to handle API commit race condition.
 
-            row['id'] = str(row['id'])
-            row['tenant_id'] = str(row['tenant_id'])
-            return dict(row)
-    finally:
-        _return_connection(conn)
+    The Go API starts the Temporal workflow before the DB transaction commits.
+    This retry loop waits for the row to appear (up to ~8 seconds).
+    """
+    import asyncio
+    max_retries = 8
+    delay = 1.0  # start at 1 second
+
+    for attempt in range(max_retries):
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT id, tenant_id, task_type, input, status FROM agent_tasks WHERE id = %s", (task_id,))
+                row = cur.fetchone()
+                if row:
+                    if attempt > 0:
+                        activity.logger.info(f"Task {task_id} found on attempt {attempt + 1}")
+                    row['id'] = str(row['id'])
+                    row['tenant_id'] = str(row['tenant_id'])
+                    return dict(row)
+        finally:
+            _return_connection(conn)
+
+        activity.logger.warning(f"Task {task_id} not in DB yet (attempt {attempt + 1}/{max_retries}), waiting {delay:.1f}s...")
+        await asyncio.sleep(delay)
+        delay = min(delay * 1.5, 3.0)  # 1.0, 1.5, 2.25, 3.0, 3.0, 3.0, 3.0, 3.0
+
+    raise ValueError(f"Task {task_id} not found after {max_retries} retries (~8s)")
 
 
 @activity.defn
