@@ -282,6 +282,24 @@ func main() {
 
 		// Metrics (admin only)
 		api.GET("/metrics", requireRole("admin"), metricsHandler)
+
+		// Sprint 1K: Cross-tenant intelligence (authenticated users)
+		api.GET("/intelligence/top-threats", topThreatsHandler)
+		api.GET("/intelligence/stats", intelligenceStatsHandler)
+
+		// Sprint 2A: Detection engine (authenticated for GET, admin for mutations)
+		api.GET("/detections/rules", listDetectionRulesHandler)
+		api.GET("/detections/stats", detectionStatsHandler)
+
+		// Sprint 2B: SOAR response playbooks
+		api.GET("/response/playbooks", listResponsePlaybooksHandler)
+		api.POST("/response/playbooks", requireRole("admin"), createResponsePlaybookHandler)
+		api.PUT("/response/playbooks/:id", requireRole("admin"), updateResponsePlaybookHandler)
+		api.DELETE("/response/playbooks/:id", requireRole("admin"), deleteResponsePlaybookHandler)
+		api.GET("/response/executions", listResponseExecutionsHandler)
+		api.GET("/response/executions/:id", getResponseExecutionHandler)
+		api.POST("/response/executions/:id/approve", requireRole("admin"), approveResponseExecutionHandler)
+		api.POST("/response/executions/:id/rollback", requireRole("admin"), rollbackResponseExecutionHandler)
 	}
 
 	// Start server
