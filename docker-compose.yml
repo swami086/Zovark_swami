@@ -170,8 +170,8 @@ services:
     networks:
       - hydra-internal
 
-  # ─── OBSERVABILITY (lightweight for Week 1) ──────────
-  # Full Prometheus + Grafana added in Week 6
+  # ─── OBSERVABILITY ───────────────────────────────────
+  # Start with: docker compose --profile monitoring up -d
   jaeger:
     image: jaegertracing/all-in-one:1.57
     container_name: hydra-jaeger
@@ -370,7 +370,9 @@ services:
     networks:
       - hydra-internal
 
-  # ─── MONITORING STACK (Sprint 3B) ─────────────────────
+  # ─── MONITORING STACK (Sprint 1F) ─────────────────────
+  # Prometheus + Grafana + exporters — all under "monitoring" profile
+  # Start with: docker compose --profile monitoring up -d
   prometheus:
     image: prom/prometheus:v2.51.0
     container_name: hydra-prometheus
@@ -379,7 +381,7 @@ services:
       - '--storage.tsdb.retention.time=7d'
       - '--web.enable-lifecycle'
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus
     ports:
@@ -397,7 +399,7 @@ services:
       - hydra-internal
 
   grafana:
-    image: grafana/grafana:10.4.1
+    image: grafana/grafana:11.0.0
     container_name: hydra-grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
@@ -405,11 +407,13 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/hydra-overview.json
     volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/provisioning/dashboards/hydra-overview.json:/var/lib/grafana/dashboards/hydra-overview.json:ro
+      - ./monitoring/grafana/dashboards/infrastructure.json:/var/lib/grafana/dashboards/infrastructure.json:ro
+      - ./monitoring/grafana/dashboards/worker-performance.json:/var/lib/grafana/dashboards/worker-performance.json:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "3001:3000"
+      - "3002:3000"
     depends_on:
       - prometheus
     profiles: ["monitoring"]
@@ -423,7 +427,7 @@ services:
       - hydra-internal
 
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: hydra-postgres-exporter
     environment:
       DATA_SOURCE_NAME: "postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra?sslmode=prefer"
@@ -447,6 +451,7 @@ services:
     container_name: hydra-redis-exporter
     environment:
       REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hydra-redis-dev-2026}
     ports:
       - "9121:9121"
     depends_on:
