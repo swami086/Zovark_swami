@@ -5,13 +5,13 @@
 
 ## Quick Reference
 
-- **Version:** v1.1.0 (latest: `bd01707`)
-- **Status:** V2 Pipeline OPERATIONAL — 5/5 template investigations completing, dashboard live
+- **Version:** v1.2.0 (latest: see `git log -1 --format=%h`)
+- **Status:** V2 Pipeline BULLETPROOF — 11/11 templates completing, MITRE ATT&CK mapped, schema validated
 - **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + llama.cpp (Qwen2.5-14B)
-- **Pipeline:** V2 5-stage with LLM audit gateway + model routing
+- **Pipeline:** V2 5-stage with LLM audit gateway + model routing + schema validation + MITRE mapping
 - **Tests:** 44 Go + 179 Python + 15 V2 pipeline = 238 test functions
 - **Services:** 6 core Docker containers (NATS/LiteLLM/TEI moved to optional)
-- **Dashboard:** React 19 + Vite 7 + Tailwind 4, 15 pages, dark mode, live polling
+- **Dashboard:** React 19 + Vite 7 + Tailwind 4, 15 pages, dark mode, live polling, MITRE ATT&CK badges
 
 ## Architecture (V2 Pipeline)
 
@@ -20,13 +20,15 @@ SIEM Alert → Go API (:8090) → Temporal: InvestigationWorkflowV2 →
   Stage 1 INGEST:  dedup (Redis) → PII mask → skill retrieval     [NO LLM]
   Stage 2 ANALYZE: template fill OR full LLM code generation       [LLM ①]
   Stage 3 EXECUTE: AST prefilter → Docker sandbox                  [NO LLM]
-  Stage 4 ASSESS:  verdict → LLM summary → FP confidence           [LLM ②]
+  Stage 4 ASSESS:  verdict → schema validation → MITRE mapping      [LLM ②]
   Stage 5 STORE:   agent_tasks + investigations + memory            [NO LLM]
-  → Structured Verdict (findings, IOCs, recommendations, risk score)
+  → Structured Verdict (findings, IOCs, recommendations, risk score, MITRE ATT&CK)
 ```
 
 LLM calls routed through `worker/stages/llm_gateway.py` (audit logging, timeout handling)
 LLM model selection via `worker/stages/model_router.py` + `worker/stages/model_config.yaml`
+Schema validation: `worker/stages/output_validator.py` (validates before storage, re-prompts on failure)
+MITRE ATT&CK mapping: `worker/stages/mitre_mapping.py` (11 investigation types mapped)
 Sandbox policy: `worker/stages/sandbox_policy.yaml` (declarative, customer-auditable)
 
 ## Directory Map
@@ -96,14 +98,19 @@ hydra-mvp/
 
 ## Current State (What Works)
 
-- **V2 Investigation pipeline:** 100/100 FAST_FILL, 10/10 with LLM, avg 52s/investigation
+- **V2 Investigation pipeline:** 11/11 templates, schema validated, MITRE ATT&CK mapped
+- **Race condition:** FIXED — `ExecuteWorkflow` called after `tx.Commit()`, 10/10 rapid-fire test
+- **Schema validation:** `output_validator.py` validates all output, safe default on failure
+- **MITRE ATT&CK:** All 11 investigation types mapped to ATT&CK techniques
 - **Auth flow:** Register → login → JWT (15min) → refresh (7d) → RBAC (admin/analyst/viewer)
 - **LLM:** Qwen2.5-14B-Instruct Q4_K_M via llama.cpp (native Windows, NOT Docker)
 - **LITELLM_URL:** `http://host.docker.internal:11434/v1/chat/completions` (bypasses LiteLLM container)
-- **Sandbox:** Docker with AST prefilter, network isolation, read-only fs, cap-drop ALL
+- **Sandbox:** Docker with AST prefilter, network isolation, read-only fs, cap-drop ALL, seccomp profile
 - **Database:** 76+ tables, pgvector embeddings, connection pooling via PgBouncer
+- **Metrics:** `GET /api/v1/metrics` — investigation counts, LLM stats, performance, template health
 - **DPO:** Trained adapter available (`models/hydra-dpo-adapter/`, 48MB), GGUF at `models/hydra-dpo-Q4_K_M.gguf`
 - **V2 unit tests:** 15/15 passing in <1s
+- **Whitepaper:** `docs/WHITEPAPER.md` — "Autonomous SOC Investigation on Air-Gapped Infrastructure"
 
 ## Performance (V2 Pipeline)
 
@@ -120,6 +127,7 @@ hydra-mvp/
 3. **`investigations` table source constraint** — Only allows `production`, `bootstrap`, `synthetic`. V2 uses `production`.
 4. **`investigation_memory` table** — Name is SINGULAR. Code that references `investigation_memories` (plural) silently fails.
 5. **`fetch_task` dependency** — V2 workflow still calls legacy `fetch_task` by string name. Tech debt — should be moved to stages/ingest.py.
+6. **Race condition** — FIXED in v1.2.0. `ExecuteWorkflow` now called after `tx.Commit()` in all 3 code paths. Retry loop kept as defense-in-depth.
 
 ## Model Tiers
 
@@ -190,6 +198,9 @@ docker compose exec worker python -m pytest tests/ -v
 |-----|------|
 | Architecture | `docs/ARCHITECTURE.md` |
 | API Spec (v1.2.0) | `docs/openapi.yaml` |
+| Whitepaper | `docs/WHITEPAPER.md` |
+| Conference Submissions | `docs/CONFERENCE_SUBMISSIONS.md` |
+| Sandbox Security | `docs/SANDBOX_SECURITY.md` |
 | Security Audit | `docs/SECURITY_AUDIT_v0.10.0.md` |
 | Model Tiers | `docs/MODEL_TIER_STRATEGY.md` |
 | Hardware Requirements | `docs/HARDWARE_REQUIREMENTS.md` |
@@ -218,8 +229,10 @@ python scripts/accuracy_benchmark.py --model hydra_aligned_1.5b
 
 ## Pending Work (Priority Order)
 
-1. **Fix fetch_task race condition** — Temporal workflow starts before API commits task to DB
+1. ~~**Fix fetch_task race condition**~~ — DONE in v1.2.0
 2. **Remove `_legacy_activities.py`** — Migrate shared activities to V2 modules
 3. **Multi-worker scaling test** — Run V2 with `docker compose --scale worker=3`
-4. **Run Juice Shop benchmark** — 100 real-traffic alerts through pipeline
+4. **Run Juice Shop benchmark v2** — 100 real-traffic alerts with v1.2.0 pipeline
 5. **Nemotron 4B benchmark** — Head-to-head vs Qwen2.5-14B
+6. **Submit BlackHat Arsenal CFP** — Abstract in `docs/CONFERENCE_SUBMISSIONS.md`
+7. **Record 2-min demo video** — Script in `docs/DEMO_SCRIPT.md`

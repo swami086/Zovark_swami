@@ -22,6 +22,7 @@ from stages import AssessOutput
 from stages.llm_gateway import llm_call
 from stages.model_router import get_model_config
 from stages.output_validator import validate_investigation_output, safe_default_output
+from stages.mitre_mapping import get_mitre_techniques
 
 FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
@@ -195,4 +196,10 @@ async def assess_results(data: dict) -> dict:
         memory_summary=summary,
     )
 
-    return asdict(result)
+    out = asdict(result)
+    out["mitre_attack"] = get_mitre_techniques(task_type)
+    out["investigation_metadata"] = {
+        "pipeline_version": "v2",
+        "schema_validated": is_valid,
+    }
+    return out

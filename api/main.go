@@ -279,6 +279,9 @@ func main() {
 		api.PUT("/quotas", requireRole("admin"), updateTokenQuotaHandler)
 		api.POST("/quotas/circuit-breaker", requireRole("admin"), circuitBreakerHandler)
 		api.GET("/quotas/usage", getTokenUsageHandler)
+
+		// Metrics (admin only)
+		api.GET("/metrics", requireRole("admin"), metricsHandler)
 	}
 
 	// Start server

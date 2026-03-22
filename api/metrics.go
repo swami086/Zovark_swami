@@ -181,8 +181,8 @@ func getTemplateMetrics(ctx context.Context, tenantID string) gin.H {
 		SELECT
 			COUNT(*) AS total,
 			COUNT(*) FILTER (WHERE is_active = true) AS active
-		FROM skills
-		WHERE tenant_id = $1 OR tenant_id IS NULL
+		FROM agent_skills
+		WHERE is_active IS NOT NULL AND (tenant_id = $1 OR tenant_id IS NULL)
 	`, tenantID)
 
 	if err := row.Scan(&total, &active); err != nil {

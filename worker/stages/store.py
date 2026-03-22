@@ -170,6 +170,8 @@ async def store_investigation(data: dict) -> dict:
             "verdict": verdict,
             "recommendations": recommendations,
             "model_used": model_name,
+            "mitre_attack": data.get("mitre_attack", []),
+            "investigation_metadata": data.get("investigation_metadata", {}),
         }
         _update_task_status(
             conn, task_id, status, output,

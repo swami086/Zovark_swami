@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.2.0 — 2026-03-22 — Enterprise-Grade Pipeline
+
+### Pipeline Reliability
+- Race condition: `ExecuteWorkflow` moved after `tx.Commit()` in all 3 code paths (root cause fix)
+- Schema validation: all output validated with safe default on failure, logged to `llm_audit_log`
+- JWT auto-refresh: benchmark runner handles token expiry gracefully (refresh every 10 submissions + 401 retry)
+
+### Enterprise Features
+- MITRE ATT&CK: technique mapping for all 11 investigation types (`worker/stages/mitre_mapping.py`)
+- IOC confidence scores: high/medium/low based on extraction method
+- Investigation metadata: pipeline version, schema validation status in every output
+- Metrics endpoint: `GET /api/v1/metrics` with investigation stats, LLM performance, template health
+- Seccomp profile: kernel-level syscall restriction documented (`docs/SANDBOX_SECURITY.md`)
+
+### Skill Templates
+- All 11 templates producing valid structured output (was 5/11)
+- IOC format: converted from dict to list-of-dicts with type/value/severity/confidence
+- Consistent schema: findings, iocs, risk_score, verdict, recommendations
+
+### Dashboard
+- MITRE ATT&CK section: clickable technique badges linked to attack.mitre.org
+- IOC confidence badges: high (red), medium (yellow), low (gray)
+
+### Documentation
+- Technical whitepaper: "Autonomous SOC Investigation on Air-Gapped Infrastructure" (`docs/WHITEPAPER.md`)
+- Conference submissions: BlackHat Arsenal, DEF CON Demo Labs, BSides LV (`docs/CONFERENCE_SUBMISSIONS.md`)
+- Architecture diagram: full pipeline Mermaid visualization, air-gap boundary (`docs/ARCHITECTURE.md`)
+- Sandbox security documentation (`docs/SANDBOX_SECURITY.md`)
+
+---
+
 ## v1.1.0 — 2026-03-22 — Demo-Ready Release
 
 ### Pipeline
