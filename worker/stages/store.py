@@ -169,6 +169,7 @@ async def store_investigation(data: dict) -> dict:
     confidence = data.get("confidence", 0.5)
     memory_summary = data.get("memory_summary", "")
     stdout = data.get("stdout", "")
+    stderr = data.get("stderr", "")
     iocs = data.get("iocs", [])
     findings = data.get("findings", [])
     recommendations = data.get("recommendations", [])
@@ -202,6 +203,8 @@ async def store_investigation(data: dict) -> dict:
             "verdict": verdict,
             "recommendations": recommendations,
             "model_used": model_name,
+            "stderr": stderr[:500] if stderr else "",
+            "generated_code": (code or "")[:2000],
             "mitre_attack": data.get("mitre_attack", []),
             "investigation_metadata": data.get("investigation_metadata", {}),
         }
