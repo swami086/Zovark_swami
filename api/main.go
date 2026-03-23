@@ -254,6 +254,11 @@ func main() {
 		api.GET("/retention-policies", requireRole("admin"), listRetentionPoliciesHandler)
 		api.PUT("/retention-policies/:id", requireRole("admin"), updateRetentionPolicyHandler)
 
+		// SIEM Ingest — vendor-specific webhook receivers (analyst + admin)
+		api.POST("/ingest/splunk", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), splunkIngestHandler)
+		api.POST("/ingest/elastic", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), elasticIngestHandler)
+		api.GET("/ingest/health", ingestHealthHandler)
+
 		// Integration management (admin only)
 		api.POST("/integrations/slack/test", requireRole("admin"), testSlackWebhookHandler)
 		api.PUT("/integrations/slack", requireRole("admin"), configureSlackWebhookHandler)
