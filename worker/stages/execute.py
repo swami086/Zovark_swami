@@ -83,6 +83,43 @@ def _ast_check(code: str) -> Tuple[bool, str]:
     return True, ""
 
 
+# --- Safety wrapper for LLM-generated code ---
+_SAFETY_WRAPPER = '''
+import json as _json, sys as _sys, io as _io
+
+_orig_stdout = _sys.stdout
+_sys.stdout = _capture = _io.StringIO()
+_error = None
+try:
+{indented_code}
+except Exception as _e:
+    _error = str(_e)
+
+_sys.stdout = _orig_stdout
+_captured = _capture.getvalue()
+
+# If code produced valid JSON, print it
+if _captured.strip():
+    print(_captured.strip().split("\\n")[-1])
+elif _error:
+    # Code crashed — produce safe fallback JSON with the error
+    print(_json.dumps({{"findings": [{{"title": "Code execution error", "details": _error}}], "iocs": [], "risk_score": 50, "recommendations": ["Manual review — automated analysis encountered: " + _error]}}))
+else:
+    print(_json.dumps({{"findings": [{{"title": "No output produced", "details": "Investigation code completed without producing results"}}], "iocs": [], "risk_score": 30, "recommendations": ["Manual review — code produced no output"]}}))
+'''
+
+
+def _wrap_code_safely(code: str) -> str:
+    """Wrap LLM-generated code in try/except to guarantee JSON output."""
+    # Only wrap if the code doesn't already have a top-level try/except
+    stripped = code.strip()
+    if stripped.startswith('try:') or '\ntry:\n' in stripped[:200]:
+        return code
+    # Indent the original code by 4 spaces for the try block
+    indented = '\n'.join('    ' + line for line in code.split('\n'))
+    return _SAFETY_WRAPPER.replace('{indented_code}', indented)
+
+
 # --- Stdout parser ---
 def _parse_stdout(stdout: str) -> Dict:
     """Parse investigation JSON from stdout."""
@@ -193,13 +230,16 @@ async def execute_investigation(data: dict) -> dict:
             stderr=f"AST prefilter blocked: {reason}", exit_code=1, status="failed"
         ))
 
+    # Step 1.5: Safety wrapper for LLM-generated code (guarantees JSON output)
+    wrapped_code = _wrap_code_safely(code)
+
     activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}")
 
     # Step 2: Execute
     if FAST_FILL:
-        raw = _run_fast_fill(code)
+        raw = _run_fast_fill(wrapped_code)
     else:
-        raw = _run_in_sandbox(code)
+        raw = _run_in_sandbox(wrapped_code)
 
     # Step 3: Parse results
     parsed = _parse_stdout(raw.get("stdout", ""))

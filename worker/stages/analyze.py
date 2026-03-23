@@ -67,11 +67,22 @@ requests = MockRequests()
 """
 
 # System prompts for code generation
+_DEFENSIVE_CODING = (
+    "DEFENSIVE CODING RULES (your code WILL crash if you ignore these): "
+    "1. ALWAYS check regex match before .group(): `m = re.search(pat, text); val = m.group(1) if m else ''` — NEVER call .group() or .groups() without checking for None first. "
+    "2. ALWAYS use dict.get('key', default) instead of dict['key']. "
+    "3. ALWAYS wrap your entire main logic in try/except and print valid JSON even on error: "
+    "`try: ... except Exception as e: print(json.dumps({'findings':[{'title':'Error','details':str(e)}],'iocs':[],'risk_score':50,'recommendations':['Manual review needed']}))` "
+    "4. The LAST line of stdout MUST be valid JSON. No debug prints before it. "
+    "5. NEVER use os, sys, subprocess, socket, eval, exec, compile, __import__. "
+)
+
 SYSTEM_PROMPT_SIEM = (
     "You are a senior security analyst. Generate a self-contained Python script. "
     "The script MUST include realistic mock/sample data inline so it produces meaningful output "
     "when executed in an isolated sandbox with no network access. Use ONLY the Python standard library. "
     "Do NOT use input(), subprocess, socket, requests, or any network calls. Print results as valid JSON to stdout. "
+    + _DEFENSIVE_CODING +
     "CRITICAL RESTRICTIONS: 1. You are in a read-only container. Write files ONLY to /tmp/. "
     "2. Do NOT try to read non-existent system logs like 'auth.log'. Hardcode mock logs inline. "
     "3. STRICTLY FORBIDDEN: 'import requests'. Use 'urllib.request' instead. "
@@ -90,6 +101,7 @@ SYSTEM_PROMPT_LOGS = (
     "The script MUST embed the provided log data in a multi-line string variable and analyze it directly. "
     "Do NOT use mock data — the real data is provided. Use ONLY the Python standard library. "
     "Do NOT use input(), subprocess, socket, requests, or any network calls. Print results as valid JSON to stdout. "
+    + _DEFENSIVE_CODING +
     "CRITICAL: The script runs in a read-only sandbox. Write files ONLY to /tmp/. "
     "REQUIRED JSON OUTPUT STRUCTURE: Your script MUST print perfectly valid JSON to stdout containing exactly these EXACT top-level keys: "
     "`findings` (array of objects with title and details), "
