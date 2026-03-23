@@ -57,9 +57,11 @@ class InvestigationWorkflowV2:
             }
 
         # Stage 2: ANALYZE — generate investigation code (LLM boundary)
+        # 900s timeout: Path C (full LLM gen) takes 120-270s per call on RTX 3050,
+        # and the LLM queues requests sequentially on single GPU
         analyzed = await workflow.execute_activity(
             analyze_alert, ingested,
-            start_to_close_timeout=timedelta(seconds=300),
+            start_to_close_timeout=timedelta(seconds=900),
         )
 
         if not analyzed.get("code"):

@@ -47,10 +47,24 @@ def validate_investigation_output(output: dict) -> Tuple[bool, str]:
     if not (0 <= risk <= 100):
         return False, f"risk_score must be 0-100, got {risk}"
 
-    # --- IOCs must have type and value ---
+    # --- IOCs: normalize strings to dicts, then validate ---
+    import re
+    normalized_iocs = []
     for i, ioc in enumerate(output.get("iocs", [])):
+        if isinstance(ioc, str):
+            # LLM sometimes returns IOCs as bare strings — auto-convert
+            if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ioc):
+                ioc = {"type": "ipv4", "value": ioc, "context": "auto-converted from string"}
+            elif re.match(r'^https?://', ioc):
+                ioc = {"type": "url", "value": ioc, "context": "auto-converted from string"}
+            elif re.match(r'^[a-fA-F0-9]{32,64}$', ioc):
+                ioc = {"type": "hash", "value": ioc, "context": "auto-converted from string"}
+            else:
+                ioc = {"type": "indicator", "value": ioc, "context": "auto-converted from string"}
         if not isinstance(ioc, dict) or "type" not in ioc or "value" not in ioc:
             return False, f"IOC[{i}] missing type or value: {ioc}"
+        normalized_iocs.append(ioc)
+    output["iocs"] = normalized_iocs
 
     # --- Verdict validation (optional field) ---
     verdict = output.get("verdict")
