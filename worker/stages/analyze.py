@@ -43,8 +43,8 @@ LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
 
 # Model tier defaults (inlined to avoid _legacy dependency)
-TIER_GENERATE = {"model": "hydra-standard", "max_tokens": 4096, "temperature": 0.3}
-TIER_FILL = {"model": "hydra-fast", "max_tokens": 1024, "temperature": 0.1}
+TIER_GENERATE = {"model": "qwen2.5:14b", "max_tokens": 4096, "temperature": 0.3}
+TIER_FILL = {"model": "qwen2.5:14b", "max_tokens": 1024, "temperature": 0.1}
 
 # Mock requests shim prepended to all generated code
 MOCK_REQUESTS_SHIM = """

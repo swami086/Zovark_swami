@@ -6,16 +6,16 @@ models:
   fast:
     name: "hydra-fast"
     endpoint: "http://host.docker.internal:11434/v1/chat/completions"
-    model: "hydra-fast"
+    model: "qwen2.5:14b"
     max_tokens: 4096
     temperature: 0.1
     timeout_seconds: 120
-    description: "Fast tier — small model for simple triage"
+    description: "Fast tier — Qwen2.5-14B for simple triage"
 
   standard:
     name: "hydra-standard"
     endpoint: "http://host.docker.internal:11434/v1/chat/completions"
-    model: "hydra-standard"
+    model: "qwen2.5:14b"
     max_tokens: 8192
     temperature: 0.1
     timeout_seconds: 300
