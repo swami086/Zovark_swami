@@ -121,8 +121,24 @@ def _looks_like_uuid(h: str) -> bool:
     return False
 
 
+def _snippet_around(text: str, value: str, context_chars: int = 30) -> str:
+    """Return a snippet of text surrounding the first occurrence of value."""
+    match_pos = text.find(value)
+    if match_pos >= 0:
+        start = max(0, match_pos - context_chars)
+        end = min(len(text), match_pos + len(value) + context_chars)
+        return text[start:end]
+    return value
+
+
+def _raw_text_evidence(combined_text: str, value: str) -> list:
+    """Build evidence_refs for an IOC found via regex in raw text."""
+    snippet = _snippet_around(combined_text, value)
+    return [{"source": "raw_log", "raw_text": snippet}]
+
+
 def _extract_iocs_from_signals(siem_event: dict, stdout: str, prompt: str = "") -> list:
-    """Extract IOCs from SIEM data and sandbox output."""
+    """Extract IOCs from SIEM data and sandbox output, with evidence_refs."""
     iocs = []
     seen = set()
 
@@ -137,66 +153,102 @@ def _extract_iocs_from_signals(siem_event: dict, stdout: str, prompt: str = "") 
         for field in ('source_ip', 'src_ip', 'attacker_ip', 'remote_ip'):
             ip = siem_event.get(field, '')
             if ip and _is_valid_ioc_ip(ip) and ip not in seen:
-                iocs.append({"type": "ipv4", "value": ip, "context": f"{field} from SIEM event"})
+                iocs.append({
+                    "type": "ipv4", "value": ip, "context": f"{field} from SIEM event",
+                    "evidence_refs": [{"source": f"siem_event.{field}", "raw_text": ip, "field_path": f"siem_event.{field}"}],
+                })
                 seen.add(ip)
         for field in ('destination_ip', 'dst_ip', 'dest_ip', 'target_ip'):
             ip = siem_event.get(field, '')
             if ip and _is_valid_ioc_ip(ip) and ip not in seen:
-                iocs.append({"type": "ipv4", "value": ip, "context": f"{field} from SIEM event"})
+                iocs.append({
+                    "type": "ipv4", "value": ip, "context": f"{field} from SIEM event",
+                    "evidence_refs": [{"source": f"siem_event.{field}", "raw_text": ip, "field_path": f"siem_event.{field}"}],
+                })
                 seen.add(ip)
         for field in ('username', 'user', 'account', 'email', 'src_user', 'target_user'):
             val = siem_event.get(field, '')
             if val and '@' in val and val not in seen:
-                iocs.append({"type": "email", "value": val, "context": f"{field} from SIEM event"})
+                iocs.append({
+                    "type": "email", "value": val, "context": f"{field} from SIEM event",
+                    "evidence_refs": [{"source": f"siem_event.{field}", "raw_text": val, "field_path": f"siem_event.{field}"}],
+                })
                 seen.add(val)
             elif val and val not in seen and val not in ('root', 'admin', 'system', 'unknown', 'N/A', '-', 'attacker'):
-                iocs.append({"type": "username", "value": val, "context": f"{field} from SIEM event"})
+                iocs.append({
+                    "type": "username", "value": val, "context": f"{field} from SIEM event",
+                    "evidence_refs": [{"source": f"siem_event.{field}", "raw_text": val, "field_path": f"siem_event.{field}"}],
+                })
                 seen.add(val)
 
     # IPs from raw text
     for ip in re.findall(r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b', combined_text):
         if ip not in seen and _is_valid_ioc_ip(ip):
-            iocs.append({"type": "ipv4", "value": ip, "context": "extracted from log/analysis"})
+            iocs.append({
+                "type": "ipv4", "value": ip, "context": "extracted from log/analysis",
+                "evidence_refs": _raw_text_evidence(combined_text, ip),
+            })
             seen.add(ip)
 
     # URLs
     for url in re.findall(r'(https?://[^\s<>"\')\]]+)', combined_text):
         url = url.rstrip('.,;:')
         if url not in seen and len(url) > 10:
-            iocs.append({"type": "url", "value": url[:200], "context": "extracted from log/analysis"})
+            iocs.append({
+                "type": "url", "value": url[:200], "context": "extracted from log/analysis",
+                "evidence_refs": _raw_text_evidence(combined_text, url),
+            })
             seen.add(url)
 
     # Emails
     for email in re.findall(r'\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b', combined_text):
         if email not in seen and not email.endswith('.local'):
-            iocs.append({"type": "email", "value": email, "context": "extracted from log/analysis"})
+            iocs.append({
+                "type": "email", "value": email, "context": "extracted from log/analysis",
+                "evidence_refs": _raw_text_evidence(combined_text, email),
+            })
             seen.add(email)
 
     # File hashes
     for h in re.findall(r'\b([a-fA-F0-9]{64})\b', combined_text):
         if h.lower() not in seen:
-            iocs.append({"type": "sha256", "value": h.lower(), "context": "hash extracted from log/analysis"})
+            iocs.append({
+                "type": "sha256", "value": h.lower(), "context": "hash extracted from log/analysis",
+                "evidence_refs": _raw_text_evidence(combined_text, h),
+            })
             seen.add(h.lower())
     for h in re.findall(r'\b([a-fA-F0-9]{40})\b', combined_text):
         if h.lower() not in seen:
-            iocs.append({"type": "sha1", "value": h.lower(), "context": "hash extracted from log/analysis"})
+            iocs.append({
+                "type": "sha1", "value": h.lower(), "context": "hash extracted from log/analysis",
+                "evidence_refs": _raw_text_evidence(combined_text, h),
+            })
             seen.add(h.lower())
     for h in re.findall(r'\b([a-fA-F0-9]{32})\b', combined_text):
         if h.lower() not in seen and not _looks_like_uuid(h):
-            iocs.append({"type": "md5", "value": h.lower(), "context": "hash extracted from log/analysis"})
+            iocs.append({
+                "type": "md5", "value": h.lower(), "context": "hash extracted from log/analysis",
+                "evidence_refs": _raw_text_evidence(combined_text, h),
+            })
             seen.add(h.lower())
 
     # Domains
     domain_tlds = r'(?:com|net|org|io|xyz|ru|cn|tk|info|biz|top|cc|pw|ws|club|site|online|live|me|co|op)'
     for domain in re.findall(rf'\b([a-zA-Z0-9](?:[a-zA-Z0-9-]{{0,61}}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{{0,61}}[a-zA-Z0-9])?)*\.{domain_tlds})\b', combined_text):
         if domain.lower() not in seen and len(domain) > 4:
-            iocs.append({"type": "domain", "value": domain.lower(), "context": "domain extracted from log/analysis"})
+            iocs.append({
+                "type": "domain", "value": domain.lower(), "context": "domain extracted from log/analysis",
+                "evidence_refs": _raw_text_evidence(combined_text, domain),
+            })
             seen.add(domain.lower())
 
     # CVE IDs
     for cve in re.findall(r'\b(CVE-\d{4}-\d{4,})\b', combined_text, re.IGNORECASE):
         if cve.upper() not in seen:
-            iocs.append({"type": "cve", "value": cve.upper(), "context": "CVE reference"})
+            iocs.append({
+                "type": "cve", "value": cve.upper(), "context": "CVE reference",
+                "evidence_refs": _raw_text_evidence(combined_text, cve),
+            })
             seen.add(cve.upper())
 
     return iocs
@@ -319,11 +371,20 @@ async def assess_results(data: dict) -> dict:
                              "details": f"SIEM data contains indicators of {', '.join(attack_types_found)}"})
     # --- Comprehensive IOC extraction from SIEM + sandbox output ---
     extracted_iocs = _extract_iocs_from_signals(siem_event, stdout)
-    existing_values = {i.get("value", "") if isinstance(i, dict) else str(i) for i in iocs}
+    existing_by_value = {}
+    for i in iocs:
+        if isinstance(i, dict):
+            existing_by_value[i.get("value", "")] = i
     for new_ioc in extracted_iocs:
-        if new_ioc["value"] not in existing_values:
+        val = new_ioc["value"]
+        if val in existing_by_value:
+            # Enrich existing IOC with evidence_refs from extraction
+            existing_ioc = existing_by_value[val]
+            if "evidence_refs" not in existing_ioc:
+                existing_ioc["evidence_refs"] = new_ioc.get("evidence_refs", [])
+        else:
             iocs.append(new_ioc)
-            existing_values.add(new_ioc["value"])
+            existing_by_value[val] = new_ioc
 
     verdict = _derive_verdict(risk_score, len(iocs), len(findings))
     severity = _severity_from_risk(risk_score)
@@ -352,6 +413,9 @@ async def assess_results(data: dict) -> dict:
     )
 
     out = asdict(result)
+    # Include enriched iocs/findings so they override executed values in store merge
+    out["iocs"] = iocs
+    out["findings"] = findings
     out["mitre_attack"] = get_mitre_techniques(task_type)
     out["investigation_metadata"] = {
         "pipeline_version": "v2",
