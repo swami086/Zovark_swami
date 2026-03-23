@@ -317,6 +317,10 @@ async def _analyze_template(ingest: IngestOutput) -> AnalyzeOutput:
             filled = _fill_parameters_fast(ingest.skill_params, ingest.siem_event)
             tokens_in, tokens_out = 0, 0
 
+    # Always ensure siem_event_json is available (LLM fill doesn't produce it)
+    if "siem_event_json" not in filled:
+        filled["siem_event_json"] = json.dumps(ingest.siem_event)
+
     code = _render_template(ingest.skill_template, filled)
     generation_ms = int((time.time() - t0) * 1000)
 

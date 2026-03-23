@@ -69,7 +69,7 @@ class InvestigationWorkflowV2:
         # Stage 3: EXECUTE — sandbox execution (no LLM)
         executed = await workflow.execute_activity(
             execute_investigation,
-            {"code": analyzed["code"], "task_type": ingested["task_type"]},
+            {"code": analyzed["code"], "task_type": ingested["task_type"], "source": analyzed.get("source", "")},
             start_to_close_timeout=timedelta(seconds=120),
         )
 

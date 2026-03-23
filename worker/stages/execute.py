@@ -84,28 +84,15 @@ def _ast_check(code: str) -> Tuple[bool, str]:
 
 
 # --- Safety wrapper for LLM-generated code ---
-_SAFETY_WRAPPER = '''
-import json as _json, sys as _sys, io as _io
+_SAFETY_WRAPPER = '''import json as _json
 
-_orig_stdout = _sys.stdout
-_sys.stdout = _capture = _io.StringIO()
 _error = None
+_output = None
 try:
 {indented_code}
 except Exception as _e:
     _error = str(_e)
-
-_sys.stdout = _orig_stdout
-_captured = _capture.getvalue()
-
-# If code produced valid JSON, print it
-if _captured.strip():
-    print(_captured.strip().split("\\n")[-1])
-elif _error:
-    # Code crashed — produce safe fallback JSON with the error
-    print(_json.dumps({{"findings": [{{"title": "Code execution error", "details": _error}}], "iocs": [], "risk_score": 50, "recommendations": ["Manual review — automated analysis encountered: " + _error]}}))
-else:
-    print(_json.dumps({{"findings": [{{"title": "No output produced", "details": "Investigation code completed without producing results"}}], "iocs": [], "risk_score": 30, "recommendations": ["Manual review — code produced no output"]}}))
+    print(_json.dumps({{"findings": [{{"title": "Analysis error", "details": _error}}], "iocs": [], "risk_score": 50, "recommendations": ["Manual review — automated analysis encountered: " + _error]}}))
 '''
 
 
@@ -230,16 +217,19 @@ async def execute_investigation(data: dict) -> dict:
             stderr=f"AST prefilter blocked: {reason}", exit_code=1, status="failed"
         ))
 
-    # Step 1.5: Safety wrapper for LLM-generated code (guarantees JSON output)
-    wrapped_code = _wrap_code_safely(code)
+    # Step 1.5: Safety wrapper ONLY for LLM-generated code (Path C)
+    # Template code (Path A/B) already produces valid JSON — wrapping breaks it
+    code_source = data.get("source", "")
+    if code_source == "llm":
+        code = _wrap_code_safely(code)
 
     activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}")
 
     # Step 2: Execute
     if FAST_FILL:
-        raw = _run_fast_fill(wrapped_code)
+        raw = _run_fast_fill(code)
     else:
-        raw = _run_in_sandbox(wrapped_code)
+        raw = _run_in_sandbox(code)
 
     # Step 3: Parse results
     parsed = _parse_stdout(raw.get("stdout", ""))
