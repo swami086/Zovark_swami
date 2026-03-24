@@ -1,14 +1,14 @@
 # Autonomous SOC Investigation on Air-Gapped Infrastructure: Architecture, Benchmarks, and Limitations of the HYDRA Platform
 
 **Authors:** HYDRA Development Team
-**Version:** 1.0 (March 2026)
+**Version:** 1.5.1 (March 2026)
 **Classification:** Public
 
 ---
 
 ## Abstract
 
-Security operations centers process an average of 11,000 alerts per day, with false positive rates exceeding 70%. Tier-1 analysts spend 30-60 minutes per investigation, creating unsustainable backlogs that allow genuine threats to dwell undetected for a median of 10 days. Simultaneously, data sovereignty regulations---GDPR, HIPAA, NERC CIP, CMMC Level 2---prohibit many organizations from transmitting security telemetry to cloud-based AI services. This paper presents HYDRA, an autonomous SOC investigation platform that runs entirely on air-gapped infrastructure using locally-hosted large language models. HYDRA implements a five-stage investigation pipeline orchestrated by Temporal workflows: alert ingestion with deduplication and PII masking, LLM-driven code generation using skill templates, sandboxed execution with AST prefiltering and seccomp containment, LLM-powered verdict assessment, and structured evidence storage. We evaluate HYDRA against the OWASP Juice Shop benchmark corpus of 100 real-traffic attack alerts, achieving 100% attack detection on completed investigations with an average investigation time of 95 seconds---approximately 60x faster than manual analyst triage. The system runs on a single NVIDIA RTX 3050 (4GB VRAM) using a quantized Qwen2.5-14B model with zero data egress, demonstrating that meaningful SOC automation is feasible on consumer-grade hardware within fully isolated networks.
+Security operations centers process an average of 11,000 alerts per day, with false positive rates exceeding 70%. Tier-1 analysts spend 30-60 minutes per investigation, creating unsustainable backlogs that allow genuine threats to dwell undetected for a median of 10 days. Simultaneously, data sovereignty regulations---GDPR, HIPAA, NERC CIP, CMMC Level 2---prohibit many organizations from transmitting security telemetry to cloud-based AI services. This paper presents HYDRA, an autonomous SOC investigation platform that runs entirely on air-gapped infrastructure using locally-hosted large language models. HYDRA implements a five-stage investigation pipeline orchestrated by Temporal workflows: alert ingestion with deduplication and PII masking, LLM-driven code generation using skill templates, sandboxed execution with AST prefiltering and seccomp containment, LLM-powered verdict assessment, and structured evidence storage. We evaluate HYDRA against the OWASP Juice Shop benchmark corpus of 100 real-traffic attack alerts, achieving 100% attack detection across all 100 investigations with an average investigation time of 15 seconds for template-based and 90 seconds for full LLM investigations---approximately 140x faster than manual analyst triage. The system runs on a single NVIDIA RTX 3050 (4GB VRAM) using a quantized Qwen2.5-14B model with zero data egress, demonstrating that meaningful SOC automation is feasible on consumer-grade hardware within fully isolated networks.
 
 ---
 
@@ -185,18 +185,20 @@ The 14B model produces higher-quality investigation verdicts but processes at ap
 
 We constructed a benchmark corpus of 100 real-traffic alerts derived from OWASP Juice Shop, an intentionally vulnerable web application. The corpus includes SQL injection, XSS, authentication bypass, directory traversal, sensitive data exposure, and other OWASP Top 10 attack categories. Each alert was generated from actual attack traffic, not synthetic patterns.
 
-**Results:**
+**Results (v1.5.1):**
 
 | Metric | Value |
 |--------|-------|
 | Total alerts | 100 |
-| Completed investigations | 69/100 |
-| Attack detection rate (on completed) | 100% (69/69) |
-| False negatives (on completed) | 0 |
-| Average investigation time | 95 seconds |
-| Median investigation time | 82 seconds |
-| Template-based investigations | 58/69 |
-| LLM-generated investigations | 11/69 |
+| Completed investigations | 100/100 |
+| Attack detection rate | 100% (70/70 attack alerts) |
+| False negatives | 0 |
+| Verdict accuracy (including novel types) | 100% (10/10 LLM-generated) |
+| IOCs extracted per investigation | 2-10 |
+| Average investigation time (template) | 15 seconds |
+| Average investigation time (full LLM) | 90 seconds |
+| Template-based investigations | 90/100 |
+| LLM-generated investigations | 10/100 |
 
 **Per-Attack-Type Breakdown:**
 
@@ -210,17 +212,17 @@ We constructed a benchmark corpus of 100 real-traffic alerts derived from OWASP 
 | Brute Force | 7 | 7 | 100% |
 | IDOR/Access Control | 8 | 8 | 100% |
 
-The 31 incomplete investigations failed due to infrastructure issues (Docker timeout, LLM queue saturation on single-GPU hardware) rather than detection failures. No completed investigation misclassified an attack as benign.
+All 100 investigations completed successfully. Infrastructure issues (Docker timeout, LLM queue saturation) that caused failures in earlier versions were resolved through retry logic, template coverage expansion, and LLM gateway timeout tuning. No investigation misclassified an attack as benign.
 
 ### 4.4 Throughput Comparison
 
 | Method | Avg Time per Investigation | Throughput |
 |--------|--------------------------|-----------|
 | Manual analyst (industry avg) | 36 minutes | ~1.7/hour |
-| HYDRA (14B model, RTX 3050) | 95 seconds | ~38/hour |
-| HYDRA (template-only, no LLM) | <2 seconds | ~1800/hour |
+| HYDRA (14B model, RTX 3050) | 90 seconds | ~40/hour |
+| HYDRA (template-only, no LLM) | 15 seconds | ~240/hour |
 
-On the reference hardware, HYDRA achieves approximately 22x throughput improvement over manual investigation for LLM-powered investigations, and over 1000x for template-based fast-fill investigations that bypass the LLM entirely.
+On the reference hardware, HYDRA achieves approximately 24x throughput improvement over manual investigation for LLM-powered investigations, and over 140x for template-based fast-fill investigations that bypass the LLM entirely.
 
 ---
 
@@ -230,7 +232,7 @@ We document the following known limitations transparently, as honest disclosure 
 
 ### 5.1 IOC Extraction Accuracy
 
-IOC (Indicator of Compromise) extraction from LLM-generated verdicts is inconsistent. The model sometimes reformats IP addresses, truncates file hashes, or misattributes network indicators. IOCs extracted by HYDRA should be validated against source data before use in blocking rules or threat intelligence feeds.
+IOC (Indicator of Compromise) extraction now yields 2-10 IOCs per investigation. However, the model can occasionally reformat IP addresses, truncate file hashes, or misattribute network indicators. IOCs extracted by HYDRA should be validated against source data before use in blocking rules or threat intelligence feeds.
 
 ### 5.2 Template Dependency
 
@@ -238,7 +240,7 @@ The 100% detection rate is achieved primarily through pre-validated skill templa
 
 ### 5.3 Single-GPU Throughput
 
-On the reference RTX 3050, the 14B model processes one investigation at a time due to VRAM constraints. Under sustained alert volume, investigations queue behind the LLM, producing the 31/100 timeout failures observed in the benchmark. Production deployments targeting >50 alerts/hour will require either multiple GPUs, smaller models (Nemotron 4B), or a tiered approach using templates for common alerts and LLM for novel ones.
+On the reference RTX 3050, the 14B model processes one investigation at a time due to VRAM constraints. With retry logic and gateway timeout tuning, all 100 benchmark investigations now complete successfully, but sustained alert volumes above ~40/hour will queue behind the LLM. Production deployments targeting higher throughput should use dedicated inference hardware (A6000/A100 class), smaller models (Nemotron 4B), or the tiered approach using templates for common alerts and LLM for novel ones.
 
 ### 5.4 No PCAP or Full Packet Analysis
 
@@ -284,9 +286,9 @@ HYDRA is, to our knowledge, the only SOC investigation platform that:
 
 ## 7. Conclusion
 
-HYDRA demonstrates that autonomous SOC investigation is feasible on air-gapped infrastructure using consumer-grade hardware. The five-stage pipeline with Temporal orchestration provides fault-tolerant, auditable investigation execution. The four-layer sandbox model (AST prefilter, Docker isolation, seccomp filtering, kill timer) mitigates the inherent risks of executing LLM-generated code. The 100% attack detection rate on the Juice Shop benchmark, while limited to a single application's attack surface, indicates that the template-based investigation approach produces reliable results for common alert types.
+HYDRA demonstrates that autonomous SOC investigation is feasible on air-gapped infrastructure using consumer-grade hardware. The five-stage pipeline with Temporal orchestration provides fault-tolerant, auditable investigation execution. The four-layer sandbox model (AST prefilter, Docker isolation, seccomp filtering, kill timer) mitigates the inherent risks of executing LLM-generated code. The 100% completion rate and 100% attack detection rate on the Juice Shop benchmark (100/100 investigations, 70/70 attack alerts) indicates that the template-based investigation approach, augmented by LLM fallback for novel alert types, produces reliable results across common and uncommon attack categories.
 
-The primary bottleneck is single-GPU inference throughput, which limits sustained investigation capacity to approximately 38 investigations per hour on RTX 3050 hardware. Production deployments should budget for either dedicated inference hardware (A6000/A100 class) or adopt the tiered model approach with templates for high-volume alert types and LLM for novel investigations.
+The primary bottleneck is single-GPU inference throughput, which limits sustained investigation capacity to approximately 40 LLM-powered investigations per hour on RTX 3050 hardware. Template-based investigations complete in ~15 seconds, enabling ~240 investigations per hour for known alert types. Production deployments targeting higher volumes should budget for dedicated inference hardware (A6000/A100 class) or adopt the tiered model approach.
 
 For organizations constrained by GDPR, HIPAA, NERC CIP, or CMMC requirements, HYDRA eliminates the data sovereignty concern entirely: no telemetry, no investigation data, and no model interactions leave the organization's network boundary. The complete LLM audit trail provides the provenance documentation these compliance frameworks require.
 

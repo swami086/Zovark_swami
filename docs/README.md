@@ -1,24 +1,40 @@
-# Project Hydra: Enterprise AI SOC Platform
+# HYDRA Documentation
 
-Welcome to the **Project Hydra** master documentation. Hydra is an enterprise-grade, air-gapped AI Security Operations Center (SOC) platform designed for highly regulated environments. 
+**Version:** v1.5.1 | **Date:** 2026-03-24
 
-## Executive Summary
+## Current Technical Docs
+| Document | Description |
+|----------|-------------|
+| [Architecture](ARCHITECTURE.md) | System architecture, V2 pipeline |
+| [Deployment Guide](DEPLOYMENT_GUIDE.md) | Docker Compose + K8s setup |
+| [Developer Reference](DEVELOPER_REFERENCE.md) | Coding conventions, API patterns |
+| [Sandbox Security](SANDBOX_SECURITY.md) | 4-layer sandbox isolation model |
+| [SIEM Integration](SIEM_INTEGRATION.md) | Splunk/Elastic webhook setup |
+| [Model Tiers](MODEL_TIER_STRATEGY.md) | Fast/Standard/Reasoning model routing |
+| [Whitepaper](WHITEPAPER.md) | Academic paper on air-gapped SOC investigation |
 
-Modern Security Operations Centers are overwhelmed by alert fatigue, but traditional automation (SOAR) lacks the cognitive flexibility to perform deep forensic triage. Project Hydra bridges this gap by providing an autonomous, deterministic AI analyst capable of performing Tier-1 triage and investigation **without ever relying on external APIs or risking data egress**.
+## Benchmarks
+| Document | Description |
+|----------|-------------|
+| [Juice Shop Benchmark](JUICE_SHOP_BENCHMARK.md) | 100-alert real-traffic benchmark (99/100) |
 
-Hydra's core value proposition is **Automated Tier-1 Triage without Data Egress**. By operating entirely within your sovereign boundary, Hydra reads logs, hypothesizes attack vectors, generates deterministic forensic scripts, executes them in a mathematically bounded sandbox, and presents the findings for human review.
+## Operational
+| Document | Description |
+|----------|-------------|
+| [Scaling](SCALING.md) | Horizontal scaling patterns |
+| [Disaster Recovery](disaster-recovery.md) | DR procedures and failover |
+| [Multi-Region](multi-region.md) | Multi-region K8s deployment |
+| [Failure Modes](FAILURE_MODES.md) | Known failure modes and mitigations |
 
-## The 3-Pillar Moat
+## API Reference
+| Document | Description |
+|----------|-------------|
+| [OpenAPI Spec](openapi.yaml) | Full API specification (v1.2.0+) |
+| [Webhooks](webhooks.md) | Webhook event catalog |
+| [Pipeline Stages](pipeline_stages.md) | V2 pipeline stage contracts |
 
-Hydra is secured and differentiated by its three foundational architecture pillars:
+## Marketing (in /marketing/)
+- CISO Brief, BlackHat CFP, Cold Email Templates, Enterprise Overview
 
-1. **Air-Gapped Sovereignty (Zero-Egress)**: Every component, from the React frontend to the inference engines and specialized routing proxies, runs locally. Complete data localization ensures absolute compliance with strict data sovereignty laws.
-2. **The Hydra Intelligence Fabric**: A proprietary retrieval-augmented generation (RAG) system containing curated, SOP-driven investigation methodologies. This ensures that the AI behaves predictably, replacing generative hallucinations with deterministic, runbook-aligned execution.
-3. **Episodic Security Memory**: A vector-database-backed memory system recording the success rates, risk scores, and forensic patterns of past investigations. The platform learns which methodologies work over time within your specific environment.
-
-## Table of Contents
-
-- [Architecture & Security Overview](./ARCHITECTURE_AND_SECURITY.md) - For CISOs and InfoSec engineering teams. Details the 8-container stack, Sandbox Physics, and AI state machine.
-- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - For DevOps and IT Administrators. Details sizing, Docker Compose installation, and disaster recovery.
-- [SOC Analyst Playbook](./SOC_ANALYST_PLAYBOOK.md) - For Tier-1 Analysts and End Users. Operations manual for the React Dashboard and investigation approvals.
-- [Developer Reference](./DEVELOPER_REFERENCE.md) - For integrators and platform engineers. Details the Go API, Temporal workflow loops, and database extensions.
+## Archive (in docs/archive/)
+- Historical audit reports, sprint reports, development session artifacts

@@ -2530,6 +2530,183 @@ paths:
                         call_count:
                           type: integer
 
+  /api/v1/ingest/splunk:
+    post:
+      summary: Ingest alerts from Splunk
+      tags: [SIEM Ingest]
+      description: |
+        Receives alerts from Splunk via webhook. Accepts Splunk alert action
+        payload format and converts to HYDRA internal alert schema. Each alert
+        is deduplicated and queued for investigation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [result]
+              properties:
+                sid:
+                  type: string
+                  description: Splunk search ID
+                search_name:
+                  type: string
+                  description: Name of the saved search / correlation rule
+                result:
+                  type: object
+                  description: Splunk result row containing alert fields
+                  properties:
+                    _raw:
+                      type: string
+                    _time:
+                      type: string
+                    source:
+                      type: string
+                    sourcetype:
+                      type: string
+                    host:
+                      type: string
+                app:
+                  type: string
+                  description: Splunk app context
+      responses:
+        '202':
+          description: Alert accepted for investigation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  task_id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+        '400':
+          description: Invalid payload
+        '401':
+          description: Missing or invalid API key
+        '429':
+          description: Rate limit exceeded
+
+  /api/v1/ingest/elastic:
+    post:
+      summary: Ingest alerts from Elastic Security
+      tags: [SIEM Ingest]
+      description: |
+        Receives alerts from Elastic Security via webhook action. Accepts
+        Elastic alert payload format (Kibana alerting or Elastic Security
+        detection rules) and converts to HYDRA internal alert schema.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alert]
+              properties:
+                alert:
+                  type: object
+                  description: Elastic Security alert object
+                  properties:
+                    id:
+                      type: string
+                    rule:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        severity:
+                          type: string
+                    signal:
+                      type: object
+                      properties:
+                        original_event:
+                          type: object
+                        ancestors:
+                          type: array
+                          items:
+                            type: object
+                context:
+                  type: object
+                  description: Additional context from Elastic
+                  properties:
+                    space_id:
+                      type: string
+                    tags:
+                      type: array
+                      items:
+                        type: string
+      responses:
+        '202':
+          description: Alert accepted for investigation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  task_id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+        '400':
+          description: Invalid payload
+        '401':
+          description: Missing or invalid API key
+        '429':
+          description: Rate limit exceeded
+
+  /api/v1/ingest/health:
+    get:
+      summary: Check ingest pipeline health
+      tags: [SIEM Ingest]
+      description: |
+        Returns the health status of the ingest pipeline, including queue
+        depth, processing rate, and connectivity to downstream services
+        (Temporal, Redis, PostgreSQL).
+      responses:
+        '200':
+          description: Ingest pipeline health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  queue_depth:
+                    type: integer
+                    description: Number of alerts awaiting processing
+                  processing_rate:
+                    type: number
+                    description: Alerts processed per minute (1-min avg)
+                  services:
+                    type: object
+                    properties:
+                      temporal:
+                        type: string
+                        enum: [connected, disconnected]
+                      redis:
+                        type: string
+                        enum: [connected, disconnected]
+                      postgres:
+                        type: string
+                        enum: [connected, disconnected]
+                  last_alert_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp of last ingested alert
+        '503':
+          description: Ingest pipeline unhealthy
+
 tags:
   - name: System
     description: Health and system endpoints
@@ -2575,3 +2752,5 @@ tags:
     description: Feedback analytics — summary, per-rule, and per-analyst breakdowns
   - name: MCP Approvals
     description: MCP human-in-the-loop approval gate for workflow actions
+  - name: SIEM Ingest
+    description: SIEM alert ingestion endpoints for Splunk, Elastic, and other SIEM platforms
