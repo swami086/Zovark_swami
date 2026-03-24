@@ -159,6 +159,14 @@ Type: {skill_type}
 Required (MUST extract): {required_iocs}
 Optional (extract if present): {optional_iocs}
 
+## Extraction Rules
+
+1. ZERO HALLUCINATION POLICY: You MUST ONLY extract Indicators of Compromise (IOCs) that are EXPLICITLY present in the provided log data, raw_log field, or SIEM event fields. Do NOT invent, infer, or hallucinate IP addresses, file hashes, domains, usernames, or file paths. If an IOC is not physically present in the text, do not extract it.
+
+2. CONTEXTUAL EVIDENCE REQUIREMENT: For every extracted IOC, provide a concise 1-2 sentence explanation in the context field detailing exactly why this indicator is suspicious, referencing the specific action or anomaly observed in the surrounding log data.
+
+3. CALIBRATED RISK SCORING: Score risk based on the severity of observed behavior, not the alert title. Benign system events (scheduled tasks, routine updates, health checks) should score 10-30. Known attack patterns with clear evidence should score 70-100. Ambiguous activity without clear malicious intent should score 35-65.
+
 ## Investigation Steps
 1. Parse the alert JSON and extract all text fields
 2. Run extract_iocs() on EVERY text field: raw_log, description, source_ip, destination_ip, hostname, url, file_hash, process_name, username
