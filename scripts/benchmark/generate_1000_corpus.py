@@ -36,6 +36,9 @@ def rand_ts():
     return base.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def make_alert(task_type, severity, title, rule_name, raw_log, ground_truth_verdict="true_positive", path="A"):
+    # C2/beaconing/exfil: destination should be external (the C2 server)
+    c2_types = ("network_beaconing", "c2_communication_hunt", "data_exfiltration")
+    dest_ip = rand_ip() if task_type in c2_types else rand_internal_ip()
     return {
         "task_type": task_type,
         "severity": severity,
@@ -43,7 +46,7 @@ def make_alert(task_type, severity, title, rule_name, raw_log, ground_truth_verd
         "siem_event": {
             "title": title,
             "source_ip": rand_ip() if path != "benign" else rand_internal_ip(),
-            "destination_ip": rand_internal_ip(),
+            "destination_ip": dest_ip if path != "benign" else rand_internal_ip(),
             "hostname": rand_host(),
             "username": rand_user(),
             "rule_name": rule_name,
@@ -68,9 +71,9 @@ template_configs = [
         ("HTTP Login Spray", "WebAuth_BF", "POST /login HTTP/1.1 401 Unauthorized from {ip} user={user} attempt={n}"),
     ]),
     ("phishing", "high", [
-        ("Phishing URL Clicked", "PhishDetect", "User {user} clicked https://{domain}/verify?token=abc123 from {host}"),
-        ("Suspicious Email", "EmailSec", "From: security@{domain} Reply-To: attacker@gmail.com Subject: Verify your account"),
-        ("Credential Harvest", "CredHarvest", "POST https://{domain}/login.php from {ip} Referer: phishing-email"),
+        ("Phishing URL Clicked", "PhishDetect", "User {user} clicked https://{domain}/login.php?verify=account from {host} Subject: Your account will be suspended act now"),
+        ("Suspicious Email", "EmailSec", "From: security@micros0ft-update.{domain}\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://{domain}/secure-login.php"),
+        ("Credential Harvest", "CredHarvest", "POST https://{domain}/signin.php from {ip}\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@{domain}\nReply-To: phisher@gmail.com"),
     ]),
     ("ransomware_triage", "critical", [
         ("Shadow Copy Deletion", "Ransomware", "vssadmin.exe delete shadows /all /quiet on {host} by {user}"),
@@ -78,9 +81,9 @@ template_configs = [
         ("Ransom Note Created", "RansomNote", "FileCreate: C:/README_DECRYPT.txt on {host} by process cipher.exe"),
     ]),
     ("data_exfiltration", "high", [
-        ("Large Outbound Transfer", "DLP_Alert", "POST https://mega.nz/upload Content-Length:{mb}MB from {host} by {user}"),
-        ("Cloud Storage Upload", "CloudExfil", "{user} uploaded {mb}MB to drive.google.com from {host} at {ts}"),
-        ("DNS Tunneling", "DNS_Exfil", "TXT query to {subdomain}.exfil-dns.xyz from {ip} size={bytes}B"),
+        ("Large Outbound Transfer", "DLP_Alert", "{user} POST https://mega.nz/upload {mb} MB uploaded from {host} Content-Encoding: gzip"),
+        ("Cloud Storage Upload", "CloudExfil", "{user} uploaded {mb} MB to https://drive.google.com/upload from {host} at 02:30 Saturday files: customer_database.csv"),
+        ("DNS Tunneling", "DNS_Exfil", "02:15:00 {host} TXT query={subdomain}.exfil-dns.xyz from {ip} size={bytes} bytes base64 encoded\n02:15:30 {host} TXT query={subdomain}.exfil-dns.xyz from {ip} size={bytes} bytes"),
     ]),
     ("privilege_escalation_hunt", "high", [
         ("Sudo Abuse", "PrivEsc", "sudo: {user} : COMMAND=/bin/bash on {host}"),
@@ -88,9 +91,9 @@ template_configs = [
         ("SUID Exploit", "SUID", "find / -perm -4000 executed by {user} on {host} followed by chmod u+s /tmp/exploit"),
     ]),
     ("c2_communication_hunt", "critical", [
-        ("Periodic Beacon", "C2_Beacon", "{ip} -> {c2ip}:443 every 60s jitter=5% payload=1024B on {host}"),
-        ("DGA Domain", "DGA_Detect", "DNS query: {dga}.xyz from {ip} entropy=4.2 on {host}"),
-        ("Encoded PowerShell", "PSEnc", "powershell.exe -enc {b64} on {host} by {user} ParentProcess=cmd.exe"),
+        ("Periodic Beacon", "C2_Beacon", "09:00:00 {host} HTTPS -> {c2ip}:443 size=1024\n09:01:00 {host} HTTPS -> {c2ip}:443 size=1028\n09:02:01 {host} HTTPS -> {c2ip}:443 size=1024\npowershell.exe -enc {b64}"),
+        ("DGA Domain", "DGA_Detect", "10:00:00 DNS query={dga}.xyz from {ip}\n10:01:00 DNS query={dga}.xyz from {ip}\n10:02:00 DNS query={dga}.xyz from {ip}\ncobalt strike beacon detected"),
+        ("Encoded PowerShell", "PSEnc", "11:00:00 powershell.exe -enc {b64} on {host} by {user}\n11:01:00 HTTPS -> {c2ip}:443 size=2048\n11:02:00 HTTPS -> {c2ip}:443 size=2048\nmeterpreter session established"),
     ]),
     ("lateral_movement_detection", "critical", [
         ("PsExec Remote Exec", "LateralMove", "PsExec.exe \\\\{target} -u {user} cmd.exe from {host}"),
@@ -103,9 +106,9 @@ template_configs = [
         ("Personal Cloud Upload", "DLP_Personal", "{user} uploaded to dropbox.com {mb}MB from {host}"),
     ]),
     ("network_beaconing", "high", [
-        ("Regular Callback", "Beacon", "{ip} -> {c2ip}:8443 beacon_interval=300s jitter=5% duration=4h"),
-        ("DNS Beacon", "DNS_Beacon", "DNS query every 60s to {subdomain}.beacon.xyz from {ip}"),
-        ("HTTPS Beacon", "HTTPS_Beacon", "HTTPS {ip} -> {c2ip}:443 size=512B interval=120s on {host}"),
+        ("Regular Callback", "Beacon", "10:00:00 {host} HTTPS -> {c2ip}:443 size=1024\n10:01:00 {host} HTTPS -> {c2ip}:443 size=1028\n10:02:01 {host} HTTPS -> {c2ip}:443 size=1024\n10:03:00 {host} HTTPS -> {c2ip}:443 size=1030"),
+        ("DNS Beacon", "DNS_Beacon", "10:00:00 DNS query={subdomain}.beacon.xyz from {ip}\n10:01:00 DNS query={subdomain}.beacon.xyz from {ip}\n10:02:01 DNS query={subdomain}.beacon.xyz from {ip}\n10:03:00 DNS query={subdomain}.beacon.xyz from {ip}"),
+        ("HTTPS Beacon", "HTTPS_Beacon", "14:30:00 {host} HTTPS -> {c2ip}:8443 size=512\n14:31:00 {host} HTTPS -> {c2ip}:8443 size=508\n14:32:01 {host} HTTPS -> {c2ip}:8443 size=512\n14:33:00 {host} HTTPS -> {c2ip}:8443 size=510"),
     ]),
     ("cloud_infrastructure_attack", "critical", [
         ("IAM Role Creation", "CloudAttack", "CreateRole AdminBackdoor by {user} from {ip} AttachRolePolicy AdministratorAccess"),
