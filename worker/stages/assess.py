@@ -87,7 +87,7 @@ async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id
             stage="assess",
             task_type=task_type,
             tenant_id=tenant_id,
-            timeout=120.0,
+            timeout=15.0,  # Short — template summary fallback is fine
         )
         return result["content"]
     except Exception as e:
