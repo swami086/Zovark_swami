@@ -1,6 +1,6 @@
 # SOC Analyst Playbook
 
-**Version: v0.10.1 | Date: 2026-03-14**
+**Version: v1.5.1 | Date: 2026-03-24**
 
 Welcome to the **Hydra SOC Analyst Playbook**. This guide details how to leverage the Hydra dashboard to supercharge Tier-1 alert triage, investigate anomalies, and securely authorize containment scripts.
 

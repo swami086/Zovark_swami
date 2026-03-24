@@ -1,7 +1,7 @@
 # HYDRA Codebase Census
 
-Generated: 2026-03-16T04:10:42Z
-Commit: 35b16ee
+Generated: 2026-03-24 (v1.5.1)
+Commit: 161 commits on master
 
 ## Lines of Code
 
@@ -19,13 +19,13 @@ Commit: 35b16ee
 
 | Directory | Files | Description |
 |-----------|-------|-------------|
-| api/ | 48 | Go API gateway — auth, RBAC, handlers, middleware |
-| worker/ | 132 | Python Temporal worker — investigation pipeline |
+| api/ | 49 | Go API gateway — auth, RBAC, handlers, middleware |
+| worker/ | 154 | Python Temporal worker — investigation pipeline |
 | dashboard/ | 55 | React 19 + Vite 7 + Tailwind 4 frontend |
 | mcp-server/ | 25 | TypeScript MCP server (tools, resources, prompts) |
 | sandbox/ | 4 | AST prefilter + seccomp + kill timer |
 | scripts/ | 35 | Operational scripts (PoV, load testing, census) |
-| migrations/ | 39 | SQL migration files (001-039) |
+| migrations/ | 55 | SQL migration files (001-055) |
 | k8s/ | 32 | Kubernetes manifests (Kustomize, 4 overlays) |
 | helm/ | 11 | Helm charts for K8s deployment |
 | terraform/ | 7 | AWS/GCP infrastructure-as-code |
@@ -217,5 +217,5 @@ Commit: 35b16ee
 
 ## Database
 
-- Migration files: 39
+- Migration files: 55+
 - Init schema: init.sql

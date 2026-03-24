@@ -1,8 +1,14 @@
 # Deployment Guide
 
-**Version: v0.10.1 | Date: 2026-03-14**
+**Version: v1.5.1 | Date: 2026-03-24**
 
 This guide is intended for DevOps engineers and IT Administrators responsible for deploying Project Hydra in air-gapped environments.
+
+> **Note (v1.5.0+):** The LLM runs on the host (via llama.cpp or Ollama), not inside Docker.
+> The worker connects to it at `http://host.docker.internal:11434/v1/chat/completions`.
+> Optional services (NATS, LiteLLM, TEI) have been moved to `docker-compose.optional.yml`
+> and are no longer required for the core pipeline. Core services: postgres, redis, pgbouncer,
+> temporal, api, worker (6 containers).
 
 ## System Requirements
 
@@ -11,7 +17,7 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
 **Minimum Viable Specification (Testing / Homelab):**
 - CPU: 8 Cores (x86_64 or ARM64)
 - RAM: 16 GB DDR4
-- GPU: Minimum 4GB VRAM (NVIDIA RTX 3050 or comparable) using a quantized 1.5B or 3B parameter model.
+- GPU: Minimum 4GB VRAM (NVIDIA RTX 3050 or comparable) using a quantized 14B parameter model (Q4_K_M).
 - Storage: 100 GB SSD
 
 **Enterprise Production Specification:**
@@ -60,9 +66,9 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
    ```
 
 4. **Spin up the Core Stack:**
-   Initialize the database, message queues, and API gateways. NATS is required by both the API and worker for alert streaming.
+   Initialize the database, message queues, and API gateways. Core services only (NATS, LiteLLM, TEI are optional — see `docker-compose.optional.yml`).
    ```bash
-   docker compose up -d postgres redis temporal nats litellm pgbouncer api dashboard
+   docker compose up -d postgres redis temporal pgbouncer api worker dashboard
    ```
 
 5. **Spin up the Python Worker:**
@@ -80,7 +86,7 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
 
 ## Security Configuration
 
-As of v0.10.1, Hydra follows a hardened network posture by default.
+As of v1.5.1, Hydra follows a hardened network posture by default.
 
 **Exposed Ports (host-accessible):**
 

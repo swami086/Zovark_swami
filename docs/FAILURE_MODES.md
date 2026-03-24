@@ -1,5 +1,7 @@
 # HYDRA Investigation Failure Modes
 
+> **Last updated: v1.5.1 (2026-03-24).** Race condition (#1) FIXED in v1.2.0. LLM model names (#5) FIXED in v1.5.0.
+
 Contextual error logging and recovery for the `/v1/investigate` pipeline.
 
 ## Failure Mode Matrix

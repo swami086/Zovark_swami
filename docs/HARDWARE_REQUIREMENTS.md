@@ -1,19 +1,21 @@
 # HYDRA Hardware Requirements
 
+**Version: v1.5.1 | Date: 2026-03-24**
+
 ## Deployment Tiers
 
 ### Developer / Demo (Current Default)
 - **GPU:** NVIDIA RTX 3050 (4GB VRAM) or equivalent
 - **RAM:** 16GB system
-- **Model:** Qwen2.5-1.5B-Instruct-AWQ (fast tier only)
-- **Capability:** Alert triage, entity extraction, basic classification
-- **Investigation quality:** Suitable for demos and development. Cloud fallback required for full investigations.
-- **Config:** `docker-compose.yml` + `litellm_config_rtx3050.yaml`
+- **Model:** Qwen2.5-14B-Instruct-Q4_K_M via llama.cpp or Ollama on host (fast tier)
+- **Capability:** Full investigation pipeline including triage, code generation, and verdict
+- **Investigation quality:** Demo and development ready. 100% attack detection on Juice Shop benchmark.
+- **Config:** `docker-compose.yml` + LLM on host (port 11434)
 
 ### Hybrid (Recommended for PoC)
 - **GPU:** Any NVIDIA GPU (local triage) + cloud API keys (Groq/OpenRouter)
 - **RAM:** 16GB system
-- **Model:** Local 1.5B for triage, cloud 70B+ for investigation and reasoning
+- **Model:** Local 14B for triage, cloud 70B+ for investigation and reasoning
 - **Capability:** Full investigation pipeline, production-quality output
 - **Investigation quality:** Production-grade for standard and reasoning tiers
 - **Config:** `docker-compose.yml` + `litellm_config.yaml` + API keys in `.env`
@@ -42,12 +44,12 @@
 
 | Component | Developer | Enterprise Edge | Enterprise Server |
 |-----------|-----------|----------------|-------------------|
-| Fast model | 1.6GB (1.5B AWQ) | 4GB (7B AWQ) | 4GB (7B AWQ) |
+| Fast model | ~4GB (14B Q4_K_M) | 4GB (7B AWQ) | 4GB (7B AWQ) |
 | Standard model | — (cloud) | 18GB (32B AWQ) | 40GB (72B 8-bit) |
 | Embedding model | 0.6GB | 0.6GB | 0.6GB |
 | KV cache (32k ctx) | 0.5GB | 4GB | 8GB |
 | KV cache (128k ctx) | — | — | 15GB |
-| **Total VRAM** | **~2.7GB** | **~27GB** | **~68GB** |
+| **Total VRAM** | **~5GB** | **~27GB** | **~68GB** |
 
 ## Context Window vs VRAM
 

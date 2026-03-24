@@ -1,6 +1,6 @@
 # Developer Reference
 
-**Version: v0.10.1 | Date: 2026-03-14**
+**Version: v1.5.1 | Date: 2026-03-24**
 
 This document provides technical internals for platform engineers, infrastructure developers, and API integrators working with Project Hydra.
 

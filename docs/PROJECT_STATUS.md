@@ -1,6 +1,6 @@
 # HYDRA Project Status
 
-Last updated: 2026-03-16 (commit e17ccad)
+Last updated: 2026-03-24 (v1.5.1, 161 commits)
 
 ## Pipeline Status: OPERATIONAL
 
@@ -17,7 +17,7 @@ Investigation flow works end-to-end:
 
 - 30/30 audit findings: FIXED (v0.11.0 + v0.12.0)
 - 5 hardening features: DEPLOYED (Vault JIT, egress proxy, alert sanitizer, adversarial review, MCP gate)
-- Test coverage: 44 Go + 179 Python = 223 test functions passing
+- Test coverage: 44 Go + 179 Python + 15 V2 pipeline = 238 test functions passing
 - Runtime validated: v1.0.0-rc1 + post-rc1 pipeline fixes
 
 ## What's Been Fixed Since v1.0.0-rc1
@@ -53,7 +53,7 @@ Investigation flow works end-to-end:
 |-----------|--------|-------|
 | Go API (8090) | Healthy | 78 routes, v1.0.0-rc1 |
 | Worker | Healthy | 16 workflows, 110 activities |
-| PostgreSQL | Healthy | 76 tables, 40 migrations |
+| PostgreSQL | Healthy | 76+ tables, 55+ migrations |
 | Redis | Healthy | go-redis/v9 pooled |
 | Temporal | Healthy | Task queue: hydra-tasks |
 | LiteLLM | Healthy | Routes fast → Ollama qwen2.5:14b |
