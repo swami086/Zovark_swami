@@ -51,6 +51,8 @@ def validate_investigation_output(output: dict) -> Tuple[bool, str]:
     import re
     normalized_iocs = []
     for i, ioc in enumerate(output.get("iocs", [])):
+        if ioc is None or ioc == "":
+            continue  # Skip None/empty entries silently
         if isinstance(ioc, str):
             # LLM sometimes returns IOCs as bare strings — auto-convert
             if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ioc):
