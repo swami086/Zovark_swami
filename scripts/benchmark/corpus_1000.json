@@ -1,6 +1,6 @@
 {
   "version": "1.7.0",
-  "generated": "2026-03-24T16:31:18.636189Z",
+  "generated": "2026-03-25T02:23:50.290820Z",
   "description": "1000-alert benchmark corpus for HYDRA v1.7.0",
   "distribution": {
     "path_a_template": 500,
@@ -922,7 +922,7 @@
         "username": "dba",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T22:14:09Z",
-        "raw_log": "User lbrown clicked https://bhebgdeg.xyz/login.php?verify=account from PROXY-SALES-37 Subject: Your account will be suspended act now"
+        "raw_log": "User lbrown clicked https://micros0ft-update.bhebgdeg.xyz/login.php?verify=credential&token=abc from PROXY-SALES-37. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc 7beeFYIO6NNQeeLERaa6l2FiC1U07S5X8Gpo38ii"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -942,7 +942,7 @@
         "username": "klee",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T06:32:29Z",
-        "raw_log": "From: security@micros0ft-update.ehbdehfc.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://ehbdehfc.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.ehbdehfc.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.ehbdehfc.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -962,7 +962,7 @@
         "username": "analyst",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T22:20:55Z",
-        "raw_log": "POST https://hagddjjc.xyz/signin.php from 183.11.20.64\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@hagddjjc.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.hagddjjc.xyz/signin.php from 183.11.20.64\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.hagddjjc.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.hagddjjc.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -982,7 +982,7 @@
         "username": "jsmith",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T07:56:35Z",
-        "raw_log": "User operator clicked https://hdjffgha.xyz/login.php?verify=account from WS-QA-48 Subject: Your account will be suspended act now"
+        "raw_log": "User operator clicked https://micros0ft-update.hdjffgha.xyz/login.php?verify=credential&token=abc from WS-QA-48. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc Nl61mGGYTcU0b9UUp7ejI4JmWQpYhGHKhNY4dA5M"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1002,7 +1002,7 @@
         "username": "helpdesk",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T23:03:53Z",
-        "raw_log": "From: security@micros0ft-update.bafgdabj.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://bafgdabj.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.bafgdabj.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.bafgdabj.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1022,7 +1022,7 @@
         "username": "netops",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T02:59:48Z",
-        "raw_log": "POST https://cajgifdf.xyz/signin.php from 77.161.9.54\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@cajgifdf.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.cajgifdf.xyz/signin.php from 77.161.9.54\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.cajgifdf.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.cajgifdf.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1042,7 +1042,7 @@
         "username": "jsmith",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T22:35:52Z",
-        "raw_log": "User operator clicked https://ghejbicd.xyz/login.php?verify=account from FS-FIN-30 Subject: Your account will be suspended act now"
+        "raw_log": "User operator clicked https://micros0ft-update.ghejbicd.xyz/login.php?verify=credential&token=abc from FS-FIN-30. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc nm3GgRFYQVglg2RiDLHfo1ojYPhYL5Q0k78m7/fh"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1062,7 +1062,7 @@
         "username": "nkumar",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T04:39:17Z",
-        "raw_log": "From: security@micros0ft-update.heecbbfi.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://heecbbfi.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.heecbbfi.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.heecbbfi.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1082,7 +1082,7 @@
         "username": "operator",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T08:49:27Z",
-        "raw_log": "POST https://beichehi.xyz/signin.php from 220.131.7.190\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@beichehi.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.beichehi.xyz/signin.php from 220.131.7.190\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.beichehi.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.beichehi.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1102,7 +1102,7 @@
         "username": "rwilson",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T15:41:01Z",
-        "raw_log": "User admin clicked https://cibajcdg.xyz/login.php?verify=account from WS-OPS-25 Subject: Your account will be suspended act now"
+        "raw_log": "User admin clicked https://micros0ft-update.cibajcdg.xyz/login.php?verify=credential&token=abc from WS-OPS-25. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc kVi9Ec9EYpiJCUKl6iTEinHKmgaDdQc3Y/CD0CG1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1122,7 +1122,7 @@
         "username": "pchen",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T02:57:15Z",
-        "raw_log": "From: security@micros0ft-update.jiagiaib.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://jiagiaib.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.jiagiaib.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.jiagiaib.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1142,7 +1142,7 @@
         "username": "fmartinez",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T13:48:17Z",
-        "raw_log": "POST https://ccebiafa.xyz/signin.php from 152.166.214.51\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@ccebiafa.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.ccebiafa.xyz/signin.php from 152.166.214.51\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.ccebiafa.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.ccebiafa.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1162,7 +1162,7 @@
         "username": "secops",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T04:28:16Z",
-        "raw_log": "User devops clicked https://ibdgdbfa.xyz/login.php?verify=account from WEB-HR-33 Subject: Your account will be suspended act now"
+        "raw_log": "User devops clicked https://micros0ft-update.ibdgdbfa.xyz/login.php?verify=credential&token=abc from WEB-HR-33. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc IL9BWk8ZWnBKB13cSfj0ajcdYe6Q0MUP3IP9hIcJ"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1182,7 +1182,7 @@
         "username": "analyst",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T01:52:52Z",
-        "raw_log": "From: security@micros0ft-update.fbdjeebe.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://fbdjeebe.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.fbdjeebe.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.fbdjeebe.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1202,7 +1202,7 @@
         "username": "agarcia",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T13:44:48Z",
-        "raw_log": "POST https://bdggbgcb.xyz/signin.php from 214.155.252.144\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@bdggbgcb.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.bdggbgcb.xyz/signin.php from 214.155.252.144\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.bdggbgcb.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.bdggbgcb.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1222,7 +1222,7 @@
         "username": "helpdesk",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T23:31:17Z",
-        "raw_log": "User pchen clicked https://hfabcagh.xyz/login.php?verify=account from MAIL-HR-13 Subject: Your account will be suspended act now"
+        "raw_log": "User pchen clicked https://micros0ft-update.hfabcagh.xyz/login.php?verify=credential&token=abc from MAIL-HR-13. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc WbWpQZcaTPmEaUYnl3MV/X4618TAkkVckGVl+o6J"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1242,7 +1242,7 @@
         "username": "admin",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T12:36:24Z",
-        "raw_log": "From: security@micros0ft-update.chbcegba.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://chbcegba.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.chbcegba.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.chbcegba.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1262,7 +1262,7 @@
         "username": "svc_backup",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T21:42:56Z",
-        "raw_log": "POST https://hdgdeeih.xyz/signin.php from 147.50.250.26\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@hdgdeeih.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.hdgdeeih.xyz/signin.php from 147.50.250.26\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.hdgdeeih.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.hdgdeeih.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1282,7 +1282,7 @@
         "username": "secops",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T02:07:10Z",
-        "raw_log": "User agarcia clicked https://ijjcicbi.xyz/login.php?verify=account from FW-DEV-08 Subject: Your account will be suspended act now"
+        "raw_log": "User agarcia clicked https://micros0ft-update.ijjcicbi.xyz/login.php?verify=credential&token=abc from FW-DEV-08. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc 6lcMXA987Q8oQ4IXR1i0OE0an8RW7FIODWndRlpi"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1302,7 +1302,7 @@
         "username": "mthompson",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T04:31:55Z",
-        "raw_log": "From: security@micros0ft-update.cgihbebi.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://cgihbebi.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.cgihbebi.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.cgihbebi.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1322,7 +1322,7 @@
         "username": "devops",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T04:22:42Z",
-        "raw_log": "POST https://didjhbig.xyz/signin.php from 192.184.220.73\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@didjhbig.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.didjhbig.xyz/signin.php from 192.184.220.73\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.didjhbig.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.didjhbig.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1342,7 +1342,7 @@
         "username": "helpdesk",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T00:07:10Z",
-        "raw_log": "User pchen clicked https://gaedbgaf.xyz/login.php?verify=account from FS-OPS-31 Subject: Your account will be suspended act now"
+        "raw_log": "User pchen clicked https://micros0ft-update.gaedbgaf.xyz/login.php?verify=credential&token=abc from FS-OPS-31. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc QnoY1S71LE/OkXAVAjYVjonQ1hl+k1EHK2lKBZHN"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1362,7 +1362,7 @@
         "username": "pchen",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T03:50:39Z",
-        "raw_log": "From: security@micros0ft-update.ciddbiee.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://ciddbiee.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.ciddbiee.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.ciddbiee.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1382,7 +1382,7 @@
         "username": "nkumar",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T07:53:49Z",
-        "raw_log": "POST https://cdhhheib.xyz/signin.php from 201.52.21.130\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@cdhhheib.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.cdhhheib.xyz/signin.php from 201.52.21.130\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.cdhhheib.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.cdhhheib.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1402,7 +1402,7 @@
         "username": "rwilson",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T16:40:29Z",
-        "raw_log": "User fmartinez clicked https://dagbchej.xyz/login.php?verify=account from WS-LEGAL-17 Subject: Your account will be suspended act now"
+        "raw_log": "User fmartinez clicked https://micros0ft-update.dagbchej.xyz/login.php?verify=credential&token=abc from WS-LEGAL-17. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc nWIbaY+bclYBIe7G4FTPcGQUPBH0W8QPJnAdDCZQ"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1422,7 +1422,7 @@
         "username": "netops",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T13:58:35Z",
-        "raw_log": "From: security@micros0ft-update.ecdfjihg.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://ecdfjihg.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.ecdfjihg.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.ecdfjihg.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1442,7 +1442,7 @@
         "username": "agarcia",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T04:16:59Z",
-        "raw_log": "POST https://ajccgjic.xyz/signin.php from 11.0.237.247\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@ajccgjic.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.ajccgjic.xyz/signin.php from 11.0.237.247\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.ajccgjic.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.ajccgjic.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1462,7 +1462,7 @@
         "username": "helpdesk",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T15:46:39Z",
-        "raw_log": "User secops clicked https://fejgjaje.xyz/login.php?verify=account from WS-DEV-40 Subject: Your account will be suspended act now"
+        "raw_log": "User secops clicked https://micros0ft-update.fejgjaje.xyz/login.php?verify=credential&token=abc from WS-DEV-40. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc MDgXFYG+7U6l0D1CgXFDC3VhW40hYZXhFjkBbfFA"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1482,7 +1482,7 @@
         "username": "helpdesk",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T20:15:58Z",
-        "raw_log": "From: security@micros0ft-update.ejhdihbd.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://ejhdihbd.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.ejhdihbd.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.ejhdihbd.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1502,7 +1502,7 @@
         "username": "dba",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T18:50:35Z",
-        "raw_log": "POST https://hiijicae.xyz/signin.php from 196.96.150.203\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@hiijicae.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.hiijicae.xyz/signin.php from 196.96.150.203\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.hiijicae.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.hiijicae.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1522,7 +1522,7 @@
         "username": "klee",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T19:46:27Z",
-        "raw_log": "User operator clicked https://jeeiabid.xyz/login.php?verify=account from SRV-LEGAL-13 Subject: Your account will be suspended act now"
+        "raw_log": "User operator clicked https://micros0ft-update.jeeiabid.xyz/login.php?verify=credential&token=abc from SRV-LEGAL-13. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc PMjDDcJ4WIFcZD94HLXmZg8fbkOAHDV1c75YfnP5"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1542,7 +1542,7 @@
         "username": "djones",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T03:22:20Z",
-        "raw_log": "From: security@micros0ft-update.gcjghcej.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://gcjghcej.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.gcjghcej.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.gcjghcej.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1562,7 +1562,7 @@
         "username": "fmartinez",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T09:36:28Z",
-        "raw_log": "POST https://gcgaiehe.xyz/signin.php from 4.205.161.4\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@gcgaiehe.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.gcgaiehe.xyz/signin.php from 4.205.161.4\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.gcgaiehe.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.gcgaiehe.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1582,7 +1582,7 @@
         "username": "fmartinez",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T00:10:52Z",
-        "raw_log": "User djones clicked https://efhhihad.xyz/login.php?verify=account from WEB-OPS-25 Subject: Your account will be suspended act now"
+        "raw_log": "User djones clicked https://micros0ft-update.efhhihad.xyz/login.php?verify=credential&token=abc from WEB-OPS-25. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc nballj8nNB1ikliOYkNg93Api7Vf6cKW2NQ+jUQW"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1602,7 +1602,7 @@
         "username": "dba",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T01:08:31Z",
-        "raw_log": "From: security@micros0ft-update.hbdhbbje.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://hbdhbbje.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.hbdhbbje.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.hbdhbbje.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1622,7 +1622,7 @@
         "username": "klee",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T00:35:25Z",
-        "raw_log": "POST https://cchgaehb.xyz/signin.php from 78.239.86.230\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@cchgaehb.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.cchgaehb.xyz/signin.php from 78.239.86.230\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.cchgaehb.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.cchgaehb.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1642,7 +1642,7 @@
         "username": "klee",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T00:35:28Z",
-        "raw_log": "User admin clicked https://cgbidbhf.xyz/login.php?verify=account from MAIL-OPS-05 Subject: Your account will be suspended act now"
+        "raw_log": "User admin clicked https://micros0ft-update.cgbidbhf.xyz/login.php?verify=credential&token=abc from MAIL-OPS-05. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc Jop/kEZ2UiYAGGi7Mf/ZlFgU/lQGRm4dVlV20cD3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1662,7 +1662,7 @@
         "username": "svc_deploy",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T15:37:08Z",
-        "raw_log": "From: security@micros0ft-update.iajfdfej.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://iajfdfej.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.iajfdfej.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.iajfdfej.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1682,7 +1682,7 @@
         "username": "jsmith",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T11:56:46Z",
-        "raw_log": "POST https://jgdhgeee.xyz/signin.php from 3.79.64.37\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@jgdhgeee.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.jgdhgeee.xyz/signin.php from 3.79.64.37\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.jgdhgeee.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.jgdhgeee.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1702,7 +1702,7 @@
         "username": "dba",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T13:41:03Z",
-        "raw_log": "User klee clicked https://fbbebgcd.xyz/login.php?verify=account from MAIL-SEC-13 Subject: Your account will be suspended act now"
+        "raw_log": "User klee clicked https://micros0ft-update.fbbebgcd.xyz/login.php?verify=credential&token=abc from MAIL-SEC-13. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc GSAkC2XgAZPEXhnKPGOljXZ0FngK4hIGVOKHAK4U"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1722,7 +1722,7 @@
         "username": "klee",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T07:02:34Z",
-        "raw_log": "From: security@micros0ft-update.aaahcejb.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://aaahcejb.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.aaahcejb.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.aaahcejb.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1742,7 +1742,7 @@
         "username": "lbrown",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T01:34:44Z",
-        "raw_log": "POST https://gcifadgd.xyz/signin.php from 75.20.75.242\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@gcifadgd.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.gcifadgd.xyz/signin.php from 75.20.75.242\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.gcifadgd.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.gcifadgd.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1762,7 +1762,7 @@
         "username": "helpdesk",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T07:13:52Z",
-        "raw_log": "User nkumar clicked https://fibjaebg.xyz/login.php?verify=account from WS-FIN-35 Subject: Your account will be suspended act now"
+        "raw_log": "User nkumar clicked https://micros0ft-update.fibjaebg.xyz/login.php?verify=credential&token=abc from WS-FIN-35. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc HY1+1GXnHRGpTaZ+giH87UddacMEmcp1LETK3TZH"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1782,7 +1782,7 @@
         "username": "pchen",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T10:26:57Z",
-        "raw_log": "From: security@micros0ft-update.jdhgaiia.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://jdhgaiia.xyz/secure-login.php"
+        "raw_log": "From: security@micros0ft-update.jdhgaiia.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.jdhgaiia.xyz/login.php?credential=verify\nAttachment: document.doc.exe"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -1802,7 +1802,7 @@
         "username": "svc_deploy",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T10:04:20Z",
-        "raw_log": "POST https://bgagjccg.xyz/signin.php from 26.76.12.151\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@bgagjccg.xyz\nReply-To: phisher@gmail.com"
+        "raw_log": "POST https://amaz0n-verify.bgagjccg.xyz/signin.php from 26.76.12.151\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.bgagjccg.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.bgagjccg.xyz"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2722,7 +2722,7 @@
         "username": "svc_deploy",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T20:55:27Z",
-        "raw_log": "klee POST https://mega.nz/upload 3032 MB uploaded from DC-SALES-02 Content-Encoding: gzip"
+        "raw_log": "02:15:00 klee POST https://mega.nz/upload content-length: 47312 MB from DC-SALES-02. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 84.87.139.132:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2742,7 +2742,7 @@
         "username": "fmartinez",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T08:06:52Z",
-        "raw_log": "agarcia uploaded 4610 MB to https://drive.google.com/upload from PROXY-DEV-31 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday agarcia uploaded 24000 MB to https://drive.google.com/upload from PROXY-DEV-31. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 7.229.206.86"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2762,7 +2762,7 @@
         "username": "admin",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T06:15:29Z",
-        "raw_log": "02:15:00 DB-SEC-10 TXT query=9ffe1980d0dd6f33.exfil-dns.xyz from 143.114.112.226 size=2002 bytes base64 encoded\n02:15:30 DB-SEC-10 TXT query=9ffe1980d0dd6f33.exfil-dns.xyz from 143.114.112.226 size=2002 bytes"
+        "raw_log": "02:15:00 DB-SEC-10 TXT query=9ffe1980d0dd6f33.exfil-dns.xyz from 143.114.112.226 size=2002 bytes base64 encoded\n02:15:30 DB-SEC-10 TXT query=9ffe1980d0dd6f33.exfil-dns.xyz from 143.114.112.226 size=2002 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 209.221.78.107. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2782,7 +2782,7 @@
         "username": "secops",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T08:25:16Z",
-        "raw_log": "rwilson POST https://mega.nz/upload 3367 MB uploaded from WS-QA-08 Content-Encoding: gzip"
+        "raw_log": "02:15:00 rwilson POST https://mega.nz/upload content-length: 47312 MB from WS-QA-08. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 182.107.242.168:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2802,7 +2802,7 @@
         "username": "operator",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T12:20:41Z",
-        "raw_log": "jsmith uploaded 2518 MB to https://drive.google.com/upload from FS-SALES-26 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday jsmith uploaded 24000 MB to https://drive.google.com/upload from FS-SALES-26. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 137.147.59.219"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2822,7 +2822,7 @@
         "username": "rwilson",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T05:47:52Z",
-        "raw_log": "02:15:00 DB-HR-37 TXT query=664d20ab949579e7.exfil-dns.xyz from 51.21.18.116 size=2623 bytes base64 encoded\n02:15:30 DB-HR-37 TXT query=664d20ab949579e7.exfil-dns.xyz from 51.21.18.116 size=2623 bytes"
+        "raw_log": "02:15:00 DB-HR-37 TXT query=664d20ab949579e7.exfil-dns.xyz from 51.21.18.116 size=2623 bytes base64 encoded\n02:15:30 DB-HR-37 TXT query=664d20ab949579e7.exfil-dns.xyz from 51.21.18.116 size=2623 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 122.253.174.31. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2842,7 +2842,7 @@
         "username": "lbrown",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T17:32:41Z",
-        "raw_log": "dba POST https://mega.nz/upload 2830 MB uploaded from PROXY-IT-37 Content-Encoding: gzip"
+        "raw_log": "02:15:00 dba POST https://mega.nz/upload content-length: 47312 MB from PROXY-IT-37. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 64.63.215.66:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2862,7 +2862,7 @@
         "username": "operator",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T17:44:10Z",
-        "raw_log": "rwilson uploaded 4564 MB to https://drive.google.com/upload from APP-FIN-18 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday rwilson uploaded 24000 MB to https://drive.google.com/upload from APP-FIN-18. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 128.1.76.246"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2882,7 +2882,7 @@
         "username": "lbrown",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T22:40:05Z",
-        "raw_log": "02:15:00 APP-SALES-12 TXT query=b81af248b6dcbd7e.exfil-dns.xyz from 190.49.10.171 size=2881 bytes base64 encoded\n02:15:30 APP-SALES-12 TXT query=b81af248b6dcbd7e.exfil-dns.xyz from 190.49.10.171 size=2881 bytes"
+        "raw_log": "02:15:00 APP-SALES-12 TXT query=b81af248b6dcbd7e.exfil-dns.xyz from 190.49.10.171 size=2881 bytes base64 encoded\n02:15:30 APP-SALES-12 TXT query=b81af248b6dcbd7e.exfil-dns.xyz from 190.49.10.171 size=2881 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 194.153.221.40. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2902,7 +2902,7 @@
         "username": "dba",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T03:56:35Z",
-        "raw_log": "dba POST https://mega.nz/upload 208 MB uploaded from PROXY-FIN-48 Content-Encoding: gzip"
+        "raw_log": "02:15:00 dba POST https://mega.nz/upload content-length: 47312 MB from PROXY-FIN-48. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 191.41.42.177:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2922,7 +2922,7 @@
         "username": "agarcia",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T20:43:12Z",
-        "raw_log": "dba uploaded 546 MB to https://drive.google.com/upload from APP-ENG-36 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday dba uploaded 24000 MB to https://drive.google.com/upload from APP-ENG-36. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 147.157.208.77"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2942,7 +2942,7 @@
         "username": "agarcia",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T00:24:09Z",
-        "raw_log": "02:15:00 WEB-SALES-03 TXT query=9ab6bc38d015ee9b.exfil-dns.xyz from 56.68.207.165 size=172 bytes base64 encoded\n02:15:30 WEB-SALES-03 TXT query=9ab6bc38d015ee9b.exfil-dns.xyz from 56.68.207.165 size=172 bytes"
+        "raw_log": "02:15:00 WEB-SALES-03 TXT query=9ab6bc38d015ee9b.exfil-dns.xyz from 56.68.207.165 size=172 bytes base64 encoded\n02:15:30 WEB-SALES-03 TXT query=9ab6bc38d015ee9b.exfil-dns.xyz from 56.68.207.165 size=172 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 3.94.106.211. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2962,7 +2962,7 @@
         "username": "rwilson",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T12:40:07Z",
-        "raw_log": "operator POST https://mega.nz/upload 1178 MB uploaded from DC-SALES-17 Content-Encoding: gzip"
+        "raw_log": "02:15:00 operator POST https://mega.nz/upload content-length: 47312 MB from DC-SALES-17. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 11.59.123.78:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -2982,7 +2982,7 @@
         "username": "svc_backup",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T07:40:17Z",
-        "raw_log": "operator uploaded 4271 MB to https://drive.google.com/upload from FS-ENG-48 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday operator uploaded 24000 MB to https://drive.google.com/upload from FS-ENG-48. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 89.208.60.252"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3002,7 +3002,7 @@
         "username": "analyst",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T23:43:38Z",
-        "raw_log": "02:15:00 FW-IT-26 TXT query=e022bddd89f5cf9b.exfil-dns.xyz from 5.253.225.114 size=3249 bytes base64 encoded\n02:15:30 FW-IT-26 TXT query=e022bddd89f5cf9b.exfil-dns.xyz from 5.253.225.114 size=3249 bytes"
+        "raw_log": "02:15:00 FW-IT-26 TXT query=e022bddd89f5cf9b.exfil-dns.xyz from 5.253.225.114 size=3249 bytes base64 encoded\n02:15:30 FW-IT-26 TXT query=e022bddd89f5cf9b.exfil-dns.xyz from 5.253.225.114 size=3249 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 13.82.34.197. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3022,7 +3022,7 @@
         "username": "svc_deploy",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T15:12:34Z",
-        "raw_log": "operator POST https://mega.nz/upload 4831 MB uploaded from PROXY-SALES-08 Content-Encoding: gzip"
+        "raw_log": "02:15:00 operator POST https://mega.nz/upload content-length: 47312 MB from PROXY-SALES-08. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 123.31.206.221:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3042,7 +3042,7 @@
         "username": "jsmith",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T19:20:48Z",
-        "raw_log": "klee uploaded 4083 MB to https://drive.google.com/upload from SRV-QA-05 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday klee uploaded 24000 MB to https://drive.google.com/upload from SRV-QA-05. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 148.100.252.192"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3062,7 +3062,7 @@
         "username": "helpdesk",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T10:01:08Z",
-        "raw_log": "02:15:00 WS-SALES-20 TXT query=def1ffb5f87172d0.exfil-dns.xyz from 198.147.133.58 size=1555 bytes base64 encoded\n02:15:30 WS-SALES-20 TXT query=def1ffb5f87172d0.exfil-dns.xyz from 198.147.133.58 size=1555 bytes"
+        "raw_log": "02:15:00 WS-SALES-20 TXT query=def1ffb5f87172d0.exfil-dns.xyz from 198.147.133.58 size=1555 bytes base64 encoded\n02:15:30 WS-SALES-20 TXT query=def1ffb5f87172d0.exfil-dns.xyz from 198.147.133.58 size=1555 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 69.19.44.215. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3082,7 +3082,7 @@
         "username": "operator",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T03:41:30Z",
-        "raw_log": "jsmith POST https://mega.nz/upload 2609 MB uploaded from APP-LEGAL-41 Content-Encoding: gzip"
+        "raw_log": "02:15:00 jsmith POST https://mega.nz/upload content-length: 47312 MB from APP-LEGAL-41. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 134.104.217.143:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3102,7 +3102,7 @@
         "username": "mthompson",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T06:01:17Z",
-        "raw_log": "klee uploaded 3384 MB to https://drive.google.com/upload from FS-SALES-37 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday klee uploaded 24000 MB to https://drive.google.com/upload from FS-SALES-37. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 219.38.155.61"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3122,7 +3122,7 @@
         "username": "secops",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T19:22:08Z",
-        "raw_log": "02:15:00 FW-QA-21 TXT query=e72a7839b413b045.exfil-dns.xyz from 61.198.41.209 size=2021 bytes base64 encoded\n02:15:30 FW-QA-21 TXT query=e72a7839b413b045.exfil-dns.xyz from 61.198.41.209 size=2021 bytes"
+        "raw_log": "02:15:00 FW-QA-21 TXT query=e72a7839b413b045.exfil-dns.xyz from 61.198.41.209 size=2021 bytes base64 encoded\n02:15:30 FW-QA-21 TXT query=e72a7839b413b045.exfil-dns.xyz from 61.198.41.209 size=2021 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 7.47.155.51. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3142,7 +3142,7 @@
         "username": "agarcia",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T06:32:02Z",
-        "raw_log": "secops POST https://mega.nz/upload 623 MB uploaded from FS-FIN-10 Content-Encoding: gzip"
+        "raw_log": "02:15:00 secops POST https://mega.nz/upload content-length: 47312 MB from FS-FIN-10. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 14.216.63.93:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3162,7 +3162,7 @@
         "username": "djones",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T15:18:03Z",
-        "raw_log": "helpdesk uploaded 1620 MB to https://drive.google.com/upload from FS-SALES-22 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday helpdesk uploaded 24000 MB to https://drive.google.com/upload from FS-SALES-22. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 221.181.228.110"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3182,7 +3182,7 @@
         "username": "analyst",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T21:40:03Z",
-        "raw_log": "02:15:00 DC-LEGAL-28 TXT query=a187b074444e7829.exfil-dns.xyz from 123.136.127.60 size=1977 bytes base64 encoded\n02:15:30 DC-LEGAL-28 TXT query=a187b074444e7829.exfil-dns.xyz from 123.136.127.60 size=1977 bytes"
+        "raw_log": "02:15:00 DC-LEGAL-28 TXT query=a187b074444e7829.exfil-dns.xyz from 123.136.127.60 size=1977 bytes base64 encoded\n02:15:30 DC-LEGAL-28 TXT query=a187b074444e7829.exfil-dns.xyz from 123.136.127.60 size=1977 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 218.71.13.55. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3202,7 +3202,7 @@
         "username": "pchen",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T13:20:41Z",
-        "raw_log": "nkumar POST https://mega.nz/upload 4541 MB uploaded from SRV-IT-06 Content-Encoding: gzip"
+        "raw_log": "02:15:00 nkumar POST https://mega.nz/upload content-length: 47312 MB from SRV-IT-06. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 200.235.203.47:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3222,7 +3222,7 @@
         "username": "jsmith",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T09:20:27Z",
-        "raw_log": "mthompson uploaded 4487 MB to https://drive.google.com/upload from FW-OPS-26 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday mthompson uploaded 24000 MB to https://drive.google.com/upload from FW-OPS-26. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 214.74.49.70"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3242,7 +3242,7 @@
         "username": "fmartinez",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T04:07:42Z",
-        "raw_log": "02:15:00 WS-QA-29 TXT query=0f3da54ccce96085.exfil-dns.xyz from 126.226.174.138 size=508 bytes base64 encoded\n02:15:30 WS-QA-29 TXT query=0f3da54ccce96085.exfil-dns.xyz from 126.226.174.138 size=508 bytes"
+        "raw_log": "02:15:00 WS-QA-29 TXT query=0f3da54ccce96085.exfil-dns.xyz from 126.226.174.138 size=508 bytes base64 encoded\n02:15:30 WS-QA-29 TXT query=0f3da54ccce96085.exfil-dns.xyz from 126.226.174.138 size=508 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 108.172.148.14. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3262,7 +3262,7 @@
         "username": "secops",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T18:27:37Z",
-        "raw_log": "netops POST https://mega.nz/upload 638 MB uploaded from APP-LEGAL-49 Content-Encoding: gzip"
+        "raw_log": "02:15:00 netops POST https://mega.nz/upload content-length: 47312 MB from APP-LEGAL-49. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 138.251.43.116:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3282,7 +3282,7 @@
         "username": "agarcia",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T10:01:57Z",
-        "raw_log": "dba uploaded 4910 MB to https://drive.google.com/upload from WEB-SEC-38 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday dba uploaded 24000 MB to https://drive.google.com/upload from WEB-SEC-38. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 34.104.115.152"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3302,7 +3302,7 @@
         "username": "rwilson",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T19:30:21Z",
-        "raw_log": "02:15:00 APP-FIN-05 TXT query=3f2d0d2053001ad0.exfil-dns.xyz from 112.221.199.109 size=2205 bytes base64 encoded\n02:15:30 APP-FIN-05 TXT query=3f2d0d2053001ad0.exfil-dns.xyz from 112.221.199.109 size=2205 bytes"
+        "raw_log": "02:15:00 APP-FIN-05 TXT query=3f2d0d2053001ad0.exfil-dns.xyz from 112.221.199.109 size=2205 bytes base64 encoded\n02:15:30 APP-FIN-05 TXT query=3f2d0d2053001ad0.exfil-dns.xyz from 112.221.199.109 size=2205 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 210.137.240.11. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3322,7 +3322,7 @@
         "username": "helpdesk",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T18:35:36Z",
-        "raw_log": "dba POST https://mega.nz/upload 4744 MB uploaded from APP-LEGAL-18 Content-Encoding: gzip"
+        "raw_log": "02:15:00 dba POST https://mega.nz/upload content-length: 47312 MB from APP-LEGAL-18. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 182.9.25.17:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3342,7 +3342,7 @@
         "username": "klee",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T05:40:01Z",
-        "raw_log": "djones uploaded 2556 MB to https://drive.google.com/upload from FW-IT-18 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday djones uploaded 24000 MB to https://drive.google.com/upload from FW-IT-18. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 86.23.78.91"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3362,7 +3362,7 @@
         "username": "dba",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T08:44:43Z",
-        "raw_log": "02:15:00 APP-FIN-44 TXT query=88f64318f1a7b1dc.exfil-dns.xyz from 184.189.119.81 size=3010 bytes base64 encoded\n02:15:30 APP-FIN-44 TXT query=88f64318f1a7b1dc.exfil-dns.xyz from 184.189.119.81 size=3010 bytes"
+        "raw_log": "02:15:00 APP-FIN-44 TXT query=88f64318f1a7b1dc.exfil-dns.xyz from 184.189.119.81 size=3010 bytes base64 encoded\n02:15:30 APP-FIN-44 TXT query=88f64318f1a7b1dc.exfil-dns.xyz from 184.189.119.81 size=3010 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 29.172.109.221. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3382,7 +3382,7 @@
         "username": "devops",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T23:42:10Z",
-        "raw_log": "rwilson POST https://mega.nz/upload 75 MB uploaded from APP-IT-38 Content-Encoding: gzip"
+        "raw_log": "02:15:00 rwilson POST https://mega.nz/upload content-length: 47312 MB from APP-IT-38. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 55.194.160.66:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3402,7 +3402,7 @@
         "username": "operator",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T14:22:25Z",
-        "raw_log": "agarcia uploaded 4671 MB to https://drive.google.com/upload from WS-LEGAL-37 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday agarcia uploaded 24000 MB to https://drive.google.com/upload from WS-LEGAL-37. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 143.22.25.193"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3422,7 +3422,7 @@
         "username": "admin",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T07:56:08Z",
-        "raw_log": "02:15:00 SRV-HR-42 TXT query=0cb790aa08909098.exfil-dns.xyz from 25.114.67.197 size=1649 bytes base64 encoded\n02:15:30 SRV-HR-42 TXT query=0cb790aa08909098.exfil-dns.xyz from 25.114.67.197 size=1649 bytes"
+        "raw_log": "02:15:00 SRV-HR-42 TXT query=0cb790aa08909098.exfil-dns.xyz from 25.114.67.197 size=1649 bytes base64 encoded\n02:15:30 SRV-HR-42 TXT query=0cb790aa08909098.exfil-dns.xyz from 25.114.67.197 size=1649 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 64.141.34.159. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3442,7 +3442,7 @@
         "username": "svc_backup",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T05:09:59Z",
-        "raw_log": "fmartinez POST https://mega.nz/upload 4343 MB uploaded from WS-LEGAL-35 Content-Encoding: gzip"
+        "raw_log": "02:15:00 fmartinez POST https://mega.nz/upload content-length: 47312 MB from WS-LEGAL-35. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 200.199.137.128:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3462,7 +3462,7 @@
         "username": "lbrown",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T11:14:08Z",
-        "raw_log": "pchen uploaded 4090 MB to https://drive.google.com/upload from PROXY-IT-21 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday pchen uploaded 24000 MB to https://drive.google.com/upload from PROXY-IT-21. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 136.210.174.225"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3482,7 +3482,7 @@
         "username": "mthompson",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T16:50:18Z",
-        "raw_log": "02:15:00 WEB-HR-31 TXT query=499d944cb74705e7.exfil-dns.xyz from 109.218.44.130 size=1514 bytes base64 encoded\n02:15:30 WEB-HR-31 TXT query=499d944cb74705e7.exfil-dns.xyz from 109.218.44.130 size=1514 bytes"
+        "raw_log": "02:15:00 WEB-HR-31 TXT query=499d944cb74705e7.exfil-dns.xyz from 109.218.44.130 size=1514 bytes base64 encoded\n02:15:30 WEB-HR-31 TXT query=499d944cb74705e7.exfil-dns.xyz from 109.218.44.130 size=1514 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 32.79.202.26. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3502,7 +3502,7 @@
         "username": "secops",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T20:29:51Z",
-        "raw_log": "svc_deploy POST https://mega.nz/upload 2202 MB uploaded from SRV-LEGAL-47 Content-Encoding: gzip"
+        "raw_log": "02:15:00 svc_deploy POST https://mega.nz/upload content-length: 47312 MB from SRV-LEGAL-47. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 70.8.46.148:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3522,7 +3522,7 @@
         "username": "netops",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T20:49:56Z",
-        "raw_log": "fmartinez uploaded 739 MB to https://drive.google.com/upload from DC-OPS-36 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday fmartinez uploaded 24000 MB to https://drive.google.com/upload from DC-OPS-36. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 9.131.169.9"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3542,7 +3542,7 @@
         "username": "fmartinez",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T02:29:16Z",
-        "raw_log": "02:15:00 DC-FIN-01 TXT query=ae370b5daa87b6d7.exfil-dns.xyz from 150.138.51.64 size=1065 bytes base64 encoded\n02:15:30 DC-FIN-01 TXT query=ae370b5daa87b6d7.exfil-dns.xyz from 150.138.51.64 size=1065 bytes"
+        "raw_log": "02:15:00 DC-FIN-01 TXT query=ae370b5daa87b6d7.exfil-dns.xyz from 150.138.51.64 size=1065 bytes base64 encoded\n02:15:30 DC-FIN-01 TXT query=ae370b5daa87b6d7.exfil-dns.xyz from 150.138.51.64 size=1065 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 121.67.64.10. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3562,7 +3562,7 @@
         "username": "analyst",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T20:09:21Z",
-        "raw_log": "djones POST https://mega.nz/upload 1494 MB uploaded from WEB-HR-10 Content-Encoding: gzip"
+        "raw_log": "02:15:00 djones POST https://mega.nz/upload content-length: 47312 MB from WEB-HR-10. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 35.78.119.3:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3582,7 +3582,7 @@
         "username": "devops",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T22:57:11Z",
-        "raw_log": "dba uploaded 2050 MB to https://drive.google.com/upload from FW-HR-38 at 02:30 Saturday files: customer_database.csv"
+        "raw_log": "03:30:00 Saturday dba uploaded 24000 MB to https://drive.google.com/upload from FW-HR-38. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 34.43.44.251"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3602,7 +3602,7 @@
         "username": "svc_deploy",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T20:25:18Z",
-        "raw_log": "02:15:00 FW-LEGAL-27 TXT query=eb896dcf650015c0.exfil-dns.xyz from 110.107.81.243 size=2490 bytes base64 encoded\n02:15:30 FW-LEGAL-27 TXT query=eb896dcf650015c0.exfil-dns.xyz from 110.107.81.243 size=2490 bytes"
+        "raw_log": "02:15:00 FW-LEGAL-27 TXT query=eb896dcf650015c0.exfil-dns.xyz from 110.107.81.243 size=2490 bytes base64 encoded\n02:15:30 FW-LEGAL-27 TXT query=eb896dcf650015c0.exfil-dns.xyz from 110.107.81.243 size=2490 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 168.188.80.39. Content-Encoding: base64"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3622,7 +3622,7 @@
         "username": "lbrown",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T13:35:19Z",
-        "raw_log": "sudo: svc_deploy : COMMAND=/bin/bash on MAIL-ENG-14"
+        "raw_log": "sudo: svc_deploy : COMMAND=/bin/bash on MAIL-ENG-14\nsudo: svc_deploy : COMMAND=/usr/bin/passwd root\nsudo: svc_deploy : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3642,7 +3642,7 @@
         "username": "fmartinez",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T12:17:04Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on PROXY-ENG-13 by pchen"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to pchen on PROXY-ENG-13. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3662,7 +3662,7 @@
         "username": "pchen",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T01:14:17Z",
-        "raw_log": "find / -perm -4000 executed by dba on FS-SALES-19 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by dba on FS-SALES-19\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\ndba escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3682,7 +3682,7 @@
         "username": "operator",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T14:19:17Z",
-        "raw_log": "sudo: fmartinez : COMMAND=/bin/bash on FW-HR-26"
+        "raw_log": "sudo: fmartinez : COMMAND=/bin/bash on FW-HR-26\nsudo: fmartinez : COMMAND=/usr/bin/passwd root\nsudo: fmartinez : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3702,7 +3702,7 @@
         "username": "devops",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T13:42:33Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on DC-IT-29 by analyst"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to analyst on DC-IT-29. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3722,7 +3722,7 @@
         "username": "rwilson",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T21:25:01Z",
-        "raw_log": "find / -perm -4000 executed by fmartinez on APP-DEV-50 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by fmartinez on APP-DEV-50\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nfmartinez escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3742,7 +3742,7 @@
         "username": "pchen",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T01:12:42Z",
-        "raw_log": "sudo: pchen : COMMAND=/bin/bash on DB-DEV-09"
+        "raw_log": "sudo: pchen : COMMAND=/bin/bash on DB-DEV-09\nsudo: pchen : COMMAND=/usr/bin/passwd root\nsudo: pchen : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3762,7 +3762,7 @@
         "username": "devops",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T01:46:41Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on DB-HR-17 by netops"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to netops on DB-HR-17. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3782,7 +3782,7 @@
         "username": "klee",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T03:01:51Z",
-        "raw_log": "find / -perm -4000 executed by svc_backup on APP-IT-05 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by svc_backup on APP-IT-05\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nsvc_backup escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3802,7 +3802,7 @@
         "username": "agarcia",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T13:19:02Z",
-        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on SRV-SEC-08"
+        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on SRV-SEC-08\nsudo: nkumar : COMMAND=/usr/bin/passwd root\nsudo: nkumar : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3822,7 +3822,7 @@
         "username": "secops",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T09:09:01Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on DC-SALES-21 by mthompson"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to mthompson on DC-SALES-21. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3842,7 +3842,7 @@
         "username": "admin",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T07:52:49Z",
-        "raw_log": "find / -perm -4000 executed by djones on WEB-SALES-21 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by djones on WEB-SALES-21\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\ndjones escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3862,7 +3862,7 @@
         "username": "djones",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T17:35:05Z",
-        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on APP-ENG-10"
+        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on APP-ENG-10\nsudo: nkumar : COMMAND=/usr/bin/passwd root\nsudo: nkumar : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3882,7 +3882,7 @@
         "username": "operator",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T16:47:00Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on MAIL-SALES-20 by dba"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to dba on MAIL-SALES-20. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3902,7 +3902,7 @@
         "username": "pchen",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T23:27:38Z",
-        "raw_log": "find / -perm -4000 executed by analyst on DB-SEC-08 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by analyst on DB-SEC-08\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nanalyst escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3922,7 +3922,7 @@
         "username": "klee",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T18:11:21Z",
-        "raw_log": "sudo: agarcia : COMMAND=/bin/bash on DB-HR-10"
+        "raw_log": "sudo: agarcia : COMMAND=/bin/bash on DB-HR-10\nsudo: agarcia : COMMAND=/usr/bin/passwd root\nsudo: agarcia : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3942,7 +3942,7 @@
         "username": "netops",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T11:07:18Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on DC-SEC-12 by nkumar"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to nkumar on DC-SEC-12. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3962,7 +3962,7 @@
         "username": "netops",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T13:19:52Z",
-        "raw_log": "find / -perm -4000 executed by nkumar on WEB-ENG-07 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by nkumar on WEB-ENG-07\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nnkumar escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -3982,7 +3982,7 @@
         "username": "klee",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T12:28:04Z",
-        "raw_log": "sudo: jsmith : COMMAND=/bin/bash on MAIL-HR-11"
+        "raw_log": "sudo: jsmith : COMMAND=/bin/bash on MAIL-HR-11\nsudo: jsmith : COMMAND=/usr/bin/passwd root\nsudo: jsmith : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4002,7 +4002,7 @@
         "username": "dba",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T08:25:30Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on MAIL-ENG-28 by lbrown"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to lbrown on MAIL-ENG-28. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4022,7 +4022,7 @@
         "username": "devops",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T08:18:45Z",
-        "raw_log": "find / -perm -4000 executed by rwilson on DB-LEGAL-48 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by rwilson on DB-LEGAL-48\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nrwilson escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4042,7 +4042,7 @@
         "username": "svc_deploy",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T23:24:05Z",
-        "raw_log": "sudo: agarcia : COMMAND=/bin/bash on DB-FIN-25"
+        "raw_log": "sudo: agarcia : COMMAND=/bin/bash on DB-FIN-25\nsudo: agarcia : COMMAND=/usr/bin/passwd root\nsudo: agarcia : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4062,7 +4062,7 @@
         "username": "helpdesk",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T12:13:11Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on MAIL-IT-27 by netops"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to netops on MAIL-IT-27. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4082,7 +4082,7 @@
         "username": "mthompson",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T03:30:03Z",
-        "raw_log": "find / -perm -4000 executed by mthompson on DC-QA-44 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by mthompson on DC-QA-44\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nmthompson escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4102,7 +4102,7 @@
         "username": "helpdesk",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T08:32:48Z",
-        "raw_log": "sudo: devops : COMMAND=/bin/bash on FS-HR-14"
+        "raw_log": "sudo: devops : COMMAND=/bin/bash on FS-HR-14\nsudo: devops : COMMAND=/usr/bin/passwd root\nsudo: devops : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4122,7 +4122,7 @@
         "username": "agarcia",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T09:47:41Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on APP-HR-16 by agarcia"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to agarcia on APP-HR-16. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4142,7 +4142,7 @@
         "username": "operator",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T01:12:19Z",
-        "raw_log": "find / -perm -4000 executed by lbrown on FW-FIN-14 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by lbrown on FW-FIN-14\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nlbrown escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4162,7 +4162,7 @@
         "username": "helpdesk",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T22:38:13Z",
-        "raw_log": "sudo: klee : COMMAND=/bin/bash on FS-IT-36"
+        "raw_log": "sudo: klee : COMMAND=/bin/bash on FS-IT-36\nsudo: klee : COMMAND=/usr/bin/passwd root\nsudo: klee : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4182,7 +4182,7 @@
         "username": "djones",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T12:33:25Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on MAIL-ENG-13 by djones"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to djones on MAIL-ENG-13. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4202,7 +4202,7 @@
         "username": "agarcia",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T11:32:23Z",
-        "raw_log": "find / -perm -4000 executed by mthompson on WS-OPS-26 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by mthompson on WS-OPS-26\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nmthompson escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4222,7 +4222,7 @@
         "username": "devops",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T22:10:14Z",
-        "raw_log": "sudo: jsmith : COMMAND=/bin/bash on WS-FIN-29"
+        "raw_log": "sudo: jsmith : COMMAND=/bin/bash on WS-FIN-29\nsudo: jsmith : COMMAND=/usr/bin/passwd root\nsudo: jsmith : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4242,7 +4242,7 @@
         "username": "svc_backup",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T20:54:50Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on DC-SALES-44 by netops"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to netops on DC-SALES-44. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4262,7 +4262,7 @@
         "username": "helpdesk",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T21:28:39Z",
-        "raw_log": "find / -perm -4000 executed by svc_deploy on SRV-IT-37 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by svc_deploy on SRV-IT-37\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nsvc_deploy escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4282,7 +4282,7 @@
         "username": "nkumar",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T10:09:35Z",
-        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on PROXY-SALES-01"
+        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on PROXY-SALES-01\nsudo: nkumar : COMMAND=/usr/bin/passwd root\nsudo: nkumar : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4302,7 +4302,7 @@
         "username": "agarcia",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T14:34:32Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on FW-IT-34 by nkumar"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to nkumar on FW-IT-34. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4322,7 +4322,7 @@
         "username": "svc_deploy",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T22:48:54Z",
-        "raw_log": "find / -perm -4000 executed by rwilson on WEB-LEGAL-37 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by rwilson on WEB-LEGAL-37\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nrwilson escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4342,7 +4342,7 @@
         "username": "jsmith",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T07:52:49Z",
-        "raw_log": "sudo: devops : COMMAND=/bin/bash on FW-ENG-15"
+        "raw_log": "sudo: devops : COMMAND=/bin/bash on FW-ENG-15\nsudo: devops : COMMAND=/usr/bin/passwd root\nsudo: devops : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4362,7 +4362,7 @@
         "username": "helpdesk",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T20:22:59Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on WS-FIN-28 by helpdesk"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to helpdesk on WS-FIN-28. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4382,7 +4382,7 @@
         "username": "agarcia",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T08:59:23Z",
-        "raw_log": "find / -perm -4000 executed by jsmith on PROXY-SALES-27 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by jsmith on PROXY-SALES-27\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\njsmith escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4402,7 +4402,7 @@
         "username": "dba",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T04:08:08Z",
-        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on FS-IT-38"
+        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on FS-IT-38\nsudo: nkumar : COMMAND=/usr/bin/passwd root\nsudo: nkumar : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4422,7 +4422,7 @@
         "username": "helpdesk",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T04:48:40Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on WEB-SALES-38 by rwilson"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to rwilson on WEB-SALES-38. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4442,7 +4442,7 @@
         "username": "helpdesk",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T22:58:24Z",
-        "raw_log": "find / -perm -4000 executed by secops on APP-SALES-46 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by secops on APP-SALES-46\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nsecops escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4462,7 +4462,7 @@
         "username": "rwilson",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T22:06:37Z",
-        "raw_log": "sudo: fmartinez : COMMAND=/bin/bash on MAIL-SEC-44"
+        "raw_log": "sudo: fmartinez : COMMAND=/bin/bash on MAIL-SEC-44\nsudo: fmartinez : COMMAND=/usr/bin/passwd root\nsudo: fmartinez : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4482,7 +4482,7 @@
         "username": "jsmith",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T08:24:55Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on FS-HR-11 by fmartinez"
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to fmartinez on FS-HR-11. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -4502,7 +4502,7 @@
         "username": "operator",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T09:46:56Z",
-        "raw_log": "find / -perm -4000 executed by jsmith on APP-IT-08 followed by chmod u+s /tmp/exploit"
+        "raw_log": "find / -perm -4000 executed by jsmith on APP-IT-08\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\njsmith escalated from www-data to root via SUID binary /usr/bin/pkexec"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8122,7 +8122,7 @@
         "username": "klee",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T13:39:57Z",
-        "raw_log": "CreateRole AdminBackdoor by klee from 10.103.214.33 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by klee from 10.103.214.33 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIAcfcd208495d565ef66e7dff9f98764da. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8142,7 +8142,7 @@
         "username": "pchen",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T16:29:48Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by netops from 3.192.163.82"
+        "raw_log": "StopLogging on CloudTrail main-trail by netops from 3.192.163.82. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8162,7 +8162,7 @@
         "username": "svc_deploy",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T19:55:00Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by admin from 133.18.147.28"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by admin from 133.18.147.28. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for admin. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8182,7 +8182,7 @@
         "username": "fmartinez",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T00:39:16Z",
-        "raw_log": "CreateRole AdminBackdoor by dba from 197.245.217.60 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by dba from 197.245.217.60 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIAeccbc87e4b5ce2fe28308fd9f2a7baf3. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8202,7 +8202,7 @@
         "username": "rwilson",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T06:16:40Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by svc_deploy from 102.187.141.146"
+        "raw_log": "StopLogging on CloudTrail main-trail by svc_deploy from 102.187.141.146. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8222,7 +8222,7 @@
         "username": "analyst",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T17:31:15Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by helpdesk from 95.185.144.110"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by helpdesk from 95.185.144.110. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for helpdesk. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8242,7 +8242,7 @@
         "username": "svc_deploy",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T08:58:34Z",
-        "raw_log": "CreateRole AdminBackdoor by jsmith from 219.175.96.149 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by jsmith from 219.175.96.149 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA1679091c5a880faf6fb5e6087eb1b2dc. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8262,7 +8262,7 @@
         "username": "operator",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T05:51:38Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by nkumar from 123.253.97.158"
+        "raw_log": "StopLogging on CloudTrail main-trail by nkumar from 123.253.97.158. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8282,7 +8282,7 @@
         "username": "jsmith",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T09:19:44Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by jsmith from 129.131.241.159"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by jsmith from 129.131.241.159. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for jsmith. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8302,7 +8302,7 @@
         "username": "svc_deploy",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T04:59:48Z",
-        "raw_log": "CreateRole AdminBackdoor by lbrown from 16.203.163.175 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by lbrown from 16.203.163.175 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA45c48cce2e2d7fbdea1afc51c7c6ad26. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8322,7 +8322,7 @@
         "username": "pchen",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T07:23:44Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by secops from 175.8.222.48"
+        "raw_log": "StopLogging on CloudTrail main-trail by secops from 175.8.222.48. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8342,7 +8342,7 @@
         "username": "pchen",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T19:39:48Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by rwilson from 162.152.167.67"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by rwilson from 162.152.167.67. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for rwilson. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8362,7 +8362,7 @@
         "username": "operator",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T04:57:32Z",
-        "raw_log": "CreateRole AdminBackdoor by svc_deploy from 84.151.16.40 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by svc_deploy from 84.151.16.40 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIAc20ad4d76fe97759aa27a0c99bff6710. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8382,7 +8382,7 @@
         "username": "mthompson",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T00:08:58Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by lbrown from 68.204.110.166"
+        "raw_log": "StopLogging on CloudTrail main-trail by lbrown from 68.204.110.166. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8402,7 +8402,7 @@
         "username": "helpdesk",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T19:58:21Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by svc_backup from 30.20.201.230"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by svc_backup from 30.20.201.230. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for svc_backup. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8422,7 +8422,7 @@
         "username": "agarcia",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T07:02:31Z",
-        "raw_log": "CreateRole AdminBackdoor by pchen from 219.33.53.152 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by pchen from 219.33.53.152 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA9bf31c7ff062936a96d3c8bd1f8f2ff3. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8442,7 +8442,7 @@
         "username": "mthompson",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T12:57:04Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by dba from 62.230.107.28"
+        "raw_log": "StopLogging on CloudTrail main-trail by dba from 62.230.107.28. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8462,7 +8462,7 @@
         "username": "pchen",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T08:00:45Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 58.8.2.69"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 58.8.2.69. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for pchen. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8482,7 +8482,7 @@
         "username": "klee",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T06:21:38Z",
-        "raw_log": "CreateRole AdminBackdoor by rwilson from 163.147.168.77 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by rwilson from 163.147.168.77 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA6f4922f45568161a8cdf4ad2299f6d23. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8502,7 +8502,7 @@
         "username": "nkumar",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T20:06:50Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by jsmith from 99.74.248.175"
+        "raw_log": "StopLogging on CloudTrail main-trail by jsmith from 99.74.248.175. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8522,7 +8522,7 @@
         "username": "secops",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T20:01:01Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 191.31.188.91"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 191.31.188.91. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for pchen. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8542,7 +8542,7 @@
         "username": "lbrown",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T07:26:02Z",
-        "raw_log": "CreateRole AdminBackdoor by nkumar from 66.35.27.169 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by nkumar from 66.35.27.169 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA3c59dc048e8850243be8079a5c74d079. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8562,7 +8562,7 @@
         "username": "netops",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T08:00:43Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by pchen from 173.7.121.201"
+        "raw_log": "StopLogging on CloudTrail main-trail by pchen from 173.7.121.201. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8582,7 +8582,7 @@
         "username": "djones",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T18:03:13Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by lbrown from 160.13.92.169"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by lbrown from 160.13.92.169. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for lbrown. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8602,7 +8602,7 @@
         "username": "mthompson",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T05:14:34Z",
-        "raw_log": "CreateRole AdminBackdoor by helpdesk from 127.149.219.114 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by helpdesk from 127.149.219.114 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA1ff1de774005f8da13f42943881c655f. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8622,7 +8622,7 @@
         "username": "jsmith",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T14:57:38Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by fmartinez from 143.225.210.22"
+        "raw_log": "StopLogging on CloudTrail main-trail by fmartinez from 143.225.210.22. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8642,7 +8642,7 @@
         "username": "fmartinez",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T00:57:46Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 159.21.149.181"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 159.21.149.181. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for pchen. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8662,7 +8662,7 @@
         "username": "fmartinez",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T08:55:54Z",
-        "raw_log": "CreateRole AdminBackdoor by mthompson from 16.79.167.106 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by mthompson from 16.79.167.106 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA02e74f10e0327ad868d138f2b4fdd6f0. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8682,7 +8682,7 @@
         "username": "operator",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T07:16:21Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by klee from 206.143.31.40"
+        "raw_log": "StopLogging on CloudTrail main-trail by klee from 206.143.31.40. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8702,7 +8702,7 @@
         "username": "secops",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T09:09:39Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by nkumar from 33.146.244.214"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by nkumar from 33.146.244.214. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for nkumar. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8722,7 +8722,7 @@
         "username": "secops",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T00:56:56Z",
-        "raw_log": "CreateRole AdminBackdoor by devops from 222.71.39.23 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by devops from 222.71.39.23 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA34173cb38f07f89ddbebc2ac9128303f. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8742,7 +8742,7 @@
         "username": "dba",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T06:38:45Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by agarcia from 108.6.54.194"
+        "raw_log": "StopLogging on CloudTrail main-trail by agarcia from 108.6.54.194. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8762,7 +8762,7 @@
         "username": "jsmith",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T03:26:29Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by netops from 12.98.244.7"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by netops from 12.98.244.7. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for netops. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8782,7 +8782,7 @@
         "username": "svc_backup",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T12:08:46Z",
-        "raw_log": "CreateRole AdminBackdoor by secops from 212.195.172.252 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by secops from 212.195.172.252 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA182be0c5cdcd5072bb1864cdee4d3d6e. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8802,7 +8802,7 @@
         "username": "secops",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T10:57:04Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by svc_backup from 59.31.111.16"
+        "raw_log": "StopLogging on CloudTrail main-trail by svc_backup from 59.31.111.16. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8822,7 +8822,7 @@
         "username": "svc_backup",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T10:13:01Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 31.189.252.140"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by pchen from 31.189.252.140. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for pchen. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8842,7 +8842,7 @@
         "username": "operator",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T10:07:38Z",
-        "raw_log": "CreateRole AdminBackdoor by jsmith from 19.248.100.27 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by jsmith from 19.248.100.27 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA19ca14e7ea6328a42e0eb13d585e4c22. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8862,7 +8862,7 @@
         "username": "mthompson",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T08:12:31Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by svc_deploy from 122.91.208.8"
+        "raw_log": "StopLogging on CloudTrail main-trail by svc_deploy from 122.91.208.8. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8882,7 +8882,7 @@
         "username": "helpdesk",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T21:52:01Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by operator from 222.16.85.159"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by operator from 222.16.85.159. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for operator. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8902,7 +8902,7 @@
         "username": "helpdesk",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T23:00:47Z",
-        "raw_log": "CreateRole AdminBackdoor by nkumar from 121.2.79.144 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by nkumar from 121.2.79.144 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIAd67d8ab4f4c10bf22aa353e27879133c. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8922,7 +8922,7 @@
         "username": "analyst",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T03:01:19Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by admin from 212.237.165.217"
+        "raw_log": "StopLogging on CloudTrail main-trail by admin from 212.237.165.217. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8942,7 +8942,7 @@
         "username": "operator",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T04:38:27Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by admin from 54.165.44.248"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by admin from 54.165.44.248. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for admin. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8962,7 +8962,7 @@
         "username": "devops",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T08:59:23Z",
-        "raw_log": "CreateRole AdminBackdoor by operator from 37.26.139.23 AttachRolePolicy AdministratorAccess"
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by operator from 37.26.139.23 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIAa1d0c6e83f027327d8461063f4ac58a6. MFA=false UserAgent=python-boto3"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -8982,7 +8982,7 @@
         "username": "svc_backup",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T11:20:08Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by mthompson from 109.172.65.156"
+        "raw_log": "StopLogging on CloudTrail main-trail by mthompson from 109.172.65.156. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -9002,7 +9002,7 @@
         "username": "agarcia",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T02:38:41Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by lbrown from 124.96.14.65"
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by lbrown from 124.96.14.65. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for lbrown. Region never used before."
       },
       "ground_truth": {
         "verdict": "true_positive",
@@ -10044,7 +10044,7 @@
         "username": "mthompson",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T02:43:55Z",
-        "raw_log": "From: security@micros0ft-update.fjcehhbj.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://fjcehhbj.xyz/secure-login.php",
+        "raw_log": "From: security@micros0ft-update.fjcehhbj.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.fjcehhbj.xyz/login.php?credential=verify\nAttachment: document.doc.exe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1078.009"
       },
@@ -10088,7 +10088,7 @@
         "username": "netops",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T21:39:34Z",
-        "raw_log": "rwilson POST https://mega.nz/upload 1939 MB uploaded from SRV-SALES-10 Content-Encoding: gzip",
+        "raw_log": "02:15:00 rwilson POST https://mega.nz/upload content-length: 47312 MB from SRV-SALES-10. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 26.81.8.93:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1177.002"
       },
@@ -10110,7 +10110,7 @@
         "username": "lbrown",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T00:20:48Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on MAIL-DEV-11 by netops",
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to netops on MAIL-DEV-11. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled.",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1435.009"
       },
@@ -10220,7 +10220,7 @@
         "username": "admin",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T10:31:16Z",
-        "raw_log": "CreateRole AdminBackdoor by helpdesk from 189.24.52.146 AttachRolePolicy AdministratorAccess",
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by helpdesk from 189.24.52.146 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIAe2230b853516e7b05d79744fbd4c9c13. MFA=false UserAgent=python-boto3",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1089.003"
       },
@@ -10286,7 +10286,7 @@
         "username": "mthompson",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T05:45:59Z",
-        "raw_log": "User jsmith clicked https://fcghcfbh.xyz/login.php?verify=account from DB-HR-40 Subject: Your account will be suspended act now",
+        "raw_log": "User jsmith clicked https://micros0ft-update.fcghcfbh.xyz/login.php?verify=credential&token=abc from DB-HR-40. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc YmQ229Q5W2Sm4gYKBPULdRP1EjH7+1ibeLGCTgDe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1316.002"
       },
@@ -10330,7 +10330,7 @@
         "username": "svc_deploy",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T14:35:21Z",
-        "raw_log": "02:15:00 APP-FIN-28 TXT query=13d8127aefbf357c.exfil-dns.xyz from 45.108.217.27 size=3932 bytes base64 encoded\n02:15:30 APP-FIN-28 TXT query=13d8127aefbf357c.exfil-dns.xyz from 45.108.217.27 size=3932 bytes",
+        "raw_log": "02:15:00 APP-FIN-28 TXT query=13d8127aefbf357c.exfil-dns.xyz from 45.108.217.27 size=3932 bytes base64 encoded\n02:15:30 APP-FIN-28 TXT query=13d8127aefbf357c.exfil-dns.xyz from 45.108.217.27 size=3932 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 167.150.2.227. Content-Encoding: base64",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1429.004"
       },
@@ -10352,7 +10352,7 @@
         "username": "dba",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T13:44:15Z",
-        "raw_log": "sudo: operator : COMMAND=/bin/bash on MAIL-FIN-42",
+        "raw_log": "sudo: operator : COMMAND=/bin/bash on MAIL-FIN-42\nsudo: operator : COMMAND=/usr/bin/passwd root\nsudo: operator : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1213.005"
       },
@@ -10462,7 +10462,7 @@
         "username": "fmartinez",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T07:31:43Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by agarcia from 22.6.11.9",
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by agarcia from 22.6.11.9. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for agarcia. Region never used before.",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1187.009"
       },
@@ -10528,7 +10528,7 @@
         "username": "helpdesk",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T10:13:16Z",
-        "raw_log": "POST https://faeafjif.xyz/signin.php from 50.242.244.138\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@faeafjif.xyz\nReply-To: phisher@gmail.com",
+        "raw_log": "POST https://amaz0n-verify.faeafjif.xyz/signin.php from 50.242.244.138\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.faeafjif.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.faeafjif.xyz",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1511.010"
       },
@@ -10572,7 +10572,7 @@
         "username": "lbrown",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T10:48:33Z",
-        "raw_log": "operator uploaded 553 MB to https://drive.google.com/upload from PROXY-IT-45 at 02:30 Saturday files: customer_database.csv",
+        "raw_log": "03:30:00 Saturday operator uploaded 24000 MB to https://drive.google.com/upload from PROXY-IT-45. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 174.178.66.83",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1192.009"
       },
@@ -10594,7 +10594,7 @@
         "username": "djones",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T04:51:23Z",
-        "raw_log": "find / -perm -4000 executed by secops on WEB-ENG-04 followed by chmod u+s /tmp/exploit",
+        "raw_log": "find / -perm -4000 executed by secops on WEB-ENG-04\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nsecops escalated from www-data to root via SUID binary /usr/bin/pkexec",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1133.007"
       },
@@ -10704,7 +10704,7 @@
         "username": "admin",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T21:50:07Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by djones from 132.127.133.240",
+        "raw_log": "StopLogging on CloudTrail main-trail by djones from 132.127.133.240. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1125.008"
       },
@@ -10770,7 +10770,7 @@
         "username": "netops",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T19:50:33Z",
-        "raw_log": "From: security@micros0ft-update.dehihhgh.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://dehihhgh.xyz/secure-login.php",
+        "raw_log": "From: security@micros0ft-update.dehihhgh.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.dehihhgh.xyz/login.php?credential=verify\nAttachment: document.doc.exe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1076.001"
       },
@@ -10814,7 +10814,7 @@
         "username": "rwilson",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T19:09:23Z",
-        "raw_log": "pchen POST https://mega.nz/upload 2747 MB uploaded from WS-IT-39 Content-Encoding: gzip",
+        "raw_log": "02:15:00 pchen POST https://mega.nz/upload content-length: 47312 MB from WS-IT-39. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 207.25.144.123:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1548.001"
       },
@@ -10836,7 +10836,7 @@
         "username": "rwilson",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T17:30:47Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on FW-IT-50 by devops",
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to devops on FW-IT-50. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled.",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1273.001"
       },
@@ -10946,7 +10946,7 @@
         "username": "helpdesk",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T14:45:38Z",
-        "raw_log": "CreateRole AdminBackdoor by rwilson from 122.122.206.3 AttachRolePolicy AdministratorAccess",
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by rwilson from 122.122.206.3 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA7dcd340d84f762eba80aa538b0c527f7. MFA=false UserAgent=python-boto3",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1257.008"
       },
@@ -11012,7 +11012,7 @@
         "username": "jsmith",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T08:10:54Z",
-        "raw_log": "User admin clicked https://afjicchd.xyz/login.php?verify=account from FS-ENG-32 Subject: Your account will be suspended act now",
+        "raw_log": "User admin clicked https://micros0ft-update.afjicchd.xyz/login.php?verify=credential&token=abc from FS-ENG-32. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc UhNU5iIbKnP820TV7FcC/W3SRp5FlgRE4S1ZdSXF",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1217.009"
       },
@@ -11056,7 +11056,7 @@
         "username": "klee",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T08:55:56Z",
-        "raw_log": "02:15:00 FW-LEGAL-07 TXT query=998d4e0efacad820.exfil-dns.xyz from 174.250.118.4 size=1803 bytes base64 encoded\n02:15:30 FW-LEGAL-07 TXT query=998d4e0efacad820.exfil-dns.xyz from 174.250.118.4 size=1803 bytes",
+        "raw_log": "02:15:00 FW-LEGAL-07 TXT query=998d4e0efacad820.exfil-dns.xyz from 174.250.118.4 size=1803 bytes base64 encoded\n02:15:30 FW-LEGAL-07 TXT query=998d4e0efacad820.exfil-dns.xyz from 174.250.118.4 size=1803 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 20.227.175.245. Content-Encoding: base64",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1168.010"
       },
@@ -11078,7 +11078,7 @@
         "username": "operator",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T14:38:36Z",
-        "raw_log": "sudo: klee : COMMAND=/bin/bash on DC-IT-01",
+        "raw_log": "sudo: klee : COMMAND=/bin/bash on DC-IT-01\nsudo: klee : COMMAND=/usr/bin/passwd root\nsudo: klee : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1293.009"
       },
@@ -11188,7 +11188,7 @@
         "username": "admin",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T23:01:44Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by svc_deploy from 222.32.14.36",
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by svc_deploy from 222.32.14.36. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for svc_deploy. Region never used before.",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1254.009"
       },
@@ -11254,7 +11254,7 @@
         "username": "lbrown",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T02:57:45Z",
-        "raw_log": "POST https://gideeecf.xyz/signin.php from 155.221.147.173\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@gideeecf.xyz\nReply-To: phisher@gmail.com",
+        "raw_log": "POST https://amaz0n-verify.gideeecf.xyz/signin.php from 155.221.147.173\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.gideeecf.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.gideeecf.xyz",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1418.010"
       },
@@ -11298,7 +11298,7 @@
         "username": "mthompson",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T15:02:40Z",
-        "raw_log": "pchen uploaded 50 MB to https://drive.google.com/upload from APP-FIN-25 at 02:30 Saturday files: customer_database.csv",
+        "raw_log": "03:30:00 Saturday pchen uploaded 24000 MB to https://drive.google.com/upload from APP-FIN-25. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 162.68.54.31",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1266.004"
       },
@@ -11320,7 +11320,7 @@
         "username": "agarcia",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T16:28:29Z",
-        "raw_log": "find / -perm -4000 executed by analyst on APP-SALES-24 followed by chmod u+s /tmp/exploit",
+        "raw_log": "find / -perm -4000 executed by analyst on APP-SALES-24\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nanalyst escalated from www-data to root via SUID binary /usr/bin/pkexec",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1260.010"
       },
@@ -11430,7 +11430,7 @@
         "username": "admin",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T13:30:03Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by svc_backup from 113.141.175.175",
+        "raw_log": "StopLogging on CloudTrail main-trail by svc_backup from 113.141.175.175. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1589.009"
       },
@@ -11496,7 +11496,7 @@
         "username": "djones",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T02:33:55Z",
-        "raw_log": "From: security@micros0ft-update.difhfjaj.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://difhfjaj.xyz/secure-login.php",
+        "raw_log": "From: security@micros0ft-update.difhfjaj.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.difhfjaj.xyz/login.php?credential=verify\nAttachment: document.doc.exe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1568.010"
       },
@@ -11540,7 +11540,7 @@
         "username": "djones",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T12:04:56Z",
-        "raw_log": "klee POST https://mega.nz/upload 143 MB uploaded from MAIL-IT-48 Content-Encoding: gzip",
+        "raw_log": "02:15:00 klee POST https://mega.nz/upload content-length: 47312 MB from MAIL-IT-48. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 215.27.171.216:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1293.005"
       },
@@ -11562,7 +11562,7 @@
         "username": "djones",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T21:21:49Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on SRV-OPS-22 by devops",
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to devops on SRV-OPS-22. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled.",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1533.008"
       },
@@ -11672,7 +11672,7 @@
         "username": "agarcia",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T16:15:28Z",
-        "raw_log": "CreateRole AdminBackdoor by netops from 59.91.141.6 AttachRolePolicy AdministratorAccess",
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by netops from 59.91.141.6 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIAffeabd223de0d4eacb9a3e6e53e5448d. MFA=false UserAgent=python-boto3",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1418.010"
       },
@@ -11738,7 +11738,7 @@
         "username": "nkumar",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T17:56:05Z",
-        "raw_log": "User pchen clicked https://aceajicb.xyz/login.php?verify=account from MAIL-IT-07 Subject: Your account will be suspended act now",
+        "raw_log": "User pchen clicked https://micros0ft-update.aceajicb.xyz/login.php?verify=credential&token=abc from MAIL-IT-07. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc 9XDnmCUdofmlSXa3JFXm9RVabZjXMloZ5/pNjROE",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1233.001"
       },
@@ -11782,7 +11782,7 @@
         "username": "netops",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T07:56:23Z",
-        "raw_log": "02:15:00 MAIL-IT-38 TXT query=f7bbd0dff67d58df.exfil-dns.xyz from 191.3.98.127 size=2150 bytes base64 encoded\n02:15:30 MAIL-IT-38 TXT query=f7bbd0dff67d58df.exfil-dns.xyz from 191.3.98.127 size=2150 bytes",
+        "raw_log": "02:15:00 MAIL-IT-38 TXT query=f7bbd0dff67d58df.exfil-dns.xyz from 191.3.98.127 size=2150 bytes base64 encoded\n02:15:30 MAIL-IT-38 TXT query=f7bbd0dff67d58df.exfil-dns.xyz from 191.3.98.127 size=2150 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 181.130.64.44. Content-Encoding: base64",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1517.009"
       },
@@ -11804,7 +11804,7 @@
         "username": "helpdesk",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T00:24:58Z",
-        "raw_log": "sudo: jsmith : COMMAND=/bin/bash on FW-OPS-33",
+        "raw_log": "sudo: jsmith : COMMAND=/bin/bash on FW-OPS-33\nsudo: jsmith : COMMAND=/usr/bin/passwd root\nsudo: jsmith : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1359.009"
       },
@@ -11914,7 +11914,7 @@
         "username": "secops",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T14:51:02Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by agarcia from 154.173.114.175",
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by agarcia from 154.173.114.175. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for agarcia. Region never used before.",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1469.004"
       },
@@ -11980,7 +11980,7 @@
         "username": "mthompson",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T15:57:10Z",
-        "raw_log": "POST https://deaeiedc.xyz/signin.php from 80.6.203.55\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@deaeiedc.xyz\nReply-To: phisher@gmail.com",
+        "raw_log": "POST https://amaz0n-verify.deaeiedc.xyz/signin.php from 80.6.203.55\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.deaeiedc.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.deaeiedc.xyz",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1509.008"
       },
@@ -12024,7 +12024,7 @@
         "username": "svc_deploy",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T16:11:33Z",
-        "raw_log": "netops uploaded 3776 MB to https://drive.google.com/upload from APP-QA-34 at 02:30 Saturday files: customer_database.csv",
+        "raw_log": "03:30:00 Saturday netops uploaded 24000 MB to https://drive.google.com/upload from APP-QA-34. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 146.117.173.172",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1461.003"
       },
@@ -12046,7 +12046,7 @@
         "username": "analyst",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T06:30:00Z",
-        "raw_log": "find / -perm -4000 executed by dba on APP-LEGAL-26 followed by chmod u+s /tmp/exploit",
+        "raw_log": "find / -perm -4000 executed by dba on APP-LEGAL-26\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\ndba escalated from www-data to root via SUID binary /usr/bin/pkexec",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1245.009"
       },
@@ -12156,7 +12156,7 @@
         "username": "djones",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T04:35:33Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by svc_backup from 220.205.90.195",
+        "raw_log": "StopLogging on CloudTrail main-trail by svc_backup from 220.205.90.195. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1161.004"
       },
@@ -12222,7 +12222,7 @@
         "username": "fmartinez",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T03:10:52Z",
-        "raw_log": "From: security@micros0ft-update.eebjchfd.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://eebjchfd.xyz/secure-login.php",
+        "raw_log": "From: security@micros0ft-update.eebjchfd.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.eebjchfd.xyz/login.php?credential=verify\nAttachment: document.doc.exe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1165.006"
       },
@@ -12266,7 +12266,7 @@
         "username": "secops",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T00:59:51Z",
-        "raw_log": "dba POST https://mega.nz/upload 2020 MB uploaded from WS-HR-47 Content-Encoding: gzip",
+        "raw_log": "02:15:00 dba POST https://mega.nz/upload content-length: 47312 MB from WS-HR-47. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 113.152.50.67:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1186.006"
       },
@@ -12288,7 +12288,7 @@
         "username": "svc_backup",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T03:07:00Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on FS-DEV-17 by svc_backup",
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to svc_backup on FS-DEV-17. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled.",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1571.002"
       },
@@ -12398,7 +12398,7 @@
         "username": "devops",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T19:26:51Z",
-        "raw_log": "CreateRole AdminBackdoor by jsmith from 211.90.118.105 AttachRolePolicy AdministratorAccess",
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by jsmith from 211.90.118.105 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA996a7fa078cc36c46d02f9af3bef918b. MFA=false UserAgent=python-boto3",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1290.009"
       },
@@ -12464,7 +12464,7 @@
         "username": "fmartinez",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T13:39:48Z",
-        "raw_log": "User lbrown clicked https://gfafifbj.xyz/login.php?verify=account from WS-FIN-14 Subject: Your account will be suspended act now",
+        "raw_log": "User lbrown clicked https://micros0ft-update.gfafifbj.xyz/login.php?verify=credential&token=abc from WS-FIN-14. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc h285leNFgOXbpI2jnZoSiF2W9mXHa1k7/RlYW0e7",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1284.009"
       },
@@ -12508,7 +12508,7 @@
         "username": "lbrown",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T06:11:47Z",
-        "raw_log": "02:15:00 FW-DEV-22 TXT query=cd9a4a111802d031.exfil-dns.xyz from 205.30.13.2 size=1672 bytes base64 encoded\n02:15:30 FW-DEV-22 TXT query=cd9a4a111802d031.exfil-dns.xyz from 205.30.13.2 size=1672 bytes",
+        "raw_log": "02:15:00 FW-DEV-22 TXT query=cd9a4a111802d031.exfil-dns.xyz from 205.30.13.2 size=1672 bytes base64 encoded\n02:15:30 FW-DEV-22 TXT query=cd9a4a111802d031.exfil-dns.xyz from 205.30.13.2 size=1672 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 55.220.23.247. Content-Encoding: base64",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1395.005"
       },
@@ -12530,7 +12530,7 @@
         "username": "nkumar",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T17:01:41Z",
-        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on APP-QA-18",
+        "raw_log": "sudo: nkumar : COMMAND=/bin/bash on APP-QA-18\nsudo: nkumar : COMMAND=/usr/bin/passwd root\nsudo: nkumar : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1281.005"
       },
@@ -12640,7 +12640,7 @@
         "username": "klee",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T05:12:24Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by djones from 1.236.75.31",
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by djones from 1.236.75.31. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for djones. Region never used before.",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1176.009"
       },
@@ -12706,7 +12706,7 @@
         "username": "agarcia",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T18:14:52Z",
-        "raw_log": "POST https://jifjhfia.xyz/signin.php from 71.199.93.73\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@jifjhfia.xyz\nReply-To: phisher@gmail.com",
+        "raw_log": "POST https://amaz0n-verify.jifjhfia.xyz/signin.php from 71.199.93.73\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.jifjhfia.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.jifjhfia.xyz",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1390.009"
       },
@@ -12750,7 +12750,7 @@
         "username": "svc_deploy",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T00:54:13Z",
-        "raw_log": "svc_deploy uploaded 2611 MB to https://drive.google.com/upload from DC-DEV-07 at 02:30 Saturday files: customer_database.csv",
+        "raw_log": "03:30:00 Saturday svc_deploy uploaded 24000 MB to https://drive.google.com/upload from DC-DEV-07. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 191.228.168.211",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1131.007"
       },
@@ -12772,7 +12772,7 @@
         "username": "nkumar",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T16:09:24Z",
-        "raw_log": "find / -perm -4000 executed by svc_deploy on SRV-HR-15 followed by chmod u+s /tmp/exploit",
+        "raw_log": "find / -perm -4000 executed by svc_deploy on SRV-HR-15\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nsvc_deploy escalated from www-data to root via SUID binary /usr/bin/pkexec",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1571.003"
       },
@@ -12882,7 +12882,7 @@
         "username": "lbrown",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T03:25:31Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by analyst from 223.209.25.170",
+        "raw_log": "StopLogging on CloudTrail main-trail by analyst from 223.209.25.170. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1183.010"
       },
@@ -12948,7 +12948,7 @@
         "username": "svc_deploy",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T19:48:59Z",
-        "raw_log": "From: security@micros0ft-update.becfcifd.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://becfcifd.xyz/secure-login.php",
+        "raw_log": "From: security@micros0ft-update.becfcifd.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.becfcifd.xyz/login.php?credential=verify\nAttachment: document.doc.exe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1528.007"
       },
@@ -12992,7 +12992,7 @@
         "username": "djones",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T01:02:26Z",
-        "raw_log": "devops POST https://mega.nz/upload 3997 MB uploaded from DB-DEV-20 Content-Encoding: gzip",
+        "raw_log": "02:15:00 devops POST https://mega.nz/upload content-length: 47312 MB from DB-DEV-20. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 134.124.108.150:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1245.007"
       },
@@ -13014,7 +13014,7 @@
         "username": "fmartinez",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T18:11:57Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on PROXY-SEC-04 by fmartinez",
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to fmartinez on PROXY-SEC-04. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled.",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1217.001"
       },
@@ -13124,7 +13124,7 @@
         "username": "helpdesk",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T21:15:28Z",
-        "raw_log": "CreateRole AdminBackdoor by svc_deploy from 39.25.236.43 AttachRolePolicy AdministratorAccess",
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by svc_deploy from 39.25.236.43 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA67e103b0761e60683e83c559be18d40c. MFA=false UserAgent=python-boto3",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1562.007"
       },
@@ -13190,7 +13190,7 @@
         "username": "mthompson",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T12:41:36Z",
-        "raw_log": "User netops clicked https://bdeheagj.xyz/login.php?verify=account from WEB-OPS-09 Subject: Your account will be suspended act now",
+        "raw_log": "User netops clicked https://micros0ft-update.bdeheagj.xyz/login.php?verify=credential&token=abc from WEB-OPS-09. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc 8jb1HoUQoI1CcR3RZdBcSUJ+N77JV2XlBH/8Eknh",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1243.003"
       },
@@ -13234,7 +13234,7 @@
         "username": "jsmith",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T10:26:25Z",
-        "raw_log": "02:15:00 DC-SALES-29 TXT query=8570a3b9be634e36.exfil-dns.xyz from 183.38.115.37 size=4049 bytes base64 encoded\n02:15:30 DC-SALES-29 TXT query=8570a3b9be634e36.exfil-dns.xyz from 183.38.115.37 size=4049 bytes",
+        "raw_log": "02:15:00 DC-SALES-29 TXT query=8570a3b9be634e36.exfil-dns.xyz from 183.38.115.37 size=4049 bytes base64 encoded\n02:15:30 DC-SALES-29 TXT query=8570a3b9be634e36.exfil-dns.xyz from 183.38.115.37 size=4049 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 148.171.114.215. Content-Encoding: base64",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1514.001"
       },
@@ -13256,7 +13256,7 @@
         "username": "mthompson",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T21:09:22Z",
-        "raw_log": "sudo: operator : COMMAND=/bin/bash on FS-LEGAL-25",
+        "raw_log": "sudo: operator : COMMAND=/bin/bash on FS-LEGAL-25\nsudo: operator : COMMAND=/usr/bin/passwd root\nsudo: operator : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1152.001"
       },
@@ -13366,7 +13366,7 @@
         "username": "svc_backup",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T13:12:11Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by svc_deploy from 98.126.85.232",
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by svc_deploy from 98.126.85.232. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for svc_deploy. Region never used before.",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1256.006"
       },
@@ -13432,7 +13432,7 @@
         "username": "netops",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T14:40:41Z",
-        "raw_log": "POST https://jijdaggf.xyz/signin.php from 4.98.108.212\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@jijdaggf.xyz\nReply-To: phisher@gmail.com",
+        "raw_log": "POST https://amaz0n-verify.jijdaggf.xyz/signin.php from 4.98.108.212\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.jijdaggf.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.jijdaggf.xyz",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1596.003"
       },
@@ -13476,7 +13476,7 @@
         "username": "nkumar",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T21:41:08Z",
-        "raw_log": "jsmith uploaded 696 MB to https://drive.google.com/upload from FW-IT-10 at 02:30 Saturday files: customer_database.csv",
+        "raw_log": "03:30:00 Saturday jsmith uploaded 24000 MB to https://drive.google.com/upload from FW-IT-10. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 85.103.126.178",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1443.001"
       },
@@ -13498,7 +13498,7 @@
         "username": "svc_deploy",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T07:59:49Z",
-        "raw_log": "find / -perm -4000 executed by klee on DC-OPS-40 followed by chmod u+s /tmp/exploit",
+        "raw_log": "find / -perm -4000 executed by klee on DC-OPS-40\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nklee escalated from www-data to root via SUID binary /usr/bin/pkexec",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1190.006"
       },
@@ -13608,7 +13608,7 @@
         "username": "devops",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T08:29:39Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by lbrown from 11.107.115.213",
+        "raw_log": "StopLogging on CloudTrail main-trail by lbrown from 11.107.115.213. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1197.010"
       },
@@ -13674,7 +13674,7 @@
         "username": "jsmith",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T04:45:56Z",
-        "raw_log": "From: security@micros0ft-update.dbgbihfb.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://dbgbihfb.xyz/secure-login.php",
+        "raw_log": "From: security@micros0ft-update.dbgbihfb.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.dbgbihfb.xyz/login.php?credential=verify\nAttachment: document.doc.exe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1071.005"
       },
@@ -13718,7 +13718,7 @@
         "username": "operator",
         "rule_name": "DLP_Alert",
         "timestamp": "2026-03-24T01:54:00Z",
-        "raw_log": "nkumar POST https://mega.nz/upload 507 MB uploaded from DC-HR-37 Content-Encoding: gzip",
+        "raw_log": "02:15:00 nkumar POST https://mega.nz/upload content-length: 47312 MB from DC-HR-37. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to 13.213.95.205:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1448.005"
       },
@@ -13740,7 +13740,7 @@
         "username": "dba",
         "rule_name": "UACBypass",
         "timestamp": "2026-03-24T13:22:34Z",
-        "raw_log": "eventvwr.exe spawned cmd.exe with high integrity on SRV-DEV-03 by devops",
+        "raw_log": "EventID=4672 SeDebugPrivilege assigned to devops on SRV-DEV-03. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled.",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1135.007"
       },
@@ -13850,7 +13850,7 @@
         "username": "secops",
         "rule_name": "CloudAttack",
         "timestamp": "2026-03-24T01:50:37Z",
-        "raw_log": "CreateRole AdminBackdoor by dba from 211.138.138.6 AttachRolePolicy AdministratorAccess",
+        "raw_log": "AWS CloudTrail: CreateUser iam-backdoor by dba from 211.138.138.6 region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA0d7de1aca9299fe63f3e0041f02638a3. MFA=false UserAgent=python-boto3",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1170.007"
       },
@@ -13916,7 +13916,7 @@
         "username": "mthompson",
         "rule_name": "PhishDetect",
         "timestamp": "2026-03-24T23:17:01Z",
-        "raw_log": "User svc_backup clicked https://gbijihdd.xyz/login.php?verify=account from MAIL-HR-10 Subject: Your account will be suspended act now",
+        "raw_log": "User svc_backup clicked https://micros0ft-update.gbijihdd.xyz/login.php?verify=credential&token=abc from MAIL-HR-10. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc BC6IDd7G28cE530f+NLXljPH0llHPKoG7FV1eRl9",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1233.010"
       },
@@ -13960,7 +13960,7 @@
         "username": "fmartinez",
         "rule_name": "DNS_Exfil",
         "timestamp": "2026-03-24T16:55:59Z",
-        "raw_log": "02:15:00 MAIL-LEGAL-48 TXT query=ee0d3740328e3a00.exfil-dns.xyz from 148.57.67.53 size=1645 bytes base64 encoded\n02:15:30 MAIL-LEGAL-48 TXT query=ee0d3740328e3a00.exfil-dns.xyz from 148.57.67.53 size=1645 bytes",
+        "raw_log": "02:15:00 MAIL-LEGAL-48 TXT query=ee0d3740328e3a00.exfil-dns.xyz from 148.57.67.53 size=1645 bytes base64 encoded\n02:15:30 MAIL-LEGAL-48 TXT query=ee0d3740328e3a00.exfil-dns.xyz from 148.57.67.53 size=1645 bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to 36.114.158.52. Content-Encoding: base64",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1327.010"
       },
@@ -13982,7 +13982,7 @@
         "username": "svc_deploy",
         "rule_name": "PrivEsc",
         "timestamp": "2026-03-24T15:14:13Z",
-        "raw_log": "sudo: helpdesk : COMMAND=/bin/bash on DC-SALES-47",
+        "raw_log": "sudo: helpdesk : COMMAND=/bin/bash on DC-SALES-47\nsudo: helpdesk : COMMAND=/usr/bin/passwd root\nsudo: helpdesk : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1049.010"
       },
@@ -14092,7 +14092,7 @@
         "username": "agarcia",
         "rule_name": "SG_Open",
         "timestamp": "2026-03-24T12:10:51Z",
-        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by helpdesk from 15.202.115.205",
+        "raw_log": "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by helpdesk from 15.202.115.205. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for helpdesk. Region never used before.",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1366.004"
       },
@@ -14158,7 +14158,7 @@
         "username": "rwilson",
         "rule_name": "CredHarvest",
         "timestamp": "2026-03-24T10:31:31Z",
-        "raw_log": "POST https://gdcccedc.xyz/signin.php from 94.19.227.18\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@gdcccedc.xyz\nReply-To: phisher@gmail.com",
+        "raw_log": "POST https://amaz0n-verify.gdcccedc.xyz/signin.php from 94.19.227.18\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.gdcccedc.xyz\nReply-To: phisher@gmail.com\nDNS query: evil-c2.gdcccedc.xyz",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1522.004"
       },
@@ -14202,7 +14202,7 @@
         "username": "netops",
         "rule_name": "CloudExfil",
         "timestamp": "2026-03-24T03:03:03Z",
-        "raw_log": "operator uploaded 437 MB to https://drive.google.com/upload from DB-DEV-16 at 02:30 Saturday files: customer_database.csv",
+        "raw_log": "03:30:00 Saturday operator uploaded 24000 MB to https://drive.google.com/upload from DB-DEV-16. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: 84.17.6.245",
         "description": "Enriched alert for data_exfiltration investigation with additional context",
         "mitre_technique": "T1248.004"
       },
@@ -14224,7 +14224,7 @@
         "username": "lbrown",
         "rule_name": "SUID",
         "timestamp": "2026-03-24T11:06:47Z",
-        "raw_log": "find / -perm -4000 executed by fmartinez on FW-SALES-08 followed by chmod u+s /tmp/exploit",
+        "raw_log": "find / -perm -4000 executed by fmartinez on FW-SALES-08\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\nfmartinez escalated from www-data to root via SUID binary /usr/bin/pkexec",
         "description": "Enriched alert for privilege_escalation_hunt investigation with additional context",
         "mitre_technique": "T1044.008"
       },
@@ -14334,7 +14334,7 @@
         "username": "analyst",
         "rule_name": "TrailTamper",
         "timestamp": "2026-03-24T09:19:05Z",
-        "raw_log": "StopLogging on CloudTrail main-trail by djones from 75.15.131.142",
+        "raw_log": "StopLogging on CloudTrail main-trail by djones from 75.15.131.142. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1",
         "description": "Enriched alert for cloud_infrastructure_attack investigation with additional context",
         "mitre_technique": "T1431.007"
       },
@@ -14400,7 +14400,7 @@
         "username": "analyst",
         "rule_name": "EmailSec",
         "timestamp": "2026-03-24T11:05:23Z",
-        "raw_log": "From: security@micros0ft-update.jiehagig.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://jiehagig.xyz/secure-login.php",
+        "raw_log": "From: security@micros0ft-update.jiehagig.xyz\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.jiehagig.xyz/login.php?credential=verify\nAttachment: document.doc.exe",
         "description": "Enriched alert for phishing investigation with additional context",
         "mitre_technique": "T1261.002"
       },

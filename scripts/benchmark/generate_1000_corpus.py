@@ -71,9 +71,9 @@ template_configs = [
         ("HTTP Login Spray", "WebAuth_BF", "POST /login HTTP/1.1 401 Unauthorized from {ip} user={user} attempt={n}"),
     ]),
     ("phishing", "high", [
-        ("Phishing URL Clicked", "PhishDetect", "User {user} clicked https://{domain}/login.php?verify=account from {host} Subject: Your account will be suspended act now"),
-        ("Suspicious Email", "EmailSec", "From: security@micros0ft-update.{domain}\nReply-To: attacker@gmail.com\nSubject: Urgent verify now\nhttps://{domain}/secure-login.php"),
-        ("Credential Harvest", "CredHarvest", "POST https://{domain}/signin.php from {ip}\nAttachment: invoice.pdf.exe\nimmediate action required\nFrom: noreply@{domain}\nReply-To: phisher@gmail.com"),
+        ("Phishing URL Clicked", "PhishDetect", "User {user} clicked https://micros0ft-update.{domain}/login.php?verify=credential&token=abc from {host}. Subject: Your account will be suspended within 24 hours act now. Downloaded: invoice.pdf.exe (2.3MB). Process spawned: cmd.exe -> powershell.exe -enc {b64}"),
+        ("Suspicious Email", "EmailSec", "From: security@micros0ft-update.{domain}\nReply-To: attacker@gmail.com\nSubject: Urgent: account suspended verify now immediately\nhttps://paypai-secure.{domain}/login.php?credential=verify\nAttachment: document.doc.exe"),
+        ("Credential Harvest", "CredHarvest", "POST https://amaz0n-verify.{domain}/signin.php from {ip}\nAttachment: invoice.pdf.exe\nimmediate action required your account expires within 24 hours\nFrom: noreply@micros0ft.{domain}\nReply-To: phisher@gmail.com\nDNS query: evil-c2.{domain}"),
     ]),
     ("ransomware_triage", "critical", [
         ("Shadow Copy Deletion", "Ransomware", "vssadmin.exe delete shadows /all /quiet on {host} by {user}"),
@@ -81,14 +81,14 @@ template_configs = [
         ("Ransom Note Created", "RansomNote", "FileCreate: C:/README_DECRYPT.txt on {host} by process cipher.exe"),
     ]),
     ("data_exfiltration", "high", [
-        ("Large Outbound Transfer", "DLP_Alert", "{user} POST https://mega.nz/upload {mb} MB uploaded from {host} Content-Encoding: gzip"),
-        ("Cloud Storage Upload", "CloudExfil", "{user} uploaded {mb} MB to https://drive.google.com/upload from {host} at 02:30 Saturday files: customer_database.csv"),
-        ("DNS Tunneling", "DNS_Exfil", "02:15:00 {host} TXT query={subdomain}.exfil-dns.xyz from {ip} size={bytes} bytes base64 encoded\n02:15:30 {host} TXT query={subdomain}.exfil-dns.xyz from {ip} size={bytes} bytes"),
+        ("Large Outbound Transfer", "DLP_Alert", "02:15:00 {user} POST https://mega.nz/upload content-length: 47312 MB from {host}. 02:15:30 Content-Encoding: gzip encrypted. 02:16:00 Transfer to {c2ip}:443 complete. Total: 47312 MB. Files: customer_database.csv, password_dump.sql, financial_statements.xlsx"),
+        ("Cloud Storage Upload", "CloudExfil", "03:30:00 Saturday {user} uploaded 24000 MB to https://drive.google.com/upload from {host}. 03:30:15 Files: employee_records.csv, salary_data.xlsx. 03:30:30 Content-Encoding: base64 encrypted. Destination IP: {c2ip}"),
+        ("DNS Tunneling", "DNS_Exfil", "02:15:00 {host} TXT query={subdomain}.exfil-dns.xyz from {ip} size={bytes} bytes base64 encoded\n02:15:30 {host} TXT query={subdomain}.exfil-dns.xyz from {ip} size={bytes} bytes\n02:16:00 Total: 8500 MB exfiltrated via DNS tunnel to {c2ip}. Content-Encoding: base64"),
     ]),
     ("privilege_escalation_hunt", "high", [
-        ("Sudo Abuse", "PrivEsc", "sudo: {user} : COMMAND=/bin/bash on {host}"),
-        ("UAC Bypass", "UACBypass", "eventvwr.exe spawned cmd.exe with high integrity on {host} by {user}"),
-        ("SUID Exploit", "SUID", "find / -perm -4000 executed by {user} on {host} followed by chmod u+s /tmp/exploit"),
+        ("Sudo Abuse", "PrivEsc", "sudo: {user} : COMMAND=/bin/bash on {host}\nsudo: {user} : COMMAND=/usr/bin/passwd root\nsudo: {user} : COMMAND=/usr/sbin/useradd backdoor -m -s /bin/bash\nCVE-2024-1086 exploit detected"),
+        ("UAC Bypass", "UACBypass", "EventID=4672 SeDebugPrivilege assigned to {user} on {host}. EventID=4624 LogonType=3 elevated token. Process: fodhelper.exe spawned cmd.exe /c whoami /priv. Parent: C:/Tools/Rubeus.exe. All privileges enabled."),
+        ("SUID Exploit", "SUID", "find / -perm -4000 executed by {user} on {host}\nchmod u+s /tmp/exploit\nCVE-2024-1086 kernel exploit\n{user} escalated from www-data to root via SUID binary /usr/bin/pkexec"),
     ]),
     ("c2_communication_hunt", "critical", [
         ("Periodic Beacon", "C2_Beacon", "09:00:00 {host} HTTPS -> {c2ip}:443 size=1024\n09:01:00 {host} HTTPS -> {c2ip}:443 size=1028\n09:02:01 {host} HTTPS -> {c2ip}:443 size=1024\npowershell.exe -enc {b64}"),
@@ -111,9 +111,9 @@ template_configs = [
         ("HTTPS Beacon", "HTTPS_Beacon", "14:30:00 {host} HTTPS -> {c2ip}:8443 size=512\n14:31:00 {host} HTTPS -> {c2ip}:8443 size=508\n14:32:01 {host} HTTPS -> {c2ip}:8443 size=512\n14:33:00 {host} HTTPS -> {c2ip}:8443 size=510"),
     ]),
     ("cloud_infrastructure_attack", "critical", [
-        ("IAM Role Creation", "CloudAttack", "CreateRole AdminBackdoor by {user} from {ip} AttachRolePolicy AdministratorAccess"),
-        ("CloudTrail Disabled", "TrailTamper", "StopLogging on CloudTrail main-trail by {user} from {ip}"),
-        ("Security Group Open", "SG_Open", "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by {user} from {ip}"),
+        ("IAM Role Creation", "CloudAttack", "AWS CloudTrail: CreateUser iam-backdoor by {user} from {ip} region ap-southeast-1 (first time). AttachRolePolicy AdministratorAccess. CreateAccessKey AKIA{h1}. MFA=false UserAgent=python-boto3"),
+        ("CloudTrail Disabled", "TrailTamper", "StopLogging on CloudTrail main-trail by {user} from {ip}. DeleteFlowLogs on vpc-prod. PutRetentionPolicy days=1 on /aws/cloudtrail. 3 regions: us-east-1, eu-west-1, ap-southeast-1"),
+        ("Security Group Open", "SG_Open", "AuthorizeSecurityGroupIngress 0.0.0.0/0 port 22 by {user} from {ip}. RunInstances: 20 x c5.4xlarge in ap-southeast-1 (cryptomining pattern). CreateAccessKey for {user}. Region never used before."),
     ]),
     ("supply_chain_compromise", "high", [
         ("Hash Mismatch", "SupplyChain", "npm install: hash mismatch for lodash@4.17.21 Expected:{h1} Got:{h2}"),
