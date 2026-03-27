@@ -36,7 +36,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
     started_at: offsetTime(500),
     completed_at: offsetTime(4700),
     duration_ms: 4200,
-    model_name: 'hydra-standard',
+    model_name: 'zovarc-standard',
     input: {
       task: 'Investigate DNS beaconing to updateservice-cdn.net from internal host 10.0.5.42',
       iocs: ['updateservice-cdn.net', '10.0.5.42'],
@@ -68,7 +68,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
       sandbox_type: 'docker',
       network_mode: 'none',
       timeout_seconds: 30,
-      seccomp_profile: 'hydra-sandbox',
+      seccomp_profile: 'zovarc-sandbox',
     },
     output: {
       exit_code: 0,
@@ -156,7 +156,7 @@ export const C2_BEACON_STEPS: WorkflowStep[] = [
     started_at: offsetTime(6500),
     completed_at: offsetTime(8600),
     duration_ms: 2100,
-    model_name: 'hydra-standard',
+    model_name: 'zovarc-standard',
     input: {
       report_type: 'incident',
       format: 'markdown',

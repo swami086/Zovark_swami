@@ -16,12 +16,12 @@ export const useTheme = () => useContext(ThemeContext);
 
 export function useThemeProvider(): ThemeContextType {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('hydra_theme');
+    const stored = localStorage.getItem('zovarc_theme');
     return (stored === 'light' || stored === 'dark') ? stored : 'dark';
   });
 
   useEffect(() => {
-    localStorage.setItem('hydra_theme', theme);
+    localStorage.setItem('zovarc_theme', theme);
     const root = document.documentElement;
     if (theme === 'light') {
       root.classList.add('light-mode');

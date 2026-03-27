@@ -5,11 +5,11 @@ let jwtToken: string | null = null;
 let currentUser: any = null;
 
 // Restore token and user from sessionStorage (survives page navigation, cleared on tab close)
-const savedToken = sessionStorage.getItem('hydra_token');
+const savedToken = sessionStorage.getItem('zovarc_token');
 if (savedToken) {
     jwtToken = savedToken;
 }
-const savedUser = sessionStorage.getItem('hydra_user');
+const savedUser = sessionStorage.getItem('zovarc_user');
 if (savedUser) {
     try { currentUser = JSON.parse(savedUser); } catch { /* ignore */ }
 }
@@ -18,18 +18,18 @@ export const setToken = (token: string, user: any) => {
     jwtToken = token;
     currentUser = user;
     // Store in sessionStorage so token survives page navigation (cleared on tab close)
-    sessionStorage.setItem('hydra_token', token);
-    sessionStorage.setItem('hydra_user', JSON.stringify(user));
+    sessionStorage.setItem('zovarc_token', token);
+    sessionStorage.setItem('zovarc_user', JSON.stringify(user));
 };
 
 export const clearToken = () => {
     jwtToken = null;
     currentUser = null;
-    sessionStorage.removeItem('hydra_token');
-    sessionStorage.removeItem('hydra_user');
+    sessionStorage.removeItem('zovarc_token');
+    sessionStorage.removeItem('zovarc_user');
     // Also clear any legacy localStorage tokens
-    localStorage.removeItem('hydra_token');
-    localStorage.removeItem('hydra_user');
+    localStorage.removeItem('zovarc_token');
+    localStorage.removeItem('zovarc_user');
 };
 
 export const getUser = () => currentUser;

@@ -147,7 +147,7 @@ const NewTask = () => {
                         New Investigation
                     </h1>
                     <p className="text-slate-400 text-sm mt-3">
-                        Describe the security investigation or upload a log file for analysis. Hydra will generate and execute detection scripts in an isolated sandbox.
+                        Describe the security investigation or upload a log file for analysis. Zovarc will generate and execute detection scripts in an isolated sandbox.
                     </p>
                 </div>
 
@@ -292,7 +292,7 @@ const NewTask = () => {
                                 rows={6}
                                 className="w-full bg-transparent text-slate-200 placeholder-slate-600 p-5 border-none focus:ring-0 resize-none text-base rounded-xl leading-relaxed"
                                 placeholder={selectedFile
-                                    ? "What should Hydra analyze in this file? (leave blank for default analysis)"
+                                    ? "What should Zovarc analyze in this file? (leave blank for default analysis)"
                                     : "Describe the security investigation or analysis you need..."
                                 }
                                 value={prompt}

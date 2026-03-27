@@ -54,12 +54,12 @@ export default function CostDashboard() {
                 setCostData({
                     total_cost: 127.45,
                     cost_by_model: {
-                        'hydra-fast': 45.20,
-                        'hydra-standard': 62.30,
-                        'hydra-reasoning': 19.95,
+                        'zovarc-fast': 45.20,
+                        'zovarc-standard': 62.30,
+                        'zovarc-reasoning': 19.95,
                     },
                     cost_by_tenant: {
-                        'hydra-dev': 52.10,
+                        'zovarc-dev': 52.10,
                         'acme-corp': 38.75,
                         'security-inc': 36.60,
                     },

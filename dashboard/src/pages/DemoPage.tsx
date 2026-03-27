@@ -27,7 +27,7 @@ export default function DemoPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Demo Mode</h1>
-            <p className="text-slate-400 mt-1">Experience HYDRA's autonomous investigation capabilities</p>
+            <p className="text-slate-400 mt-1">Experience ZOVARC's autonomous investigation capabilities</p>
           </div>
         </div>
         <DemoSelector onStart={handleStart} />
@@ -66,7 +66,7 @@ export default function DemoPage() {
               )}
             </div>
             <p className="text-slate-400 text-sm">
-              Outbound DNS beaconing to suspicious domain — automated investigation by HYDRA
+              Outbound DNS beaconing to suspicious domain — automated investigation by ZOVARC
             </p>
           </div>
           {!isRunning && hasStarted && (

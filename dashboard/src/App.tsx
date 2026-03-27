@@ -71,7 +71,7 @@ const Sidebar = () => {
       <div className="p-6 flex items-center space-x-3">
         <Hexagon className="w-6 h-6 text-cyan-500 fill-cyan-500/20" />
         <div className="flex flex-col">
-          <span className="font-bold text-lg tracking-wider sidebar-title leading-none">HYDRA</span>
+          <span className="font-bold text-lg tracking-wider sidebar-title leading-none">ZOVARC</span>
           <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400/70 font-semibold mt-0.5">Security Operations</span>
         </div>
       </div>
