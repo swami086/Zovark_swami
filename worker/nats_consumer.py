@@ -5,7 +5,7 @@ built on raw TCP sockets (no external library required).
 
 Falls back to polling DB if NATS unavailable.
 
-Connection: nats://hydra-nats:4222 (from NATS_URL env var)
+Connection: nats://zovarc-nats:4222 (from NATS_URL env var)
 """
 
 import json
@@ -18,7 +18,7 @@ import logger
 
 
 NATS_URL = os.environ.get("NATS_URL", "")
-DEFAULT_NATS_HOST = "hydra-nats"
+DEFAULT_NATS_HOST = "zovarc-nats"
 DEFAULT_NATS_PORT = 4222
 CONNECT_TIMEOUT = 5
 READ_TIMEOUT = 30
@@ -96,7 +96,7 @@ class NATSAlertConsumer:
                 connect_payload = json.dumps({
                     "verbose": False,
                     "pedantic": False,
-                    "name": f"hydra-worker-{self._worker_id}",
+                    "name": f"zovarc-worker-{self._worker_id}",
                     "lang": "python",
                     "version": "0.1.0",
                     "protocol": 1,

@@ -1,5 +1,5 @@
 """
-HYDRA Email Integration — Temporal Activity
+ZOVARC Email Integration — Temporal Activity
 Sends HTML email notifications for investigation events.
 Supports SMTP with TLS, multiple recipients per tenant.
 """
@@ -15,7 +15,7 @@ SMTP_HOST = os.environ.get("SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", "hydra@hydra.local")
+SMTP_FROM = os.environ.get("SMTP_FROM", "zovarc@zovarc.local")
 SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
 
 
@@ -58,7 +58,7 @@ td {{ padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }}
       <div class="field-value">{summary}</div>
     </div>
   </div>
-  <div class="footer">Sent by HYDRA SOC Automation Platform</div>
+  <div class="footer">Sent by ZOVARC SOC Automation Platform</div>
 </div>
 </body>
 </html>
@@ -86,9 +86,9 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; p
     <div class="field"><div class="field-label">Investigation</div><div class="field-value">{investigation_id}</div></div>
     <div class="field"><div class="field-label">Requester</div><div class="field-value">{requester}</div></div>
     <div class="field"><div class="field-label">Reason</div><div class="field-value">{reason}</div></div>
-    <p>Please log in to the HYDRA dashboard to approve or deny this action.</p>
+    <p>Please log in to the ZOVARC dashboard to approve or deny this action.</p>
   </div>
-  <div class="footer">Sent by HYDRA SOC Automation Platform</div>
+  <div class="footer">Sent by ZOVARC SOC Automation Platform</div>
 </div>
 </body>
 </html>
@@ -118,7 +118,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; p
     <div class="field"><div class="field-label">Elapsed</div><div class="field-value">{elapsed} minutes</div></div>
     <p>This investigation has exceeded its SLA target. Immediate attention required.</p>
   </div>
-  <div class="footer">Sent by HYDRA SOC Automation Platform</div>
+  <div class="footer">Sent by ZOVARC SOC Automation Platform</div>
 </div>
 </body>
 </html>
@@ -141,7 +141,7 @@ def _render_investigation_digest(data: dict) -> tuple:
     entities = data.get("entities", [])
     mitre = data.get("mitre_techniques", [])
 
-    subject = f"[HYDRA] Investigation {verdict.upper()} — {investigation_id[:8]}"
+    subject = f"[ZOVARC] Investigation {verdict.upper()} — {investigation_id[:8]}"
     html = INVESTIGATION_DIGEST_TEMPLATE.format(
         title=data.get("title", f"Investigation Complete: {verdict}"),
         header_color=SEVERITY_HEADER_COLORS.get(severity, "#6b7280"),
@@ -157,7 +157,7 @@ def _render_investigation_digest(data: dict) -> tuple:
 
 
 def _render_approval(data: dict) -> tuple:
-    subject = f"[HYDRA] Approval Required — {data.get('action', 'unknown')}"
+    subject = f"[ZOVARC] Approval Required — {data.get('action', 'unknown')}"
     html = APPROVAL_TEMPLATE.format(
         action=data.get("action", "unknown"),
         investigation_id=data.get("investigation_id", "N/A"),
@@ -168,7 +168,7 @@ def _render_approval(data: dict) -> tuple:
 
 
 def _render_sla_breach(data: dict) -> tuple:
-    subject = f"[HYDRA] SLA Breach — Investigation {data.get('investigation_id', 'N/A')[:8]}"
+    subject = f"[ZOVARC] SLA Breach — Investigation {data.get('investigation_id', 'N/A')[:8]}"
     html = SLA_BREACH_TEMPLATE.format(
         investigation_id=data.get("investigation_id", "N/A"),
         severity=data.get("severity", "high").upper(),

@@ -77,7 +77,7 @@ class TestValidateURLInternal:
         "http://minio:9000",
         "http://nats:4222",
         "http://jaeger:14268",
-        "http://hydra-api:8090/health",
+        "http://zovarc-api:8090/health",
         "http://pgbouncer:5432",
         "http://embedding-server:8001",
     ])
@@ -209,7 +209,7 @@ class TestIsInternal:
     @pytest.mark.parametrize("hostname", [
         "litellm", "postgres", "redis", "temporal", "minio",
         "nats", "jaeger", "embedding-server", "localhost",
-        "hydra-api", "pgbouncer",
+        "zovarc-api", "pgbouncer",
     ])
     def test_known_internal_hosts(self, hostname):
         assert self.ctrl.is_internal(hostname) is True

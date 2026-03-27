@@ -126,7 +126,7 @@ async def enrich_alert_with_attack_surface(params: dict) -> dict:
 
     import psycopg2
     from psycopg2.extras import RealDictCursor
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     conn = psycopg2.connect(db_url)
 
     try:

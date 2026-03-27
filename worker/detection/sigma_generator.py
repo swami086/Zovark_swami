@@ -24,7 +24,7 @@ except ImportError:
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 
@@ -92,7 +92,7 @@ async def generate_sigma_rule(data: dict) -> dict:
     Returns: {candidate_id, sigma_yaml, valid, error}
     """
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
     tier_config = get_tier_config("generate_sigma_rule")
     llm_model = tier_config["model"]
 

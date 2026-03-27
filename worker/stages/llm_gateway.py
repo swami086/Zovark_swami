@@ -11,8 +11,8 @@ from typing import Optional
 import httpx
 
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
 
 
 async def llm_call(

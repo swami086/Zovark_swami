@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Package HYDRA model artifacts for distribution
-# Output: hydra-model-{VERSION}.tar.gz
+# Package ZOVARC model artifacts for distribution
+# Output: zovarc-model-{VERSION}.tar.gz
 #
 # Contents:
 #   - scripts/start_llama_server.sh
@@ -14,10 +14,10 @@
 set -euo pipefail
 
 VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
-OUTPUT="hydra-model-${VERSION}.tar.gz"
+OUTPUT="zovarc-model-${VERSION}.tar.gz"
 TMPDIR=$(mktemp -d)
 
-echo "Packaging HYDRA model artifacts v${VERSION}..."
+echo "Packaging ZOVARC model artifacts v${VERSION}..."
 
 # Create manifest
 cat > "${TMPDIR}/model_manifest.json" << MANIFEST

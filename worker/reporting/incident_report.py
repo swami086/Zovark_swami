@@ -15,7 +15,7 @@ from model_config import get_tier_config
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 
@@ -57,7 +57,7 @@ def _generate_pdf(report_title, investigation_id, verdict, risk_score, exec_summ
         )
 
         story = []
-        story.append(Paragraph("HYDRA Investigation Report", title_style))
+        story.append(Paragraph("ZOVARC Investigation Report", title_style))
         story.append(Paragraph(
             f"Investigation: {investigation_id}<br/>"
             f"Verdict: {verdict} | Risk Score: {risk_score}/100",
@@ -104,7 +104,7 @@ async def generate_incident_report(data: dict) -> dict:
     Returns: {report_id, markdown_length, pdf_size_bytes}
     """
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
     tier_config = get_tier_config("generate_incident_report")
     llm_model = tier_config["model"]
 
@@ -224,7 +224,7 @@ async def generate_incident_report(data: dict) -> dict:
 
     # Build markdown report
     full_report = (
-        f"# HYDRA Investigation Report\n\n"
+        f"# ZOVARC Investigation Report\n\n"
         f"**Investigation ID:** {investigation_id}\n"
         f"**Verdict:** {verdict}\n"
         f"**Risk Score:** {risk_score}/100\n\n"
@@ -236,7 +236,7 @@ async def generate_incident_report(data: dict) -> dict:
 
     # Generate PDF
     pdf_data = _generate_pdf(
-        "HYDRA Investigation Report", investigation_id,
+        "ZOVARC Investigation Report", investigation_id,
         verdict, risk_score, exec_summary, timeline_text, remediation_text
     )
 

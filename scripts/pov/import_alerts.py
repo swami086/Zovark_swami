@@ -175,13 +175,13 @@ PARSERS = {
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Import SIEM alerts into HYDRA")
+    parser = argparse.ArgumentParser(description="Import SIEM alerts into ZOVARC")
     parser.add_argument("--format", choices=PARSERS.keys(), default="splunk",
                         help="SIEM export format (default: splunk)")
     parser.add_argument("--file", required=True, help="Path to alert export file")
     parser.add_argument("--tenant-id", required=True, help="Target tenant UUID")
     parser.add_argument("--api-url", default="http://localhost:8090",
-                        help="HYDRA API URL (default: http://localhost:8090)")
+                        help="ZOVARC API URL (default: http://localhost:8090)")
     parser.add_argument("--api-token", default="", help="JWT token for API auth")
     parser.add_argument("--investigate", action="store_true",
                         help="Submit each alert for investigation after import")

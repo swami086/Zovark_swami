@@ -3,7 +3,7 @@
 
 TOKEN=$(curl -s -X POST http://localhost:8090/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"admin@test.local","password":"TestPass2026"}' | sed 's/.*"token":"\([^"]*\)".*/\1/')
 
-docker compose exec -T redis redis-cli -a hydra-redis-dev-2026 FLUSHDB 2>/dev/null
+docker compose exec -T redis redis-cli -a zovarc-redis-dev-2026 FLUSHDB 2>/dev/null
 
 echo "=== Submitting 11 investigations ==="
 
@@ -12,10 +12,10 @@ submit() {
   local R=$(curl -s -X POST http://localhost:8090/api/v1/tasks -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$data")
   local TID=$(echo "$R" | sed 's/.*"task_id":"\([^"]*\)".*/\1/')
   echo "[$num] $name: $TID"
-  echo "$TID" >> /tmp/hydra_11_ids.txt
+  echo "$TID" >> /tmp/zovarc_11_ids.txt
 }
 
-rm -f /tmp/hydra_11_ids.txt
+rm -f /tmp/zovarc_11_ids.txt
 
 submit 1 phishing '{"task_type":"phishing_investigation","input":{"prompt":"Investigate phishing email","severity":"high","siem_event":{"raw_log":"From: ceo@evil.com Subject: Wire Transfer Click: http://phish.evil.com src_ip=203.0.113.50 hostname=MAIL-GW-01 username=jdoe","source_ip":"203.0.113.50","destination_ip":"10.0.0.5","hostname":"MAIL-GW-01","username":"jdoe"}}}'
 
@@ -59,7 +59,7 @@ for attempt in $(seq 1 20); do
       ALL_DONE=false
     fi
     IDX=$((IDX + 1))
-  done < /tmp/hydra_11_ids.txt
+  done < /tmp/zovarc_11_ids.txt
 
   if [ "$ALL_DONE" = true ]; then
     break
@@ -96,4 +96,4 @@ while IFS= read -r TID; do
 
   TIME_S=$((${EXEC_MS:-0} / 1000))
   echo "$IDX | $NAME | $STATUS | ${RISK:-0} | $FINDING_COUNT | $IOC_COUNT | ${VERDICT:-n/a} | ${TIME_S}s"
-done < /tmp/hydra_11_ids.txt
+done < /tmp/zovarc_11_ids.txt

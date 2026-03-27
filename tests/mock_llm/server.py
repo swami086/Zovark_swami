@@ -56,8 +56,8 @@ class MockLLMHandler(BaseHTTPRequestHandler):
                 "data": [
                     {"id": "fast", "object": "model", "owned_by": "mock"},
                     {"id": "embed", "object": "model", "owned_by": "mock"},
-                    {"id": "hydra-fast", "object": "model", "owned_by": "mock"},
-                    {"id": "hydra-standard", "object": "model", "owned_by": "mock"},
+                    {"id": "zovarc-fast", "object": "model", "owned_by": "mock"},
+                    {"id": "zovarc-standard", "object": "model", "owned_by": "mock"},
                 ]
             })
         else:
@@ -153,7 +153,7 @@ class MockLLMHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="HYDRA Mock LLM Server")
+    parser = argparse.ArgumentParser(description="ZOVARC Mock LLM Server")
     parser.add_argument("--port", type=int, default=4000, help="Port to listen on")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind to")
     args = parser.parse_args()

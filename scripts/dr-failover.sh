@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================
-# HYDRA Disaster Recovery Failover Script
+# ZOVARC Disaster Recovery Failover Script
 # Automates failover from primary to secondary region
 # Usage: ./scripts/dr-failover.sh <target-region>
 #   e.g. ./scripts/dr-failover.sh eu-west-1
@@ -19,9 +19,9 @@ if [ -z "${TARGET_REGION}" ]; then
     exit 1
 fi
 
-NAMESPACE="${HYDRA_NAMESPACE:-hydra}"
+NAMESPACE="${ZOVARC_NAMESPACE:-zovarc}"
 PRIMARY_DB_HOST="${PRIMARY_DB_HOST:-postgres-primary.us-east-1}"
-LOG_FILE="/tmp/hydra-dr-failover-$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="/tmp/zovarc-dr-failover-$(date +%Y%m%d_%H%M%S).log"
 
 log() {
     MSG="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -30,7 +30,7 @@ log() {
 }
 
 log "============================================================"
-log "HYDRA DR Failover — Target Region: ${TARGET_REGION}"
+log "ZOVARC DR Failover — Target Region: ${TARGET_REGION}"
 log "============================================================"
 log "Log file: ${LOG_FILE}"
 echo ""
@@ -39,8 +39,8 @@ echo ""
 log "Running pre-flight checks..."
 
 # Check kubectl connectivity to target region
-if ! kubectl config use-context "hydra-${TARGET_REGION}" 2>/dev/null; then
-    log "WARNING: Could not switch to context hydra-${TARGET_REGION}"
+if ! kubectl config use-context "zovarc-${TARGET_REGION}" 2>/dev/null; then
+    log "WARNING: Could not switch to context zovarc-${TARGET_REGION}"
     log "Attempting with current context..."
 fi
 
@@ -63,7 +63,7 @@ if [ -n "${PG_POD}" ]; then
 
     # Check if this is already a primary
     IS_REPLICA=$(kubectl exec -n "${NAMESPACE}" "${PG_POD}" -- \
-        psql -U hydra -d hydra -t -c "SELECT pg_is_in_recovery();" 2>/dev/null | tr -d ' ' || echo "unknown")
+        psql -U zovarc -d zovarc -t -c "SELECT pg_is_in_recovery();" 2>/dev/null | tr -d ' ' || echo "unknown")
 
     if [ "${IS_REPLICA}" = "t" ]; then
         log "  Promoting replica to primary..."
@@ -75,7 +75,7 @@ if [ -n "${PG_POD}" ]; then
         sleep 5
 
         IS_PRIMARY=$(kubectl exec -n "${NAMESPACE}" "${PG_POD}" -- \
-            psql -U hydra -d hydra -t -c "SELECT NOT pg_is_in_recovery();" 2>/dev/null | tr -d ' ' || echo "unknown")
+            psql -U zovarc -d zovarc -t -c "SELECT NOT pg_is_in_recovery();" 2>/dev/null | tr -d ' ' || echo "unknown")
 
         if [ "${IS_PRIMARY}" = "t" ]; then
             log "  PostgreSQL promoted to primary successfully"
@@ -95,9 +95,9 @@ fi
 log "Step 2: Updating application configuration..."
 
 # Update the database URL to point to local (promoted) PostgreSQL
-kubectl patch secret hydra-db-credentials -n "${NAMESPACE}" \
+kubectl patch secret zovarc-db-credentials -n "${NAMESPACE}" \
     --type='json' \
-    -p="[{\"op\": \"replace\", \"path\": \"/stringData/direct-url\", \"value\": \"postgresql://hydra:hydra_dev_2026@postgres:5432/hydra\"}]" \
+    -p="[{\"op\": \"replace\", \"path\": \"/stringData/direct-url\", \"value\": \"postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc\"}]" \
     2>/dev/null || log "  WARNING: Could not update DB credentials secret"
 
 log "  Application config updated"
@@ -106,17 +106,17 @@ log "  Application config updated"
 log "Step 3: Restarting application services..."
 
 for COMPONENT in api worker; do
-    if kubectl get deployment "hydra-${COMPONENT}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-        kubectl rollout restart deployment/"hydra-${COMPONENT}" -n "${NAMESPACE}"
-        log "  Restarted hydra-${COMPONENT}"
+    if kubectl get deployment "zovarc-${COMPONENT}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+        kubectl rollout restart deployment/"zovarc-${COMPONENT}" -n "${NAMESPACE}"
+        log "  Restarted zovarc-${COMPONENT}"
     fi
 done
 
 # Wait for rollouts
 for COMPONENT in api worker; do
-    if kubectl get deployment "hydra-${COMPONENT}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-        kubectl rollout status deployment/"hydra-${COMPONENT}" -n "${NAMESPACE}" --timeout=180s 2>/dev/null || \
-            log "  WARNING: hydra-${COMPONENT} rollout timeout"
+    if kubectl get deployment "zovarc-${COMPONENT}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+        kubectl rollout status deployment/"zovarc-${COMPONENT}" -n "${NAMESPACE}" --timeout=180s 2>/dev/null || \
+            log "  WARNING: zovarc-${COMPONENT} rollout timeout"
     fi
 done
 
@@ -156,10 +156,10 @@ echo ""
 echo "  Option A (Route 53):"
 echo "    aws route53 change-resource-record-sets \\"
 echo "      --hosted-zone-id <ZONE_ID> \\"
-echo "      --change-batch '{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"hydra.example.com\",\"Type\":\"A\",\"SetIdentifier\":\"${TARGET_REGION}\",\"Region\":\"${TARGET_REGION}\",\"AliasTarget\":{\"DNSName\":\"<ALB_DNS>\",\"HostedZoneId\":\"<ALB_ZONE>\",\"EvaluateTargetHealth\":true}}}]}'"
+echo "      --change-batch '{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"zovarc.example.com\",\"Type\":\"A\",\"SetIdentifier\":\"${TARGET_REGION}\",\"Region\":\"${TARGET_REGION}\",\"AliasTarget\":{\"DNSName\":\"<ALB_DNS>\",\"HostedZoneId\":\"<ALB_ZONE>\",\"EvaluateTargetHealth\":true}}}]}'"
 echo ""
 echo "  Option B (Manual):"
-echo "    Update hydra.example.com A record to ${TARGET_REGION} load balancer IP"
+echo "    Update zovarc.example.com A record to ${TARGET_REGION} load balancer IP"
 echo ""
 echo "============================================================"
 

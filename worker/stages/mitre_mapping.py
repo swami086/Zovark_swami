@@ -1,4 +1,4 @@
-"""MITRE ATT&CK technique mapping for HYDRA investigation types."""
+"""MITRE ATT&CK technique mapping for ZOVARC investigation types."""
 
 MITRE_MAP = {
     "phishing_investigation": [

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Sprint 10: Enterprise Polish + Demo Readiness
-Seed script for generating realistic demo data for the Hydra platform.
-Run via: docker exec hydra-worker python /app/scripts/seed_demo.py
+Seed script for generating realistic demo data for the Zovarc platform.
+Run via: docker exec zovarc-worker python /app/scripts/seed_demo.py
 """
 
 import psycopg2
@@ -12,7 +12,7 @@ import random
 import datetime
 import os
 
-DB_URI = os.getenv("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+DB_URI = os.getenv("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
 
 # Demo scenarios by type
 SCENARIOS = {

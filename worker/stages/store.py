@@ -15,8 +15,8 @@ import psycopg2
 from temporalio import activity
 from stages import StoreOutput
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
-FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+FAST_FILL = os.environ.get("ZOVARC_FAST_FILL", "false").lower() == "true"
 
 
 def _get_db():
@@ -37,7 +37,7 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
                         error_message: str = None, model_name: str = "unknown"):
     """Update agent_tasks with final status. Uses synchronous_commit for durability."""
     worker_id = _get_worker_id()
-    human_review_threshold = int(os.environ.get("HYDRA_HUMAN_REVIEW_THRESHOLD", "60"))
+    human_review_threshold = int(os.environ.get("ZOVARC_HUMAN_REVIEW_THRESHOLD", "60"))
 
     risk_score = 0
     if isinstance(output, dict):

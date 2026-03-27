@@ -12,14 +12,14 @@ import urllib.request
 import urllib.error
 import pytest
 
-API_BASE = os.environ.get("HYDRA_API_URL", "http://localhost:8090")
-ADMIN_EMAIL = os.environ.get("HYDRA_ADMIN_EMAIL", "admin@hydra.local")
-ADMIN_PASSWORD = os.environ.get("HYDRA_ADMIN_PASSWORD", "hydra123")
+API_BASE = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+ADMIN_EMAIL = os.environ.get("ZOVARC_ADMIN_EMAIL", "admin@zovarc.local")
+ADMIN_PASSWORD = os.environ.get("ZOVARC_ADMIN_PASSWORD", "zovarc123")
 TIMEOUT = 120  # seconds
 
 
 def _api(method, path, data=None, token=None):
-    """Make HTTP request to HYDRA API."""
+    """Make HTTP request to ZOVARC API."""
     url = f"{API_BASE}{path}"
     headers = {"Content-Type": "application/json"}
     if token:
@@ -59,7 +59,7 @@ def _login(email=ADMIN_EMAIL, password=ADMIN_PASSWORD):
 def api_health():
     """Verify API is reachable before running integration tests."""
     if not _check_health():
-        pytest.skip("HYDRA API not available — start Docker Compose first")
+        pytest.skip("ZOVARC API not available — start Docker Compose first")
     return True
 
 
@@ -108,7 +108,7 @@ class TestAuthFlow:
 
     def test_login_invalid_credentials(self, api_health):
         status, body = _api("POST", "/api/v1/auth/login", {
-            "email": "wrong@hydra.local",
+            "email": "wrong@zovarc.local",
             "password": "wrongpassword",
         })
         assert status == 401

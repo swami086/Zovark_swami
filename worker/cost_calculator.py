@@ -2,29 +2,29 @@
 
 COST_PER_1K = {
     # Fast tier (Groq)
-    'hydra-fast': {'input': 0.0002, 'output': 0.0002},
+    'zovarc-fast': {'input': 0.0002, 'output': 0.0002},
     'groq/llama-3.1-8b-instant': {'input': 0.0002, 'output': 0.0002},
     # Fast fallback (Gemini Flash)
-    'hydra-fast-fallback': {'input': 0.001, 'output': 0.002},
+    'zovarc-fast-fallback': {'input': 0.001, 'output': 0.002},
     'openrouter/google/gemini-flash-1.5': {'input': 0.001, 'output': 0.002},
     # Standard tier (Gemini Pro)
-    'hydra-standard': {'input': 0.003, 'output': 0.015},
+    'zovarc-standard': {'input': 0.003, 'output': 0.015},
     'openrouter/google/gemini-pro-1.5': {'input': 0.003, 'output': 0.015},
     # Standard fallback (Claude Sonnet)
-    'hydra-standard-fallback': {'input': 0.003, 'output': 0.015},
+    'zovarc-standard-fallback': {'input': 0.003, 'output': 0.015},
     'anthropic/claude-sonnet-4-20250514': {'input': 0.003, 'output': 0.015},
     # Standard emergency (GPT-4o-mini)
-    'hydra-standard-emergency': {'input': 0.00015, 'output': 0.0006},
+    'zovarc-standard-emergency': {'input': 0.00015, 'output': 0.0006},
     'openai/gpt-4o-mini': {'input': 0.00015, 'output': 0.0006},
     # Reasoning tier (Claude Sonnet)
-    'hydra-reasoning': {'input': 0.003, 'output': 0.015},
+    'zovarc-reasoning': {'input': 0.003, 'output': 0.015},
     # Reasoning fallback (GPT-4o)
-    'hydra-reasoning-fallback': {'input': 0.005, 'output': 0.015},
+    'zovarc-reasoning-fallback': {'input': 0.005, 'output': 0.015},
     'openai/gpt-4o': {'input': 0.005, 'output': 0.015},
     # Air-gap (Ollama — free, local)
-    'hydra-fast-airgap': {'input': 0.0, 'output': 0.0},
-    'hydra-standard-airgap': {'input': 0.0, 'output': 0.0},
-    'hydra-reasoning-airgap': {'input': 0.0, 'output': 0.0},
+    'zovarc-fast-airgap': {'input': 0.0, 'output': 0.0},
+    'zovarc-standard-airgap': {'input': 0.0, 'output': 0.0},
+    'zovarc-reasoning-airgap': {'input': 0.0, 'output': 0.0},
     'ollama/qwen2.5:7b': {'input': 0.0, 'output': 0.0},
     # Legacy
     'fast': {'input': 0.0002, 'output': 0.0002},

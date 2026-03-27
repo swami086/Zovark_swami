@@ -12,7 +12,7 @@ from stages.register import get_v2_activities, get_v2_workflows
 from activities import fetch_task, log_audit, log_audit_event, record_usage, update_task_status, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, check_requires_approval, create_approval_request, update_approval_request
 from entity_graph import extract_entities, write_entity_graph, embed_investigation
 # Non-investigation workflows
-from workflows.hydra_workflows import (
+from workflows.zovarc_workflows import (
     ZeekIngestionWorkflow, DeepLogAnalysisWorkflow,
     SandboxAnalysisWorkflow, InvestigationEnrichmentWorkflow,
 )
@@ -65,6 +65,11 @@ from workflows.feedback_aggregation import (
 )
 from workflows.kev_processing import (
     KEVProcessingWorkflow, fetch_unprocessed_kev_entries, process_kev_entry,
+)
+# Sprint 2C — Cipher audit nightly cron
+from workflows.cipher_audit_cron import (
+    CipherAuditCronWorkflow, refresh_cipher_audit_summary,
+    flag_new_critical_ciphers, compute_cipher_trend_metrics,
 )
 # Sprint v0.10.0 — Shadow Mode, PII, Anti-Stampede, Token Quota
 from shadow import ShadowInvestigationWorkflow, generate_recommendation, check_automation_mode, record_human_decision, compute_conformance_metrics, check_mode_graduation
@@ -127,7 +132,7 @@ async def main():
 
     worker = Worker(
         client,
-        task_queue="hydra-tasks",
+        task_queue="zovarc-tasks",
         # 16 workflows
         # V2 investigation pipeline + non-investigation workflows
         workflows=get_v2_workflows() + [
@@ -138,6 +143,7 @@ async def main():
             ZeekIngestionWorkflow, DeepLogAnalysisWorkflow,
             SandboxAnalysisWorkflow, InvestigationEnrichmentWorkflow,
             FeedbackAggregationWorkflow, KEVProcessingWorkflow,
+            CipherAuditCronWorkflow,
         ],
         # V2 stage activities + shared activities for non-investigation workflows
         activities=get_v2_activities() + [
@@ -206,9 +212,11 @@ async def main():
             refresh_materialized_views, emit_feedback_summary,
             # KEV processing (Sprint v0.15.0)
             fetch_unprocessed_kev_entries, process_kev_entry,
+            # Cipher audit cron (Sprint 2C)
+            refresh_cipher_audit_summary, flag_new_critical_ciphers, compute_cipher_trend_metrics,
         ],
     )
-    logger.info("Worker starting", task_queue="hydra-tasks", workflows=16, activities=104)
+    logger.info("Worker starting", task_queue="zovarc-tasks", workflows=17, activities=107)
 
     try:
         await worker.run()

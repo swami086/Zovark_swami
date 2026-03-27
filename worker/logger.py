@@ -1,4 +1,4 @@
-"""Structured JSON logging for HYDRA worker."""
+"""Structured JSON logging for ZOVARC worker."""
 
 import json
 import sys

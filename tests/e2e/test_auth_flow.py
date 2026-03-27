@@ -17,7 +17,7 @@ class TestRegistration:
                 "email": email,
                 "password": "SecurePass123",
                 "display_name": "Reg Test User",
-                "tenant_id": "hydra-dev",
+                "tenant_id": "zovarc-dev",
             },
         )
         assert resp.status_code == 201, f"Registration failed: {resp.text}"
@@ -32,7 +32,7 @@ class TestRegistration:
             "email": email,
             "password": "SecurePass123",
             "display_name": "Dup User",
-            "tenant_id": "hydra-dev",
+            "tenant_id": "zovarc-dev",
         }
         resp1 = requests.post(f"{api_url}/api/v1/auth/register", json=payload)
         assert resp1.status_code == 201
@@ -56,7 +56,7 @@ class TestRegistration:
                 "email": "not-an-email",
                 "password": "SecurePass123",
                 "display_name": "Bad Email",
-                "tenant_id": "hydra-dev",
+                "tenant_id": "zovarc-dev",
             },
         )
         assert resp.status_code == 400
@@ -69,7 +69,7 @@ class TestLogin:
         """Login with valid admin credentials returns token."""
         resp = requests.post(
             f"{api_url}/api/v1/auth/login",
-            json={"email": "admin@hydra.local", "password": "hydra123"},
+            json={"email": "admin@zovarc.local", "password": "zovarc123"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -80,7 +80,7 @@ class TestLogin:
         """Login with wrong password returns 401."""
         resp = requests.post(
             f"{api_url}/api/v1/auth/login",
-            json={"email": "admin@hydra.local", "password": "wrong-password"},
+            json={"email": "admin@zovarc.local", "password": "wrong-password"},
         )
         assert resp.status_code == 401
 
@@ -96,7 +96,7 @@ class TestLogin:
         """Login with missing fields returns 400."""
         resp = requests.post(
             f"{api_url}/api/v1/auth/login",
-            json={"email": "admin@hydra.local"},
+            json={"email": "admin@zovarc.local"},
         )
         assert resp.status_code == 400
 

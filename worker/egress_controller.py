@@ -28,7 +28,7 @@ ALLOWED_DOMAINS = {
 NO_PROXY_HOSTS = {
     "litellm", "postgres", "redis", "temporal", "minio",
     "nats", "jaeger", "embedding-server", "localhost",
-    "hydra-api", "pgbouncer",
+    "zovarc-api", "pgbouncer",
 }
 
 PROXY_URL = os.environ.get("HTTP_PROXY", os.environ.get("HTTPS_PROXY", ""))

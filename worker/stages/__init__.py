@@ -1,5 +1,5 @@
 """
-HYDRA Investigation Pipeline — 5-Stage Architecture
+ZOVARC Investigation Pipeline — 5-Stage Architecture
 
 Stage 1: INGEST  — dedup, PII mask, validate (no LLM)
 Stage 2: ANALYZE — template/LLM/stub code generation (LLM contained here)

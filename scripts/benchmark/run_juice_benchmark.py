@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HYDRA Juice Shop Benchmark Runner — submits real-traffic corpus to HYDRA pipeline.
+ZOVARC Juice Shop Benchmark Runner — submits real-traffic corpus to ZOVARC pipeline.
 
 Usage:
     python scripts/benchmark/run_juice_benchmark.py
@@ -18,15 +18,15 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 
-API_URL = os.environ.get("HYDRA_API_URL", "http://localhost:8090")
+API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
 CORPUS_PATH = Path(__file__).parent / "juice_shop_corpus.json"
 RESULTS_PATH = Path(__file__).parent / "juice_shop_results.json"
 REPORT_PATH = Path("docs/JUICE_SHOP_BENCHMARK.md")
 
 
 def login(api_url):
-    email = os.environ.get("HYDRA_TEST_EMAIL", "admin@test.local")
-    password = os.environ.get("HYDRA_TEST_PASSWORD", "TestPass2026")
+    email = os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local")
+    password = os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026")
     payload = json.dumps({"email": email, "password": password}).encode()
     req = urllib.request.Request(f"{api_url}/api/v1/auth/login", data=payload,
                                  headers={"Content-Type": "application/json"})
@@ -63,7 +63,7 @@ def get_fresh_token(api_url, force=False):
 def flush_redis():
     import subprocess
     try:
-        redis_pw = os.environ.get("REDIS_PASSWORD", "hydra-redis-dev-2026")
+        redis_pw = os.environ.get("REDIS_PASSWORD", "zovarc-redis-dev-2026")
         subprocess.run(["docker", "compose", "exec", "-T", "redis", "redis-cli", "-a", redis_pw, "FLUSHDB"],
                       capture_output=True, timeout=10)
     except Exception:
@@ -173,7 +173,7 @@ def generate_report(results, corpus_size):
     n_timeout = sum(1 for r in results if r["status"] == "timeout")
     n_error = sum(1 for r in results if r["status"] == "error")
 
-    report = f"""# HYDRA Accuracy Benchmark: OWASP Juice Shop
+    report = f"""# ZOVARC Accuracy Benchmark: OWASP Juice Shop
 ## Real-Traffic Test (not synthetic)
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
@@ -224,7 +224,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 - **Target:** OWASP Juice Shop v17 (Docker)
 - **Attack types:** SQL injection, XSS, path traversal, broken auth, IDOR, SSRF, file upload, command injection
 - **Benign traffic:** Normal logins, product searches, API calls
-- **Pipeline:** HYDRA V2 (Ingest -> Analyze -> Execute -> Assess -> Store)
+- **Pipeline:** ZOVARC V2 (Ingest -> Analyze -> Execute -> Assess -> Store)
 - **Scoring:** Exact match on verdict category (TP detection counts suspicious as partial credit)
 
 > NOTE: This benchmark uses REAL attack traffic against OWASP Juice Shop,
@@ -234,7 +234,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
 
 def main():
-    parser = argparse.ArgumentParser(description="HYDRA Juice Shop Benchmark")
+    parser = argparse.ArgumentParser(description="ZOVARC Juice Shop Benchmark")
     parser.add_argument("--limit", type=int, default=0, help="Max alerts (0=all)")
     parser.add_argument("--spacing", type=int, default=30, help="Seconds between submissions")
     parser.add_argument("--timeout", type=int, default=300, help="Max seconds per alert")
@@ -250,7 +250,7 @@ def main():
     if args.limit > 0:
         corpus = corpus[:args.limit]
 
-    print(f"HYDRA Juice Shop Benchmark")
+    print(f"ZOVARC Juice Shop Benchmark")
     print(f"  Corpus:  {len(corpus)} alerts")
     print(f"  Spacing: {args.spacing}s")
     print()

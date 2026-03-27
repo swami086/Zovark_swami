@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HYDRA 200-Alert Accuracy Benchmark Runner.
+ZOVARC 200-Alert Accuracy Benchmark Runner.
 Submits all alerts from corpus_200.json, polls for completion, scores results.
 
 Usage:
@@ -18,15 +18,15 @@ import urllib.request
 from pathlib import Path
 from datetime import datetime
 
-API_URL = os.environ.get("HYDRA_API_URL", "http://localhost:8090")
+API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
 CORPUS_PATH = Path(__file__).parent / "corpus_200.json"
 RESULTS_PATH = Path(__file__).parent / "results_raw.json"
 PROGRESS_PATH = Path(__file__).parent / "progress.json"
 
 
 def login(api_url):
-    email = os.environ.get("HYDRA_TEST_EMAIL", "admin@test.local")
-    password = os.environ.get("HYDRA_TEST_PASSWORD", "TestPass2026")
+    email = os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local")
+    password = os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026")
     payload = json.dumps({"email": email, "password": password}).encode()
     req = urllib.request.Request(f"{api_url}/api/v1/auth/login", data=payload,
                                  headers={"Content-Type": "application/json"})
@@ -81,7 +81,7 @@ def load_progress(path=PROGRESS_PATH):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="HYDRA 200-Alert Benchmark Runner")
+    parser = argparse.ArgumentParser(description="ZOVARC 200-Alert Benchmark Runner")
     parser.add_argument("--limit", type=int, default=0, help="Max alerts to run (0=all)")
     parser.add_argument("--resume", action="store_true", help="Resume from progress file")
     parser.add_argument("--spacing", type=int, default=30, help="Seconds between submissions")
@@ -96,7 +96,7 @@ def main():
     if args.limit > 0:
         corpus = corpus[:args.limit]
 
-    print(f"HYDRA 200-Alert Accuracy Benchmark")
+    print(f"ZOVARC 200-Alert Accuracy Benchmark")
     print(f"  Corpus:  {len(corpus)} alerts")
     print(f"  Spacing: {args.spacing}s")
     print(f"  Timeout: {args.timeout}s per alert")

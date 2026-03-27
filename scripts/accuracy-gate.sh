@@ -1,5 +1,5 @@
 #!/bin/bash
-# HYDRA Accuracy Gate
+# ZOVARC Accuracy Gate
 #
 # Runs accuracy validation tests and fails if accuracy drops below threshold.
 # Designed for CI pipelines and local pre-merge checks.
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "========================================="
-echo "  HYDRA Accuracy Gate"
+echo "  ZOVARC Accuracy Gate"
 echo "  Threshold: ${THRESHOLD}%"
 echo "  Mode: ${MODE:-LIVE}"
 echo "========================================="

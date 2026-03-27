@@ -1,1 +1,1 @@
-"""Model registry and routing for HYDRA."""
+"""Model registry and routing for ZOVARC."""

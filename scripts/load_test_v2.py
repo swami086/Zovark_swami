@@ -1,4 +1,4 @@
-"""HYDRA load test — measures throughput, latency, and rate limiting.
+"""ZOVARC load test — measures throughput, latency, and rate limiting.
 
 Usage:
     python scripts/load_test_v2.py [--report test-results/load-test-report.json]
@@ -16,9 +16,9 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from statistics import mean, quantiles
 
-API_BASE = os.environ.get("HYDRA_API_URL", "http://localhost:8090")
-ADMIN_EMAIL = os.environ.get("HYDRA_ADMIN_EMAIL", "admin@hydra.local")
-ADMIN_PASSWORD = os.environ.get("HYDRA_ADMIN_PASSWORD", "hydra123")
+API_BASE = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+ADMIN_EMAIL = os.environ.get("ZOVARC_ADMIN_EMAIL", "admin@zovarc.local")
+ADMIN_PASSWORD = os.environ.get("ZOVARC_ADMIN_PASSWORD", "zovarc123")
 
 
 def api_call(method, path, data=None, token=None, timeout=30):
@@ -131,11 +131,11 @@ def test_concurrent_burst(token, count=10):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="HYDRA Load Test")
+    parser = argparse.ArgumentParser(description="ZOVARC Load Test")
     parser.add_argument("--report", default="test-results/load-test-report.json")
     args = parser.parse_args()
 
-    print("HYDRA Load Test")
+    print("ZOVARC Load Test")
     print("=" * 50)
 
     # Check health

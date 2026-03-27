@@ -1,13 +1,13 @@
 #!/bin/bash
-# Bulk create HYDRA GitHub issues
+# Bulk create ZOVARC GitHub issues
 GH="/c/Program Files/GitHub CLI/gh.exe"
-REPO="7inaydas-cmyk/hydra-mvp"
+REPO="7inaydas-cmyk/zovarc-mvp"
 CREATED=0
 
 ci() {
     local title="$1" milestone="$2" labels="$3" body="$4"
-    echo "$body" > /tmp/hydra_issue.md
-    url=$("$GH" issue create --repo "$REPO" --title "$title" --milestone "$milestone" --label "$labels" --body-file /tmp/hydra_issue.md 2>&1)
+    echo "$body" > /tmp/zovarc_issue.md
+    url=$("$GH" issue create --repo "$REPO" --title "$title" --milestone "$milestone" --label "$labels" --body-file /tmp/zovarc_issue.md 2>&1)
     CREATED=$((CREATED + 1))
     echo "  #$CREATED: $title -> $url"
     sleep 1
@@ -17,7 +17,7 @@ echo "=== M1: Production Foundation ==="
 
 ci "TLS termination — HTTPS enforcement for all services" "M1: Production Foundation" "security,deployment,priority:critical" \
 "## Description
-All HYDRA services communicate over plaintext HTTP. Production must encrypt browser-API, API-LiteLLM, and API-Temporal traffic.
+All ZOVARC services communicate over plaintext HTTP. Production must encrypt browser-API, API-LiteLLM, and API-Temporal traffic.
 
 ## Acceptance Criteria
 - [ ] Add Caddy or Traefik reverse proxy to \`docker-compose.yml\`
@@ -25,8 +25,8 @@ All HYDRA services communicate over plaintext HTTP. Production must encrypt brow
 - [ ] Let's Encrypt ACME for production domains
 - [ ] API accessible only via HTTPS (443)
 - [ ] Dashboard served behind reverse proxy
-- [ ] Internal services remain HTTP on \`hydra-internal\` network
-- [ ] \`HYDRA_TLS_ENABLED=true\` env variable to toggle
+- [ ] Internal services remain HTTP on \`zovarc-internal\` network
+- [ ] \`ZOVARC_TLS_ENABLED=true\` env variable to toggle
 - [ ] HSTS header on all API responses when TLS enabled
 - [ ] Document certificate setup in DEPLOYMENT_GUIDE.md
 
@@ -42,7 +42,7 @@ All secrets in \`.env\` files visible in \`docker inspect\`, process env, and lo
 ## Acceptance Criteria
 - [ ] Abstract secret loading: \`secrets.Get(key)\` in Go, \`get_secret(key)\` in Python
 - [ ] 3 backends: environment variables (default), HashiCorp Vault, AWS Secrets Manager
-- [ ] \`HYDRA_SECRETS_BACKEND=env|vault|aws\` env variable
+- [ ] \`ZOVARC_SECRETS_BACKEND=env|vault|aws\` env variable
 - [ ] Vault: AppRole auth, KV v2 engine
 - [ ] Rotate DB password without downtime (PgBouncer handles reconnection)
 - [ ] JWT signing key rotation: multiple active keys (JWK set)
@@ -80,7 +80,7 @@ External systems need API access without user JWT tokens. Add API key support wi
 - [ ] Accept \`X-API-Key\` header on all endpoints
 - [ ] Per-key permissions: \`tasks:read\`, \`tasks:write\`, \`alerts:write\`, \`admin:*\`
 - [ ] Per-key rate limit override (default: 300 req/min)
-- [ ] Key format: \`hydra_sk_\` + 32 random bytes (base62)
+- [ ] Key format: \`zovarc_sk_\` + 32 random bytes (base62)
 - [ ] Keys scoped to single tenant"
 
 ci "Database backup automation with S3/MinIO snapshots" "M1: Production Foundation" "deployment,backend,priority:high" \
@@ -88,14 +88,14 @@ ci "Database backup automation with S3/MinIO snapshots" "M1: Production Foundati
 PostgreSQL on Docker volumes with no backup. Disk failure loses everything.
 
 ## Acceptance Criteria
-- [ ] New \`hydra-backup\` service (Alpine + pg_dump + mc)
+- [ ] New \`zovarc-backup\` service (Alpine + pg_dump + mc)
 - [ ] Daily full backup at 02:00 UTC, hourly WAL archiving
-- [ ] Store in MinIO \`hydra-backups/\` with date-prefixed paths
+- [ ] Store in MinIO \`zovarc-backups/\` with date-prefixed paths
 - [ ] Retention: 7 daily, 4 weekly, 3 monthly
 - [ ] \`scripts/backup.sh\` and \`scripts/restore.sh\`
 - [ ] AES-256 encryption
 - [ ] Verification: restore to temp DB, check table counts
-- [ ] Prometheus metric: \`hydra_backup_last_success_timestamp\`"
+- [ ] Prometheus metric: \`zovarc_backup_last_success_timestamp\`"
 
 ci "Audit log export and SIEM forwarding" "M1: Production Foundation" "security,backend,priority:medium" \
 "## Description
@@ -103,7 +103,7 @@ Audit events in PostgreSQL only. Compliance requires forwarding to external SIEM
 
 ## Acceptance Criteria
 - [ ] \`GET /api/v1/audit/export\` — JSONL download (date range, max 10k)
-- [ ] Syslog forwarding: \`HYDRA_SYSLOG_TARGET=tcp://splunk:514\`
+- [ ] Syslog forwarding: \`ZOVARC_SYSLOG_TARGET=tcp://splunk:514\`
 - [ ] CEF format for SIEM compatibility
 - [ ] S3/MinIO archival: daily export of events >30 days old
 - [ ] Tamper detection: HMAC chain on exported logs
@@ -141,18 +141,18 @@ Inconsistent response formats across handlers. Standardize into predictable enve
 - [ ] Update all handlers to use envelope helpers
 - [ ] Update dashboard to parse new format"
 
-ci "Python SDK — typed client library for HYDRA API" "M2: API & SDK" "sdk,priority:high" \
+ci "Python SDK — typed client library for ZOVARC API" "M2: API & SDK" "sdk,priority:high" \
 "## Description
 Every integration hand-crafts HTTP calls. Python SDK reduces integration time from hours to minutes.
 
 ## Acceptance Criteria
-- [ ] Package: \`hydra-sdk\` (PyPI-publishable)
-- [ ] \`HydraClient(base_url, api_key=None, jwt_token=None)\`
+- [ ] Package: \`zovarc-sdk\` (PyPI-publishable)
+- [ ] \`ZovarcClient(base_url, api_key=None, jwt_token=None)\`
 - [ ] Methods: \`client.tasks.list()\`, \`client.tasks.create()\`, etc.
 - [ ] Response dataclasses: Task, Investigation, Alert, Entity, Playbook
-- [ ] \`AsyncHydraClient\` using \`httpx.AsyncClient\`
+- [ ] \`AsyncZovarcClient\` using \`httpx.AsyncClient\`
 - [ ] Auto-pagination helpers
-- [ ] Error classes: HydraAPIError, HydraAuthError, HydraRateLimitError
+- [ ] Error classes: ZovarcAPIError, ZovarcAuthError, ZovarcRateLimitError
 - [ ] Retry with exponential backoff on 429/503
 - [ ] Minimal deps: \`httpx\`, \`dataclasses\`
 - [ ] Directory: \`sdk/python/\`"
@@ -170,7 +170,7 @@ Only auth endpoints rate-limited. Task submission unlimited. Single tenant can D
 - [ ] Per-tenant override in \`tenants.settings\` JSONB
 - [ ] Admin exempt
 - [ ] Burst allowance: 2x for 10s window
-- [ ] Prometheus: \`hydra_api_rate_limited_total{tenant, endpoint}\`"
+- [ ] Prometheus: \`zovarc_api_rate_limited_total{tenant, endpoint}\`"
 
 ci "Bulk task creation endpoint" "M2: API & SDK" "backend,priority:medium" \
 "## Description
@@ -354,13 +354,13 @@ ci "Slack integration — notifications and interactive approvals" "M4: Integrat
 SOC teams live in Slack. Push investigation results, approval requests, and critical findings.
 
 ## Acceptance Criteria
-- [ ] Config: \`HYDRA_SLACK_BOT_TOKEN\`, \`HYDRA_SLACK_SIGNING_SECRET\`
+- [ ] Config: \`ZOVARC_SLACK_BOT_TOKEN\`, \`ZOVARC_SLACK_SIGNING_SECRET\`
 - [ ] Notifications: investigation completed, approval requested, critical finding
 - [ ] Channel routing configurable per tenant
 - [ ] Rich message cards: verdict, entities, dashboard link
 - [ ] Interactive Approve/Reject buttons
-- [ ] \`/hydra investigate <alert>\` slash command
-- [ ] \`/hydra status\` slash command
+- [ ] \`/zovarc investigate <alert>\` slash command
+- [ ] \`/zovarc status\` slash command
 - [ ] Thread replies for follow-up steps
 
 ## Technical Notes
@@ -375,7 +375,7 @@ SOAR playbook \`ticket\` action is a stub (NotImplementedError). Implement Jira 
 - [ ] Jira config per tenant: URL, email, API token, project key
 - [ ] Auto-create ticket on true_positive verdict
 - [ ] Fields: summary, description (report), priority, labels (MITRE), custom fields
-- [ ] Bi-directional: Jira status changes update HYDRA
+- [ ] Bi-directional: Jira status changes update ZOVARC
 - [ ] \`POST /api/v1/integrations/jira/test\` — Test connection
 - [ ] Dashboard: Jira ticket link on investigation detail
 - [ ] Implement \`ticket\` action in \`worker/response/actions.py\`
@@ -398,7 +398,7 @@ Enterprise SOCs on Teams need investigation notifications via Adaptive Cards.
 
 ci "VirusTotal integration — automated IOC enrichment" "M4: Integrations" "backend,worker,integration,priority:high" \
 "## Description
-HYDRA extracts entities but doesn't check threat intelligence feeds. Integrate VirusTotal for auto-enrichment.
+ZOVARC extracts entities but doesn't check threat intelligence feeds. Integrate VirusTotal for auto-enrichment.
 
 ## Acceptance Criteria
 - [ ] New activity: \`enrich_ioc_virustotal\`
@@ -446,7 +446,7 @@ Enterprise customers use ServiceNow. Implement bi-directional incident integrati
 - [ ] Config: instance URL, credentials
 - [ ] Auto-create incident on true_positive verdict
 - [ ] Field mapping: short_description, urgency, impact, assignment_group
-- [ ] Bi-directional: ServiceNow state changes update HYDRA
+- [ ] Bi-directional: ServiceNow state changes update ZOVARC
 - [ ] Webhook receiver for ServiceNow events
 - [ ] \`POST /api/v1/integrations/servicenow/test\`"
 
@@ -588,8 +588,8 @@ Tests require GPU (vLLM). Create mock LLM server for CPU-only CI.
 - [ ] Realistic usage object
 - [ ] Configurable latency (default 100ms)
 - [ ] Configurable error rate
-- [ ] Docker: \`hydra-mock-llm\` with \`--profile test\`
-- [ ] \`HYDRA_LLM_MOCK=true\` env variable
+- [ ] Docker: \`zovarc-mock-llm\` with \`--profile test\`
+- [ ] \`ZOVARC_LLM_MOCK=true\` env variable
 - [ ] Directory: \`tests/mock_llm/\`"
 
 ci "Sandbox escape test suite" "M6: Testing & Quality" "testing,security,priority:high" \
@@ -650,7 +650,7 @@ ci "Container registry — automated Docker image builds" "M7: Deployment & Scal
 CI builds but doesn't push to registry. Deployments require building from source.
 
 ## Acceptance Criteria
-- [ ] Push to \`ghcr.io/7inaydas-cmyk/hydra-mvp/{service}:{tag}\`
+- [ ] Push to \`ghcr.io/7inaydas-cmyk/zovarc-mvp/{service}:{tag}\`
 - [ ] Services: api, worker, dashboard, mock-llm
 - [ ] Tags: latest, v{semver}, sha-{commit}
 - [ ] Platform: linux/amd64
@@ -664,12 +664,12 @@ ci "Helm chart for Kubernetes deployment" "M7: Deployment & Scale" "deployment,p
 K8s uses Kustomize only. Helm provides better templating and release management.
 
 ## Acceptance Criteria
-- [ ] Chart: \`helm/hydra/\`
+- [ ] Chart: \`helm/zovarc/\`
 - [ ] \`values.yaml\` with sane defaults
 - [ ] Templates: Deployments, StatefulSets, Services, Ingress, HPA, NetworkPolicy
 - [ ] Sub-charts: PostgreSQL, Redis (bitnami, optional)
 - [ ] Values: dev, prod, airgap
-- [ ] \`helm test hydra\` runs health checks
+- [ ] \`helm test zovarc\` runs health checks
 - [ ] Parameter table in README
 - [ ] Publish to OCI registry"
 
@@ -785,7 +785,7 @@ No SLA tracking for investigation completion. Add configurable SLAs with escalat
 - [ ] Status: within_sla, warning (80%), breached
 - [ ] Dashboard: SLA compliance widget
 - [ ] API: \`GET /api/v1/sla/compliance\`
-- [ ] Prometheus: \`hydra_sla_breached_total{severity}\`
+- [ ] Prometheus: \`zovarc_sla_breached_total{severity}\`
 - [ ] Check every 5 minutes"
 
 ci "Auto-retrain trigger — accuracy-driven model update" "M8: Workflow Automation" "backend,worker,priority:medium" \

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HYDRA v1.3 — Rewrite all 11 skill templates with real investigation logic.
+ZOVARC v1.3 — Rewrite all 11 skill templates with real investigation logic.
 Run: docker compose exec -T worker python /app/scripts/update_templates_v13.py
   Or: python scripts/update_templates_v13.py (from host with psycopg2)
 """
@@ -8,7 +8,7 @@ import json
 import psycopg2
 import os
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@localhost:5432/hydra")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@localhost:5432/zovarc")
 
 TEMPLATES = {}
 

@@ -1,12 +1,12 @@
 #!/bin/bash
-# HYDRA Demo — 2-min walkthrough for CISO audience
+# ZOVARC Demo — 2-min walkthrough for CISO audience
 # Shows: alert in → investigation → IOCs extracted → verdict delivered
 set -e
 
 API="http://localhost:8090"
 MAX_WAIT=120  # seconds to wait for investigations to complete
 
-echo "=== HYDRA Autonomous SOC — Live Demo ==="
+echo "=== ZOVARC Autonomous SOC — Live Demo ==="
 echo ""
 
 # Login

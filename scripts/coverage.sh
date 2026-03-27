@@ -1,5 +1,5 @@
 #!/bin/bash
-# HYDRA Code Coverage Script
+# ZOVARC Code Coverage Script
 #
 # Runs pytest with coverage reporting. Designed to run both locally
 # and in CI. Fails if coverage drops below 60%.
@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "========================================="
-echo "  HYDRA Code Coverage"
+echo "  ZOVARC Code Coverage"
 echo "  Threshold: ${THRESHOLD}%"
 echo "========================================="
 

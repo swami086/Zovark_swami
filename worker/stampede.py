@@ -1,4 +1,4 @@
-"""Anti-stampede protections for HYDRA worker.
+"""Anti-stampede protections for ZOVARC worker.
 
 Thundering Herd / Cache Stampede protections:
 1. Request coalescing: Multiple identical requests share one computation
@@ -31,13 +31,13 @@ def _get_redis():
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 
-REDIS_COALESCE_PREFIX = "hydra:coalesce:"
-REDIS_COALESCE_RESULT_PREFIX = "hydra:coalesce_result:"
-REDIS_SHARD_LOCK_PREFIX = "hydra:shard_lock:"
+REDIS_COALESCE_PREFIX = "zovarc:coalesce:"
+REDIS_COALESCE_RESULT_PREFIX = "zovarc:coalesce_result:"
+REDIS_SHARD_LOCK_PREFIX = "zovarc:shard_lock:"
 
 
 # ---------------------------------------------------------------------------
@@ -289,7 +289,7 @@ async def coalesced_llm_call(params: dict) -> dict:
     cache_ns = f"{tenant_id}:{cache_key}" if tenant_id and cache_key else cache_key
     if r and cache_key:
         try:
-            cached = r.get(f"hydra:inv_cache:{cache_ns}")
+            cached = r.get(f"zovarc:inv_cache:{cache_ns}")
             if cached:
                 logger.info("Coalesced LLM call: cache hit", cache_key=cache_key)
                 return {"result": json.loads(cached), "cache_hit": True, "coalesced": False}
@@ -301,7 +301,7 @@ async def coalesced_llm_call(params: dict) -> dict:
         from model_config import get_tier_config as _get_tier_config
         tier_config = _get_tier_config(model_tier)
         litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-        api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
+        api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
 
         payload = {
             "model": tier_config["model"],
@@ -349,7 +349,7 @@ async def coalesced_llm_call(params: dict) -> dict:
     # Store in cache (tenant-scoped key — Security P0#7)
     if r and cache_key and result:
         try:
-            r.setex(f"hydra:inv_cache:{cache_ns}", 300, json.dumps(result, default=str))
+            r.setex(f"zovarc:inv_cache:{cache_ns}", 300, json.dumps(result, default=str))
         except Exception:
             pass
 

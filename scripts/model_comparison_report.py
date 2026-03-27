@@ -54,7 +54,7 @@ def main():
     winner_accuracy = m1["name"] if m1["accuracy"] >= m2["accuracy"] else m2["name"]
     winner_speed = m1["name"] if m1["avg_time"] <= m2["avg_time"] else m2["name"]
 
-    report = f"""# HYDRA Model Comparison Report
+    report = f"""# ZOVARC Model Comparison Report
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 

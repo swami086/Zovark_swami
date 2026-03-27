@@ -21,7 +21,7 @@ import time
 logger = logging.getLogger(__name__)
 
 APPROVAL_TTL = 1800  # 30 minutes
-REDIS_APPROVAL_PREFIX = "hydra:approval:"
+REDIS_APPROVAL_PREFIX = "zovarc:approval:"
 
 
 def _get_redis():

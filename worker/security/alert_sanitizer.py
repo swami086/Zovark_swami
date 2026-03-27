@@ -52,7 +52,7 @@ IOC_PATTERNS = {
 }
 
 # Known safe domains to exclude from IoC extraction
-SAFE_DOMAINS = {"example.com", "localhost", "localhost.localdomain", "hydra.local", "internal"}
+SAFE_DOMAINS = {"example.com", "localhost", "localhost.localdomain", "zovarc.local", "internal"}
 
 # Known malicious patterns for threat level assessment
 HIGH_THREAT_PATTERNS = [

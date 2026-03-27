@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# HYDRA Temporal Cleanup — terminate stale V1 workflows
+# ZOVARC Temporal Cleanup — terminate stale V1 workflows
 # Usage: bash scripts/cleanup_temporal.sh
 # ============================================================
 set -euo pipefail
@@ -9,7 +9,7 @@ TEMPORAL_HOST="${TEMPORAL_ADDRESS:-temporal:7233}"
 NAMESPACE="default"
 TERMINATED=0
 
-echo "=== HYDRA Temporal Cleanup ==="
+echo "=== ZOVARC Temporal Cleanup ==="
 echo "Temporal: $TEMPORAL_HOST"
 echo ""
 

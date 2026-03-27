@@ -1,17 +1,17 @@
 #!/bin/bash
-# HYDRA MVP — Bulk GitHub Issue Creator
+# ZOVARC MVP — Bulk GitHub Issue Creator
 # Usage: ./scripts/create-github-issues.sh [milestone_filter]
 # Example: ./scripts/create-github-issues.sh M1
 # Requires: gh CLI authenticated (gh auth login)
 
 set -euo pipefail
 
-REPO="7inaydas-cmyk/hydra-mvp"
+REPO="7inaydas-cmyk/zovarc-mvp"
 DRY_RUN="${DRY_RUN:-false}"
 MILESTONE_FILTER="${1:-all}"
 SLEEP_SECONDS=2  # avoid GitHub rate limits
 
-echo "=== HYDRA GitHub Issue Creator ==="
+echo "=== ZOVARC GitHub Issue Creator ==="
 echo "Repo: $REPO"
 echo "Milestone filter: $MILESTONE_FILTER"
 echo "Dry run: $DRY_RUN"
@@ -112,7 +112,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA currently supports email/password authentication only (bcrypt + JWT). Enterprise deployments require SSO via existing identity providers (Okta, Azure AD/Entra ID, Google Workspace). Without this, no enterprise customer will adopt HYDRA in production.
+ZOVARC currently supports email/password authentication only (bcrypt + JWT). Enterprise deployments require SSO via existing identity providers (Okta, Azure AD/Entra ID, Google Workspace). Without this, no enterprise customer will adopt ZOVARC in production.
 
 ## Acceptance Criteria
 
@@ -120,7 +120,7 @@ HYDRA currently supports email/password authentication only (bcrypt + JWT). Ente
 - [ ] Implement authorization code flow with PKCE
 - [ ] Support Google, Microsoft (Entra ID), and Okta as providers
 - [ ] Environment variables: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`
-- [ ] Map OIDC claims to HYDRA roles: `admin`, `analyst`, `viewer` via configurable claim key
+- [ ] Map OIDC claims to ZOVARC roles: `admin`, `analyst`, `viewer` via configurable claim key
 - [ ] Auto-provision users on first login (JIT provisioning) with tenant assignment
 - [ ] Fallback to email/password when OIDC is not configured
 - [ ] Update `/api/v1/auth/login` to return redirect URL for OIDC flow
@@ -131,7 +131,7 @@ HYDRA currently supports email/password authentication only (bcrypt + JWT). Ente
 ## Technical Notes
 
 - Use Go `coreos/go-oidc` library for token verification
-- JWT issued by HYDRA after OIDC validation (don't pass through provider JWT)
+- JWT issued by ZOVARC after OIDC validation (don't pass through provider JWT)
 - Session state stored in Redis during auth flow (5-minute TTL)
 - `users.external_auth_id` already exists in schema — use it for OIDC subject mapping
 - Keep existing bcrypt login path for air-gap deployments
@@ -145,7 +145,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-All HYDRA services communicate over plaintext HTTP on localhost. Production deployments must encrypt traffic between browser ↔ API, API ↔ LiteLLM, and API ↔ Temporal. Credentials (JWT, API keys, webhook secrets) are transmitted unencrypted.
+All ZOVARC services communicate over plaintext HTTP on localhost. Production deployments must encrypt traffic between browser ↔ API, API ↔ LiteLLM, and API ↔ Temporal. Credentials (JWT, API keys, webhook secrets) are transmitted unencrypted.
 
 ## Acceptance Criteria
 
@@ -154,8 +154,8 @@ All HYDRA services communicate over plaintext HTTP on localhost. Production depl
 - [ ] Let's Encrypt ACME support for production domains
 - [ ] API (port 8090) accessible only via HTTPS (443)
 - [ ] Dashboard (port 3000) served behind reverse proxy
-- [ ] Internal services (Temporal, Postgres, Redis, LiteLLM) remain HTTP on `hydra-internal` network
-- [ ] `HYDRA_TLS_ENABLED=true` environment variable to toggle
+- [ ] Internal services (Temporal, Postgres, Redis, LiteLLM) remain HTTP on `zovarc-internal` network
+- [ ] `ZOVARC_TLS_ENABLED=true` environment variable to toggle
 - [ ] HSTS header on all API responses when TLS enabled
 - [ ] Update dashboard API base URL to use `https://` when configured
 - [ ] Document certificate setup in DEPLOYMENT_GUIDE.md
@@ -175,15 +175,15 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA stores all secrets in `.env` files and environment variables: `POSTGRES_PASSWORD`, `LITELLM_MASTER_KEY`, `MINIO_ROOT_PASSWORD`, webhook secrets, JWT signing key. These are visible in `docker inspect`, process environment, and logs. Production requires a proper secrets manager.
+ZOVARC stores all secrets in `.env` files and environment variables: `POSTGRES_PASSWORD`, `LITELLM_MASTER_KEY`, `MINIO_ROOT_PASSWORD`, webhook secrets, JWT signing key. These are visible in `docker inspect`, process environment, and logs. Production requires a proper secrets manager.
 
 ## Acceptance Criteria
 
 - [ ] Abstract secret loading behind `secrets.Get(key)` function in Go API
 - [ ] Abstract secret loading behind `get_secret(key)` function in Python worker
 - [ ] Support 3 backends: environment variables (default), HashiCorp Vault, AWS Secrets Manager
-- [ ] `HYDRA_SECRETS_BACKEND=env|vault|aws` environment variable
-- [ ] Vault backend: AppRole auth, KV v2 engine, `hydra/` mount path
+- [ ] `ZOVARC_SECRETS_BACKEND=env|vault|aws` environment variable
+- [ ] Vault backend: AppRole auth, KV v2 engine, `zovarc/` mount path
 - [ ] AWS backend: IAM role-based, no access keys in config
 - [ ] Rotate database password without downtime (PgBouncer handles reconnection)
 - [ ] JWT signing key rotation: support multiple active keys (JWK set)
@@ -205,7 +205,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-Admin and analyst accounts need 2FA to prevent credential theft. HYDRA currently relies on password-only authentication. Add TOTP (Time-based One-Time Password) support compatible with Google Authenticator, Authy, and 1Password.
+Admin and analyst accounts need 2FA to prevent credential theft. ZOVARC currently relies on password-only authentication. Add TOTP (Time-based One-Time Password) support compatible with Google Authenticator, Authy, and 1Password.
 
 ## Acceptance Criteria
 
@@ -234,7 +234,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-External systems (SIEM, ticketing, custom scripts) need to call HYDRA's API without user JWT tokens. Add API key support with per-key permissions, rate limits, and audit logging.
+External systems (SIEM, ticketing, custom scripts) need to call ZOVARC's API without user JWT tokens. Add API key support with per-key permissions, rate limits, and audit logging.
 
 ## Acceptance Criteria
 
@@ -246,13 +246,13 @@ External systems (SIEM, ticketing, custom scripts) need to call HYDRA's API with
 - [ ] Per-key permissions: `tasks:read`, `tasks:write`, `alerts:write`, `admin:*`
 - [ ] Per-key rate limit override (default: 300 req/min)
 - [ ] Audit log entries include `api_key_id` when used
-- [ ] Key format: `hydra_sk_` prefix + 32 random bytes (base62 encoded)
+- [ ] Key format: `zovarc_sk_` prefix + 32 random bytes (base62 encoded)
 - [ ] Keys scoped to single tenant (multi-tenant isolation preserved)
 
 ## Technical Notes
 
 - Store SHA-256 hash of key, never plaintext
-- Prefix (`hydra_sk_abc12345`) stored separately for identification in lists
+- Prefix (`zovarc_sk_abc12345`) stored separately for identification in lists
 - Auth middleware: check `X-API-Key` first, then `Authorization: Bearer` JWT
 - Migration: `migrations/020_api_keys.sql`
 BODY
@@ -269,16 +269,16 @@ PostgreSQL data is stored on Docker volumes with no backup strategy. A disk fail
 
 ## Acceptance Criteria
 
-- [ ] New service `hydra-backup` in docker-compose (lightweight Alpine + pg_dump + mc)
+- [ ] New service `zovarc-backup` in docker-compose (lightweight Alpine + pg_dump + mc)
 - [ ] Schedule: daily full backup at 02:00 UTC, hourly WAL archiving
-- [ ] Store backups in MinIO bucket `hydra-backups/` with date-prefixed paths
+- [ ] Store backups in MinIO bucket `zovarc-backups/` with date-prefixed paths
 - [ ] Retention: 7 daily, 4 weekly, 3 monthly snapshots (oldest auto-deleted)
 - [ ] `scripts/backup.sh` — Manual backup trigger
 - [ ] `scripts/restore.sh` — Point-in-time recovery from MinIO snapshot
 - [ ] Backup encryption: AES-256 with key from secrets config
 - [ ] Backup verification: restore to temp DB, verify table counts, delete
 - [ ] Health check: alert if last successful backup > 25 hours ago
-- [ ] Prometheus metric: `hydra_backup_last_success_timestamp`
+- [ ] Prometheus metric: `zovarc_backup_last_success_timestamp`
 
 ## Technical Notes
 
@@ -300,7 +300,7 @@ Audit events are stored in PostgreSQL `audit_events` table only. Compliance requ
 ## Acceptance Criteria
 
 - [ ] `GET /api/v1/audit/export` — Download audit logs as JSONL (date range filter, max 10k records)
-- [ ] Syslog forwarding: configure `HYDRA_SYSLOG_TARGET=tcp://splunk:514` to stream events
+- [ ] Syslog forwarding: configure `ZOVARC_SYSLOG_TARGET=tcp://splunk:514` to stream events
 - [ ] CEF format support (Common Event Format) for SIEM compatibility
 - [ ] S3/MinIO archival: daily export of audit_events older than 30 days
 - [ ] Retention policy: delete archived events from DB after S3 confirmation
@@ -311,7 +311,7 @@ Audit events are stored in PostgreSQL `audit_events` table only. Compliance requ
 ## Technical Notes
 
 - Use Go `log/syslog` package for syslog forwarding
-- CEF format: `CEF:0|HYDRA|SOC-Agent|1.0|event_type|description|severity|extension`
+- CEF format: `CEF:0|ZOVARC|SOC-Agent|1.0|event_type|description|severity|extension`
 - Batch export to avoid memory issues (stream rows, don't load all into memory)
 BODY
 )" \
@@ -327,7 +327,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA has 44+ API endpoints documented only in markdown files. No interactive API explorer exists. Generate an OpenAPI 3.1 spec from Go handlers and serve Swagger UI for developers.
+ZOVARC has 44+ API endpoints documented only in markdown files. No interactive API explorer exists. Generate an OpenAPI 3.1 spec from Go handlers and serve Swagger UI for developers.
 
 ## Acceptance Criteria
 
@@ -381,21 +381,21 @@ BODY
     "M2: API & SDK"
 
 create_issue \
-    "Python SDK — typed client library for HYDRA API" \
+    "Python SDK — typed client library for ZOVARC API" \
     "$(cat <<'BODY'
 ## Description
 
-Every HYDRA integration must hand-craft HTTP calls to 44+ endpoints. A typed Python SDK reduces integration time from hours to minutes.
+Every ZOVARC integration must hand-craft HTTP calls to 44+ endpoints. A typed Python SDK reduces integration time from hours to minutes.
 
 ## Acceptance Criteria
 
-- [ ] Package: `hydra-sdk` (publishable to PyPI)
-- [ ] Typed client: `HydraClient(base_url, api_key=None, jwt_token=None)`
+- [ ] Package: `zovarc-sdk` (publishable to PyPI)
+- [ ] Typed client: `ZovarcClient(base_url, api_key=None, jwt_token=None)`
 - [ ] Methods for all endpoint groups: `client.tasks.list()`, `client.tasks.create(...)`, etc.
 - [ ] Response models: dataclasses for Task, Investigation, Alert, Entity, Playbook
-- [ ] Async support: `AsyncHydraClient` using `httpx.AsyncClient`
+- [ ] Async support: `AsyncZovarcClient` using `httpx.AsyncClient`
 - [ ] Pagination helpers: `client.tasks.list_all()` auto-paginates
-- [ ] Error handling: `HydraAPIError`, `HydraAuthError`, `HydraRateLimitError`
+- [ ] Error handling: `ZovarcAPIError`, `ZovarcAuthError`, `ZovarcRateLimitError`
 - [ ] Retry logic: exponential backoff on 429/503
 - [ ] Minimal dependencies: `httpx`, `dataclasses` only
 - [ ] `README.md` with quickstart and examples
@@ -404,7 +404,7 @@ Every HYDRA integration must hand-craft HTTP calls to 44+ endpoints. A typed Pyt
 
 - Generate from OpenAPI spec or hand-write for quality
 - Directory: `sdk/python/`
-- Publish as `hydra-soc-sdk`
+- Publish as `zovarc-soc-sdk`
 BODY
 )" \
     "sdk,priority:high" \
@@ -415,7 +415,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA rate-limits only auth endpoints (10 req/15min per IP). Task submission, alert ingestion, and API queries have no limits. A single tenant can exhaust worker capacity. Implement tiered, per-tenant rate limiting using Redis.
+ZOVARC rate-limits only auth endpoints (10 req/15min per IP). Task submission, alert ingestion, and API queries have no limits. A single tenant can exhaust worker capacity. Implement tiered, per-tenant rate limiting using Redis.
 
 ## Acceptance Criteria
 
@@ -427,7 +427,7 @@ HYDRA rate-limits only auth endpoints (10 req/15min per IP). Task submission, al
 - [ ] Per-tenant override in `tenants.settings` JSONB
 - [ ] Admin endpoints exempt from rate limiting
 - [ ] Burst allowance: 2x limit for 10-second window
-- [ ] Prometheus metrics: `hydra_api_rate_limited_total{tenant, endpoint}`
+- [ ] Prometheus metrics: `zovarc_api_rate_limited_total{tenant, endpoint}`
 
 ## Technical Notes
 
@@ -477,7 +477,7 @@ Investigation results are viewable only in the dashboard. Analysts need to expor
 - [ ] `GET /api/v1/tasks/:id/report` — Accept header: `application/json`, `application/pdf`, `text/markdown`
 - [ ] JSON format: structured report with findings, entities, timeline, verdict
 - [ ] Markdown format: human-readable (worker already generates this)
-- [ ] PDF format: styled with HYDRA branding, syntax-highlighted code blocks
+- [ ] PDF format: styled with ZOVARC branding, syntax-highlighted code blocks
 - [ ] Include: executive summary, investigation steps, entities, verdict, recommendations
 - [ ] Caching: store generated report in MinIO
 - [ ] Dashboard: "Download Report" button on task detail page
@@ -582,7 +582,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA logs all LLM calls to `llm_call_log` table with token counts and cost estimates. This data is not visible in the dashboard.
+ZOVARC logs all LLM calls to `llm_call_log` table with token counts and cost estimates. This data is not visible in the dashboard.
 
 ## Acceptance Criteria
 
@@ -611,7 +611,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA extracts entities and builds relationship graphs in the database. This graph is invisible to analysts. Visualize entity connections to reveal attack patterns and lateral movement.
+ZOVARC extracts entities and builds relationship graphs in the database. This graph is invisible to analysts. Visualize entity connections to reveal attack patterns and lateral movement.
 
 ## Acceptance Criteria
 
@@ -656,7 +656,7 @@ Investigation progress is shown by polling the API every few seconds. Implement 
 
 - Go: use `http.Flusher` interface
 - Fan-out: Redis pub/sub to distribute events across API instances
-- Worker publishes to Redis channel `hydra:events:{tenant_id}`
+- Worker publishes to Redis channel `zovarc:events:{tenant_id}`
 BODY
 )" \
     "backend,frontend,priority:medium" \
@@ -774,13 +774,13 @@ SOC teams live in Slack. Push investigation completions, approval requests, and 
 
 ## Acceptance Criteria
 
-- [ ] Slack app configuration: `HYDRA_SLACK_BOT_TOKEN`, `HYDRA_SLACK_SIGNING_SECRET`
+- [ ] Slack app configuration: `ZOVARC_SLACK_BOT_TOKEN`, `ZOVARC_SLACK_SIGNING_SECRET`
 - [ ] Notification types: investigation completed, approval requested, critical finding, self-healing event
 - [ ] Channel routing: configurable per tenant in settings
 - [ ] Rich message format: investigation summary card with verdict, entities, dashboard link
 - [ ] Interactive approvals: Approve/Reject buttons on approval request messages
-- [ ] `/hydra investigate <alert>` slash command
-- [ ] `/hydra status` slash command
+- [ ] `/zovarc investigate <alert>` slash command
+- [ ] `/zovarc status` slash command
 - [ ] Thread replies: follow-up steps posted as thread replies
 - [ ] `POST /api/v1/integrations/slack/webhook` — events endpoint
 
@@ -805,7 +805,7 @@ SOAR response playbook has `ticket` action type but it's a stub (`NotImplemented
 - [ ] Jira configuration per tenant: `jira_url`, `jira_email`, `jira_api_token`, `jira_project_key`
 - [ ] Auto-create ticket on true_positive verdict with playbook `ticket` action
 - [ ] Fields: summary, description (investigation report), priority, labels (MITRE techniques), custom fields
-- [ ] Bi-directional sync: Jira status changes update HYDRA response execution
+- [ ] Bi-directional sync: Jira status changes update ZOVARC response execution
 - [ ] `POST /api/v1/integrations/jira/test` — Test connection
 - [ ] Webhook receiver for Jira status change events
 - [ ] Dashboard: Jira ticket link on investigation detail page
@@ -851,7 +851,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA extracts entities (IPs, domains, hashes) but doesn't check them against threat intelligence feeds. Integrate VirusTotal for auto-enrichment.
+ZOVARC extracts entities (IPs, domains, hashes) but doesn't check them against threat intelligence feeds. Integrate VirusTotal for auto-enrichment.
 
 ## Acceptance Criteria
 
@@ -938,7 +938,7 @@ Enterprise customers use ServiceNow for incident management. Implement bi-direct
 - [ ] ServiceNow configuration: instance URL, credentials
 - [ ] Auto-create incident on true_positive verdict
 - [ ] Field mapping: short_description, description, urgency, impact, assignment_group
-- [ ] Bi-directional: ServiceNow state changes update HYDRA
+- [ ] Bi-directional: ServiceNow state changes update ZOVARC
 - [ ] Webhook receiver for ServiceNow events
 - [ ] `POST /api/v1/integrations/servicenow/test` — Test connection
 - [ ] Implement `ticket` action handler for ServiceNow variant
@@ -956,7 +956,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA supports outgoing webhooks but event types, payloads, and signatures are not documented.
+ZOVARC supports outgoing webhooks but event types, payloads, and signatures are not documented.
 
 ## Acceptance Criteria
 
@@ -1015,7 +1015,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA stores investigation memory with embeddings but doesn't expose semantic search to analysts. Add natural language search across past investigations.
+ZOVARC stores investigation memory with embeddings but doesn't expose semantic search to analysts. Add natural language search across past investigations.
 
 ## Acceptance Criteria
 
@@ -1052,7 +1052,7 @@ Entities are embedded one-at-a-time via individual TEI API calls. Implement batc
 - [ ] Batch size: 32 texts per request (configurable)
 - [ ] Retry logic: exponential backoff on TEI overload
 - [ ] Use in: `write_entity_graph`, `bootstrap.process_entity`, `embed_investigation`
-- [ ] Metrics: `hydra_embedding_batch_size`, `hydra_embedding_latency_seconds`
+- [ ] Metrics: `zovarc_embedding_batch_size`, `zovarc_embedding_latency_seconds`
 - [ ] Fallback: single-item embedding if batch fails
 
 ## Technical Notes
@@ -1118,7 +1118,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA compares entities against own history but not external threat intel. Ingest STIX 2.1 indicators from TAXII feeds.
+ZOVARC compares entities against own history but not external threat intel. Ingest STIX 2.1 indicators from TAXII feeds.
 
 ## Acceptance Criteria
 
@@ -1154,7 +1154,7 @@ Investigation cache uses SHA-256 exact match with 24h TTL. Add semantic deduplic
 - [ ] Cache levels: L1 (Redis, exact, 1h), L2 (pgvector, semantic, 24h)
 - [ ] Cache stats: hit rate, miss rate, average savings per hit
 - [ ] Cache invalidation endpoint: `POST /api/v1/cache/invalidate`
-- [ ] Prometheus metrics: `hydra_cache_hits_total`, `hydra_cache_misses_total`
+- [ ] Prometheus metrics: `zovarc_cache_hits_total`, `zovarc_cache_misses_total`
 - [ ] Dashboard: cache performance panel
 - [ ] Bypass flag: `force_reinvestigate=true` to skip cache
 
@@ -1217,9 +1217,9 @@ All tests require running vLLM (GPU). This blocks CI on CPU-only runners. Create
 - [ ] Realistic `usage` object (token counts)
 - [ ] Configurable latency simulation (default 100ms)
 - [ ] Configurable error rate for testing retry logic
-- [ ] Docker service: `hydra-mock-llm` with `--profile test`
+- [ ] Docker service: `zovarc-mock-llm` with `--profile test`
 - [ ] CI: use mock LLM in GitHub Actions
-- [ ] `HYDRA_LLM_MOCK=true` environment variable
+- [ ] `ZOVARC_LLM_MOCK=true` environment variable
 
 ## Technical Notes
 
@@ -1236,7 +1236,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA's sandbox has 4 security layers but no automated tests verify they block malicious code. Build a comprehensive escape attempt suite.
+ZOVARC's sandbox has 4 security layers but no automated tests verify they block malicious code. Build a comprehensive escape attempt suite.
 
 ## Acceptance Criteria
 
@@ -1344,7 +1344,7 @@ CI builds Docker images but doesn't push to a registry. Deployments require buil
 
 ## Acceptance Criteria
 
-- [ ] Push to `ghcr.io/7inaydas-cmyk/hydra-mvp/{service}:{tag}`
+- [ ] Push to `ghcr.io/7inaydas-cmyk/zovarc-mvp/{service}:{tag}`
 - [ ] Services: `api`, `worker`, `dashboard`, `mock-llm`
 - [ ] Tags: `latest` (master), `v{semver}` (tags), `sha-{commit}` (every build)
 - [ ] Multi-platform: `linux/amd64`
@@ -1371,12 +1371,12 @@ K8s uses Kustomize. Helm is the standard package manager and provides better tem
 
 ## Acceptance Criteria
 
-- [ ] Chart directory: `helm/hydra/`
+- [ ] Chart directory: `helm/zovarc/`
 - [ ] `values.yaml` with sane defaults
 - [ ] Templates: Deployments, StatefulSets, Services, Ingress, HPA, NetworkPolicy, PVC
 - [ ] Sub-charts: PostgreSQL (bitnami), Redis (bitnami) as optional dependencies
 - [ ] Values files: dev, prod, airgap
-- [ ] Chart tests: `helm test hydra` runs health checks
+- [ ] Chart tests: `helm test zovarc` runs health checks
 - [ ] Documentation: parameter table in README
 - [ ] Publish to OCI registry
 
@@ -1415,7 +1415,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-HYDRA assumes single-region. Design multi-region for global SOC teams with data residency controls.
+ZOVARC assumes single-region. Design multi-region for global SOC teams with data residency controls.
 
 ## Acceptance Criteria
 
@@ -1462,7 +1462,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-Cloud deployments are manual. Create Terraform modules for AWS that provision the complete HYDRA stack.
+Cloud deployments are manual. Create Terraform modules for AWS that provision the complete ZOVARC stack.
 
 ## Acceptance Criteria
 
@@ -1580,7 +1580,7 @@ No SLA tracking for investigation completion times. Add configurable SLAs with a
 - [ ] SLA status: `within_sla`, `warning` (80% elapsed), `breached`
 - [ ] Dashboard: SLA compliance widget
 - [ ] API: `GET /api/v1/sla/compliance`
-- [ ] Prometheus: `hydra_sla_breached_total{severity}`
+- [ ] Prometheus: `zovarc_sla_breached_total{severity}`
 - [ ] Scheduled check every 5 minutes
 
 ## Technical Notes

@@ -17,7 +17,7 @@ def estimate_cost(input_tokens: int, output_tokens: int, model: str = None) -> f
     if model:
         return round(calculate_cost(model, input_tokens, output_tokens), 6)
     # Fallback: conservative default
-    return round(calculate_cost("hydra-standard", input_tokens, output_tokens), 6)
+    return round(calculate_cost("zovarc-standard", input_tokens, output_tokens), 6)
 
 
 def log_llm_call(
@@ -55,7 +55,7 @@ def log_llm_call(
         task_id: Task UUID
     """
     try:
-        db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+        db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
         conn = psycopg2.connect(db_url)
         try:
             with conn.cursor() as cur:

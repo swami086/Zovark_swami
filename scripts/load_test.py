@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-HYDRA Load Test Script
+ZOVARC Load Test Script
 Runs FROM inside a container (worker or standalone) against the API.
 Usage: python load_test.py --concurrency 10 --total 50
 """
@@ -15,8 +15,8 @@ from datetime import datetime
 
 import httpx
 
-API_BASE = os.environ.get("HYDRA_API_URL", "http://hydra-api:8090/api/v1")
-DB_URI = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+API_BASE = os.environ.get("ZOVARC_API_URL", "http://zovarc-api:8090/api/v1")
+DB_URI = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
 
 SKILLS = ["brute_force", "ransomware", "lateral_movement", "c2", "phishing"]
 SKILL_MAP = {
@@ -133,7 +133,7 @@ async def status_printer(total):
 async def main():
     global start_time
 
-    parser = argparse.ArgumentParser(description="HYDRA Load Test")
+    parser = argparse.ArgumentParser(description="ZOVARC Load Test")
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--total", type=int, default=50)
     parser.add_argument("--ramp-up", type=int, default=10)
@@ -145,7 +145,7 @@ async def main():
         global API_BASE
         API_BASE = args.api_url
 
-    print(f"HYDRA Load Test: {args.total} investigations, concurrency {args.concurrency}")
+    print(f"ZOVARC Load Test: {args.total} investigations, concurrency {args.concurrency}")
     print(f"API: {API_BASE}")
 
     async with httpx.AsyncClient(timeout=120) as client:
@@ -222,7 +222,7 @@ async def main():
     # Print summary
     print(f"""
 {'='*54}
-            HYDRA LOAD TEST RESULTS
+            ZOVARC LOAD TEST RESULTS
 {'='*54}
  Total investigations:     {args.total}
  Successful:               {success_count}

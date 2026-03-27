@@ -108,7 +108,7 @@ async def llm_diagnose(error_message: str, stack_trace: str, activity_name: str)
 
     tier_config = get_tier_config('diagnose_failure')
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
 
     system_prompt = (
         "You are an SRE agent diagnosing workflow failures. Classify the error into exactly one category: "

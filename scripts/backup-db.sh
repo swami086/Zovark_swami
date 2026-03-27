@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================
-# HYDRA Database Backup Script
+# ZOVARC Database Backup Script
 # Dumps PostgreSQL, compresses, uploads to MinIO
 # Retention: 7 daily + 4 weekly backups
 # Usage: ./scripts/backup-db.sh
@@ -10,15 +10,15 @@ set -eu
 # Configuration
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-POSTGRES_USER="${POSTGRES_USER:-hydra}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-hydra_dev_2026}"
-POSTGRES_DB="${POSTGRES_DB:-hydra}"
-MINIO_ALIAS="${MINIO_ALIAS:-hydra}"
+POSTGRES_USER="${POSTGRES_USER:-zovarc}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-zovarc_dev_2026}"
+POSTGRES_DB="${POSTGRES_DB:-zovarc}"
+MINIO_ALIAS="${MINIO_ALIAS:-zovarc}"
 MINIO_ENDPOINT="${MINIO_ENDPOINT:-http://localhost:9000}"
-MINIO_BUCKET="${MINIO_BUCKET:-hydra-backups}"
-MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-hydra}"
-MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-hydra_dev_2026}"
-BACKUP_DIR="${BACKUP_DIR:-/tmp/hydra-backups}"
+MINIO_BUCKET="${MINIO_BUCKET:-zovarc-backups}"
+MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-zovarc}"
+MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-zovarc_dev_2026}"
+BACKUP_DIR="${BACKUP_DIR:-/tmp/zovarc-backups}"
 DAILY_RETENTION=7
 WEEKLY_RETENTION=4
 BACKUP_PASSPHRASE="${BACKUP_PASSPHRASE:-}"
@@ -26,8 +26,8 @@ BACKUP_PASSPHRASE="${BACKUP_PASSPHRASE:-}"
 # Timestamp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DAY_OF_WEEK=$(date +%u)
-DAILY_FILE="hydra_daily_${TIMESTAMP}.sql.gz"
-WEEKLY_FILE="hydra_weekly_${TIMESTAMP}.sql.gz"
+DAILY_FILE="zovarc_daily_${TIMESTAMP}.sql.gz"
+WEEKLY_FILE="zovarc_weekly_${TIMESTAMP}.sql.gz"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"

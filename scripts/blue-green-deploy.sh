@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================
-# HYDRA Blue-Green Deployment Script
+# ZOVARC Blue-Green Deployment Script
 # Deploys new version alongside current, validates, switches traffic
 # Usage: ./scripts/blue-green-deploy.sh <new-version-tag>
 #   e.g. ./scripts/blue-green-deploy.sh v1.2.0
@@ -14,11 +14,11 @@ if [ -z "${VERSION}" ]; then
     exit 1
 fi
 
-NAMESPACE="${HYDRA_NAMESPACE:-hydra}"
+NAMESPACE="${ZOVARC_NAMESPACE:-zovarc}"
 HEALTH_ENDPOINT="${HEALTH_ENDPOINT:-/health}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-30}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-5}"
-REGISTRY="${HYDRA_REGISTRY:-ghcr.io/hydra-soc}"
+REGISTRY="${ZOVARC_REGISTRY:-ghcr.io/zovarc-soc}"
 
 # Colors (only if terminal supports it)
 RED='\033[0;31m'
@@ -32,7 +32,7 @@ log_warn() { echo "${YELLOW}[WARN]${NC} $1"; }
 log_err() { echo "${RED}[ERROR]${NC} $1"; }
 
 # ─── DETERMINE CURRENT COLOR ───────────────────────────
-CURRENT_COLOR=$(kubectl get svc hydra-api -n "${NAMESPACE}" -o jsonpath='{.spec.selector.color}' 2>/dev/null || echo "blue")
+CURRENT_COLOR=$(kubectl get svc zovarc-api -n "${NAMESPACE}" -o jsonpath='{.spec.selector.color}' 2>/dev/null || echo "blue")
 if [ "${CURRENT_COLOR}" = "blue" ]; then
     NEW_COLOR="green"
 else
@@ -46,8 +46,8 @@ log "Deploying ${NEW_COLOR} version (${VERSION})..."
 
 # Update the inactive deployment with new image
 for COMPONENT in api worker dashboard; do
-    IMAGE="${REGISTRY}/hydra-${COMPONENT}:${VERSION}"
-    DEPLOYMENT_NAME="hydra-${COMPONENT}-${NEW_COLOR}"
+    IMAGE="${REGISTRY}/zovarc-${COMPONENT}:${VERSION}"
+    DEPLOYMENT_NAME="zovarc-${COMPONENT}-${NEW_COLOR}"
 
     log "  Setting ${DEPLOYMENT_NAME} -> ${IMAGE}"
 
@@ -58,8 +58,8 @@ for COMPONENT in api worker dashboard; do
             -n "${NAMESPACE}"
     else
         log_warn "Deployment ${DEPLOYMENT_NAME} not found — creating from active deployment..."
-        kubectl get deployment "hydra-${COMPONENT}" -n "${NAMESPACE}" -o yaml | \
-            sed "s/hydra-${COMPONENT}/hydra-${COMPONENT}-${NEW_COLOR}/g" | \
+        kubectl get deployment "zovarc-${COMPONENT}" -n "${NAMESPACE}" -o yaml | \
+            sed "s/zovarc-${COMPONENT}/zovarc-${COMPONENT}-${NEW_COLOR}/g" | \
             sed "s|image:.*|image: ${IMAGE}|" | \
             sed "s/color: ${CURRENT_COLOR}/color: ${NEW_COLOR}/g" | \
             kubectl apply -f -
@@ -69,7 +69,7 @@ done
 # ─── WAIT FOR ROLLOUT ──────────────────────────────────
 log "Waiting for ${NEW_COLOR} rollout to complete..."
 for COMPONENT in api worker dashboard; do
-    DEPLOYMENT_NAME="hydra-${COMPONENT}-${NEW_COLOR}"
+    DEPLOYMENT_NAME="zovarc-${COMPONENT}-${NEW_COLOR}"
     if kubectl get deployment "${DEPLOYMENT_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1; then
         kubectl rollout status deployment/"${DEPLOYMENT_NAME}" \
             -n "${NAMESPACE}" --timeout=300s || {
@@ -118,10 +118,10 @@ log "Switching traffic from ${CURRENT_COLOR} to ${NEW_COLOR}..."
 
 # Update the service selector to point to new color
 for COMPONENT in api dashboard; do
-    kubectl patch svc "hydra-${COMPONENT}" -n "${NAMESPACE}" \
+    kubectl patch svc "zovarc-${COMPONENT}" -n "${NAMESPACE}" \
         --type='json' \
         -p="[{\"op\": \"replace\", \"path\": \"/spec/selector/color\", \"value\": \"${NEW_COLOR}\"}]" \
-        2>/dev/null || log_warn "Could not patch svc hydra-${COMPONENT} (may not have color selector)"
+        2>/dev/null || log_warn "Could not patch svc zovarc-${COMPONENT} (may not have color selector)"
 done
 
 log_ok "Traffic switched to ${NEW_COLOR}"
@@ -129,7 +129,7 @@ log_ok "Traffic switched to ${NEW_COLOR}"
 # ─── KEEP OLD VERSION ──────────────────────────────────
 log "Keeping ${CURRENT_COLOR} deployment for rollback capability"
 log "  To rollback: ./scripts/rollback.sh"
-log "  To cleanup old: kubectl delete deployment hydra-api-${CURRENT_COLOR} hydra-worker-${CURRENT_COLOR} hydra-dashboard-${CURRENT_COLOR} -n ${NAMESPACE}"
+log "  To cleanup old: kubectl delete deployment zovarc-api-${CURRENT_COLOR} zovarc-worker-${CURRENT_COLOR} zovarc-dashboard-${CURRENT_COLOR} -n ${NAMESPACE}"
 
 # ─── SUMMARY ───────────────────────────────────────────
 echo ""

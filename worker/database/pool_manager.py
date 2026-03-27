@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra"
+    "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
 )
 
 POOL_CONFIGS = {
@@ -47,7 +47,7 @@ def initialize_pools(database_url: str = None):
                 config["minconn"],
                 config["maxconn"],
                 dsn,
-                application_name=f"hydra-{tier}",
+                application_name=f"zovarc-{tier}",
             )
             _pools[tier] = pool
             logger.info(f"Pool '{tier}' initialized: min={config['minconn']}, max={config['maxconn']}")

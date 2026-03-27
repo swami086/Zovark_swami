@@ -131,28 +131,28 @@ class TestInvestigationPrompt:
 class TestModelConfig:
     """Test model tier configuration."""
 
-    def test_tiers_use_hydra_prefix(self):
-        """Model names should use hydra-* prefix."""
+    def test_tiers_use_zovarc_prefix(self):
+        """Model names should use zovarc-* prefix."""
         from model_config import MODEL_TIERS
-        assert MODEL_TIERS['fast']['model'] == 'hydra-fast'
-        assert MODEL_TIERS['standard']['model'] == 'hydra-standard'
-        assert MODEL_TIERS['reasoning']['model'] == 'hydra-reasoning'
+        assert MODEL_TIERS['fast']['model'] == 'zovarc-fast'
+        assert MODEL_TIERS['standard']['model'] == 'zovarc-standard'
+        assert MODEL_TIERS['reasoning']['model'] == 'zovarc-reasoning'
 
     def test_tier_config_returns_correct_model(self):
-        """get_tier_config returns hydra-* model names (when no env override)."""
+        """get_tier_config returns zovarc-* model names (when no env override)."""
         import os
-        old_val = os.environ.get('HYDRA_LLM_MODEL')
-        os.environ['HYDRA_LLM_MODEL'] = ''
+        old_val = os.environ.get('ZOVARC_LLM_MODEL')
+        os.environ['ZOVARC_LLM_MODEL'] = ''
         try:
             from model_config import get_tier_config
             config = get_tier_config('generate_code')
-            assert config['model'] == 'hydra-standard'
+            assert config['model'] == 'zovarc-standard'
             assert config['tier'] == 'standard'
         finally:
             if old_val is not None:
-                os.environ['HYDRA_LLM_MODEL'] = old_val
-            elif 'HYDRA_LLM_MODEL' in os.environ:
-                del os.environ['HYDRA_LLM_MODEL']
+                os.environ['ZOVARC_LLM_MODEL'] = old_val
+            elif 'ZOVARC_LLM_MODEL' in os.environ:
+                del os.environ['ZOVARC_LLM_MODEL']
 
 
 class TestSkillRouting:
@@ -162,7 +162,7 @@ class TestSkillRouting:
         """Verify agent_skills table has data."""
         import psycopg2
         import os
-        db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+        db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
         conn = psycopg2.connect(db_url)
         try:
             with conn.cursor() as cur:

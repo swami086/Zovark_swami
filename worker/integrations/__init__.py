@@ -1,4 +1,4 @@
-# HYDRA External Integrations
+# ZOVARC External Integrations
 # Temporal activities for Slack, Jira, Teams, Email, ServiceNow, VirusTotal, AbuseIPDB
 
 from .slack import send_slack_notification

@@ -18,7 +18,7 @@ except ImportError:
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 
@@ -207,7 +207,7 @@ def _create_detection_rule(candidate_id, technique_id, sigma_yaml, tp_rate, fp_r
     conn = _get_db()
     try:
         # Extract title from YAML
-        rule_name = f"HYDRA-{technique_id}"
+        rule_name = f"ZOVARC-{technique_id}"
         if HAS_YAML:
             try:
                 parsed = yaml.safe_load(sigma_yaml)

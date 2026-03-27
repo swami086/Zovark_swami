@@ -10,7 +10,7 @@ from temporalio.client import Client
 
 
 def get_db_connection():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 

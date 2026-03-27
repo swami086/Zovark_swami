@@ -1,5 +1,5 @@
 #!/bin/bash
-# HYDRA E2E Test Runner
+# ZOVARC E2E Test Runner
 # Spins up test stack, runs tests, tears down.
 #
 # Usage: bash tests/e2e/run.sh
@@ -13,7 +13,7 @@ COMPOSE_FILE="$SCRIPT_DIR/docker-compose.test.yml"
 KEEP_STACK="${1:-}"
 
 echo "========================================="
-echo "  HYDRA End-to-End Test Runner"
+echo "  ZOVARC End-to-End Test Runner"
 echo "========================================="
 
 # Cleanup function
@@ -68,7 +68,7 @@ sleep 5
 # Step 3: Run tests
 echo ""
 echo "[4/4] Running E2E tests..."
-export HYDRA_API_URL="http://localhost:8091"
+export ZOVARC_API_URL="http://localhost:8091"
 
 cd "$PROJECT_ROOT"
 python -m pytest tests/e2e/ -v --tb=short --timeout=180 "$@"

@@ -2,7 +2,7 @@
 import json
 import psycopg2
 
-conn = psycopg2.connect("postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+conn = psycopg2.connect("postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
 with conn.cursor() as cur:
     cur.execute("SELECT code_template FROM agent_skills WHERE skill_slug = 'network-beaconing'")
     template = cur.fetchone()[0]

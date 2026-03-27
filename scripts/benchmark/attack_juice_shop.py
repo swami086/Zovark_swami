@@ -49,7 +49,7 @@ BENIGN_IPS = [
     "10.0.10.14", "10.0.10.15", "10.0.10.16", "10.0.10.17",
 ]
 
-# Attack-type to HYDRA task_type mapping
+# Attack-type to ZOVARC task_type mapping
 TASK_TYPE_MAP = {
     "sqli":             "data_exfiltration",
     "xss":              "phishing",
@@ -117,7 +117,7 @@ def build_alert(attack_type, rule_name, prompt, method, path, status,
                 body_snippet, expected_iocs, risk_range, difficulty,
                 verdict="true_positive", source_ip=None, username="attacker",
                 extra_log=""):
-    """Build a single HYDRA-format alert dict."""
+    """Build a single ZOVARC-format alert dict."""
     src = source_ip or (rand_attacker_ip() if verdict == "true_positive" else rand_benign_ip())
     return {
         "id": next_id(),
@@ -670,7 +670,7 @@ def generate_benign_api_alerts():
 
 def main():
     print("=" * 70)
-    print("  HYDRA Juice Shop Attack Corpus Generator")
+    print("  ZOVARC Juice Shop Attack Corpus Generator")
     print("=" * 70)
     print(f"  Target:  {BASE_URL}")
     print(f"  Output:  {OUTPUT_FILE}")

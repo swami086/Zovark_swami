@@ -1,24 +1,24 @@
 #!/bin/sh
 # ============================================================
-# HYDRA Database Restore Script
+# ZOVARC Database Restore Script
 # Downloads backup from MinIO and restores to PostgreSQL
 # Usage: ./scripts/restore-db.sh [daily|weekly] [filename]
-#   e.g. ./scripts/restore-db.sh daily hydra_daily_20260312_030000.sql.gz
+#   e.g. ./scripts/restore-db.sh daily zovarc_daily_20260312_030000.sql.gz
 #   e.g. ./scripts/restore-db.sh  # lists available backups
 # ============================================================
 set -eu
 
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-POSTGRES_USER="${POSTGRES_USER:-hydra}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-hydra_dev_2026}"
-POSTGRES_DB="${POSTGRES_DB:-hydra}"
-MINIO_ALIAS="${MINIO_ALIAS:-hydra}"
+POSTGRES_USER="${POSTGRES_USER:-zovarc}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-zovarc_dev_2026}"
+POSTGRES_DB="${POSTGRES_DB:-zovarc}"
+MINIO_ALIAS="${MINIO_ALIAS:-zovarc}"
 MINIO_ENDPOINT="${MINIO_ENDPOINT:-http://localhost:9000}"
-MINIO_BUCKET="${MINIO_BUCKET:-hydra-backups}"
-MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-hydra}"
-MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-hydra_dev_2026}"
-RESTORE_DIR="${RESTORE_DIR:-/tmp/hydra-restore}"
+MINIO_BUCKET="${MINIO_BUCKET:-zovarc-backups}"
+MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-zovarc}"
+MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-zovarc_dev_2026}"
+RESTORE_DIR="${RESTORE_DIR:-/tmp/zovarc-restore}"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"

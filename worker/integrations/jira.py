@@ -1,5 +1,5 @@
 """
-HYDRA Jira Integration — Temporal Activity
+ZOVARC Jira Integration — Temporal Activity
 Creates Jira issues from investigation results via REST API v3.
 Maps investigation verdict/severity to Jira priority.
 """
@@ -14,7 +14,7 @@ JIRA_EMAIL = os.environ.get("JIRA_EMAIL", "")
 JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN", "")
 JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY", "SEC")
 
-# Map HYDRA severity to Jira priority names
+# Map ZOVARC severity to Jira priority names
 SEVERITY_TO_PRIORITY = {
     "critical": "Highest",
     "high": "High",
@@ -121,9 +121,9 @@ async def create_jira_ticket(data: dict) -> dict:
     severity = data.get("severity", "medium").lower()
     priority_name = SEVERITY_TO_PRIORITY.get(severity, "Medium")
     issue_type = data.get("issue_type", "Task")
-    title = data.get("title", f"HYDRA Investigation: {data.get('investigation_id', 'N/A')}")
+    title = data.get("title", f"ZOVARC Investigation: {data.get('investigation_id', 'N/A')}")
 
-    labels = data.get("labels", ["hydra", "security-investigation"])
+    labels = data.get("labels", ["zovarc", "security-investigation"])
     if data.get("verdict"):
         labels.append(f"verdict-{data['verdict']}")
 

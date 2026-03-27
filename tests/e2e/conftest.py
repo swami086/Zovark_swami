@@ -1,14 +1,14 @@
-"""Shared fixtures for HYDRA end-to-end tests."""
+"""Shared fixtures for ZOVARC end-to-end tests."""
 
 import os
 import time
 import pytest
 import requests
 
-API_URL = os.environ.get("HYDRA_API_URL", "http://localhost:8090")
-ADMIN_EMAIL = "admin@hydra.local"
-ADMIN_PASSWORD = "hydra123"
-TEST_TENANT_ID = os.environ.get("HYDRA_TEST_TENANT_ID", "hydra-dev")
+API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+ADMIN_EMAIL = "admin@zovarc.local"
+ADMIN_PASSWORD = "zovarc123"
+TEST_TENANT_ID = os.environ.get("ZOVARC_TEST_TENANT_ID", "zovarc-dev")
 
 
 def wait_for_api(url=API_URL, timeout=120):

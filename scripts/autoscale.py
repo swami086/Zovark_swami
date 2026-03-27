@@ -49,7 +49,7 @@ def get_queue_depth_fallback() -> int:
     """Fallback: count running workflows via docker exec."""
     try:
         result = subprocess.run(
-            ["docker", "exec", "hydra-postgres", "psql", "-U", "hydra", "-d", "hydra",
+            ["docker", "exec", "zovarc-postgres", "psql", "-U", "zovarc", "-d", "zovarc",
              "-t", "-c", "SELECT COUNT(*) FROM agent_tasks WHERE status IN ('pending', 'running')"],
             capture_output=True, text=True, timeout=10
         )
@@ -89,7 +89,7 @@ def scale_workers(target: int) -> None:
 
 async def run_loop():
     """Main autoscaling loop."""
-    print(f"HYDRA Autoscaler started: min={AUTOSCALE_MIN}, max={AUTOSCALE_MAX}, "
+    print(f"ZOVARC Autoscaler started: min={AUTOSCALE_MIN}, max={AUTOSCALE_MAX}, "
           f"threshold={AUTOSCALE_THRESHOLD}, poll={POLL_INTERVAL}s")
 
     while True:

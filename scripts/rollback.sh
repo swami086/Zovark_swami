@@ -1,12 +1,12 @@
 #!/bin/sh
 # ============================================================
-# HYDRA Rollback Script
+# ZOVARC Rollback Script
 # Switches traffic back to previous (standby) deployment
 # Usage: ./scripts/rollback.sh
 # ============================================================
 set -eu
 
-NAMESPACE="${HYDRA_NAMESPACE:-hydra}"
+NAMESPACE="${ZOVARC_NAMESPACE:-zovarc}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -18,7 +18,7 @@ log_ok() { echo "${GREEN}[OK]${NC} $1"; }
 log_warn() { echo "${YELLOW}[WARN]${NC} $1"; }
 
 # ─── DETERMINE CURRENT/STANDBY ─────────────────────────
-CURRENT_COLOR=$(kubectl get svc hydra-api -n "${NAMESPACE}" -o jsonpath='{.spec.selector.color}' 2>/dev/null || echo "")
+CURRENT_COLOR=$(kubectl get svc zovarc-api -n "${NAMESPACE}" -o jsonpath='{.spec.selector.color}' 2>/dev/null || echo "")
 
 if [ -z "${CURRENT_COLOR}" ]; then
     echo "Could not determine current active color from service selector."
@@ -38,7 +38,7 @@ log "Rolling back to: ${ROLLBACK_COLOR}"
 # ─── VERIFY STANDBY EXISTS ─────────────────────────────
 STANDBY_READY=true
 for COMPONENT in api worker dashboard; do
-    DEPLOYMENT_NAME="hydra-${COMPONENT}-${ROLLBACK_COLOR}"
+    DEPLOYMENT_NAME="zovarc-${COMPONENT}-${ROLLBACK_COLOR}"
     if ! kubectl get deployment "${DEPLOYMENT_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1; then
         log_warn "Standby deployment ${DEPLOYMENT_NAME} not found"
         STANDBY_READY=false
@@ -64,10 +64,10 @@ esac
 log "Switching traffic to ${ROLLBACK_COLOR}..."
 
 for COMPONENT in api dashboard; do
-    kubectl patch svc "hydra-${COMPONENT}" -n "${NAMESPACE}" \
+    kubectl patch svc "zovarc-${COMPONENT}" -n "${NAMESPACE}" \
         --type='json' \
         -p="[{\"op\": \"replace\", \"path\": \"/spec/selector/color\", \"value\": \"${ROLLBACK_COLOR}\"}]" \
-        2>/dev/null || log_warn "Could not patch svc hydra-${COMPONENT}"
+        2>/dev/null || log_warn "Could not patch svc zovarc-${COMPONENT}"
 done
 
 log_ok "Traffic rolled back to ${ROLLBACK_COLOR}"

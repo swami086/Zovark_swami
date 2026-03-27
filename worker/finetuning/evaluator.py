@@ -8,9 +8,9 @@ import os
 import time
 import httpx
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
+LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
 
 
 BENCHMARK_PROMPTS = [

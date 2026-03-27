@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start llama.cpp server for HYDRA inference
+# Start llama.cpp server for ZOVARC inference
 # Replaces Ollama — provides OpenAI-compatible /v1/chat/completions endpoint
 #
 # Prerequisites:

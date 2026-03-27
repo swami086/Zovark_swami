@@ -2,7 +2,7 @@
 # airgap-setup.sh — Pull models into local Ollama for air-gapped operation
 set -euo pipefail
 
-echo "=== HYDRA Air-Gap Setup ==="
+echo "=== ZOVARC Air-Gap Setup ==="
 echo "Starting Ollama container..."
 docker compose --profile airgap up -d ollama
 

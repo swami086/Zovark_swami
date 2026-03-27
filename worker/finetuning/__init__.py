@@ -1,1 +1,1 @@
-"""Fine-tuning data pipeline for HYDRA."""
+"""Fine-tuning data pipeline for ZOVARC."""

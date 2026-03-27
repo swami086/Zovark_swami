@@ -1,11 +1,11 @@
 #!/bin/bash
-# Download enterprise-grade models for HYDRA
+# Download enterprise-grade models for ZOVARC
 # Requires: pip install huggingface-hub
 # Disk space: ~40GB for 7B + 32B models
 
 set -e
 
-echo "=== HYDRA Enterprise Model Setup ==="
+echo "=== ZOVARC Enterprise Model Setup ==="
 echo ""
 echo "This will download ~40GB of model weights."
 echo "Ensure you have sufficient disk space and a fast connection."

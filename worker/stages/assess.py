@@ -24,9 +24,9 @@ from stages.model_router import get_model_config
 from stages.output_validator import validate_investigation_output, safe_default_output
 from stages.mitre_mapping import get_mitre_techniques
 
-FAST_FILL = os.environ.get("HYDRA_FAST_FILL", "false").lower() == "true"
+FAST_FILL = os.environ.get("ZOVARC_FAST_FILL", "false").lower() == "true"
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-hydra-dev-2026")
+LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
 
 
 # --- Verdict derivation ---
@@ -269,7 +269,7 @@ def _fp_confidence(risk_score: int, ioc_count: int) -> float:
 
 
 # --- Validation failure logging ---
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
 
 
 def _log_validation_failure(task_id: str, tenant_id: str, task_type: str, error_msg: str):

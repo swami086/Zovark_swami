@@ -6,9 +6,9 @@
 # Step 2: f16 GGUF → Q4_K_M GGUF (via llama-quantize)
 set -e
 
-MERGED_PATH="${1:-models/hydra-merged}"
-F16_GGUF="models/hydra-dpo-f16.gguf"
-GGUF_OUT="models/hydra-qwen2.5-14b-dpo-Q4_K_M.gguf"
+MERGED_PATH="${1:-models/zovarc-merged}"
+F16_GGUF="models/zovarc-dpo-f16.gguf"
+GGUF_OUT="models/zovarc-qwen2.5-14b-dpo-Q4_K_M.gguf"
 
 # Find llama.cpp tools
 LLAMA_CPP="${LLAMA_CPP_PATH:-/workspace/llama.cpp}"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# HYDRA Load Test Runner
+# ZOVARC Load Test Runner
 #
 # Runs Locust load tests with configurable profiles and threshold checks.
 #
@@ -23,7 +23,7 @@ if [[ "${2:-}" == "--host" ]] && [[ -n "${3:-}" ]]; then
 fi
 
 echo "========================================="
-echo "  HYDRA Load Test"
+echo "  ZOVARC Load Test"
 echo "  Profile: $PROFILE"
 echo "  Host: $HOST"
 echo "========================================="

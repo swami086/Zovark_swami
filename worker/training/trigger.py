@@ -12,7 +12,7 @@ from temporalio import activity
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 
@@ -122,7 +122,7 @@ def _log_retrain_decision(tenant_id, retrain_needed, accuracy, total, reason):
                     "retrain_check",
                     "system",
                     "model",
-                    "hydra-standard",
+                    "zovarc-standard",
                     json.dumps({
                         "retrain_needed": retrain_needed,
                         "accuracy": accuracy,

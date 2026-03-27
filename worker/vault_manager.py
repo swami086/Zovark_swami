@@ -1,6 +1,6 @@
 """Vault JIT (Just-In-Time) token manager for SOAR playbook credentials.
 
-Credentials stored in Vault at: hydra-soar/integrations/{integration_id}
+Credentials stored in Vault at: zovarc-soar/integrations/{integration_id}
 JIT pattern: request 5-minute token -> execute -> revoke immediately.
 """
 import os
@@ -49,21 +49,21 @@ class VaultManager:
     def store_credentials(self, integration_id: str, credentials: dict, tenant_id: str):
         """Store integration credentials in Vault.
 
-        Path: hydra-soar/data/integrations/{tenant_id}/{integration_id}
+        Path: zovarc-soar/data/integrations/{tenant_id}/{integration_id}
         """
-        path = f"hydra-soar/data/integrations/{tenant_id}/{integration_id}"
+        path = f"zovarc-soar/data/integrations/{tenant_id}/{integration_id}"
         self._request("POST", path, {"data": credentials})
         logger.info(f"Stored credentials for integration {integration_id}")
 
     def get_credentials(self, integration_id: str, tenant_id: str) -> dict:
         """Retrieve integration credentials from Vault."""
-        path = f"hydra-soar/data/integrations/{tenant_id}/{integration_id}"
+        path = f"zovarc-soar/data/integrations/{tenant_id}/{integration_id}"
         resp = self._request("GET", path)
         return resp.get("data", {}).get("data", {})
 
     def delete_credentials(self, integration_id: str, tenant_id: str):
         """Delete integration credentials from Vault."""
-        path = f"hydra-soar/metadata/integrations/{tenant_id}/{integration_id}"
+        path = f"zovarc-soar/metadata/integrations/{tenant_id}/{integration_id}"
         self._request("DELETE", path)
 
     def create_jit_token(self, integration_id: str, tenant_id: str, ttl_seconds: int = 300) -> dict:

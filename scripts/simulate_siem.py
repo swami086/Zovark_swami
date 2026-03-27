@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Simulated SIEM webhook test — sends 3 alerts in different formats.
-Run inside hydra-worker container:
-  docker exec hydra-worker python /app/simulate_siem.py
+Run inside zovarc-worker container:
+  docker exec zovarc-worker python /app/simulate_siem.py
 """
 import json
 import time
@@ -11,8 +11,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 
-API_BASE = "http://hydra-api:8090/api/v1"
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+API_BASE = "http://zovarc-api:8090/api/v1"
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
 
 def get_tenant_id():
     conn = psycopg2.connect(DB_URL)
@@ -55,7 +55,7 @@ def register_and_login(tenant_id):
 
 def main():
     print("=" * 60)
-    print("HYDRA SIEM WEBHOOK SIMULATION")
+    print("ZOVARC SIEM WEBHOOK SIMULATION")
     print("=" * 60)
 
     tenant_id = get_tenant_id()
@@ -89,7 +89,7 @@ def main():
 
     source = resp.json()
     source_id = source["id"]
-    webhook_url = f"http://hydra-api:8090/api/v1/webhooks/{source_id}/alert"
+    webhook_url = f"http://zovarc-api:8090/api/v1/webhooks/{source_id}/alert"
     print(f"Log source created: {source_id}")
     print(f"Webhook URL: {webhook_url}")
 

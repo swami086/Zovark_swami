@@ -1,1 +1,1 @@
-# Prompt templates for HYDRA worker activities
+# Prompt templates for ZOVARC worker activities

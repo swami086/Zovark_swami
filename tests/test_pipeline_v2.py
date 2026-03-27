@@ -1,6 +1,6 @@
 """
 Integration tests for V2 pipeline stages.
-Uses HYDRA_FAST_FILL=true — no LLM dependency.
+Uses ZOVARC_FAST_FILL=true — no LLM dependency.
 Tests pass without llama-server running.
 """
 import os
@@ -9,7 +9,7 @@ import asyncio
 import pytest
 
 # Force FAST_FILL mode for all tests
-os.environ["HYDRA_FAST_FILL"] = "true"
+os.environ["ZOVARC_FAST_FILL"] = "true"
 os.environ["DEDUP_ENABLED"] = "false"  # Skip Redis dependency in tests
 
 # Add worker to path

@@ -28,7 +28,7 @@ except ImportError:
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 
@@ -229,7 +229,7 @@ class CreateTicket(ResponseAction):
         return bool(context.get("title"))
 
     async def execute(self, context: dict) -> dict:
-        title = context.get("title", "HYDRA Alert")
+        title = context.get("title", "ZOVARC Alert")
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "create_ticket") if tenant_id else None
         if webhook:
@@ -254,7 +254,7 @@ class SendNotification(ResponseAction):
 
     async def execute(self, context: dict) -> dict:
         channel = context.get("channel", "security")
-        message = context.get("message", "HYDRA alert triggered")
+        message = context.get("message", "ZOVARC alert triggered")
         tenant_id = context.get("tenant_id")
         webhook = _get_webhook(tenant_id, "send_notification") if tenant_id else None
         if webhook:

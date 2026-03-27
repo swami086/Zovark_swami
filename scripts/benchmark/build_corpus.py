@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a labeled corpus of 200 alerts for HYDRA accuracy benchmarking.
+"""Build a labeled corpus of 200 alerts for ZOVARC accuracy benchmarking.
 
 Distribution:
   55 true_positive   — real attacks across all 11 alert types
@@ -96,7 +96,7 @@ SERVICE_ACCOUNTS = [
 ]
 
 # ---------------------------------------------------------------------------
-# 11 alert categories (matching HYDRA skill types)
+# 11 alert categories (matching ZOVARC skill types)
 # ---------------------------------------------------------------------------
 ALERT_TYPES = [
     "brute_force", "c2_beacon", "lateral_movement", "phishing",
@@ -376,7 +376,7 @@ def _gen_tp_ransomware(difficulty: str) -> dict:
     host = _pick(HOSTNAMES)
     user = _pick(USERNAMES)
     src = _pick(INTERNAL_IPS)
-    extensions = [".encrypted", ".locked", ".HYDRA", ".crypt", ".pay2unlock"]
+    extensions = [".encrypted", ".locked", ".ZOVARC", ".crypt", ".pay2unlock"]
     ext = _pick(extensions)
     ransom_note = _pick(["README_DECRYPT.txt", "HOW_TO_RECOVER.html", "PAYMENT_INFO.txt"])
 
@@ -2559,7 +2559,7 @@ def main():
     # Generate summary
     summary_path = out_dir / "corpus_summary.md"
     with open(summary_path, "w") as f:
-        f.write("# HYDRA Benchmark Corpus — 200 Alerts\n\n")
+        f.write("# ZOVARC Benchmark Corpus — 200 Alerts\n\n")
         f.write(f"Generated: 2026-03-21\n\n")
         f.write("## Distribution\n\n")
         f.write("| Verdict | Count |\n")

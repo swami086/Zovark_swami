@@ -14,13 +14,13 @@ def _get_redis():
 
 def get_active_count(tenant_id: str) -> int:
     r = _get_redis()
-    val = r.get(f"hydra:active:{tenant_id}")
+    val = r.get(f"zovarc:active:{tenant_id}")
     return int(val) if val else 0
 
 
 def increment_active(tenant_id: str) -> int:
     r = _get_redis()
-    key = f"hydra:active:{tenant_id}"
+    key = f"zovarc:active:{tenant_id}"
     val = r.incr(key)
     r.expire(key, 3600)  # 1 hour TTL safety net
     return val
@@ -28,7 +28,7 @@ def increment_active(tenant_id: str) -> int:
 
 def decrement_active(tenant_id: str) -> int:
     r = _get_redis()
-    key = f"hydra:active:{tenant_id}"
+    key = f"zovarc:active:{tenant_id}"
     val = r.decr(key)
     if val < 0:
         r.set(key, 0)
@@ -40,7 +40,7 @@ def decrement_active(tenant_id: str) -> int:
 def check_rate_limit(tenant_id: str, max_concurrent: int) -> bool:
     """Returns True if under limit, False if over."""
     r = _get_redis()
-    key = f"hydra:active:{tenant_id}"
+    key = f"zovarc:active:{tenant_id}"
     val = r.incr(key)
     r.expire(key, 3600)
     if val > max_concurrent:

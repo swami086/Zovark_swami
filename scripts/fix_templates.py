@@ -3,7 +3,7 @@
 import psycopg2
 import re
 
-DATABASE_URL = "postgresql://hydra:hydra_dev_2026@localhost:5432/hydra"
+DATABASE_URL = "postgresql://zovarc:zovarc_dev_2026@localhost:5432/zovarc"
 
 # The IOC conversion snippet to inject before `print(json.dumps(output`
 IOC_CONVERSION = '''

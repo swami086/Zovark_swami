@@ -16,7 +16,7 @@ import pytest
 # Add worker dir to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'worker'))
 
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@localhost:5432/hydra")
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@localhost:5432/zovarc")
 
 
 @pytest.fixture
@@ -36,14 +36,14 @@ class TestSCRAMAuth:
             result = cur.fetchone()[0]
             assert result == "scram-sha-256", f"Expected scram-sha-256, got {result}"
 
-    def test_hydra_user_has_scram_hash(self, db):
+    def test_zovarc_user_has_scram_hash(self, db):
         with db.cursor() as cur:
             cur.execute(
-                "SELECT rolpassword LIKE 'SCRAM-SHA-256$%%' FROM pg_authid WHERE rolname = 'hydra';"
+                "SELECT rolpassword LIKE 'SCRAM-SHA-256$%%' FROM pg_authid WHERE rolname = 'zovarc';"
             )
             row = cur.fetchone()
             if row:
-                assert row[0] is True, "hydra user password is not SCRAM-SHA-256"
+                assert row[0] is True, "zovarc user password is not SCRAM-SHA-256"
 
 
 class TestAuditEventsTable:

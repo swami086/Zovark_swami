@@ -23,7 +23,7 @@ def main():
 
     print(f"Downloading CISA KEV catalog...")
     print(f"  URL: {URL}")
-    req = urllib.request.Request(URL, headers={"User-Agent": "HYDRA-Bootstrap/1.0"})
+    req = urllib.request.Request(URL, headers={"User-Agent": "ZOVARC-Bootstrap/1.0"})
     with urllib.request.urlopen(req) as resp:
         data = resp.read()
     with open(OUT_FILE, "wb") as f:

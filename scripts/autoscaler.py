@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HYDRA Docker Compose Autoscaler — queue-depth-based worker scaling.
+"""ZOVARC Docker Compose Autoscaler — queue-depth-based worker scaling.
 
 Polls Temporal queue depth (via SDK or DB fallback) every POLL_INTERVAL seconds.
 Scales worker containers up when pending tasks exceed threshold, and down after
@@ -54,7 +54,7 @@ TEMPORAL_ADDRESS = os.environ.get("TEMPORAL_ADDRESS", "localhost:7233")
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "15"))
 COMPOSE_PROJECT_DIR = os.environ.get("COMPOSE_PROJECT_DIR", ".")
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://hydra:hydra_dev_2026@localhost:5432/hydra"
+    "DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@localhost:5432/zovarc"
 )
 
 # State
@@ -120,8 +120,8 @@ def get_queue_depth_docker() -> dict:
     try:
         result = subprocess.run(
             [
-                "docker", "exec", "hydra-postgres", "psql", "-U", "hydra",
-                "-d", "hydra", "-t", "-c",
+                "docker", "exec", "zovarc-postgres", "psql", "-U", "zovarc",
+                "-d", "zovarc", "-t", "-c",
                 "SELECT status, COUNT(*) FROM agent_tasks "
                 "WHERE status IN ('pending', 'running') GROUP BY status",
             ],
@@ -219,7 +219,7 @@ async def run_loop():
     global _last_zero_pending
 
     log.info(
-        "HYDRA Autoscaler started: min=%d max=%d threshold=%d cooldown=%ds step=%d poll=%ds",
+        "ZOVARC Autoscaler started: min=%d max=%d threshold=%d cooldown=%ds step=%d poll=%ds",
         AUTOSCALE_MIN, AUTOSCALE_MAX, AUTOSCALE_THRESHOLD,
         AUTOSCALE_COOLDOWN, AUTOSCALE_STEP_UP, POLL_INTERVAL,
     )

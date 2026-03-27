@@ -208,7 +208,7 @@ def check_iocs(found_iocs, expected):
 
 
 def main():
-    print(f"=== HYDRA Benchmark: {API_URL} ===")
+    print(f"=== ZOVARC Benchmark: {API_URL} ===")
     print(f"Model: Qwen2.5-14B-Instruct Q4_K_M (llama-server)")
     print(f"Investigations: {len(INVESTIGATIONS)}\n")
 

@@ -1,5 +1,5 @@
 """
-HYDRA DPO Log Compressor
+ZOVARC DPO Log Compressor
 
 Two-stage compression for the DPO training pipeline:
 1. compress_alert() — strips noise from SIEM alerts

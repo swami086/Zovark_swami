@@ -10,7 +10,7 @@ import psycopg2
 
 
 def get_db_connection():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
     return psycopg2.connect(db_url)
 
 
@@ -74,7 +74,7 @@ def _log_audit_event(event_type: str, metadata: dict):
                 cur.execute("""
                     INSERT INTO audit_events (tenant_id, event_type, actor_type, metadata)
                     SELECT id, %s, 'system', %s
-                    FROM tenants WHERE slug = 'hydra-dev' LIMIT 1
+                    FROM tenants WHERE slug = 'zovarc-dev' LIMIT 1
                 """, (event_type, json.dumps(metadata)))
             conn.commit()
         finally:

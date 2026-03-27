@@ -129,7 +129,7 @@ def store_kev_catalog(vulns: list, db_url: str = "") -> int:
 
     if not db_url:
         db_url = os.environ.get(
-            "DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra"
+            "DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
         )
 
     valid = [v for v in vulns if v.get("cve_id")]
@@ -192,7 +192,7 @@ def store_to_bootstrap_corpus(vulns: list, db_url: str = "") -> int:
 
     if not db_url:
         db_url = os.environ.get(
-            "DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra"
+            "DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
         )
 
     valid = [v for v in vulns if v.get("cve_id")]
