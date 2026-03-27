@@ -1,6 +1,6 @@
 # Archive
 
-Historical documents from earlier HYDRA versions. These are kept for reference but are no longer current.
+Historical documents from earlier ZOVARC versions. These are kept for reference but are no longer current.
 
 - **audit-reports/** — Security audits from v0.10.0 and v0.10.1
 - **sprints/** — Sprint implementation reports

@@ -1,4 +1,4 @@
-# HYDRA Platform Architecture
+# ZOVARC Platform Architecture
 
 **Version:** v1.1.0
 **Commit:** bd01707
@@ -32,7 +32,7 @@
 
 ## Overview
 
-HYDRA is an AI-powered SOC (Security Operations Center) automation platform. It receives security alerts from SIEM systems, uses local LLMs to generate investigation code, executes that code in sandboxed containers, and returns structured findings with MITRE ATT&CK mapping, risk scores, IOC extraction, and remediation recommendations.
+ZOVARC is an AI-powered SOC (Security Operations Center) automation platform. It receives security alerts from SIEM systems, uses local LLMs to generate investigation code, executes that code in sandboxed containers, and returns structured findings with MITRE ATT&CK mapping, risk scores, IOC extraction, and remediation recommendations.
 
 **Core value proposition:** Automate Tier-1 SOC analyst work---triage alerts, investigate indicators, correlate entities, and generate incident reports---using locally-hosted LLMs with zero data egress. Designed for air-gapped, on-premises deployment in compliance-constrained environments (GDPR, HIPAA, NERC CIP, CMMC).
 
@@ -176,7 +176,7 @@ SIEM Alert --> Go API (:8090) --> Temporal: InvestigationWorkflowV2 -->
 
 ## Air-Gap Boundary
 
-HYDRA is designed to run within a complete air-gap. The boundary is defined as follows:
+ZOVARC is designed to run within a complete air-gap. The boundary is defined as follows:
 
 ### Inside the Boundary (Required)
 
@@ -541,4 +541,4 @@ See `deploy/` directory for:
 5. **fetch_task dependency** -- V2 workflow still calls legacy `fetch_task` by string name. Should be moved to stages/ingest.py.
 6. **Single-GPU bottleneck** -- RTX 3050 processes one LLM request at a time. Multi-GPU or model tiering needed for production throughput.
 7. **DPO training** -- Pipeline exists (`dpo/`) but has not been applied to production model weights.
-8. **PCAP analysis** -- Not supported. HYDRA operates on structured alert JSON only.
+8. **PCAP analysis** -- Not supported. ZOVARC operates on structured alert JSON only.

@@ -2,7 +2,7 @@
 
 **Version: v1.5.1 | Date: 2026-03-24**
 
-This guide is intended for DevOps engineers and IT Administrators responsible for deploying Project Hydra in air-gapped environments.
+This guide is intended for DevOps engineers and IT Administrators responsible for deploying Project Zovarc in air-gapped environments.
 
 > **Note (v1.5.0+):** The LLM runs on the host (via llama.cpp or Ollama), not inside Docker.
 > The worker connects to it at `http://host.docker.internal:11434/v1/chat/completions`.
@@ -12,7 +12,7 @@ This guide is intended for DevOps engineers and IT Administrators responsible fo
 
 ## System Requirements
 
-Hydra requires significant local compute due to the Zero-Egress, sovereign nature of its AI engines.
+Zovarc requires significant local compute due to the Zero-Egress, sovereign nature of its AI engines.
 
 **Minimum Viable Specification (Testing / Homelab):**
 - CPU: 8 Cores (x86_64 or ARM64)
@@ -36,7 +36,7 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
 ## Step-by-Step Installation
 
 1. **Clone or Extract the Repository:**
-   Access the server via SSH and unpack the `hydra-mvp` deployment package.
+   Access the server via SSH and unpack the `zovarc-mvp` deployment package.
 
 2. **Configure Environment Variables:**
    Copy `.env.example` to `.env` and configure internal passwords.
@@ -86,7 +86,7 @@ Hydra requires significant local compute due to the Zero-Egress, sovereign natur
 
 ## Security Configuration
 
-As of v1.5.1, Hydra follows a hardened network posture by default.
+As of v1.5.1, Zovarc follows a hardened network posture by default.
 
 **Exposed Ports (host-accessible):**
 
@@ -97,14 +97,14 @@ As of v1.5.1, Hydra follows a hardened network posture by default.
 
 **Internal-only Services (not reachable from host):**
 
-PostgreSQL (5432), Redis (6379), Temporal (7233), NATS (4222), LiteLLM (4000), MinIO (9000), PgBouncer, and the embedding server are all bound to the `hydra-internal` Docker network using `expose` only. They are not accessible outside the Docker network.
+PostgreSQL (5432), Redis (6379), Temporal (7233), NATS (4222), LiteLLM (4000), MinIO (9000), PgBouncer, and the embedding server are all bound to the `zovarc-internal` Docker network using `expose` only. They are not accessible outside the Docker network.
 
 **OIDC Single Sign-On (optional):**
 
 To enable OIDC-based authentication, set the following in `.env`:
 ```
 OIDC_ISSUER_URL=https://idp.example.com
-OIDC_CLIENT_ID=hydra-app
+OIDC_CLIENT_ID=zovarc-app
 OIDC_CLIENT_SECRET=<your-client-secret>
 ```
 When configured, ID tokens are verified against the provider's JWKS endpoint (RSA). If these variables are unset, OIDC is disabled and only local login is available.
@@ -124,11 +124,11 @@ This adds Prometheus (9090), Grafana (3001), and exporters for PostgreSQL, Redis
 To logically backup the tenants, workflows, Intelligence Fabric, and Episodic Security Memory:
 
 ```bash
-docker exec hydra-postgres pg_dump -U hydra -F c -b -v -f /var/lib/postgresql/data/hydra_backup.dump hydra
+docker exec zovarc-postgres pg_dump -U zovarc -F c -b -v -f /var/lib/postgresql/data/zovarc_backup.dump zovarc
 ```
 
 ### Database Restore
 
 ```bash
-docker exec hydra-postgres pg_restore -U hydra -d hydra -v -1 /var/lib/postgresql/data/hydra_backup.dump
+docker exec zovarc-postgres pg_restore -U zovarc -d zovarc -v -1 /var/lib/postgresql/data/zovarc_backup.dump
 ```

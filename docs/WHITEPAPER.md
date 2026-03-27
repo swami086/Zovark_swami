@@ -1,6 +1,6 @@
-# Autonomous SOC Investigation on Air-Gapped Infrastructure: Architecture, Benchmarks, and Limitations of the HYDRA Platform
+# Autonomous SOC Investigation on Air-Gapped Infrastructure: Architecture, Benchmarks, and Limitations of the ZOVARC Platform
 
-**Authors:** HYDRA Development Team
+**Authors:** ZOVARC Development Team
 **Version:** 1.5.1 (March 2026)
 **Classification:** Public
 
@@ -8,7 +8,7 @@
 
 ## Abstract
 
-Security operations centers process an average of 11,000 alerts per day, with false positive rates exceeding 70%. Tier-1 analysts spend 30-60 minutes per investigation, creating unsustainable backlogs that allow genuine threats to dwell undetected for a median of 10 days. Simultaneously, data sovereignty regulations---GDPR, HIPAA, NERC CIP, CMMC Level 2---prohibit many organizations from transmitting security telemetry to cloud-based AI services. This paper presents HYDRA, an autonomous SOC investigation platform that runs entirely on air-gapped infrastructure using locally-hosted large language models. HYDRA implements a five-stage investigation pipeline orchestrated by Temporal workflows: alert ingestion with deduplication and PII masking, LLM-driven code generation using skill templates, sandboxed execution with AST prefiltering and seccomp containment, LLM-powered verdict assessment, and structured evidence storage. We evaluate HYDRA against the OWASP Juice Shop benchmark corpus of 100 real-traffic attack alerts, achieving 100% attack detection across all 100 investigations with an average investigation time of 15 seconds for template-based and 90 seconds for full LLM investigations---approximately 140x faster than manual analyst triage. The system runs on a single NVIDIA RTX 3050 (4GB VRAM) using a quantized Qwen2.5-14B model with zero data egress, demonstrating that meaningful SOC automation is feasible on consumer-grade hardware within fully isolated networks.
+Security operations centers process an average of 11,000 alerts per day, with false positive rates exceeding 70%. Tier-1 analysts spend 30-60 minutes per investigation, creating unsustainable backlogs that allow genuine threats to dwell undetected for a median of 10 days. Simultaneously, data sovereignty regulations---GDPR, HIPAA, NERC CIP, CMMC Level 2---prohibit many organizations from transmitting security telemetry to cloud-based AI services. This paper presents ZOVARC, an autonomous SOC investigation platform that runs entirely on air-gapped infrastructure using locally-hosted large language models. ZOVARC implements a five-stage investigation pipeline orchestrated by Temporal workflows: alert ingestion with deduplication and PII masking, LLM-driven code generation using skill templates, sandboxed execution with AST prefiltering and seccomp containment, LLM-powered verdict assessment, and structured evidence storage. We evaluate ZOVARC against the OWASP Juice Shop benchmark corpus of 100 real-traffic attack alerts, achieving 100% attack detection across all 100 investigations with an average investigation time of 15 seconds for template-based and 90 seconds for full LLM investigations---approximately 140x faster than manual analyst triage. The system runs on a single NVIDIA RTX 3050 (4GB VRAM) using a quantized Qwen2.5-14B model with zero data egress, demonstrating that meaningful SOC automation is feasible on consumer-grade hardware within fully isolated networks.
 
 ---
 
@@ -26,9 +26,9 @@ The obvious solution---cloud-based AI investigation services---is unavailable to
 
 Every major SOC automation vendor today---CrowdStrike Charlotte AI, Microsoft Copilot for Security, Google Chronicle SOAR, Swimlane Turbine---requires cloud connectivity for their AI-powered investigation features. This creates a market gap: the organizations with the most sensitive data and the strictest compliance requirements are the ones least able to adopt AI-assisted security operations.
 
-### 1.3 HYDRA's Approach
+### 1.3 ZOVARC's Approach
 
-HYDRA addresses both problems simultaneously. It is an autonomous SOC investigation platform that:
+ZOVARC addresses both problems simultaneously. It is an autonomous SOC investigation platform that:
 
 1. Runs entirely on-premises with no outbound network connectivity required
 2. Uses locally-hosted quantized language models (4-14B parameters) on commodity GPU hardware
@@ -36,7 +36,7 @@ HYDRA addresses both problems simultaneously. It is an autonomous SOC investigat
 4. Produces structured, auditable verdicts with MITRE ATT&CK mapping and risk scores
 5. Maintains a complete LLM audit trail for compliance and forensic review
 
-The system is designed for deployment behind air-gap boundaries---physically or logically isolated networks where no data leaves the organization's control. This paper describes the architecture, threat model, evaluation results, and known limitations of the HYDRA platform as of version 1.1.0.
+The system is designed for deployment behind air-gap boundaries---physically or logically isolated networks where no data leaves the organization's control. This paper describes the architecture, threat model, evaluation results, and known limitations of the ZOVARC platform as of version 1.1.0.
 
 ---
 
@@ -44,7 +44,7 @@ The system is designed for deployment behind air-gap boundaries---physically or 
 
 ### 2.1 Pipeline Overview
 
-HYDRA implements a five-stage investigation pipeline orchestrated by Temporal, a durable workflow engine that provides fault tolerance and replay capability.
+ZOVARC implements a five-stage investigation pipeline orchestrated by Temporal, a durable workflow engine that provides fault tolerance and replay capability.
 
 ```mermaid
 graph TD
@@ -116,7 +116,7 @@ A YAML-driven model router (`model_config.yaml`) selects the appropriate model t
 
 ### 3.1 Core Assumption: LLM Output Is Untrusted
 
-HYDRA treats all LLM-generated content as untrusted input. This is the foundational security assumption. The LLM may generate code that attempts to:
+ZOVARC treats all LLM-generated content as untrusted input. This is the foundational security assumption. The LLM may generate code that attempts to:
 
 - Import dangerous modules (os, subprocess, socket) for host escape
 - Use eval/exec to bypass static analysis
@@ -145,7 +145,7 @@ HYDRA treats all LLM-generated content as untrusted input. This is the foundatio
 
 ### 3.3 Prompt Injection Mitigation
 
-Alert payloads may contain attacker-controlled content (e.g., malicious email subjects, HTTP request paths). HYDRA mitigates prompt injection through:
+Alert payloads may contain attacker-controlled content (e.g., malicious email subjects, HTTP request paths). ZOVARC mitigates prompt injection through:
 
 1. **Template-first approach:** 11 of the most common investigation types use pre-validated skill templates where the LLM only fills parameters, not arbitrary code.
 2. **PII masking in Stage 1:** Sensitive strings are tagged before reaching the LLM.
@@ -219,10 +219,10 @@ All 100 investigations completed successfully. Infrastructure issues (Docker tim
 | Method | Avg Time per Investigation | Throughput |
 |--------|--------------------------|-----------|
 | Manual analyst (industry avg) | 36 minutes | ~1.7/hour |
-| HYDRA (14B model, RTX 3050) | 90 seconds | ~40/hour |
-| HYDRA (template-only, no LLM) | 15 seconds | ~240/hour |
+| ZOVARC (14B model, RTX 3050) | 90 seconds | ~40/hour |
+| ZOVARC (template-only, no LLM) | 15 seconds | ~240/hour |
 
-On the reference hardware, HYDRA achieves approximately 24x throughput improvement over manual investigation for LLM-powered investigations, and over 140x for template-based fast-fill investigations that bypass the LLM entirely.
+On the reference hardware, ZOVARC achieves approximately 24x throughput improvement over manual investigation for LLM-powered investigations, and over 140x for template-based fast-fill investigations that bypass the LLM entirely.
 
 ---
 
@@ -232,7 +232,7 @@ We document the following known limitations transparently, as honest disclosure 
 
 ### 5.1 IOC Extraction Accuracy
 
-IOC (Indicator of Compromise) extraction now yields 2-10 IOCs per investigation. However, the model can occasionally reformat IP addresses, truncate file hashes, or misattribute network indicators. IOCs extracted by HYDRA should be validated against source data before use in blocking rules or threat intelligence feeds.
+IOC (Indicator of Compromise) extraction now yields 2-10 IOCs per investigation. However, the model can occasionally reformat IP addresses, truncate file hashes, or misattribute network indicators. IOCs extracted by ZOVARC should be validated against source data before use in blocking rules or threat intelligence feeds.
 
 ### 5.2 Template Dependency
 
@@ -244,7 +244,7 @@ On the reference RTX 3050, the 14B model processes one investigation at a time d
 
 ### 5.4 No PCAP or Full Packet Analysis
 
-HYDRA operates on structured alert data (SIEM alert JSON), not raw network captures. It cannot perform deep packet inspection, payload reconstruction, or protocol analysis. Integration with network forensics tools (Zeek, Suricata) is planned but not implemented.
+ZOVARC operates on structured alert data (SIEM alert JSON), not raw network captures. It cannot perform deep packet inspection, payload reconstruction, or protocol analysis. Integration with network forensics tools (Zeek, Suricata) is planned but not implemented.
 
 ### 5.5 DPO Alignment: Planned, Not Completed
 
@@ -252,7 +252,7 @@ A Direct Preference Optimization (DPO) training pipeline exists in the codebase 
 
 ### 5.6 False Positive Discrimination
 
-HYDRA reliably detects attacks but has difficulty confidently classifying benign traffic. Benign HTTP requests to Juice Shop (e.g., legitimate product browsing) were sometimes assigned risk scores of 40-55, where the target for benign traffic is below 30. The false positive confidence estimator requires further calibration.
+ZOVARC reliably detects attacks but has difficulty confidently classifying benign traffic. Benign HTTP requests to Juice Shop (e.g., legitimate product browsing) were sometimes assigned risk scores of 40-55, where the target for benign traffic is below 30. The false positive confidence estimator requires further calibration.
 
 ---
 
@@ -276,7 +276,7 @@ HYDRA reliably detects attacks but has difficulty confidently classifying benign
 
 ### 6.3 Key Differentiator
 
-HYDRA is, to our knowledge, the only SOC investigation platform that:
+ZOVARC is, to our knowledge, the only SOC investigation platform that:
 1. Runs the complete investigation pipeline (LLM inference, code generation, sandbox execution, verdict generation) on a single machine with no cloud connectivity
 2. Operates on consumer-grade GPU hardware (4GB VRAM)
 3. Provides a four-layer sandbox containment model specifically designed for LLM-generated security investigation code
@@ -286,13 +286,13 @@ HYDRA is, to our knowledge, the only SOC investigation platform that:
 
 ## 7. Conclusion
 
-HYDRA demonstrates that autonomous SOC investigation is feasible on air-gapped infrastructure using consumer-grade hardware. The five-stage pipeline with Temporal orchestration provides fault-tolerant, auditable investigation execution. The four-layer sandbox model (AST prefilter, Docker isolation, seccomp filtering, kill timer) mitigates the inherent risks of executing LLM-generated code. The 100% completion rate and 100% attack detection rate on the Juice Shop benchmark (100/100 investigations, 70/70 attack alerts) indicates that the template-based investigation approach, augmented by LLM fallback for novel alert types, produces reliable results across common and uncommon attack categories.
+ZOVARC demonstrates that autonomous SOC investigation is feasible on air-gapped infrastructure using consumer-grade hardware. The five-stage pipeline with Temporal orchestration provides fault-tolerant, auditable investigation execution. The four-layer sandbox model (AST prefilter, Docker isolation, seccomp filtering, kill timer) mitigates the inherent risks of executing LLM-generated code. The 100% completion rate and 100% attack detection rate on the Juice Shop benchmark (100/100 investigations, 70/70 attack alerts) indicates that the template-based investigation approach, augmented by LLM fallback for novel alert types, produces reliable results across common and uncommon attack categories.
 
 The primary bottleneck is single-GPU inference throughput, which limits sustained investigation capacity to approximately 40 LLM-powered investigations per hour on RTX 3050 hardware. Template-based investigations complete in ~15 seconds, enabling ~240 investigations per hour for known alert types. Production deployments targeting higher volumes should budget for dedicated inference hardware (A6000/A100 class) or adopt the tiered model approach.
 
-For organizations constrained by GDPR, HIPAA, NERC CIP, or CMMC requirements, HYDRA eliminates the data sovereignty concern entirely: no telemetry, no investigation data, and no model interactions leave the organization's network boundary. The complete LLM audit trail provides the provenance documentation these compliance frameworks require.
+For organizations constrained by GDPR, HIPAA, NERC CIP, or CMMC requirements, ZOVARC eliminates the data sovereignty concern entirely: no telemetry, no investigation data, and no model interactions leave the organization's network boundary. The complete LLM audit trail provides the provenance documentation these compliance frameworks require.
 
-We are seeking design partners among enterprise SOC teams to validate the platform against production alert volumes and diverse SIEM integrations. The platform is open for evaluation at https://github.com/hydra-soc/hydra-mvp.
+We are seeking design partners among enterprise SOC teams to validate the platform against production alert volumes and diverse SIEM integrations. The platform is open for evaluation at https://github.com/zovarc-soc/zovarc-mvp.
 
 ---
 

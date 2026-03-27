@@ -1,4 +1,4 @@
-# HYDRA Investigation Failure Modes
+# ZOVARC Investigation Failure Modes
 
 > **Last updated: v1.5.1 (2026-03-24).** Race condition (#1) FIXED in v1.2.0. LLM model names (#5) FIXED in v1.5.0.
 
@@ -49,7 +49,7 @@ Every failure event captures:
   "details": {
     "model_provider": "groq",
     "latency_ms": 15230,
-    "tier_attempted": "hydra-fast"
+    "tier_attempted": "zovarc-fast"
   },
   "recovery_action": "failover_to_local_vllm",
   "recovered": true
@@ -98,7 +98,7 @@ Every failure event captures:
 
 **Recovery flow:**
 1. Log `FailureContext` to `audit_events` with first 500 chars of raw output
-2. Worker re-routes to reasoning tier (`hydra-reasoning` / Claude Sonnet) with JSON repair prompt
+2. Worker re-routes to reasoning tier (`zovarc-reasoning` / Claude Sonnet) with JSON repair prompt
 3. Max 1 retry -- if repair fails, investigation fails with full context in `agent_tasks.error_message`
 
 **Audit event metadata:**

@@ -1,8 +1,8 @@
-# HYDRA Model Deployment Guide
+# ZOVARC Model Deployment Guide
 
 ## Model: Qwen2.5-14B-Instruct (Q4_K_M quantization)
 
-HYDRA uses a local LLM for security investigation code generation. The model runs on-premise via llama.cpp — no cloud API required.
+ZOVARC uses a local LLM for security investigation code generation. The model runs on-premise via llama.cpp — no cloud API required.
 
 ## Hardware Requirements
 
@@ -63,7 +63,7 @@ curl http://localhost:11434/v1/chat/completions \
   -d '{"model":"qwen2.5","messages":[{"role":"user","content":"Hello"}],"max_tokens":10}'
 ```
 
-## How HYDRA Uses the Model
+## How ZOVARC Uses the Model
 
 ### Path A (Template) — 11 known alert types
 Skill templates with hand-coded Python. LLM only fills parameters.
@@ -77,11 +77,11 @@ LLM generates full investigation Python script from scratch.
 
 ### Worker Configuration
 
-The HYDRA worker connects to llama.cpp via environment variables in `docker-compose.yml`:
+The ZOVARC worker connects to llama.cpp via environment variables in `docker-compose.yml`:
 
 ```yaml
 LITELLM_URL: http://host.docker.internal:11434/v1/chat/completions
-HYDRA_LLM_MODEL: qwen2.5:14b
+ZOVARC_LLM_MODEL: qwen2.5:14b
 ```
 
 ## Performance Benchmarks (Path B)

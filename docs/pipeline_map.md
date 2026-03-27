@@ -1,4 +1,4 @@
-# HYDRA Investigation Pipeline — Activity Map
+# ZOVARC Investigation Pipeline — Activity Map
 
 Every activity the workflow calls, in execution order.
 

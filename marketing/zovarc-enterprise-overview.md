@@ -1,4 +1,4 @@
-# HYDRA
+# ZOVARC
 
 **Autonomous SOC Investigation Engine -- Air-Gapped, VPC-Native, Zero Data Egress**
 
@@ -18,7 +18,7 @@ You have evaluated AI-powered triage tools. Every one of them requires your tele
 
 ## The Solution
 
-**Hydra is an autonomous investigation engine that runs entirely inside your VPC.** No cloud callbacks. No telemetry exfiltration. No API keys to a third-party inference service. Every model, every workflow, every byte of analysis stays on infrastructure you control.
+**Zovarc is an autonomous investigation engine that runs entirely inside your VPC.** No cloud callbacks. No telemetry exfiltration. No API keys to a third-party inference service. Every model, every workflow, every byte of analysis stays on infrastructure you control.
 
 ### Performance at a Glance
 
@@ -45,7 +45,7 @@ You have evaluated AI-powered triage tools. Every one of them requires your tele
 Alert Ingestion --> LLM Code Generation --> Sandboxed Execution --> Entity Graph --> Verdict + Report
 ```
 
-1. **Alert Ingestion.** SIEM webhooks (Splunk, Sentinel, Elastic) deliver alerts to Hydra's API gateway. SHA-256 fingerprinting deduplicates at intake.
+1. **Alert Ingestion.** SIEM webhooks (Splunk, Sentinel, Elastic) deliver alerts to Zovarc's API gateway. SHA-256 fingerprinting deduplicates at intake.
 
 2. **LLM Code Generation.** A local large language model (Qwen 2.5, swappable) generates Python investigation code tailored to the alert type -- DNS resolution, IOC enrichment, log correlation, behavioral analysis.
 
@@ -53,7 +53,7 @@ Alert Ingestion --> LLM Code Generation --> Sandboxed Execution --> Entity Graph
 
 4. **Entity Graph.** Investigation outputs populate a pgvector-backed entity graph -- IPs, domains, hashes, users, devices -- with cross-investigation linking and semantic similarity search.
 
-5. **Verdict and Report.** Hydra delivers a structured verdict (true positive, false positive, needs escalation) with a full investigation narrative, entity map, and recommended response actions.
+5. **Verdict and Report.** Zovarc delivers a structured verdict (true positive, false positive, needs escalation) with a full investigation narrative, entity map, and recommended response actions.
 
 **Orchestration** is handled by Temporal, providing durable, fault-tolerant workflow execution with full audit trails. Every investigation is reproducible and auditable.
 
@@ -61,7 +61,7 @@ Alert Ingestion --> LLM Code Generation --> Sandboxed Execution --> Entity Graph
 
 ## Competitive Differentiation
 
-| Capability | Hydra | Dropzone AI | Prophet Security | Conifers AI |
+| Capability | Zovarc | Dropzone AI | Prophet Security | Conifers AI |
 |---|---|---|---|---|
 | **Deployment model** | VPC / on-prem / air-gap | SaaS only | SaaS only | SaaS only |
 | **Data residency** | Customer-controlled | Vendor cloud | Vendor cloud | Vendor cloud |
@@ -71,13 +71,13 @@ Alert Ingestion --> LLM Code Generation --> Sandboxed Execution --> Entity Graph
 | **Sandboxed code execution** | Yes (multi-layer) | No | No | No |
 | **Air-gap deployable** | Yes | No | No | No |
 
-Every competitor in the autonomous SOC investigation space operates as SaaS. **Hydra is the only VPC-native option.** For regulated enterprises, this is not a feature -- it is a prerequisite.
+Every competitor in the autonomous SOC investigation space operates as SaaS. **Zovarc is the only VPC-native option.** For regulated enterprises, this is not a feature -- it is a prerequisite.
 
 ---
 
 ## Cross-Tenant Intelligence Without Data Sharing
 
-For MSSPs and multi-division enterprises, Hydra supports **privacy-safe cross-tenant entity resolution**. Threat scores, entity relationships, and investigation patterns propagate across tenants via materialized views -- without exposing raw telemetry or alert data from any individual tenant. You get collective defense without collective risk.
+For MSSPs and multi-division enterprises, Zovarc supports **privacy-safe cross-tenant entity resolution**. Threat scores, entity relationships, and investigation patterns propagate across tenants via materialized views -- without exposing raw telemetry or alert data from any individual tenant. You get collective defense without collective risk.
 
 ---
 
@@ -85,7 +85,7 @@ For MSSPs and multi-division enterprises, Hydra supports **privacy-safe cross-te
 
 > Everything you just watched -- every alert ingested, every line of code generated, every entity extracted, every verdict rendered -- **zero bytes left this machine.**
 
-That is the guarantee. No telemetry home. No model phone-backs. No training on your data. Hydra is infrastructure you own.
+That is the guarantee. No telemetry home. No model phone-backs. No training on your data. Zovarc is infrastructure you own.
 
 ---
 
@@ -98,8 +98,8 @@ We are offering a limited number of **90-day design partnerships** for early dep
 - **Pricing.** Founder-tier -- significantly below future enterprise licensing.
 - **Fit.** US defense primes, Five Eyes agencies, US/EU financial institutions, Gulf sovereign entities.
 
-**Contact:** [sales@hydra.security]
+**Contact:** [sales@zovarc.security]
 
 ---
 
-*HYDRA -- Autonomous Investigation. Total Containment.*
+*ZOVARC -- Autonomous Investigation. Total Containment.*

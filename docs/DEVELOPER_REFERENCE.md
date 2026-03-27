@@ -2,7 +2,7 @@
 
 **Version: v1.5.1 | Date: 2026-03-24**
 
-This document provides technical internals for platform engineers, infrastructure developers, and API integrators working with Project Hydra.
+This document provides technical internals for platform engineers, infrastructure developers, and API integrators working with Project Zovarc.
 
 ## API Architecture (Golang / Gin)
 
@@ -25,7 +25,7 @@ All routing is centralized in `main.go`, dispatching to HTTP handlers across 27 
   - Issuer and audience claims are validated on every token.
   - JWKS keys are cached and **auto-refreshed** on key rotation.
   - **JIT (Just-In-Time) user provisioning**: users are created on first OIDC login if they do not already exist.
-  - **Claims mapping**: OIDC claims are mapped to Hydra roles and tenant assignments.
+  - **Claims mapping**: OIDC claims are mapped to Zovarc roles and tenant assignments.
 
 - **Relational Integrity**: Uses `pgxpool` for high-performance PostgreSQL connection multiplexing.
 
@@ -35,7 +35,7 @@ Endpoints are prefixed with `/api/v1/`. For external integration, utilize a gene
 
 ## The Temporal Worker Loop
 
-Hydra handles long-running, non-deterministic AI tasks asynchronously using Temporal.io.
+Zovarc handles long-running, non-deterministic AI tasks asynchronously using Temporal.io.
 
 The Python worker (`worker/`) currently implements **10 workflows** and **95 activities**, spanning investigation orchestration, detection engineering, SOAR response, shadow mode validation, and more.
 
@@ -43,7 +43,7 @@ The Python worker (`worker/`) currently implements **10 workflows** and **95 act
 2. The Python Worker (`worker/workflows.py`) picks up the workflow, serving as the central orchestration loop.
 3. The workflow executes specialized activities (`worker/activities.py`):
    - `plan_investigation`
-   - `retrieve_skill` (Interfacing with the Hydra Intelligence Fabric)
+   - `retrieve_skill` (Interfacing with the Zovarc Intelligence Fabric)
    - `generate_investigation_code` / `render_skill_template`
    - `request_human_approval`
    - `execute_sandbox_code` (Interfacing with the Docker Engine API)
@@ -74,7 +74,7 @@ VALUES (
     'Scan the provided memory dump for MZ headers'
 );
 ```
-Ensure the Python template follows the parameter hydration logic defined in the Temporal Worker.
+Ensure the Python template follows the parameter zovarction logic defined in the Temporal Worker.
 
 ## Database Schema Map
 

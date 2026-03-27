@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: HYDRA SOC Automation API
+  title: ZOVARC SOC Automation API
   version: 1.2.0
   description: |
     AI-powered SOC automation platform. Manages security investigations,
@@ -12,9 +12,9 @@ info:
     - **Access tokens** expire in 15 minutes and are returned in the JSON response body.
     - **Refresh tokens** are stored in httpOnly cookies (7-day lifetime) and are NOT sent as Bearer tokens.
       Use `POST /api/v1/auth/refresh` to obtain a new access token.
-    - **API keys** (hydra_ prefix) can be used for M2M authentication via X-API-Key header.
+    - **API keys** (zovarc_ prefix) can be used for M2M authentication via X-API-Key header.
   contact:
-    name: HYDRA Platform
+    name: ZOVARC Platform
   license:
     name: Proprietary
 
@@ -41,7 +41,7 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-      description: API key for M2M authentication (hydra_ prefix)
+      description: API key for M2M authentication (zovarc_ prefix)
 
   schemas:
     APIResponse:
@@ -2536,7 +2536,7 @@ paths:
       tags: [SIEM Ingest]
       description: |
         Receives alerts from Splunk via webhook. Accepts Splunk alert action
-        payload format and converts to HYDRA internal alert schema. Each alert
+        payload format and converts to ZOVARC internal alert schema. Each alert
         is deduplicated and queued for investigation.
       requestBody:
         required: true
@@ -2598,7 +2598,7 @@ paths:
       description: |
         Receives alerts from Elastic Security via webhook action. Accepts
         Elastic alert payload format (Kibana alerting or Elastic Security
-        detection rules) and converts to HYDRA internal alert schema.
+        detection rules) and converts to ZOVARC internal alert schema.
       requestBody:
         required: true
         content:

@@ -1,4 +1,4 @@
-# HYDRA Project Status
+# ZOVARC Project Status
 
 Last updated: 2026-03-24 (v1.5.1, 161 commits)
 
@@ -31,7 +31,7 @@ Investigation flow works end-to-end:
 | LLM calls fail | Routing to Groq with placeholder key | Routed to local Ollama via host.docker.internal | litellm_config.yaml |
 | Go API won't compile | Missing encoding/json import in tokenquota.go, unused fmt in approval_handlers.go | Added/removed imports | tokenquota.go, approval_handlers.go |
 | NATS won't start | `--max_payload` flag unsupported in nats:2.10-alpine | Replaced with `-js` short flags | docker-compose.yml |
-| Postgres auth mismatch | .env password didn't match running DB | Reset to default `hydra_dev_2026` | .env |
+| Postgres auth mismatch | .env password didn't match running DB | Reset to default `zovarc_dev_2026` | .env |
 | Worker import crash | `activities.py` + `activities/` package name conflict | Renamed to `_legacy_activities.py` with `__init__.py` re-exports | worker/ |
 | Pool creation fails | PgBouncer rejects `-c jit=off` option | Removed jit option, use application_name only | database/pool_manager.py |
 | migration 040 missing | needs_human_review column not applied | Applied manually | migrations/040_human_review_flags.sql |
@@ -55,7 +55,7 @@ Investigation flow works end-to-end:
 | Worker | Healthy | 16 workflows, 110 activities |
 | PostgreSQL | Healthy | 76+ tables, 55+ migrations |
 | Redis | Healthy | go-redis/v9 pooled |
-| Temporal | Healthy | Task queue: hydra-tasks |
+| Temporal | Healthy | Task queue: zovarc-tasks |
 | LiteLLM | Healthy | Routes fast → Ollama qwen2.5:14b |
 | Ollama | Healthy | qwen2.5:14b, llama3.1:8b available |
 | NATS | Healthy | JetStream enabled |

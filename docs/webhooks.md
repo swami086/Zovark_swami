@@ -1,6 +1,6 @@
-# HYDRA Webhook Event Catalog
+# ZOVARC Webhook Event Catalog
 
-HYDRA supports outbound webhooks to notify external systems of platform events. Webhooks are delivered as HTTP POST requests with JSON payloads, authenticated via HMAC-SHA256 signatures.
+ZOVARC supports outbound webhooks to notify external systems of platform events. Webhooks are delivered as HTTP POST requests with JSON payloads, authenticated via HMAC-SHA256 signatures.
 
 ## Table of Contents
 
@@ -32,7 +32,7 @@ All webhook deliveries use a standard envelope format:
 ```json
 {
   "event_type": "investigation_completed",
-  "tenant_id": "hydra-dev",
+  "tenant_id": "zovarc-dev",
   "timestamp": "2026-03-10T14:30:00Z",
   "data": {
     // Event-specific payload (see below)
@@ -45,7 +45,7 @@ All webhook deliveries use a standard envelope format:
 | Header                | Description                                      |
 |-----------------------|--------------------------------------------------|
 | `Content-Type`        | `application/json`                               |
-| `User-Agent`          | `HYDRA-Webhook/1.0`                              |
+| `User-Agent`          | `ZOVARC-Webhook/1.0`                              |
 | `X-Webhook-Signature` | HMAC-SHA256 hex digest of the request body       |
 
 ---
@@ -59,7 +59,7 @@ Fired when an investigation task reaches a terminal state (`completed` or `faile
 ```json
 {
   "event_type": "investigation_completed",
-  "tenant_id": "hydra-dev",
+  "tenant_id": "zovarc-dev",
   "timestamp": "2026-03-10T14:30:00Z",
   "data": {
     "task_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -84,7 +84,7 @@ Fired when a new SIEM alert is ingested via the webhook alert endpoint.
 ```json
 {
   "event_type": "alert_received",
-  "tenant_id": "hydra-dev",
+  "tenant_id": "zovarc-dev",
   "timestamp": "2026-03-10T14:25:00Z",
   "data": {
     "alert_id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
@@ -109,7 +109,7 @@ Fired when an investigation step requires human approval before proceeding (e.g.
 ```json
 {
   "event_type": "approval_needed",
-  "tenant_id": "hydra-dev",
+  "tenant_id": "zovarc-dev",
   "timestamp": "2026-03-10T14:28:00Z",
   "data": {
     "approval_id": "c3d4e5f6-a7b8-9012-cdef-345678901234",
@@ -130,7 +130,7 @@ Fired when a SOAR response playbook action is executed.
 ```json
 {
   "event_type": "response_executed",
-  "tenant_id": "hydra-dev",
+  "tenant_id": "zovarc-dev",
   "timestamp": "2026-03-10T14:32:00Z",
   "data": {
     "execution_id": "d4e5f6a7-b8c9-0123-def4-567890123456",
@@ -262,7 +262,7 @@ curl http://localhost:8090/api/v1/webhooks/deliveries \
 
 ## Retry Policy
 
-HYDRA uses exponential backoff for failed webhook deliveries:
+ZOVARC uses exponential backoff for failed webhook deliveries:
 
 | Attempt | Delay   | Total Elapsed |
 |---------|---------|---------------|

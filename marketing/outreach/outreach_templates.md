@@ -1,4 +1,4 @@
-# HYDRA — Cold Outreach Email Templates
+# ZOVARC — Cold Outreach Email Templates
 
 ## Template 1: EU Bank (GDPR Angle)
 
@@ -10,7 +10,7 @@ I'm reaching out because [Bank Name]'s security team faces a challenge I've been
 
 GDPR Article 44 restricts cross-border data transfers, which blocks your team from using CrowdStrike Charlotte AI, Microsoft Copilot for Security, or any cloud-dependent investigation tool. Meanwhile, your analysts spend 30-60 minutes per alert on manual triage.
 
-We built HYDRA — an autonomous investigation platform that runs entirely on-premise. A local LLM generates investigation code for each alert, executes it in a hardened sandbox, and delivers structured verdicts with IOCs and MITRE ATT&CK mapping. No data leaves your network. No cloud dependency.
+We built ZOVARC — an autonomous investigation platform that runs entirely on-premise. A local LLM generates investigation code for each alert, executes it in a hardened sandbox, and delivers structured verdicts with IOCs and MITRE ATT&CK mapping. No data leaves your network. No cloud dependency.
 
 The numbers: 99% accuracy on 100 real-traffic attacks (OWASP Juice Shop), correct verdicts on novel attack types including Kerberoasting and LOLBins abuse, runs on a single NVIDIA GPU.
 
@@ -31,7 +31,7 @@ Dear [Name],
 
 [Health System Name] processes thousands of security alerts daily across your clinical and IT infrastructure. Your SOC team triages each one manually because HIPAA's minimum necessary standard prevents sending security logs — which may contain PHI — to cloud AI services.
 
-We built HYDRA specifically for this constraint. It's an autonomous SOC investigation platform that runs entirely on your infrastructure:
+We built ZOVARC specifically for this constraint. It's an autonomous SOC investigation platform that runs entirely on your infrastructure:
 
 - Local LLM (no cloud API calls, no BAA required with AI vendors)
 - Hardened sandbox execution (4-layer isolation for generated investigation code)
@@ -59,7 +59,7 @@ Dear [Name],
 
 [Company Name]'s SOC team handles alerts across environments that process controlled unclassified information. CMMC Level 2 (and NIST 800-171) requires that CUI stays within your authorization boundary — which rules out every cloud-based AI investigation tool on the market.
 
-We built HYDRA for exactly this scenario. It's an autonomous SOC investigation engine that runs completely air-gapped:
+We built ZOVARC for exactly this scenario. It's an autonomous SOC investigation engine that runs completely air-gapped:
 
 - **Local inference:** Quantized LLM on a single NVIDIA GPU. No internet required after deployment.
 - **Air-gap tested:** Bundled MITRE ATT&CK and CISA KEV databases. No outbound connections.

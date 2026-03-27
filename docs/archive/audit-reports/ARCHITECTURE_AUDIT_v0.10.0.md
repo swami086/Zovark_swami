@@ -1,4 +1,4 @@
-# HYDRA v0.10.0 — Architecture Audit Report
+# ZOVARC v0.10.0 — Architecture Audit Report
 
 **Date:** 2026-03-13
 **Audited by:** Claude Opus 4.6
@@ -128,7 +128,7 @@ GREEN — @modelcontextprotocol/sdk 1.12.1, pg 8.13.1 — current.
 |---|-------|----------|
 | 6 | Temporal 7233 exposed to host, no auth | `docker-compose.yml` |
 | 7 | NATS 4222 exposed, no auth token | `docker-compose.yml` |
-| 8 | Hardcoded JWT secret `hydra-jwt-secret-dev-2026` (27 chars) | `api/main.go:43` |
+| 8 | Hardcoded JWT secret `zovarc-jwt-secret-dev-2026` (27 chars) | `api/main.go:43` |
 | 9 | Rate limiting fails open on Redis error | `api/ratelimit.go:157-161` |
 | 10 | Audit logs fire async (may not persist on crash) | `api/security.go:108` |
 | 11 | Unvalidated pip package names in SRE applier | `worker/sre/applier.py:215` |
@@ -162,9 +162,9 @@ GREEN — @modelcontextprotocol/sdk 1.12.1, pg 8.13.1 — current.
 
 | Variable | Default | Risk |
 |----------|---------|------|
-| `DATABASE_URL` | `postgresql://hydra:hydra_dev_2026@...` | YELLOW — Dev creds |
-| `JWT_SECRET` | `hydra-jwt-secret-dev-2026` | RED — Weak |
-| `LITELLM_MASTER_KEY` | `sk-hydra-dev-2026` | YELLOW — Dev key |
+| `DATABASE_URL` | `postgresql://zovarc:zovarc_dev_2026@...` | YELLOW — Dev creds |
+| `JWT_SECRET` | `zovarc-jwt-secret-dev-2026` | RED — Weak |
+| `LITELLM_MASTER_KEY` | `sk-zovarc-dev-2026` | YELLOW — Dev key |
 | `NATS_URL` | (empty — optional) | GREEN — Graceful fallback |
 | `REDIS_URL` | `redis:6379` | GREEN |
 | `TEMPORAL_ADDRESS` | `temporal:7233` | GREEN |
@@ -294,7 +294,7 @@ ollama_data, prometheus_data, grafana_data, caddy_data/caddy_config
 |---------|----------|-----------|--------|
 | Expired token bypass | CRITICAL | middleware.go:57 | `strings.Contains(err.Error(), "token is expired")` allows expired JWTs |
 | OIDC no sig verify | CRITICAL | oidc.go:201 | ID token parsed without JWKS validation |
-| JWT secret weak | HIGH | main.go:43 | Default: `hydra-jwt-secret-dev-2026` (27 chars) |
+| JWT secret weak | HIGH | main.go:43 | Default: `zovarc-jwt-secret-dev-2026` (27 chars) |
 | Rate limit fail-open | HIGH | ratelimit.go:157 | `c.Next()` on Redis error |
 | Async audit logs | HIGH | security.go:108 | `go func()` — may not persist on crash |
 | No health timeout | MEDIUM | handlers.go | `http.Get()` with no timeout |
@@ -305,7 +305,7 @@ ollama_data, prometheus_data, grafana_data, caddy_data/caddy_config
 | Finding | Severity | File:Line | Detail |
 |---------|----------|-----------|--------|
 | pip install unvalidated | HIGH | sre/applier.py:215 | Package name not regex-validated |
-| Hardcoded dev creds | MEDIUM | 40 files | `hydra_dev_2026` as defaults (env override exists) |
+| Hardcoded dev creds | MEDIUM | 40 files | `zovarc_dev_2026` as defaults (env override exists) |
 | Code scrubbing fragile | MEDIUM | activities.py:194 | Regex-based, bypassable (AST prefilter is real defense) |
 | 24 print() statements | LOW | Various | Should use structured logger |
 | Rate limiter TODO | LOW | rate_limiter.py:129 | Set membership O(N), needs sorted sets for >100 |

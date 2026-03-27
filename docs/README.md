@@ -1,4 +1,4 @@
-# HYDRA Documentation
+# ZOVARC Documentation
 
 **Version:** v1.5.1 | **Date:** 2026-03-24
 

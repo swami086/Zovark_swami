@@ -1,8 +1,8 @@
-# HYDRA Model Tier Strategy
+# ZOVARC Model Tier Strategy
 
 ## The Three-Tier Model
 
-HYDRA's investigation quality depends entirely on model capability. The platform
+ZOVARC's investigation quality depends entirely on model capability. The platform
 supports three tiers, each mapped to a different use case and hardware profile.
 
 ### Tier 1: Fast (Triage)
@@ -71,17 +71,17 @@ for standard SOC alerts.
 
 ## Human Review Threshold
 
-Investigations with `risk_score < HYDRA_HUMAN_REVIEW_THRESHOLD` (default: 60) or
+Investigations with `risk_score < ZOVARC_HUMAN_REVIEW_THRESHOLD` (default: 60) or
 `code_execution_failed = true` are automatically flagged for human analyst review.
 
-The threshold is configurable per deployment via the `HYDRA_HUMAN_REVIEW_THRESHOLD`
+The threshold is configurable per deployment via the `ZOVARC_HUMAN_REVIEW_THRESHOLD`
 environment variable. The recommended value is determined from the accuracy benchmark
 (`scripts/accuracy_benchmark.py`) — typically the score below which accuracy drops
 below 90%.
 
 ## Recommended Production Setup
 
-For a SOC team evaluating HYDRA:
+For a SOC team evaluating ZOVARC:
 
 1. **Start with Hybrid** — Local 1.5B for triage, Groq for investigations ($0.01/inv)
 2. **Validate with PoV** — Run 48-hour PoV against real alerts, measure accuracy

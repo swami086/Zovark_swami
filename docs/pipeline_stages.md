@@ -1,4 +1,4 @@
-# HYDRA Investigation Pipeline — 5-Stage Architecture
+# ZOVARC Investigation Pipeline — 5-Stage Architecture
 
 ## Overview
 
@@ -64,7 +64,7 @@ If `is_duplicate=True`, the pipeline stops here (status="deduplicated").
 
 | Path | When | LLM Calls | Latency |
 |------|------|-----------|---------|
-| **Fast Fill** | `HYDRA_FAST_FILL=true` | 0 | ~5ms |
+| **Fast Fill** | `ZOVARC_FAST_FILL=true` | 0 | ~5ms |
 | **Template** | Skill matched with `code_template` | 1 (param fill) | ~30s |
 | **LLM Gen** | No template match | 1 (full code gen) | 5-10 min |
 
@@ -221,7 +221,7 @@ class StoreOutput:
 
 ## FAST_FILL Mode
 
-When `HYDRA_FAST_FILL=true`, the pipeline skips ALL LLM calls:
+When `ZOVARC_FAST_FILL=true`, the pipeline skips ALL LLM calls:
 
 | Stage | Normal | FAST_FILL |
 |-------|--------|-----------|

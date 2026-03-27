@@ -1,4 +1,4 @@
-# HYDRA Accuracy Report — fast tier
+# ZOVARC Accuracy Report — fast tier
 
 **Generated:** 2026-03-16T14:39:24Z
 **Corpus:** 70 labeled alerts

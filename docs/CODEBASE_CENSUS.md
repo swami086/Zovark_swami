@@ -1,4 +1,4 @@
-# HYDRA Codebase Census
+# ZOVARC Codebase Census
 
 Generated: 2026-03-24 (v1.5.1)
 Commit: 161 commits on master
@@ -212,7 +212,7 @@ Commit: 161 commits on master
 - `./worker/workflows.py` (1244 lines)
 - `./worker/workflows/__init__.py` (0 lines)
 - `./worker/workflows/feedback_aggregation.py` (224 lines)
-- `./worker/workflows/hydra_workflows.py` (148 lines)
+- `./worker/workflows/zovarc_workflows.py` (148 lines)
 - `./worker/workflows/kev_processing.py` (194 lines)
 
 ## Database
