@@ -37,7 +37,7 @@ type Config struct {
 func init() {
 	appConfig = &Config{
 		Port:             getEnvOrDefault("PORT", "8090"),
-		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra"),
+		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"),
 		TemporalAddress:  getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233"),
 		LiteLLMMasterKey: getEnvOrDefault("LITELLM_MASTER_KEY", ""),
 		JWTSecret:        getEnvOrDefault("JWT_SECRET", ""),
@@ -84,7 +84,7 @@ func main() {
 		return
 	}
 
-	log.Println("Starting Hydra API Gateway...")
+	log.Println("Starting Zovarc API Gateway...")
 
 	// Initialize Vault (for secrets management — must come before DB init)
 	initVault()
@@ -305,6 +305,13 @@ func main() {
 		api.GET("/response/executions/:id", getResponseExecutionHandler)
 		api.POST("/response/executions/:id/approve", requireRole("admin"), approveResponseExecutionHandler)
 		api.POST("/response/executions/:id/rollback", requireRole("admin"), rollbackResponseExecutionHandler)
+
+		// Cipher Audit (Zovarc Sprint 2C)
+		api.GET("/cipher-audit/stats", cipherAuditStatsHandler)
+		api.GET("/cipher-audit/summary", cipherAuditSummaryHandler)
+		api.GET("/cipher-audit/findings", cipherAuditFindingsHandler)
+		api.GET("/cipher-audit/servers", cipherAuditServersHandler)
+		api.POST("/cipher-audit/analyze", requireRole("admin", "analyst"), cipherAuditAnalyzeHandler)
 	}
 
 	// Start server
