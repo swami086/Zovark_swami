@@ -67,6 +67,17 @@ requests = MockRequests()
 """
 
 # System prompts for code generation
+_BENIGN_DETECTION = (
+    "BENIGN SIGNAL DETECTION (check FIRST before any risk scoring): "
+    "If the alert contains benign system activity — windows update, scheduled backup, certificate renewal, "
+    "password change by the user themselves, NTP sync, health check, log rotation, patch management, "
+    "LDAP query, software inventory, routine login during business hours — then output: "
+    "risk_score=15, findings=[], iocs=[], recommendations=['No action required — routine system activity']. "
+    "A user changing their own password is NOT an attack. A scheduled Windows Update is NOT ransomware. "
+    "Certificate renewal is NOT a cryptographic attack. NTP sync is NOT timestomping. "
+    "System accounts (SYSTEM, LOCAL SERVICE, backup_svc, monitoring) performing routine tasks are BENIGN. "
+)
+
 _DEFENSIVE_CODING = (
     "DEFENSIVE CODING RULES (your code WILL crash if you ignore these): "
     "1. ALWAYS check regex match before .group(): `m = re.search(pat, text); val = m.group(1) if m else ''` — NEVER call .group() or .groups() without checking for None first. "
@@ -82,6 +93,7 @@ SYSTEM_PROMPT_SIEM = (
     "The script MUST include realistic mock/sample data inline so it produces meaningful output "
     "when executed in an isolated sandbox with no network access. Use ONLY the Python standard library. "
     "Do NOT use input(), subprocess, socket, requests, or any network calls. Print results as valid JSON to stdout. "
+    + _BENIGN_DETECTION
     + _DEFENSIVE_CODING +
     "CRITICAL RESTRICTIONS: 1. You are in a read-only container. Write files ONLY to /tmp/. "
     "2. Do NOT try to read non-existent system logs like 'auth.log'. Hardcode mock logs inline. "
@@ -101,6 +113,7 @@ SYSTEM_PROMPT_LOGS = (
     "The script MUST embed the provided log data in a multi-line string variable and analyze it directly. "
     "Do NOT use mock data — the real data is provided. Use ONLY the Python standard library. "
     "Do NOT use input(), subprocess, socket, requests, or any network calls. Print results as valid JSON to stdout. "
+    + _BENIGN_DETECTION
     + _DEFENSIVE_CODING +
     "CRITICAL: The script runs in a read-only sandbox. Write files ONLY to /tmp/. "
     "REQUIRED JSON OUTPUT STRUCTURE: Your script MUST print perfectly valid JSON to stdout containing exactly these EXACT top-level keys: "

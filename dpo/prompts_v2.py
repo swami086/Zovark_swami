@@ -165,7 +165,25 @@ Optional (extract if present): {optional_iocs}
 
 2. CONTEXTUAL EVIDENCE REQUIREMENT: For every extracted IOC, provide a concise 1-2 sentence explanation in the context field detailing exactly why this indicator is suspicious, referencing the specific action or anomaly observed in the surrounding log data.
 
-3. CALIBRATED RISK SCORING: Score risk based on the severity of observed behavior, not the alert title. Benign system events (scheduled tasks, routine updates, health checks) should score 10-30. Known attack patterns with clear evidence should score 70-100. Ambiguous activity without clear malicious intent should score 35-65.
+3. BENIGN SIGNAL DETECTION (check BEFORE assigning risk):
+   Look for benign system activity signals in the alert data:
+   - Benign task types: windows_update, scheduled_backup, cert_renewal, health_check, ntp_sync, software_inventory, log_rotation, patch_management, ldap_query, system_event, password_change, routine_auth, user_login_business, snmp_poll, bandwidth_test
+   - Benign rule names: ScheduledTask, WindowsUpdate, CertRenewal, Heartbeat, Inventory, Maintenance, HealthCheck, PatchMgmt, Routine, Normal, NTP, LDAP, SNMP, Backup
+   - Non-interactive system accounts: SYSTEM, NT AUTHORITY\\SYSTEM, LOCAL SERVICE, NETWORK SERVICE, sccm_svc, backup_svc, wsus_svc, monitoring, logrotate, puppet, certmgr, snmp_reader
+   - Benign raw_log patterns: Status=Success on routine processes, backup completed, certificate renewed, scan completed 0 threats, inventory cycle completed, log rotated, health check OK, NTP sync offset, patch installed, LDAP search result
+
+   If 2+ benign signals are present AND no attack indicators (failed logins, malware hashes, C2 beacons, lateral movement, privilege escalation commands, exploit signatures):
+     risk_score = 10-25
+     findings = []  (empty — no security findings for routine activity)
+     iocs = []  (empty — system IPs and service accounts are not IOCs)
+     recommendations = ["No action required — routine system activity"]
+
+   CRITICAL: A user changing their own password during business hours is NOT an attack.
+   A scheduled Windows Update is NOT ransomware preparation.
+   Certificate renewal is NOT a cryptographic attack.
+   NTP synchronization is NOT time-stomping.
+
+4. CALIBRATED RISK SCORING: Score risk based on the severity of observed behavior, not the alert title. Benign system events (scheduled tasks, routine updates, health checks) should score 10-30. Known attack patterns with clear evidence should score 70-100. Ambiguous activity without clear malicious intent should score 35-65.
 
 ## Investigation Steps
 1. Parse the alert JSON and extract all text fields
