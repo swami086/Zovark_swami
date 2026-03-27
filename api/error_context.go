@@ -171,7 +171,7 @@ func HandleSchemaValidationError(ctx context.Context, tenantID, taskID, priority
 func HandlePostgresLock(c *gin.Context, tenantID, taskID, priority string, queryType, tableName string, lockWaitMs int) {
 	var activeTransactions int
 	_ = dbPool.QueryRow(context.Background(),
-		`SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND datname = 'hydra'`,
+		`SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND datname = 'zovarc'`,
 	).Scan(&activeTransactions)
 
 	fc := FailureContext{

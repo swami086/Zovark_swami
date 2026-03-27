@@ -1,16 +1,16 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: hydra-api-hpa
-  namespace: hydra
+  name: zovarc-api-hpa
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: api
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: hydra-api
+    name: zovarc-api
   minReplicas: 2
   maxReplicas: 10
   metrics:

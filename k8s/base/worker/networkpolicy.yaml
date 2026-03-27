@@ -1,15 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: hydra-worker-netpol
-  namespace: hydra
+  name: zovarc-worker-netpol
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: worker
 spec:
   podSelector:
     matchLabels:
-      app: hydra
+      app: zovarc
       component: worker
   policyTypes:
     - Ingress
@@ -21,7 +21,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app: hydra
+              app: zovarc
               component: pgbouncer
       ports:
         - protocol: TCP
@@ -30,7 +30,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app: hydra
+              app: zovarc
               component: temporal
       ports:
         - protocol: TCP
@@ -39,7 +39,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app: hydra
+              app: zovarc
               component: redis
       ports:
         - protocol: TCP
@@ -48,7 +48,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app: hydra
+              app: zovarc
               component: litellm
       ports:
         - protocol: TCP

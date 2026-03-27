@@ -27,13 +27,13 @@ func testSlackWebhookHandler(c *gin.Context) {
 
 	// Send a test message
 	payload := map[string]interface{}{
-		"text": "HYDRA integration test — connection verified.",
+		"text": "ZOVARC integration test — connection verified.",
 		"blocks": []map[string]interface{}{
 			{
 				"type": "section",
 				"text": map[string]string{
 					"type": "mrkdwn",
-					"text": "*HYDRA Integration Test*\nSlack webhook connectivity verified successfully.",
+					"text": "*ZOVARC Integration Test*\nSlack webhook connectivity verified successfully.",
 				},
 			},
 		},
@@ -142,7 +142,7 @@ func testTeamsWebhookHandler(c *gin.Context) {
 					"body": []map[string]interface{}{
 						{
 							"type":   "TextBlock",
-							"text":   "HYDRA Integration Test",
+							"text":   "ZOVARC Integration Test",
 							"weight": "bolder",
 							"size":   "large",
 						},

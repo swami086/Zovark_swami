@@ -33,7 +33,7 @@ type OIDCConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
-	RoleClaimKey string // OIDC claim key to map to HYDRA roles
+	RoleClaimKey string // OIDC claim key to map to ZOVARC roles
 }
 
 // OIDCDiscovery represents the OpenID Connect Discovery document.
@@ -268,7 +268,7 @@ func ssoCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	// Map OIDC role claim to HYDRA role
+	// Map OIDC role claim to ZOVARC role
 	role := "analyst" // Default role
 	if roleClaim, ok := claims[oidcConfig.RoleClaimKey]; ok {
 		if r, ok := roleClaim.(string); ok {
@@ -291,7 +291,7 @@ func ssoCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	// Issue HYDRA access JWT (15 min)
+	// Issue ZOVARC access JWT (15 min)
 	jwtClaims := CustomClaims{
 		TenantID: user.TenantID,
 		UserID:   user.ID,
@@ -618,10 +618,10 @@ func jitProvision(ctx context.Context, email, name, externalID, role string) (*O
 	}
 
 	// JIT provision: create user in default tenant
-	// Look for the first active tenant, or use hydra-dev
+	// Look for the first active tenant, or use zovarc-dev
 	var tenantID string
 	err = dbPool.QueryRow(ctx,
-		"SELECT id FROM tenants WHERE slug = 'hydra-dev' AND is_active = true",
+		"SELECT id FROM tenants WHERE slug = 'zovarc-dev' AND is_active = true",
 	).Scan(&tenantID)
 	if err != nil {
 		// Use first active tenant

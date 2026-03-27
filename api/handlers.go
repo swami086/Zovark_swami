@@ -8,11 +8,11 @@ import (
 )
 
 func healthCheckHandler(c *gin.Context) {
-	deploymentMode := getEnvOrDefault("HYDRA_DEPLOYMENT_MODE", "cloud")
-	llmModel := getEnvOrDefault("HYDRA_LLM_MODEL", "fast")
+	deploymentMode := getEnvOrDefault("ZOVARC_DEPLOYMENT_MODE", "cloud")
+	llmModel := getEnvOrDefault("ZOVARC_LLM_MODEL", "fast")
 
 	llmProvider := "OpenRouter (Cloud)"
-	if llmModel == "hydra-local" {
+	if llmModel == "zovarc-local" {
 		llmProvider = "Ollama (Local)"
 	}
 

@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: litellm-config
-  namespace: hydra
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: litellm
 data:
   config.yaml: |

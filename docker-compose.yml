@@ -1,8 +1,8 @@
 # ============================================================
-# PROJECT HYDRA — MVP Docker Compose Stack v1.1.1 (RTX 3050 4GB)
+# PROJECT ZOVARC — MVP Docker Compose Stack v1.1.1 (RTX 3050 4GB)
 # Model: Qwen2.5-1.5B-Instruct-AWQ (chat) + nomic-embed-text (embed)
 # VRAM: 0.40 chat + 0.15 embed = ~2.2GB of 4GB
-# 6 errors from v1.0 fixed — see HYDRA_CORRECTED_WALKTHROUGH.md
+# 6 errors from v1.0 fixed — see ZOVARC_CORRECTED_WALKTHROUGH.md
 # Boot: docker compose up -d
 # Verify: docker compose ps (all services healthy)
 # ============================================================
@@ -12,11 +12,11 @@ services:
   # ─── DATABASE ─────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: hydra-postgres
+    container_name: zovarc-postgres
     environment:
-      POSTGRES_USER: hydra
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hydra_dev_2026}
-      POSTGRES_DB: hydra
+      POSTGRES_USER: zovarc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zovarc_dev_2026}
+      POSTGRES_DB: zovarc
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -26,7 +26,7 @@ services:
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hydra -d hydra"]
+      test: ["CMD-SHELL", "pg_isready -U zovarc -d zovarc"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -37,17 +37,17 @@ services:
           cpus: '1.0'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── CACHE / WORKING MEMORY ──────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: hydra-redis
+    container_name: zovarc-redis
     command: >
       redis-server
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
-      --requirepass ${REDIS_PASSWORD:-hydra-redis-dev-2026}
+      --requirepass ${REDIS_PASSWORD:-zovarc-redis-dev-2026}
       --rename-command FLUSHALL ""
       --rename-command CONFIG ""
       --rename-command DEBUG ""
@@ -56,7 +56,7 @@ services:
     expose:
       - "6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-hydra-redis-dev-2026}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-zovarc-redis-dev-2026}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,14 +67,14 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── CONNECTION POOLER ──────────────────────────────
   pgbouncer:
     image: edoburu/pgbouncer:latest
-    container_name: hydra-pgbouncer
+    container_name: zovarc-pgbouncer
     environment:
-      DATABASE_URL: postgres://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      DATABASE_URL: postgres://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: 400
@@ -100,17 +100,17 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── WORKFLOW ENGINE ─────────────────────────────────
   temporal:
     image: temporalio/auto-setup:1.24.2
-    container_name: hydra-temporal
+    container_name: zovarc-temporal
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_USER=hydra
-      - POSTGRES_PWD=${POSTGRES_PASSWORD:-hydra_dev_2026}
+      - POSTGRES_USER=zovarc
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-zovarc_dev_2026}
       - POSTGRES_SEEDS=postgres
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
     volumes:
@@ -128,11 +128,11 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   temporal-ui:
     image: temporalio/ui:2.26.2
-    container_name: hydra-temporal-ui
+    container_name: zovarc-temporal-ui
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
@@ -144,17 +144,17 @@ services:
     profiles: ["debug"]
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
 
   # ─── OBJECT STORAGE ─────────────────────────────────
   minio:
     image: minio/minio:latest
-    container_name: hydra-minio
+    container_name: zovarc-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-hydra}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-hydra_dev_2026}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-zovarc}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-zovarc_dev_2026}
     volumes:
       - minio_data:/data
     expose:
@@ -168,13 +168,13 @@ services:
     profiles: ["storage"]
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── OBSERVABILITY ───────────────────────────────────
   # Start with: docker compose --profile monitoring up -d
   jaeger:
     image: jaegertracing/all-in-one:1.57
-    container_name: hydra-jaeger
+    container_name: zovarc-jaeger
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     ports:
@@ -184,19 +184,19 @@ services:
     profiles: ["monitoring"]
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── TLS TERMINATION / REVERSE PROXY ─────────────────
   caddy:
     image: caddy:2-alpine
-    container_name: hydra-caddy
+    container_name: zovarc-caddy
     ports:
       - "80:80"
       - "443:443"
     environment:
-      - HYDRA_DOMAIN=${HYDRA_DOMAIN:-localhost}
-      - TLS_EMAIL=${TLS_EMAIL:-admin@hydra.local}
-      - HYDRA_TLS_ENABLED=${HYDRA_TLS_ENABLED:-false}
+      - ZOVARC_DOMAIN=${ZOVARC_DOMAIN:-localhost}
+      - TLS_EMAIL=${TLS_EMAIL:-admin@zovarc.local}
+      - ZOVARC_TLS_ENABLED=${ZOVARC_TLS_ENABLED:-false}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -212,7 +212,7 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── LOCAL LLM ───────────────────────────────────────
   # Primary: llama.cpp server running on host (not in Docker)
@@ -224,7 +224,7 @@ services:
   # Fallback (air-gap without host GPU): Ollama in Docker
   ollama:
     image: ollama/ollama:latest
-    container_name: hydra-ollama
+    container_name: zovarc-ollama
     volumes:
       - ollama_data:/root/.ollama
     deploy:
@@ -237,26 +237,26 @@ services:
       - airgap-ollama
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: hydra-api
+    container_name: zovarc-api
     ports:
       - "8090:8090"
     environment:
       - PORT=8090
-      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@pgbouncer:5432/hydra
+      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@pgbouncer:5432/zovarc
       - TEMPORAL_ADDRESS=temporal:7233
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
-      - JWT_SECRET=${JWT_SECRET:-hydra-jwt-secret-dev-2026-CHANGE-ME-IN-PRODUCTION-min-32-chars}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-hydra-redis-dev-2026}
-      - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
-      - HYDRA_ENCRYPTION_KEY=${HYDRA_ENCRYPTION_KEY:-}
-      - HYDRA_WORKFLOW_VERSION=${HYDRA_WORKFLOW_VERSION:-InvestigationWorkflowV2}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovarc-dev-2026}
+      - JWT_SECRET=${JWT_SECRET:-zovarc-jwt-secret-dev-2026-CHANGE-ME-IN-PRODUCTION-min-32-chars}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovarc-redis-dev-2026}@redis:6379/0
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-zovarc-redis-dev-2026}
+      - NATS_URL=nats://${NATS_USER:-zovarc}:${NATS_PASSWORD:-zovarc-nats-dev-2026}@zovarc-nats:4222
+      - ZOVARC_ENCRYPTION_KEY=${ZOVARC_ENCRYPTION_KEY:-}
+      - ZOVARC_WORKFLOW_VERSION=${ZOVARC_WORKFLOW_VERSION:-InvestigationWorkflowV2}
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -269,7 +269,7 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   worker:
     build:
@@ -278,19 +278,19 @@ services:
     # No container_name — allows docker compose --scale worker=N
     environment:
       # Workers go through PgBouncer (transaction pooling)
-      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@pgbouncer:5432/hydra
+      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@pgbouncer:5432/zovarc
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_URL=${LITELLM_URL:-http://host.docker.internal:11434/v1/chat/completions}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovarc-dev-2026}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovarc-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
-      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-qwen2.5:14b}
+      - ZOVARC_LLM_MODEL=${ZOVARC_LLM_MODEL:-qwen2.5:14b}
       - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
       - PYTHONUNBUFFERED=1
-      - NATS_URL=nats://${NATS_USER:-hydra}:${NATS_PASSWORD:-hydra-nats-dev-2026}@hydra-nats:4222
+      - NATS_URL=nats://${NATS_USER:-zovarc}:${NATS_PASSWORD:-zovarc-nats-dev-2026}@zovarc-nats:4222
       - HTTP_PROXY=http://squid-proxy:3128
       - HTTPS_PROXY=http://squid-proxy:3128
-      - NO_PROXY=litellm,postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,hydra-api,pgbouncer,host.docker.internal,api
+      - NO_PROXY=litellm,postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,zovarc-api,pgbouncer,host.docker.internal,api
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro
@@ -314,13 +314,13 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   dashboard:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
-    container_name: hydra-dashboard
+    container_name: zovarc-dashboard
     ports:
       - "3000:3000"
     depends_on:
@@ -331,12 +331,12 @@ services:
           memory: 128M
           cpus: '0.25'
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── OWASP JUICE SHOP (benchmark target) ────────────────
   juice-shop:
     image: bkimminich/juice-shop:latest
-    container_name: hydra-juice-shop
+    container_name: zovarc-juice-shop
     ports:
       - "3001:3000"
     profiles: ["benchmark"]
@@ -347,15 +347,15 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   temporal-exporter:
     build:
       context: ./worker
-    container_name: hydra-temporal-exporter
+    container_name: zovarc-temporal-exporter
     command: python /app/monitoring/temporal_exporter.py
     environment:
-      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
+      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc
       - TEMPORAL_ADDRESS=temporal:7233
       - EXPORTER_PORT=9092
     volumes:
@@ -368,14 +368,14 @@ services:
     profiles: ["monitoring"]
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── MONITORING STACK (Sprint 1F) ─────────────────────
   # Prometheus + Grafana + exporters — all under "monitoring" profile
   # Start with: docker compose --profile monitoring up -d
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: hydra-prometheus
+    container_name: zovarc-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=7d'
@@ -396,19 +396,19 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: hydra-grafana
+    container_name: zovarc-grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=hydra
+      - GF_SECURITY_ADMIN_PASSWORD=zovarc
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/hydra-overview.json
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/zovarc-overview.json
     volumes:
       - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./config/grafana/provisioning/dashboards/hydra-overview.json:/var/lib/grafana/dashboards/hydra-overview.json:ro
+      - ./config/grafana/provisioning/dashboards/zovarc-overview.json:/var/lib/grafana/dashboards/zovarc-overview.json:ro
       - ./monitoring/grafana/dashboards/infrastructure.json:/var/lib/grafana/dashboards/infrastructure.json:ro
       - ./monitoring/grafana/dashboards/worker-performance.json:/var/lib/grafana/dashboards/worker-performance.json:ro
       - grafana_data:/var/lib/grafana
@@ -424,13 +424,13 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
-    container_name: hydra-postgres-exporter
+    container_name: zovarc-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: "postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra?sslmode=prefer"
+      DATA_SOURCE_NAME: "postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc?sslmode=prefer"
     ports:
       - "9187:9187"
     depends_on:
@@ -444,14 +444,14 @@ services:
           cpus: '0.1'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.58.0
-    container_name: hydra-redis-exporter
+    container_name: zovarc-redis-exporter
     environment:
       REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-hydra-redis-dev-2026}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-zovarc-redis-dev-2026}
     ports:
       - "9121:9121"
     depends_on:
@@ -465,16 +465,16 @@ services:
           cpus: '0.1'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   worker-metrics:
     build:
       context: ./worker
-    container_name: hydra-worker-metrics
+    container_name: zovarc-worker-metrics
     command: python /app/monitoring/worker_metrics.py
     environment:
-      - DATABASE_URL=postgresql://hydra:${POSTGRES_PASSWORD:-hydra_dev_2026}@postgres:5432/hydra
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-hydra-redis-dev-2026}@redis:6379/0
+      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovarc-redis-dev-2026}@redis:6379/0
       - METRICS_PORT=9093
     volumes:
       - ./monitoring:/app/monitoring:ro
@@ -491,18 +491,18 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovarc-internal
 
   # ─── EGRESS PROXY ──────────────────────────────────────
   squid-proxy:
     image: ubuntu/squid:latest
-    container_name: hydra-egress-proxy
+    container_name: zovarc-egress-proxy
     volumes:
       - ./proxy/squid.conf:/etc/squid/squid.conf:ro
     expose:
       - "3128"
     networks:
-      - hydra-internal
+      - zovarc-internal
     restart: unless-stopped
     deploy:
       resources:
@@ -510,9 +510,9 @@ services:
           memory: 128M
           cpus: '0.1'
 
-  hydra-vllm-chat:
+  zovarc-vllm-chat:
     image: vllm/vllm-openai:latest
-    container_name: hydra-vllm-chat
+    container_name: zovarc-vllm-chat
     command: --model /models/chat-model --port 8000 --max-model-len 4096
     volumes:
       - ./local_models/chat-model:/models/chat-model
@@ -524,22 +524,22 @@ services:
               count: 1
               capabilities: [gpu]
     networks:
-      - hydra-internal
+      - zovarc-internal
     profiles: ["vllm"]
 
-  hydra-vllm-embed:
+  zovarc-vllm-embed:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
-    container_name: hydra-vllm-embed
+    container_name: zovarc-vllm-embed
     command: --model-id /models/embed-model --port 8001
     volumes:
       - ./local_models/embed-model:/models/embed-model
     networks:
-      - hydra-internal
+      - zovarc-internal
     profiles: ["vllm"]
 
 # ─── NETWORKS ──────────────────────────────────────────
 networks:
-  hydra-internal:
+  zovarc-internal:
     driver: bridge
 
 # ─── VOLUMES ───────────────────────────────────────────

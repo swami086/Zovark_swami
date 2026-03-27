@@ -1,11 +1,11 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: hydra-worker-keda
-  namespace: hydra
+  name: zovarc-worker-keda
+  namespace: zovarc
 spec:
   scaleTargetRef:
-    name: hydra-worker
+    name: zovarc-worker
   pollingInterval: 15
   cooldownPeriod: 120
   minReplicaCount: 2
@@ -14,6 +14,6 @@ spec:
     - type: prometheus
       metadata:
         serverAddress: http://prometheus:9090
-        metricName: hydra_temporal_pending_tasks
-        query: hydra_temporal_pending_tasks{task_queue="hydra-tasks"}
+        metricName: zovarc_temporal_pending_tasks
+        query: zovarc_temporal_pending_tasks{task_queue="zovarc-tasks"}
         threshold: "5"

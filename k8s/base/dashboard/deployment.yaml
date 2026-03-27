@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hydra-dashboard
-  namespace: hydra
+  name: zovarc-dashboard
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: dashboard
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hydra
+      app: zovarc
       component: dashboard
   template:
     metadata:
       labels:
-        app: hydra
+        app: zovarc
         component: dashboard
     spec:
       containers:
         - name: dashboard
-          image: hydra-mvp-dashboard:latest
+          image: zovarc-mvp-dashboard:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000

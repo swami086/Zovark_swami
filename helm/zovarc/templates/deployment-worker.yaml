@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "hydra.fullname" . }}-worker
+  name: {{ include "zovarc.fullname" . }}-worker
   labels:
-    {{- include "hydra.labels" . | nindent 4 }}
+    {{- include "zovarc.labels" . | nindent 4 }}
     app.kubernetes.io/component: worker
 spec:
   replicas: {{ .Values.worker.replicaCount }}
   selector:
     matchLabels:
-      {{- include "hydra.worker.selectorLabels" . | nindent 6 }}
+      {{- include "zovarc.worker.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "hydra.worker.selectorLabels" . | nindent 8 }}
+        {{- include "zovarc.worker.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -32,7 +32,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "hydra.fullname" . }}-secrets
+                  name: {{ include "zovarc.fullname" . }}-secrets
                   key: database-url
             - name: TEMPORAL_ADDRESS
               value: {{ .Values.worker.env.TEMPORAL_ADDRESS | quote }}
@@ -41,26 +41,26 @@ spec:
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "hydra.fullname" . }}-secrets
+                  name: {{ include "zovarc.fullname" . }}-secrets
                   key: litellm-master-key
             - name: REDIS_URL
               value: {{ .Values.worker.env.REDIS_URL | quote }}
-            - name: HYDRA_LLM_MODEL
-              value: {{ .Values.worker.env.HYDRA_LLM_MODEL | quote }}
+            - name: ZOVARC_LLM_MODEL
+              value: {{ .Values.worker.env.ZOVARC_LLM_MODEL | quote }}
             - name: PYTHONUNBUFFERED
               value: {{ .Values.worker.env.PYTHONUNBUFFERED | quote }}
             {{- if .Values.integrations.slack.webhookUrl }}
             - name: SLACK_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "hydra.fullname" . }}-secrets
+                  name: {{ include "zovarc.fullname" . }}-secrets
                   key: slack-webhook-url
             {{- end }}
             {{- if .Values.integrations.teams.webhookUrl }}
             - name: TEAMS_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "hydra.fullname" . }}-secrets
+                  name: {{ include "zovarc.fullname" . }}-secrets
                   key: teams-webhook-url
             {{- end }}
           resources:

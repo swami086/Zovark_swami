@@ -79,13 +79,13 @@ func (vc *VaultClient) periodicRefresh() {
 	}
 }
 
-// refreshSecrets reads all HYDRA secrets from Vault and updates the cache.
+// refreshSecrets reads all ZOVARC secrets from Vault and updates the cache.
 func (vc *VaultClient) refreshSecrets() {
 	secretPaths := map[string]string{
-		"database_url":       "secret/data/hydra/database",
-		"jwt_secret":         "secret/data/hydra/jwt",
-		"litellm_master_key": "secret/data/hydra/litellm",
-		"redis_url":          "secret/data/hydra/redis",
+		"database_url":       "secret/data/zovarc/database",
+		"jwt_secret":         "secret/data/zovarc/jwt",
+		"litellm_master_key": "secret/data/zovarc/litellm",
+		"redis_url":          "secret/data/zovarc/redis",
 	}
 
 	for key, path := range secretPaths {

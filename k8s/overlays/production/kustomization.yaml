@@ -9,7 +9,7 @@ patches:
   # Worker: 4 replicas in production (HPA will scale)
   - target:
       kind: Deployment
-      name: hydra-worker
+      name: zovarc-worker
     patch: |
       - op: replace
         path: /spec/replicas
@@ -17,7 +17,7 @@ patches:
   # Worker HPA: min 2, max 50 for production
   - target:
       kind: HorizontalPodAutoscaler
-      name: hydra-worker-hpa
+      name: zovarc-worker-hpa
     patch: |
       - op: replace
         path: /spec/minReplicas
@@ -28,7 +28,7 @@ patches:
   # API: 2 replicas in production
   - target:
       kind: Deployment
-      name: hydra-api
+      name: zovarc-api
     patch: |
       - op: replace
         path: /spec/replicas
@@ -36,7 +36,7 @@ patches:
   # API HPA: min 2, max 10 for production
   - target:
       kind: HorizontalPodAutoscaler
-      name: hydra-api-hpa
+      name: zovarc-api-hpa
     patch: |
       - op: replace
         path: /spec/minReplicas

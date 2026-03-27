@@ -26,7 +26,7 @@ func corsMiddleware() gin.HandlerFunc {
 	config := cors.DefaultConfig()
 
 	// Read allowed origins from env (comma-separated), default to localhost for dev
-	originsEnv := os.Getenv("HYDRA_CORS_ORIGINS")
+	originsEnv := os.Getenv("ZOVARC_CORS_ORIGINS")
 	if originsEnv != "" {
 		origins := strings.Split(originsEnv, ",")
 		for i := range origins {

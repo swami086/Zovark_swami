@@ -7,28 +7,28 @@ resources:
 
 images:
   - name: pgvector/pgvector
-    newName: internal-registry.local:5000/hydra/pgvector
+    newName: internal-registry.local:5000/zovarc/pgvector
     newTag: pg16
   - name: edoburu/pgbouncer
-    newName: internal-registry.local:5000/hydra/pgbouncer
+    newName: internal-registry.local:5000/zovarc/pgbouncer
     newTag: latest
   - name: redis
-    newName: internal-registry.local:5000/hydra/redis
+    newName: internal-registry.local:5000/zovarc/redis
     newTag: 7-alpine
   - name: temporalio/auto-setup
-    newName: internal-registry.local:5000/hydra/temporal-auto-setup
+    newName: internal-registry.local:5000/zovarc/temporal-auto-setup
     newTag: "1.24.2"
   - name: docker.litellm.ai/berriai/litellm-database
-    newName: internal-registry.local:5000/hydra/litellm-database
+    newName: internal-registry.local:5000/zovarc/litellm-database
     newTag: main-stable
-  - name: hydra-mvp-worker
-    newName: internal-registry.local:5000/hydra/worker
+  - name: zovarc-mvp-worker
+    newName: internal-registry.local:5000/zovarc/worker
     newTag: latest
-  - name: hydra-mvp-api
-    newName: internal-registry.local:5000/hydra/api
+  - name: zovarc-mvp-api
+    newName: internal-registry.local:5000/zovarc/api
     newTag: latest
-  - name: hydra-mvp-dashboard
-    newName: internal-registry.local:5000/hydra/dashboard
+  - name: zovarc-mvp-dashboard
+    newName: internal-registry.local:5000/zovarc/dashboard
     newTag: latest
 
 patches:

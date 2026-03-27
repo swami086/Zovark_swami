@@ -4,9 +4,9 @@ package main
 // MCP HUMAN-IN-THE-LOOP APPROVAL GATE
 // ============================================================
 //
-// MCP-triggered workflows (hydra_trigger_workflow) must pass through a
+// MCP-triggered workflows (zovarc_trigger_workflow) must pass through a
 // human approval gate before execution. Approval state is stored in Redis
-// under the key prefix "hydra:approval:".
+// under the key prefix "zovarc:approval:".
 //
 // Routes (registered in main.go):
 //   POST /api/v1/mcp/approvals/request              — create pending approval (any authed caller)
@@ -175,8 +175,8 @@ func requestMCPApprovalHandler(c *gin.Context) {
 	}
 
 	approvalJSON, _ := json.Marshal(approval)
-	primaryKey := "hydra:approval:" + token
-	indexKey := "hydra:approval:id:" + approvalID
+	primaryKey := "zovarc:approval:" + token
+	indexKey := "zovarc:approval:id:" + approvalID
 
 	ctx := context.Background()
 	if redisErr := redisClient.SetEx(ctx, primaryKey, string(approvalJSON), 1800*time.Second).Err(); redisErr != nil {
@@ -200,7 +200,7 @@ func requestMCPApprovalHandler(c *gin.Context) {
 		"expires_at":  expiresAt,
 		"message": fmt.Sprintf(
 			"Workflow '%s' requires human approval. "+
-				"A HYDRA admin must approve via POST /api/v1/mcp/approvals/:token/decide. "+
+				"A ZOVARC admin must approve via POST /api/v1/mcp/approvals/:token/decide. "+
 				"Approval expires in 30 minutes.",
 			req.WorkflowID,
 		),
@@ -214,7 +214,7 @@ func checkMCPApprovalHandler(c *gin.Context) {
 	callerTenantID := c.MustGet("tenant_id").(string)
 
 	ctx := context.Background()
-	raw, err := redisClient.Get(ctx, "hydra:approval:"+token).Result()
+	raw, err := redisClient.Get(ctx, "zovarc:approval:"+token).Result()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "expired",
@@ -259,7 +259,7 @@ func listMCPApprovalsHandler(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	keys, err := redisClient.Keys(ctx, "hydra:approval:*").Result()
+	keys, err := redisClient.Keys(ctx, "zovarc:approval:*").Result()
 	if err != nil {
 		log.Printf("[WARN] listMCPApprovals: Redis KEYS error: %v", err)
 		c.JSON(http.StatusOK, gin.H{"approvals": []interface{}{}, "count": 0})
@@ -314,14 +314,14 @@ func getMCPApprovalByIDHandler(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	idKey := "hydra:approval:id:" + approvalID
+	idKey := "zovarc:approval:id:" + approvalID
 	token, err := redisClient.Get(ctx, idKey).Result()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})
 		return
 	}
 
-	raw, err := redisClient.Get(ctx, "hydra:approval:"+token).Result()
+	raw, err := redisClient.Get(ctx, "zovarc:approval:"+token).Result()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})
 		return
@@ -365,7 +365,7 @@ func decideMCPApprovalHandler(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	key := "hydra:approval:" + token
+	key := "zovarc:approval:" + token
 	raw, err := redisClient.Get(ctx, key).Result()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "approval not found or expired"})

@@ -89,13 +89,13 @@ func toCEF(record map[string]interface{}) string {
 	resourceID := fmt.Sprintf("%v", record["resource_id"])
 	timestamp := fmt.Sprintf("%v", record["created_at"])
 
-	extension := fmt.Sprintf("dvchost=hydra-api cs1=%s cs1Label=tenant_id cs2=%s cs2Label=resource_id rt=%s",
+	extension := fmt.Sprintf("dvchost=zovarc-api cs1=%s cs1Label=tenant_id cs2=%s cs2Label=resource_id rt=%s",
 		tenantID, resourceID, timestamp)
 
 	if details, ok := record["details"]; ok && details != nil {
 		extension += fmt.Sprintf(" msg=%v", details)
 	}
 
-	return fmt.Sprintf("CEF:0|HYDRA|SOC-Platform|1.0|%s|%s|%s|%s",
+	return fmt.Sprintf("CEF:0|ZOVARC|SOC-Platform|1.0|%s|%s|%s|%s",
 		eventType, eventType, severity, extension)
 }

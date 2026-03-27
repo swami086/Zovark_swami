@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: litellm
-  namespace: hydra
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: litellm
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hydra
+      app: zovarc
       component: litellm
   template:
     metadata:
       labels:
-        app: hydra
+        app: zovarc
         component: litellm
     spec:
       containers:
@@ -33,12 +33,12 @@ spec:
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: hydra-api-secrets
+                  name: zovarc-api-secrets
                   key: litellm-master-key
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: hydra-api-secrets
+                  name: zovarc-api-secrets
                   key: openrouter-api-key
           volumeMounts:
             - name: litellm-config

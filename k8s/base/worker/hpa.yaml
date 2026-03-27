@@ -1,16 +1,16 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: hydra-worker-hpa
-  namespace: hydra
+  name: zovarc-worker-hpa
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: worker
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: hydra-worker
+    name: zovarc-worker
   minReplicas: 2
   maxReplicas: 50
   metrics:
@@ -27,7 +27,7 @@ spec:
     #       name: temporal_queue_depth
     #       selector:
     #         matchLabels:
-    #           queue: hydra-tasks
+    #           queue: zovarc-tasks
     #     target:
     #       type: AverageValue
     #       averageValue: "5"

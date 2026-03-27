@@ -2,9 +2,9 @@
 
 apiVersion: 1
 providers:
-  - name: 'HYDRA'
+  - name: 'ZOVARC'
     orgId: 1
-    folder: 'HYDRA'
+    folder: 'ZOVARC'
     type: file
     disableDeletion: false
     editable: true

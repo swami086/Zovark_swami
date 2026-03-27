@@ -1,5 +1,5 @@
 # ============================================================
-# HYDRA Development Environment — Terraform Configuration
+# ZOVARC Development Environment — Terraform Configuration
 # Cost-optimized for development and testing
 # ============================================================
 
@@ -15,10 +15,10 @@ terraform {
 
   # Uncomment for remote state
   # backend "s3" {
-  #   bucket         = "hydra-terraform-state"
+  #   bucket         = "zovarc-terraform-state"
   #   key            = "dev/terraform.tfstate"
   #   region         = "us-east-1"
-  #   dynamodb_table = "hydra-terraform-locks"
+  #   dynamodb_table = "zovarc-terraform-locks"
   #   encrypt        = true
   # }
 }
@@ -28,7 +28,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "hydra"
+      Project     = "zovarc"
       Environment = "dev"
       ManagedBy   = "terraform"
     }
@@ -45,7 +45,7 @@ variable "db_password" {
   description = "Database password"
   type        = string
   sensitive   = true
-  default     = "hydra_dev_2026"
+  default     = "zovarc_dev_2026"
 }
 
 # ─── VPC ─────────────────────────────────────────────────
@@ -53,7 +53,7 @@ variable "db_password" {
 module "vpc" {
   source = "../../modules/vpc"
 
-  project     = "hydra"
+  project     = "zovarc"
   environment = "dev"
   vpc_cidr    = "10.0.0.0/16"
 
@@ -67,7 +67,7 @@ module "vpc" {
 module "rds" {
   source = "../../modules/rds"
 
-  project     = "hydra"
+  project     = "zovarc"
   environment = "dev"
   vpc_id      = module.vpc.vpc_id
   subnet_ids  = module.vpc.private_subnet_ids
@@ -88,7 +88,7 @@ module "rds" {
 module "redis" {
   source = "../../modules/redis"
 
-  project     = "hydra"
+  project     = "zovarc"
   environment = "dev"
   vpc_id      = module.vpc.vpc_id
   subnet_ids  = module.vpc.private_subnet_ids
@@ -104,7 +104,7 @@ module "redis" {
 module "eks" {
   source = "../../modules/eks"
 
-  project     = "hydra"
+  project     = "zovarc"
   environment = "dev"
   vpc_id      = module.vpc.vpc_id
   subnet_ids  = module.vpc.private_subnet_ids

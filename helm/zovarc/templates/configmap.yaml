@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "hydra.fullname" . }}-config
+  name: {{ include "zovarc.fullname" . }}-config
   labels:
-    {{- include "hydra.labels" . | nindent 4 }}
+    {{- include "zovarc.labels" . | nindent 4 }}
 data:
   TEMPORAL_ADDRESS: {{ .Values.temporal.address | quote }}
   LITELLM_URL: {{ .Values.worker.env.LITELLM_URL | quote }}
   REDIS_URL: {{ .Values.worker.env.REDIS_URL | quote }}
-  HYDRA_LLM_MODEL: {{ .Values.worker.env.HYDRA_LLM_MODEL | quote }}
+  ZOVARC_LLM_MODEL: {{ .Values.worker.env.ZOVARC_LLM_MODEL | quote }}
   API_PORT: {{ .Values.api.env.PORT | quote }}
   DASHBOARD_PORT: {{ .Values.dashboard.service.port | quote }}

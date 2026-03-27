@@ -294,7 +294,7 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 	// Start Temporal workflow AFTER commit (with timeout detection)
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
-		TaskQueue: "hydra-tasks",
+		TaskQueue: "zovarc-tasks",
 	}
 
 	wfStart := time.Now()
@@ -305,7 +305,7 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 	wfLatency := int(time.Since(wfStart).Milliseconds())
 	if err != nil {
 		if isTemporalTimeout(err) {
-			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/litellm", "hydra-fast")
+			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/litellm", "zovarc-fast")
 		}
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		return "", fmt.Errorf("failed to start workflow: %w", err)

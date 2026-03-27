@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// metricsHandler returns operational metrics for the HYDRA platform.
+// metricsHandler returns operational metrics for the ZOVARC platform.
 // GET /api/v1/metrics
 //
 // To register this handler, add the following line to main.go inside the

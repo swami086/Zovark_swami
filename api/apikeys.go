@@ -18,9 +18,9 @@ import (
 // API KEY AUTHENTICATION FOR M2M (Issue #5)
 // ============================================================
 
-const apiKeyPrefix = "hydra_"
+const apiKeyPrefix = "zovarc_"
 
-// generateAPIKey creates a new API key with the hydra_ prefix.
+// generateAPIKey creates a new API key with the zovarc_ prefix.
 // Returns the raw key (shown once to the user) and its SHA-256 hash.
 func generateAPIKey() (rawKey string, keyHash string) {
 	b := make([]byte, 32)

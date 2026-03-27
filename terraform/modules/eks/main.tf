@@ -1,12 +1,12 @@
 # ============================================================
-# HYDRA EKS Module — Kubernetes cluster
+# ZOVARC EKS Module — Kubernetes cluster
 # Creates EKS cluster with managed node groups
 # ============================================================
 
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "hydra"
+  default     = "zovarc"
 }
 
 variable "environment" {

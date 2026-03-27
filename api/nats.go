@@ -14,7 +14,7 @@ import (
 // NATS ALERT PUBLISHER (Sprint v0.10.0)
 // ============================================================
 //
-// Minimal NATS client using raw TCP connection to nats://hydra-nats:4222.
+// Minimal NATS client using raw TCP connection to nats://zovarc-nats:4222.
 // Uses the NATS text protocol (no external dependencies).
 // Subject pattern: ALERTS.{tenant-slug}
 //
@@ -104,7 +104,7 @@ func (nc *NATSClient) connect() error {
 	}
 
 	// Send CONNECT command
-	connectCmd := `CONNECT {"verbose":false,"pedantic":false,"name":"hydra-api","lang":"go","version":"1.0.0"}` + "\r\n"
+	connectCmd := `CONNECT {"verbose":false,"pedantic":false,"name":"zovarc-api","lang":"go","version":"1.0.0"}` + "\r\n"
 	_, err = conn.Write([]byte(connectCmd))
 	if err != nil {
 		conn.Close()

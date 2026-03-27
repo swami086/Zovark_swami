@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pgbouncer
-  namespace: hydra
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: pgbouncer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hydra
+      app: zovarc
       component: pgbouncer
   template:
     metadata:
       labels:
-        app: hydra
+        app: zovarc
         component: pgbouncer
     spec:
       containers:
@@ -28,7 +28,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: hydra-db-credentials
+                  name: zovarc-db-credentials
                   key: direct-url
             - name: POOL_MODE
               value: "transaction"

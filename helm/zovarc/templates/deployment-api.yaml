@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "hydra.fullname" . }}-api
+  name: {{ include "zovarc.fullname" . }}-api
   labels:
-    {{- include "hydra.labels" . | nindent 4 }}
+    {{- include "zovarc.labels" . | nindent 4 }}
     app.kubernetes.io/component: api
 spec:
   replicas: {{ .Values.api.replicaCount }}
   selector:
     matchLabels:
-      {{- include "hydra.api.selectorLabels" . | nindent 6 }}
+      {{- include "zovarc.api.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "hydra.api.selectorLabels" . | nindent 8 }}
+        {{- include "zovarc.api.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -33,19 +33,19 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "hydra.fullname" . }}-secrets
+                  name: {{ include "zovarc.fullname" . }}-secrets
                   key: database-url
             - name: TEMPORAL_ADDRESS
               value: {{ .Values.api.env.TEMPORAL_ADDRESS | quote }}
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "hydra.fullname" . }}-secrets
+                  name: {{ include "zovarc.fullname" . }}-secrets
                   key: litellm-master-key
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "hydra.fullname" . }}-secrets
+                  name: {{ include "zovarc.fullname" . }}-secrets
                   key: jwt-secret
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}

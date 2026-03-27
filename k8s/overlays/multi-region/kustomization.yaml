@@ -9,31 +9,31 @@ patches:
   # API: 3 replicas per region
   - target:
       kind: Deployment
-      name: hydra-api
+      name: zovarc-api
     patch: |
       - op: replace
         path: /spec/replicas
         value: 3
       - op: add
         path: /spec/template/metadata/labels/topology.kubernetes.io~1region
-        value: "${HYDRA_REGION}"
+        value: "${ZOVARC_REGION}"
 
   # Worker: 4 replicas base (HPA scales further)
   - target:
       kind: Deployment
-      name: hydra-worker
+      name: zovarc-worker
     patch: |
       - op: replace
         path: /spec/replicas
         value: 4
       - op: add
         path: /spec/template/metadata/labels/topology.kubernetes.io~1region
-        value: "${HYDRA_REGION}"
+        value: "${ZOVARC_REGION}"
 
   # Worker HPA: min 4, max 50 for multi-region
   - target:
       kind: HorizontalPodAutoscaler
-      name: hydra-worker-hpa
+      name: zovarc-worker-hpa
     patch: |
       - op: replace
         path: /spec/minReplicas
@@ -45,7 +45,7 @@ patches:
   # API HPA: min 3, max 15
   - target:
       kind: HorizontalPodAutoscaler
-      name: hydra-api-hpa
+      name: zovarc-api-hpa
     patch: |
       - op: replace
         path: /spec/minReplicas
@@ -70,9 +70,9 @@ patches:
             memory: 8Gi
 
 configMapGenerator:
-  - name: hydra-region-config
+  - name: zovarc-region-config
     literals:
-      - HYDRA_REGION=${HYDRA_REGION:-us-east-1}
-      - HYDRA_ROLE=${HYDRA_ROLE:-primary}
+      - ZOVARC_REGION=${ZOVARC_REGION:-us-east-1}
+      - ZOVARC_ROLE=${ZOVARC_ROLE:-primary}
       - DB_READ_REPLICA_URL=${DB_READ_REPLICA_URL:-}
       - REDIS_REPLICA_URL=${REDIS_REPLICA_URL:-}
