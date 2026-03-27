@@ -1,4 +1,4 @@
-# HYDRA Sandbox Security Policy v1.0
+# ZOVARC Sandbox Security Policy v1.0
 # This file defines what investigation code can and cannot do.
 # Customers can audit and customize this file.
 version: "2026-03"
