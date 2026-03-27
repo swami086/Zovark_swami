@@ -19,9 +19,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres-replica
-  namespace: hydra
+  namespace: zovarc
   labels:
-    app: hydra
+    app: zovarc
     component: postgres
     role: replica
 spec:
@@ -29,13 +29,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hydra
+      app: zovarc
       component: postgres
       role: replica
   template:
     metadata:
       labels:
-        app: hydra
+        app: zovarc
         component: postgres
         role: replica
     spec:
@@ -49,7 +49,7 @@ spec:
             - bash
             - -c
             - |
-              pg_basebackup -h postgres -U hydra -D /var/lib/postgresql/data/pgdata -Fp -Xs -P -R
+              pg_basebackup -h postgres -U zovarc -D /var/lib/postgresql/data/pgdata -Fp -Xs -P -R
               postgres -c config_file=/etc/postgresql/postgresql.conf
 ```
 
@@ -60,12 +60,12 @@ Change `k8s/base/postgres/service.yaml` postgres-read service:
 ```yaml
 # Change from:
 selector:
-  app: hydra
+  app: zovarc
   component: postgres
 
 # Change to:
 selector:
-  app: hydra
+  app: zovarc
   component: postgres
   role: replica
 ```

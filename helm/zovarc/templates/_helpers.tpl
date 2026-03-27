@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "hydra.name" -}}
+{{- define "zovarc.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "hydra.fullname" -}}
+{{- define "zovarc.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "hydra.chart" -}}
+{{- define "zovarc.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "hydra.labels" -}}
-helm.sh/chart: {{ include "hydra.chart" . }}
-{{ include "hydra.selectorLabels" . }}
+{{- define "zovarc.labels" -}}
+helm.sh/chart: {{ include "zovarc.chart" . }}
+{{ include "zovarc.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,31 +43,31 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "hydra.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "hydra.name" . }}
+{{- define "zovarc.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "zovarc.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 API selector labels
 */}}
-{{- define "hydra.api.selectorLabels" -}}
-{{ include "hydra.selectorLabels" . }}
+{{- define "zovarc.api.selectorLabels" -}}
+{{ include "zovarc.selectorLabels" . }}
 app.kubernetes.io/component: api
 {{- end }}
 
 {{/*
 Worker selector labels
 */}}
-{{- define "hydra.worker.selectorLabels" -}}
-{{ include "hydra.selectorLabels" . }}
+{{- define "zovarc.worker.selectorLabels" -}}
+{{ include "zovarc.selectorLabels" . }}
 app.kubernetes.io/component: worker
 {{- end }}
 
 {{/*
 Dashboard selector labels
 */}}
-{{- define "hydra.dashboard.selectorLabels" -}}
-{{ include "hydra.selectorLabels" . }}
+{{- define "zovarc.dashboard.selectorLabels" -}}
+{{ include "zovarc.selectorLabels" . }}
 app.kubernetes.io/component: dashboard
 {{- end }}
