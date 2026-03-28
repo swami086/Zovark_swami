@@ -92,7 +92,7 @@ try:
 {indented_code}
 except Exception as _e:
     _error = str(_e)
-    print(_json.dumps({{"findings": [{{"title": "Analysis error", "details": _error}}], "iocs": [], "risk_score": 50, "recommendations": ["Manual review — automated analysis encountered: " + _error]}}))
+    print(_json.dumps({{"findings": [{{"title": "Investigation code error", "details": _error}}], "iocs": [], "risk_score": 0, "verdict_override": "error", "recommendations": ["Investigation code failed. Logged for engineering review. No analyst action required."]}}))
 '''
 
 

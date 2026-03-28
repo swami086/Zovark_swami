@@ -31,6 +31,26 @@ def _get_db():
     return psycopg2.connect(DATABASE_URL)
 
 
+# --- Inverted benign detection (recognize attacks, not benign) ---
+ATTACK_INDICATORS = [
+    "malware", "trojan", "ransomware", "exploit", "vulnerability",
+    "injection", "overflow", "brute", "credential_dump", "mimikatz",
+    "cobalt", "beacon", "exfiltration", "lateral", "escalation",
+    "c2", "command_and_control", "phishing", "suspicious",
+    "unauthorized", "anomal", "attack", "intrusion", "compromise",
+    "kerberoast", "dcsync", "pass_the_hash", "pass_the_ticket",
+    "golden_ticket", "lolbin", "process_injection", "dll_sideload",
+    "persistence", "wmi_abuse", "credential_dumping", "rdp_tunnel",
+    "dns_exfil", "powershell_obfusc", "office_macro", "webshell",
+]
+
+
+def _has_attack_indicators(task_type: str, rule_name: str, title: str) -> bool:
+    """Check if any field contains attack-related terminology."""
+    combined = f"{task_type} {rule_name} {title}".lower()
+    return any(indicator in combined for indicator in ATTACK_INDICATORS)
+
+
 # --- Dedup (inlined from dedup/stage1_exact.py) ---
 TIMESTAMP_PATTERNS = [
     r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?',

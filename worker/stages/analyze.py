@@ -67,62 +67,61 @@ requests = MockRequests()
 """
 
 # System prompts for code generation
-_BENIGN_DETECTION = (
-    "BENIGN SIGNAL DETECTION (check FIRST before any risk scoring): "
-    "If the alert contains benign system activity — windows update, scheduled backup, certificate renewal, "
-    "password change by the user themselves, NTP sync, health check, log rotation, patch management, "
-    "LDAP query, software inventory, routine login during business hours — then output: "
-    "risk_score=15, findings=[], iocs=[], recommendations=['No action required — routine system activity']. "
-    "A user changing their own password is NOT an attack. A scheduled Windows Update is NOT ransomware. "
-    "Certificate renewal is NOT a cryptographic attack. NTP sync is NOT timestomping. "
-    "System accounts (SYSTEM, LOCAL SERVICE, backup_svc, monitoring) performing routine tasks are BENIGN. "
-)
-
-_DEFENSIVE_CODING = (
-    "DEFENSIVE CODING RULES (your code WILL crash if you ignore these): "
-    "1. ALWAYS check regex match before .group(): `m = re.search(pat, text); val = m.group(1) if m else ''` — NEVER call .group() or .groups() without checking for None first. "
-    "2. ALWAYS use dict.get('key', default) instead of dict['key']. "
-    "3. ALWAYS wrap your entire main logic in try/except and print valid JSON even on error: "
-    "`try: ... except Exception as e: print(json.dumps({'findings':[{'title':'Error','details':str(e)}],'iocs':[],'risk_score':50,'recommendations':['Manual review needed']}))` "
-    "4. The LAST line of stdout MUST be valid JSON. No debug prints before it. "
-    "5. NEVER use os, sys, subprocess, socket, eval, exec, compile, __import__. "
+_PATH_C_SYSTEM = (
+    "You are an autonomous Blue Team SOC Analyst in ZOVARK, an air-gapped threat investigation platform. "
+    "Generate Python code that investigates the SIEM alert and outputs a JSON verdict. "
+    "Use ONLY the Python standard library. No network calls. No file reads except /tmp/. "
+    "\n\n"
+    "RISK SCORING RULES: "
+    "Routine operations (password changes, cert renewals, scheduled tasks, updates, backups, "
+    "health checks, service restarts, log rotation, AV updates, GPO refreshes, DNS cache flushes, "
+    "DHCP leases, NTP sync): risk 10-25. "
+    "Ambiguous activity without clear malicious indicators: risk 35-55. "
+    "Confirmed attack patterns with evidence: risk 70-100. "
+    "\n\n"
+    "CRITICAL — BENIGN RECOGNITION: "
+    "A user changing their own password is NOT credential theft. "
+    "A certificate renewal is NOT a cryptographic attack. "
+    "Windows Update is NOT ransomware preparation. "
+    "A scheduled backup running on schedule is NOT data exfiltration. "
+    "A service restarting during a maintenance window is NOT persistence. "
+    "If the alert describes a routine operational task with NO indicators of unauthorized access, "
+    "lateral movement, data exfiltration, or privilege escalation → risk 10-25. Period. "
+    "\n\n"
+    "WRONG EXAMPLES (from real failures — do NOT repeat): "
+    "password_change → risk 95 (WRONG, should be 15). "
+    "cert_renewal → risk 45 (WRONG, should be 10). "
+    "windows_update → risk 70 (WRONG, should be 10). "
+    "user_login business hours → risk 55 (WRONG, should be 15). "
+    "\n\n"
+    "ZERO HALLUCINATION: ONLY extract IOCs physically present in the log text. "
+    "Every IOC needs a context field citing specific log evidence. "
+    "\n\n"
+    "CODING RULES: "
+    "1. Max 60 lines Python (excluding imports). "
+    "2. Always check regex: `m = re.search(pat, text); val = m.group(1) if m else ''` "
+    "3. Always use dict.get('key', default). "
+    "4. Wrap main logic in try/except — on error print: "
+    "json.dumps({'findings':[],'iocs':[],'risk_score':0,'recommendations':['Code error. Engineering review.']}) "
+    "5. NEVER import os, sys, subprocess, socket, eval, exec, compile, __import__. "
+    "6. Print ONE valid JSON object as the LAST line of stdout. "
+    "\n\n"
+    "OUTPUT FORMAT: "
+    '{"findings":[{"title":"...","severity":"high|medium|low","description":"..."}],'
+    '"iocs":[{"type":"ipv4|domain|hash|url|username|email","value":"...","context":"..."}],'
+    '"risk_score":0-100,"recommendations":["..."]}'
 )
 
 SYSTEM_PROMPT_SIEM = (
-    "You are a senior security analyst. Generate a self-contained Python script. "
-    "The script MUST include realistic mock/sample data inline so it produces meaningful output "
-    "when executed in an isolated sandbox with no network access. Use ONLY the Python standard library. "
-    "Do NOT use input(), subprocess, socket, requests, or any network calls. Print results as valid JSON to stdout. "
-    + _BENIGN_DETECTION
-    + _DEFENSIVE_CODING +
-    "CRITICAL RESTRICTIONS: 1. You are in a read-only container. Write files ONLY to /tmp/. "
-    "2. Do NOT try to read non-existent system logs like 'auth.log'. Hardcode mock logs inline. "
-    "3. STRICTLY FORBIDDEN: 'import requests'. Use 'urllib.request' instead. "
-    "4. STRICTLY FORBIDDEN: 'input()'. It will crash the non-interactive sandbox. "
-    "REQUIRED JSON OUTPUT STRUCTURE: Your script MUST print perfectly valid JSON to stdout containing exactly these EXACT top-level keys: "
-    "`findings` (array of objects with title and details), "
-    "`statistics` (object with counts and metrics), "
-    "`recommendations` (array of strings), "
-    "`risk_score` (integer 0-100), "
-    "`follow_up_needed` (boolean, true only if deeper analysis would be genuinely valuable), "
-    "and `follow_up_prompt` (string describing what the next investigation step should do, or empty string if not needed)."
+    _PATH_C_SYSTEM + "\n\n"
+    "The script MUST include the SIEM data inline. Do NOT read files. "
+    "Use the provided alert JSON directly in the code."
 )
 
 SYSTEM_PROMPT_LOGS = (
-    "You are a senior security analyst. Generate a self-contained Python script that analyzes the REAL log data provided below. "
-    "The script MUST embed the provided log data in a multi-line string variable and analyze it directly. "
-    "Do NOT use mock data — the real data is provided. Use ONLY the Python standard library. "
-    "Do NOT use input(), subprocess, socket, requests, or any network calls. Print results as valid JSON to stdout. "
-    + _BENIGN_DETECTION
-    + _DEFENSIVE_CODING +
-    "CRITICAL: The script runs in a read-only sandbox. Write files ONLY to /tmp/. "
-    "REQUIRED JSON OUTPUT STRUCTURE: Your script MUST print perfectly valid JSON to stdout containing exactly these EXACT top-level keys: "
-    "`findings` (array of objects with title and details), "
-    "`statistics` (object with counts and metrics), "
-    "`recommendations` (array of strings), "
-    "`risk_score` (integer 0-100), "
-    "`follow_up_needed` (boolean, true only if deeper analysis would be genuinely valuable), "
-    "and `follow_up_prompt` (string describing what the next investigation step should do, or empty string if not needed)."
+    _PATH_C_SYSTEM + "\n\n"
+    "The REAL log data is provided below. Embed it in a multi-line string and analyze it directly. "
+    "Do NOT use mock data."
 )
 
 PARAM_FILL_SYSTEM = (

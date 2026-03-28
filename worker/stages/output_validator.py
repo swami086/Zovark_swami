@@ -61,8 +61,10 @@ def validate_investigation_output(output: dict) -> Tuple[bool, str]:
                 ioc = {"type": "url", "value": ioc, "context": "auto-converted from string"}
             elif re.match(r'^[a-fA-F0-9]{32,64}$', ioc):
                 ioc = {"type": "hash", "value": ioc, "context": "auto-converted from string"}
+            elif '.' in ioc and re.match(r'^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$', ioc.lower()):
+                ioc = {"type": "domain", "value": ioc, "context": "auto-converted from string"}
             else:
-                ioc = {"type": "indicator", "value": ioc, "context": "auto-converted from string"}
+                ioc = {"type": "unknown", "value": ioc, "context": "auto-converted from string"}
         if not isinstance(ioc, dict) or "type" not in ioc or "value" not in ioc:
             return False, f"IOC[{i}] missing type or value: {ioc}"
         normalized_iocs.append(ioc)

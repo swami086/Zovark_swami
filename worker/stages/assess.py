@@ -31,19 +31,26 @@ LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
 
 # --- Verdict derivation ---
 def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
-    # Low risk = benign regardless of IOCs (SIEM fields always produce IOCs)
+    # Error state: safety wrapper produced risk=0 with a single error finding
+    if risk_score == 0 and finding_count <= 1:
+        return "error"
+    # Benign: unconditional at low risk
     if risk_score <= 35:
         return "benign"
+    # True positive: high confidence
     if risk_score >= 80 and ioc_count >= 3:
         return "true_positive"
-    elif risk_score >= 70:
+    if risk_score >= 70:
         return "true_positive"
-    elif risk_score >= 50 or ioc_count >= 2:
+    # Suspicious: moderate signals (covers the 36-49 dead zone)
+    if risk_score >= 50:
         return "suspicious"
-    elif finding_count >= 2 and risk_score >= 40:
+    if risk_score >= 36 and finding_count >= 1:
         return "suspicious"
-    elif finding_count == 0 and ioc_count == 0:
+    # Benign: low risk with no findings
+    if finding_count == 0 and ioc_count == 0:
         return "benign"
+    # Last resort — should be very rare
     return "inconclusive"
 
 
@@ -386,7 +393,12 @@ async def assess_results(data: dict) -> dict:
             iocs.append(new_ioc)
             existing_by_value[val] = new_ioc
 
-    verdict = _derive_verdict(risk_score, len(iocs), len(findings))
+    # Check for verdict_override from safety wrapper (crashed Path C code)
+    verdict_override = data.get("verdict_override", "")
+    if verdict_override == "error":
+        verdict = "error"
+    else:
+        verdict = _derive_verdict(risk_score, len(iocs), len(findings))
     severity = _severity_from_risk(risk_score)
     fp_conf = _fp_confidence(risk_score, len(iocs))
 

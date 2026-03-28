@@ -37,7 +37,17 @@ LM_ID=$(echo "$LM_RESP" | sed 's/.*"task_id":"\([^"]*\)".*/\1/')
 echo "  Task ID: $LM_ID"
 echo ""
 
-# Poll until both complete or timeout
+# Scene 3: Benign (should NOT alert)
+echo "=== SCENE 3: Routine Password Change (should be BENIGN) ==="
+echo "Submitting: j.smith changed own password via self-service portal..."
+BN_RESP=$(curl -s -X POST $API/api/v1/tasks \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"task_type":"password_change","input":{"prompt":"Routine password change","severity":"low","siem_event":{"title":"Password Changed Successfully","source_ip":"10.0.0.25","username":"j.smith","rule_name":"PasswordChange","raw_log":"EventID=4724 TargetUser=j.smith SubjectUser=j.smith Status=Success Time=09:30"}}}')
+BN_ID=$(echo "$BN_RESP" | sed 's/.*"task_id":"\([^"]*\)".*/\1/')
+echo "  Task ID: $BN_ID"
+echo ""
+
+# Poll until all complete or timeout
 echo "=== Investigating... ==="
 ELAPSED=0
 BF_DONE=0
@@ -96,7 +106,7 @@ echo ""
 echo "=== RESULTS ==="
 echo ""
 
-for LABEL_ID in "Brute Force:$BF_ID" "Lateral Movement:$LM_ID"; do
+for LABEL_ID in "Brute Force:$BF_ID" "Lateral Movement:$LM_ID" "Password Change (benign):$BN_ID"; do
   LABEL=$(echo "$LABEL_ID" | cut -d: -f1)
   ID=$(echo "$LABEL_ID" | cut -d: -f2)
   RESULT=$(curl -s "$API/api/v1/tasks/$ID" -H "Authorization: Bearer $TOKEN")

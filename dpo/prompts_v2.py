@@ -159,31 +159,26 @@ Type: {skill_type}
 Required (MUST extract): {required_iocs}
 Optional (extract if present): {optional_iocs}
 
-## Extraction Rules
+## Assessment Rules
 
-1. ZERO HALLUCINATION POLICY: You MUST ONLY extract Indicators of Compromise (IOCs) that are EXPLICITLY present in the provided log data, raw_log field, or SIEM event fields. Do NOT invent, infer, or hallucinate IP addresses, file hashes, domains, usernames, or file paths. If an IOC is not physically present in the text, do not extract it.
+1. ZERO HALLUCINATION POLICY: ONLY extract IOCs explicitly present in the raw log data or SIEM event fields. If an IOC is not physically present in the text, do NOT extract it.
 
-2. CONTEXTUAL EVIDENCE REQUIREMENT: For every extracted IOC, provide a concise 1-2 sentence explanation in the context field detailing exactly why this indicator is suspicious, referencing the specific action or anomaly observed in the surrounding log data.
+2. EVIDENCE REQUIREMENT: Every IOC must include a context field citing specific log evidence.
 
-3. BENIGN SIGNAL DETECTION (check BEFORE assigning risk):
-   Look for benign system activity signals in the alert data:
-   - Benign task types: windows_update, scheduled_backup, cert_renewal, health_check, ntp_sync, software_inventory, log_rotation, patch_management, ldap_query, system_event, password_change, routine_auth, user_login_business, snmp_poll, bandwidth_test
-   - Benign rule names: ScheduledTask, WindowsUpdate, CertRenewal, Heartbeat, Inventory, Maintenance, HealthCheck, PatchMgmt, Routine, Normal, NTP, LDAP, SNMP, Backup
-   - Non-interactive system accounts: SYSTEM, NT AUTHORITY\\SYSTEM, LOCAL SERVICE, NETWORK SERVICE, sccm_svc, backup_svc, wsus_svc, monitoring, logrotate, puppet, certmgr, snmp_reader
-   - Benign raw_log patterns: Status=Success on routine processes, backup completed, certificate renewed, scan completed 0 threats, inventory cycle completed, log rotated, health check OK, NTP sync offset, patch installed, LDAP search result
+3. CALIBRATED RISK SCORING:
+   - Routine operations (password changes, updates, backups, health checks, cert renewals, scheduled tasks, service restarts, log rotation, AV updates): risk 10-25
+   - Ambiguous activity without clear malicious indicators: risk 35-55
+   - Single weak indicator (unusual port, non-standard user agent): risk 40-55
+   - Multiple correlated indicators (suspicious IP + encoded payload + off-hours): risk 65-80
+   - Confirmed attack pattern with evidence chain: risk 80-100
 
-   If 2+ benign signals are present AND no attack indicators (failed logins, malware hashes, C2 beacons, lateral movement, privilege escalation commands, exploit signatures):
-     risk_score = 10-25
-     findings = []  (empty — no security findings for routine activity)
-     iocs = []  (empty — system IPs and service accounts are not IOCs)
-     recommendations = ["No action required — routine system activity"]
+4. BENIGN RECOGNITION: Routine administrative and operational actions MUST score risk 10-25. The presence of security-adjacent keywords (password, credential, admin, root, execute, modify) in routine operation logs is NOT evidence of a threat.
 
-   CRITICAL: A user changing their own password during business hours is NOT an attack.
-   A scheduled Windows Update is NOT ransomware preparation.
-   Certificate renewal is NOT a cryptographic attack.
-   NTP synchronization is NOT time-stomping.
+5. MULTI-SIGNAL REASONING: A single indicator is weak. Multiple independent indicators from different log fields compound risk. Score based on the NUMBER and INDEPENDENCE of suspicious signals, not on the scariest single keyword.
 
-4. CALIBRATED RISK SCORING: Score risk based on the severity of observed behavior, not the alert title. Benign system events (scheduled tasks, routine updates, health checks) should score 10-30. Known attack patterns with clear evidence should score 70-100. Ambiguous activity without clear malicious intent should score 35-65.
+6. FALSE POSITIVE BIAS: When uncertain between suspicious and benign, prefer benign. SOC analysts lose more productivity from false positives than from alerts classified as suspicious. Under-scoring is better than over-scoring.
+
+7. SCOPE: Score this alert in isolation. Do not assume other related alerts exist. Do not speculate about attack chains beyond what is evidenced in this single alert.
 
 ## Investigation Steps
 1. Parse the alert JSON and extract all text fields
