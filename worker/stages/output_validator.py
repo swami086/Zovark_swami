@@ -38,9 +38,10 @@ def validate_investigation_output(output: dict) -> Tuple[bool, str]:
         if not isinstance(output[key], expected_type):
             return False, f"{key}: expected {expected_type}, got {type(output[key]).__name__}"
 
-    # --- Findings must be non-empty ---
-    if len(output.get("findings", [])) == 0:
-        return False, "findings must be non-empty"
+    # --- Findings must be non-empty (unless benign/low-risk) ---
+    risk = output.get("risk_score", -1)
+    if len(output.get("findings", [])) == 0 and risk > 30:
+        return False, "findings must be non-empty for non-benign verdicts"
 
     # --- risk_score must be 0-100 ---
     risk = output.get("risk_score", -1)

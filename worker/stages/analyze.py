@@ -314,19 +314,20 @@ def _render_template(template: str, parameters: dict) -> str:
 async def _analyze_template(ingest: IngestOutput) -> AnalyzeOutput:
     """Path B: Template — LLM fills params, then render template."""
     t0 = time.time()
+    params = ingest.skill_params or []  # Handle None params (e.g., benign templates)
 
-    if FAST_FILL:
-        filled = _fill_parameters_fast(ingest.skill_params, ingest.siem_event)
+    if FAST_FILL or not params:
+        filled = _fill_parameters_fast(params, ingest.siem_event)
         tokens_in, tokens_out = 0, 0
     else:
         try:
             filled, tokens_in, tokens_out = await _fill_parameters_llm(
-                ingest.skill_params, ingest.prompt, ingest.siem_event,
+                params, ingest.prompt, ingest.siem_event,
                 task_id=ingest.task_id, task_type=ingest.task_type, tenant_id=ingest.tenant_id,
             )
         except Exception as e:
             print(f"LLM param fill failed, falling back to fast fill: {e}")
-            filled = _fill_parameters_fast(ingest.skill_params, ingest.siem_event)
+            filled = _fill_parameters_fast(params, ingest.siem_event)
             tokens_in, tokens_out = 0, 0
 
     # Always ensure siem_event_json is available (LLM fill doesn't produce it)
@@ -447,7 +448,7 @@ async def analyze_alert(data) -> dict:
         return asdict(generate_fast_fill_stub(ingest.siem_event, ingest.task_type))
 
     # Path B: template available
-    if ingest.skill_template and ingest.skill_params:
+    if ingest.skill_template:
         return asdict(await _analyze_template(ingest))
 
     # Path C: LLM fallback
