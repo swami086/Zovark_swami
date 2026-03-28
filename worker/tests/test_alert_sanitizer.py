@@ -172,7 +172,7 @@ class TestStage3IoCExtraction:
         assert any("evil.com" in d for d in iocs["domain"])
 
     def test_safe_domain_filtered(self):
-        """example.com, localhost, zovarc.local etc. are safe and excluded."""
+        """example.com, localhost, zovark.local etc. are safe and excluded."""
         result = self.s.sanitize({"log": "Connected to example.com"})
         iocs = result["_iocs_extracted"]
         if "domain" in iocs:
@@ -325,9 +325,9 @@ class TestCustomPatterns:
 
     def test_custom_pattern_blocks(self):
         import re
-        custom = [(re.compile(r"zovarc-override", re.I), "[SANITIZED:custom]")]
+        custom = [(re.compile(r"zovark-override", re.I), "[SANITIZED:custom]")]
         s = AlertSanitizer(custom_patterns=custom)
-        result = s.sanitize({"data": "trigger zovarc-override now"})
+        result = s.sanitize({"data": "trigger zovark-override now"})
         assert "[SANITIZED:custom]" in result["data"]
         assert result["_injection_detected"] is True
 

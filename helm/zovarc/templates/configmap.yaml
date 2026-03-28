@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "zovarc.fullname" . }}-config
+  name: {{ include "zovark.fullname" . }}-config
   labels:
-    {{- include "zovarc.labels" . | nindent 4 }}
+    {{- include "zovark.labels" . | nindent 4 }}
 data:
   TEMPORAL_ADDRESS: {{ .Values.temporal.address | quote }}
   LITELLM_URL: {{ .Values.worker.env.LITELLM_URL | quote }}
   REDIS_URL: {{ .Values.worker.env.REDIS_URL | quote }}
-  ZOVARC_LLM_MODEL: {{ .Values.worker.env.ZOVARC_LLM_MODEL | quote }}
+  ZOVARK_LLM_MODEL: {{ .Values.worker.env.ZOVARK_LLM_MODEL | quote }}
   API_PORT: {{ .Values.api.env.PORT | quote }}
   DASHBOARD_PORT: {{ .Values.dashboard.service.port | quote }}

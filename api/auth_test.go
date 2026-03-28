@@ -14,7 +14,7 @@ import (
 // will return 500 rather than 200, but it must not return 401.
 func TestAuthMiddleware_ValidJWT(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "test@zovarc.local", "admin")
+	token := createTestJWT("tenant-1", "user-1", "test@zovark.local", "admin")
 	w := makeRequest(router, "GET", "/api/v1/tenants", nil, token)
 	if w.Code == http.StatusUnauthorized {
 		t.Errorf("Valid JWT should not return 401, got %d (body: %s)", w.Code, w.Body.String())
@@ -46,7 +46,7 @@ func TestAuthMiddleware_MissingJWT(t *testing.T) {
 // causes a 401 rejection.
 func TestAuthMiddleware_TamperedJWT(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "test@zovarc.local", "admin")
+	token := createTestJWT("tenant-1", "user-1", "test@zovark.local", "admin")
 	// Replace the last 5 characters of the base64 signature with garbage.
 	tampered := token[:len(token)-5] + "XXXXX"
 	w := makeRequest(router, "GET", "/api/v1/tenants", nil, tampered)
@@ -59,7 +59,7 @@ func TestAuthMiddleware_TamperedJWT(t *testing.T) {
 // with the wrong format (no prefix, wrong prefix) are rejected with 401.
 func TestAuthMiddleware_MalformedBearerHeader(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "test@zovarc.local", "admin")
+	token := createTestJWT("tenant-1", "user-1", "test@zovark.local", "admin")
 
 	cases := []struct {
 		name        string

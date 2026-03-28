@@ -37,10 +37,10 @@ from stages.llm_gateway import llm_call
 from stages.model_router import get_model_config
 
 # --- Configuration (read once at import) ---
-FAST_FILL = os.environ.get("ZOVARC_FAST_FILL", "false").lower() == "true"
+FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 # Model tier defaults (inlined to avoid _legacy dependency)
 TIER_GENERATE = {"model": "qwen2.5:14b", "max_tokens": 4096, "temperature": 0.3}

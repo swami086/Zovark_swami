@@ -1,15 +1,15 @@
-# ZOVARC Multi-Region Deployment Architecture
+# ZOVARK Multi-Region Deployment Architecture
 
 ## Overview
 
-Multi-region deployment enables ZOVARC to operate across geographically distributed regions for high availability, data sovereignty, and reduced latency. This document covers the architecture, configuration, and operational procedures.
+Multi-region deployment enables ZOVARK to operate across geographically distributed regions for high availability, data sovereignty, and reduced latency. This document covers the architecture, configuration, and operational procedures.
 
 ## Architecture Diagram
 
 ```
                          ┌──────────────────┐
                          │   DNS (Route 53)  │
-                         │  zovarc.example.com│
+                         │  zovark.example.com│
                          │  Latency-based    │
                          └──────┬───────────┘
                                 │
@@ -64,7 +64,7 @@ postgresql:
       synchronous_standby_names: ''
       hot_standby: on
       archive_mode: on
-      archive_command: 'aws s3 cp %p s3://zovarc-wal-archive/%f'
+      archive_command: 'aws s3 cp %p s3://zovark-wal-archive/%f'
 ```
 
 ### Replica Regions
@@ -97,7 +97,7 @@ redis:
     replicas: 1
   sentinel:
     enabled: true
-    masterSet: zovarc-master
+    masterSet: zovark-master
     replicas: 3
 ```
 
@@ -146,7 +146,7 @@ tctl namespace register \
   --global_domain true \
   --clusters us-east-1 eu-west-1 ap-southeast-1 \
   --active_cluster us-east-1 \
-  zovarc-tasks
+  zovark-tasks
 ```
 
 ## DNS-Based Routing
@@ -155,7 +155,7 @@ tctl namespace register \
 
 ```json
 {
-  "Name": "zovarc.example.com",
+  "Name": "zovark.example.com",
   "Type": "A",
   "SetIdentifier": "us-east-1",
   "Region": "us-east-1",

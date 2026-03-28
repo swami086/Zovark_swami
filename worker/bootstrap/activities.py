@@ -16,7 +16,7 @@ from model_config import get_tier_config
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
@@ -164,7 +164,7 @@ async def generate_synthetic_investigation(data: dict) -> dict:
     Returns: {source_id, investigation_length, tokens_used}
     """
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
     tier_config = get_tier_config("generate_synthetic_investigation")
     llm_model = tier_config["model"]
 

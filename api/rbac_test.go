@@ -12,7 +12,7 @@ import (
 // return 500, but not 403.
 func TestRBAC_AdminCanAccessTenants(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "admin@zovarc.local", "admin")
+	token := createTestJWT("tenant-1", "user-1", "admin@zovark.local", "admin")
 	w := makeRequest(router, "GET", "/api/v1/tenants", nil, token)
 	if w.Code == http.StatusForbidden {
 		t.Errorf("Admin should not get 403 on GET /api/v1/tenants, got %d", w.Code)
@@ -23,7 +23,7 @@ func TestRBAC_AdminCanAccessTenants(t *testing.T) {
 // rejected with 403 on the admin-only POST /tenants endpoint.
 func TestRBAC_AnalystCannotCreateTenant(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "analyst@zovarc.local", "analyst")
+	token := createTestJWT("tenant-1", "user-1", "analyst@zovark.local", "analyst")
 	w := makeRequest(router, "POST", "/api/v1/tenants",
 		map[string]string{"name": "test", "slug": "test"}, token)
 	if w.Code != http.StatusForbidden {
@@ -35,7 +35,7 @@ func TestRBAC_AnalystCannotCreateTenant(t *testing.T) {
 // rejected with 403 on the admin-only POST /tenants endpoint.
 func TestRBAC_ViewerCannotCreateTenant(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "viewer@zovarc.local", "viewer")
+	token := createTestJWT("tenant-1", "user-1", "viewer@zovark.local", "viewer")
 	w := makeRequest(router, "POST", "/api/v1/tenants",
 		map[string]string{"name": "test", "slug": "test"}, token)
 	if w.Code != http.StatusForbidden {
@@ -47,7 +47,7 @@ func TestRBAC_ViewerCannotCreateTenant(t *testing.T) {
 // rejected with 403 on the admin-only GET /tenants endpoint.
 func TestRBAC_AnalystCannotListTenants(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "analyst@zovarc.local", "analyst")
+	token := createTestJWT("tenant-1", "user-1", "analyst@zovark.local", "analyst")
 	w := makeRequest(router, "GET", "/api/v1/tenants", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Analyst should get 403 on GET /api/v1/tenants, got %d", w.Code)
@@ -58,7 +58,7 @@ func TestRBAC_AnalystCannotListTenants(t *testing.T) {
 // cannot trigger a GDPR erasure (admin-only endpoint).
 func TestRBAC_AnalystCannotDeleteTenantData(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "analyst@zovarc.local", "analyst")
+	token := createTestJWT("tenant-1", "user-1", "analyst@zovark.local", "analyst")
 	w := makeRequest(router, "DELETE", "/api/v1/tenants/tenant-1/data", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Analyst should get 403 on DELETE /api/v1/tenants/:id/data, got %d", w.Code)
@@ -69,7 +69,7 @@ func TestRBAC_AnalystCannotDeleteTenantData(t *testing.T) {
 // is also rejected on the GDPR endpoint.
 func TestRBAC_ViewerCannotDeleteTenantData(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "viewer@zovarc.local", "viewer")
+	token := createTestJWT("tenant-1", "user-1", "viewer@zovark.local", "viewer")
 	w := makeRequest(router, "DELETE", "/api/v1/tenants/tenant-1/data", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Viewer should get 403 on DELETE /api/v1/tenants/:id/data, got %d", w.Code)
@@ -80,7 +80,7 @@ func TestRBAC_ViewerCannotDeleteTenantData(t *testing.T) {
 // produce a 403 for an admin-role token on GET /models.
 func TestRBAC_AdminCanAccessModels(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "admin@zovarc.local", "admin")
+	token := createTestJWT("tenant-1", "user-1", "admin@zovark.local", "admin")
 	w := makeRequest(router, "GET", "/api/v1/models", nil, token)
 	if w.Code == http.StatusForbidden {
 		t.Errorf("Admin should not get 403 on GET /api/v1/models, got %d", w.Code)
@@ -91,7 +91,7 @@ func TestRBAC_AdminCanAccessModels(t *testing.T) {
 // rejected on the admin-only GET /models endpoint.
 func TestRBAC_AnalystCannotAccessModels(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "analyst@zovarc.local", "analyst")
+	token := createTestJWT("tenant-1", "user-1", "analyst@zovark.local", "analyst")
 	w := makeRequest(router, "GET", "/api/v1/models", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Analyst should get 403 on GET /api/v1/models, got %d", w.Code)
@@ -102,7 +102,7 @@ func TestRBAC_AnalystCannotAccessModels(t *testing.T) {
 // rejected on the admin-only GET /models endpoint.
 func TestRBAC_ViewerCannotAccessModels(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "viewer@zovarc.local", "viewer")
+	token := createTestJWT("tenant-1", "user-1", "viewer@zovark.local", "viewer")
 	w := makeRequest(router, "GET", "/api/v1/models", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Viewer should get 403 on GET /api/v1/models, got %d", w.Code)
@@ -116,7 +116,7 @@ func TestRBAC_AnyAuthenticatedCanAccessSkills(t *testing.T) {
 	roles := []string{"admin", "analyst", "viewer"}
 	for _, role := range roles {
 		t.Run(role, func(t *testing.T) {
-			token := createTestJWT("tenant-1", "user-1", role+"@zovarc.local", role)
+			token := createTestJWT("tenant-1", "user-1", role+"@zovark.local", role)
 			w := makeRequest(router, "GET", "/api/v1/skills", nil, token)
 			if w.Code == http.StatusForbidden {
 				t.Errorf("Role %q should not get 403 on GET /api/v1/skills, got %d", role, w.Code)
@@ -132,7 +132,7 @@ func TestRBAC_AnyAuthenticatedCanAccessSkills(t *testing.T) {
 // role string does not accidentally gain admin access.
 func TestRBAC_UnknownRoleCannotAccessAdminEndpoints(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "rogue@zovarc.local", "rogue_role")
+	token := createTestJWT("tenant-1", "user-1", "rogue@zovark.local", "rogue_role")
 	w := makeRequest(router, "GET", "/api/v1/tenants", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Unknown role should get 403 on admin endpoint, got %d", w.Code)

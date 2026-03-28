@@ -1,5 +1,5 @@
 """
-ZOVARC AbuseIPDB Integration — Temporal Activity
+ZOVARK AbuseIPDB Integration — Temporal Activity
 Checks IP reputation via AbuseIPDB API v2.
 """
 import os

@@ -2,9 +2,9 @@
 
 apiVersion: 1
 providers:
-  - name: 'ZOVARC'
+  - name: 'ZOVARK'
     orgId: 1
-    folder: 'ZOVARC'
+    folder: 'ZOVARK'
     type: file
     disableDeletion: false
     editable: true

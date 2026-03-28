@@ -21,7 +21,7 @@ from temporalio.client import Client
 
 async def main():
     parser = argparse.ArgumentParser(description="Process CISA KEV corpus into embeddings")
-    parser.add_argument("--tenant-id", default="zovarc-dev", help="Tenant ID (default: zovarc-dev)")
+    parser.add_argument("--tenant-id", default="zovark-dev", help="Tenant ID (default: zovark-dev)")
     parser.add_argument("--batch-size", type=int, default=50, help="Entries per batch (default: 50)")
     parser.add_argument("--max-batches", type=int, default=31, help="Max batches (default: 31)")
     parser.add_argument("--temporal-address", default="localhost:7233", help="Temporal address")
@@ -39,7 +39,7 @@ async def main():
             "max_batches": args.max_batches,
         },
         id=f"kev-processing-{args.tenant_id}",
-        task_queue="zovarc-tasks",
+        task_queue="zovark-tasks",
     )
 
     print(f"Workflow started: {handle.id}")

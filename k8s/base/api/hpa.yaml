@@ -1,16 +1,16 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: zovarc-api-hpa
-  namespace: zovarc
+  name: zovark-api-hpa
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: api
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: zovarc-api
+    name: zovark-api
   minReplicas: 2
   maxReplicas: 10
   metrics:

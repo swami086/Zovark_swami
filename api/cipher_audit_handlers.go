@@ -12,7 +12,7 @@ import (
 )
 
 // --------------------------------------------------------------------------
-// Cipher Audit API — Zovarc Sprint 2C
+// Cipher Audit API — Zovark Sprint 2C
 //
 // Provides 5 endpoints for TLS/SSL cipher audit visibility:
 //   GET  /api/v1/cipher-audit/stats    — aggregate risk counts

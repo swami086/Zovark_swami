@@ -24,7 +24,7 @@ class DatabaseRouter:
     def __init__(self, primary_url: str = None, replica_urls: list = None):
         self.primary_url = primary_url or os.environ.get(
             "DATABASE_URL",
-            "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
+            "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
         )
         replica_str = os.environ.get("DATABASE_REPLICA_URLS", "")
         self.replica_urls = replica_urls or [u.strip() for u in replica_str.split(",") if u.strip()]

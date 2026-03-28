@@ -1,4 +1,4 @@
-# ZOVARC Sandbox Security Model
+# ZOVARK Sandbox Security Model
 
 **Version:** 1.1.0
 **Last Updated:** March 2026
@@ -7,7 +7,7 @@
 
 ## Overview
 
-ZOVARC generates and executes Python investigation code using local LLMs. Because LLM output is inherently untrusted, all generated code runs inside a hardened sandbox with four independent defense layers. This document describes each layer, what it blocks, and why.
+ZOVARK generates and executes Python investigation code using local LLMs. Because LLM output is inherently untrusted, all generated code runs inside a hardened sandbox with four independent defense layers. This document describes each layer, what it blocks, and why.
 
 ---
 
@@ -130,7 +130,7 @@ Code runs as UID 65534 (nobody), not root. Combined with dropped capabilities an
 
 **File:** `sandbox/seccomp_profile.json`
 
-The seccomp (secure computing) profile is a Linux kernel feature that filters system calls at the kernel level. ZOVARC uses a custom profile based on Docker's default but with additional restrictions for the investigation sandbox.
+The seccomp (secure computing) profile is a Linux kernel feature that filters system calls at the kernel level. ZOVARK uses a custom profile based on Docker's default but with additional restrictions for the investigation sandbox.
 
 ### Default Action
 
@@ -245,7 +245,7 @@ The investigation code CANNOT:
 
 ## Security Audit Checklist
 
-For organizations evaluating ZOVARC's sandbox model, verify:
+For organizations evaluating ZOVARK's sandbox model, verify:
 
 - [ ] `--network=none` is present in the Docker run command
 - [ ] `--read-only` is present in the Docker run command

@@ -1,8 +1,8 @@
 # ============================================================
-# PROJECT ZOVARC — MVP Docker Compose Stack v1.1.1 (RTX 3050 4GB)
+# PROJECT ZOVARK — MVP Docker Compose Stack v1.1.1 (RTX 3050 4GB)
 # Model: Qwen2.5-1.5B-Instruct-AWQ (chat) + nomic-embed-text (embed)
 # VRAM: 0.40 chat + 0.15 embed = ~2.2GB of 4GB
-# 6 errors from v1.0 fixed — see ZOVARC_CORRECTED_WALKTHROUGH.md
+# 6 errors from v1.0 fixed — see ZOVARK_CORRECTED_WALKTHROUGH.md
 # Boot: docker compose up -d
 # Verify: docker compose ps (all services healthy)
 # ============================================================
@@ -12,11 +12,11 @@ services:
   # ─── DATABASE ─────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: zovarc-postgres
+    container_name: zovark-postgres
     environment:
-      POSTGRES_USER: zovarc
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zovarc_dev_2026}
-      POSTGRES_DB: zovarc
+      POSTGRES_USER: zovark
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zovark_dev_2026}
+      POSTGRES_DB: zovark
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -26,7 +26,7 @@ services:
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zovarc -d zovarc"]
+      test: ["CMD-SHELL", "pg_isready -U zovark -d zovark"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -37,17 +37,17 @@ services:
           cpus: '1.0'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── CACHE / WORKING MEMORY ──────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: zovarc-redis
+    container_name: zovark-redis
     command: >
       redis-server
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
-      --requirepass ${REDIS_PASSWORD:-zovarc-redis-dev-2026}
+      --requirepass ${REDIS_PASSWORD:-zovark-redis-dev-2026}
       --rename-command FLUSHALL ""
       --rename-command CONFIG ""
       --rename-command DEBUG ""
@@ -56,7 +56,7 @@ services:
     expose:
       - "6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-zovarc-redis-dev-2026}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-zovark-redis-dev-2026}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,14 +67,14 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── CONNECTION POOLER ──────────────────────────────
   pgbouncer:
     image: edoburu/pgbouncer:latest
-    container_name: zovarc-pgbouncer
+    container_name: zovark-pgbouncer
     environment:
-      DATABASE_URL: postgres://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc
+      DATABASE_URL: postgres://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@postgres:5432/zovark
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: 400
@@ -100,17 +100,17 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── WORKFLOW ENGINE ─────────────────────────────────
   temporal:
     image: temporalio/auto-setup:1.24.2
-    container_name: zovarc-temporal
+    container_name: zovark-temporal
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_USER=zovarc
-      - POSTGRES_PWD=${POSTGRES_PASSWORD:-zovarc_dev_2026}
+      - POSTGRES_USER=zovark
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-zovark_dev_2026}
       - POSTGRES_SEEDS=postgres
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
     volumes:
@@ -128,11 +128,11 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   temporal-ui:
     image: temporalio/ui:2.26.2
-    container_name: zovarc-temporal-ui
+    container_name: zovark-temporal-ui
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
@@ -144,17 +144,17 @@ services:
     profiles: ["debug"]
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
 
   # ─── OBJECT STORAGE ─────────────────────────────────
   minio:
     image: minio/minio:latest
-    container_name: zovarc-minio
+    container_name: zovark-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-zovarc}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-zovarc_dev_2026}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-zovark}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-zovark_dev_2026}
     volumes:
       - minio_data:/data
     expose:
@@ -168,13 +168,13 @@ services:
     profiles: ["storage"]
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── OBSERVABILITY ───────────────────────────────────
   # Start with: docker compose --profile monitoring up -d
   jaeger:
     image: jaegertracing/all-in-one:1.57
-    container_name: zovarc-jaeger
+    container_name: zovark-jaeger
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     ports:
@@ -184,19 +184,19 @@ services:
     profiles: ["monitoring"]
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── TLS TERMINATION / REVERSE PROXY ─────────────────
   caddy:
     image: caddy:2-alpine
-    container_name: zovarc-caddy
+    container_name: zovark-caddy
     ports:
       - "80:80"
       - "443:443"
     environment:
-      - ZOVARC_DOMAIN=${ZOVARC_DOMAIN:-localhost}
-      - TLS_EMAIL=${TLS_EMAIL:-admin@zovarc.local}
-      - ZOVARC_TLS_ENABLED=${ZOVARC_TLS_ENABLED:-false}
+      - ZOVARK_DOMAIN=${ZOVARK_DOMAIN:-localhost}
+      - TLS_EMAIL=${TLS_EMAIL:-admin@zovark.local}
+      - ZOVARK_TLS_ENABLED=${ZOVARK_TLS_ENABLED:-false}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -212,7 +212,7 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── LOCAL LLM ───────────────────────────────────────
   # Primary: llama.cpp server running on host (not in Docker)
@@ -224,7 +224,7 @@ services:
   # Fallback (air-gap without host GPU): Ollama in Docker
   ollama:
     image: ollama/ollama:latest
-    container_name: zovarc-ollama
+    container_name: zovark-ollama
     volumes:
       - ollama_data:/root/.ollama
     deploy:
@@ -237,26 +237,26 @@ services:
       - airgap-ollama
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: zovarc-api
+    container_name: zovark-api
     ports:
       - "8090:8090"
     environment:
       - PORT=8090
-      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@pgbouncer:5432/zovarc
+      - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovarc-dev-2026}
-      - JWT_SECRET=${JWT_SECRET:-zovarc-jwt-secret-dev-2026-CHANGE-ME-IN-PRODUCTION-min-32-chars}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovarc-redis-dev-2026}@redis:6379/0
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-zovarc-redis-dev-2026}
-      - NATS_URL=nats://${NATS_USER:-zovarc}:${NATS_PASSWORD:-zovarc-nats-dev-2026}@zovarc-nats:4222
-      - ZOVARC_ENCRYPTION_KEY=${ZOVARC_ENCRYPTION_KEY:-}
-      - ZOVARC_WORKFLOW_VERSION=${ZOVARC_WORKFLOW_VERSION:-InvestigationWorkflowV2}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovark-dev-2026}
+      - JWT_SECRET=${JWT_SECRET:-zovark-jwt-secret-dev-2026-CHANGE-ME-IN-PRODUCTION-min-32-chars}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-zovark-redis-dev-2026}
+      - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222
+      - ZOVARK_ENCRYPTION_KEY=${ZOVARK_ENCRYPTION_KEY:-}
+      - ZOVARK_WORKFLOW_VERSION=${ZOVARK_WORKFLOW_VERSION:-InvestigationWorkflowV2}
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -269,7 +269,7 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   worker:
     build:
@@ -278,19 +278,19 @@ services:
     # No container_name — allows docker compose --scale worker=N
     environment:
       # Workers go through PgBouncer (transaction pooling)
-      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@pgbouncer:5432/zovarc
+      - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_URL=${LITELLM_URL:-http://host.docker.internal:11434/v1/chat/completions}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovarc-dev-2026}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovarc-redis-dev-2026}@redis:6379/0
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovark-dev-2026}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
-      - ZOVARC_LLM_MODEL=${ZOVARC_LLM_MODEL:-qwen2.5:14b}
+      - ZOVARK_LLM_MODEL=${ZOVARK_LLM_MODEL:-qwen2.5:14b}
       - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
       - PYTHONUNBUFFERED=1
-      - NATS_URL=nats://${NATS_USER:-zovarc}:${NATS_PASSWORD:-zovarc-nats-dev-2026}@zovarc-nats:4222
+      - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222
       - HTTP_PROXY=http://squid-proxy:3128
       - HTTPS_PROXY=http://squid-proxy:3128
-      - NO_PROXY=litellm,postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,zovarc-api,pgbouncer,host.docker.internal,api
+      - NO_PROXY=litellm,postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,zovark-api,pgbouncer,host.docker.internal,api
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro
@@ -314,13 +314,13 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   dashboard:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
-    container_name: zovarc-dashboard
+    container_name: zovark-dashboard
     ports:
       - "3000:3000"
     depends_on:
@@ -331,12 +331,12 @@ services:
           memory: 128M
           cpus: '0.25'
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── OWASP JUICE SHOP (benchmark target) ────────────────
   juice-shop:
     image: bkimminich/juice-shop:latest
-    container_name: zovarc-juice-shop
+    container_name: zovark-juice-shop
     ports:
       - "3001:3000"
     profiles: ["benchmark"]
@@ -347,15 +347,15 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   temporal-exporter:
     build:
       context: ./worker
-    container_name: zovarc-temporal-exporter
+    container_name: zovark-temporal-exporter
     command: python /app/monitoring/temporal_exporter.py
     environment:
-      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc
+      - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@postgres:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
       - EXPORTER_PORT=9092
     volumes:
@@ -368,14 +368,14 @@ services:
     profiles: ["monitoring"]
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── MONITORING STACK (Sprint 1F) ─────────────────────
   # Prometheus + Grafana + exporters — all under "monitoring" profile
   # Start with: docker compose --profile monitoring up -d
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: zovarc-prometheus
+    container_name: zovark-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=7d'
@@ -396,19 +396,19 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: zovarc-grafana
+    container_name: zovark-grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=zovarc
+      - GF_SECURITY_ADMIN_PASSWORD=zovark
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/zovarc-overview.json
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/zovark-overview.json
     volumes:
       - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./config/grafana/provisioning/dashboards/zovarc-overview.json:/var/lib/grafana/dashboards/zovarc-overview.json:ro
+      - ./config/grafana/provisioning/dashboards/zovark-overview.json:/var/lib/grafana/dashboards/zovark-overview.json:ro
       - ./monitoring/grafana/dashboards/infrastructure.json:/var/lib/grafana/dashboards/infrastructure.json:ro
       - ./monitoring/grafana/dashboards/worker-performance.json:/var/lib/grafana/dashboards/worker-performance.json:ro
       - grafana_data:/var/lib/grafana
@@ -424,13 +424,13 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
-    container_name: zovarc-postgres-exporter
+    container_name: zovark-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: "postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc?sslmode=prefer"
+      DATA_SOURCE_NAME: "postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@postgres:5432/zovark?sslmode=prefer"
     ports:
       - "9187:9187"
     depends_on:
@@ -444,14 +444,14 @@ services:
           cpus: '0.1'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.58.0
-    container_name: zovarc-redis-exporter
+    container_name: zovark-redis-exporter
     environment:
       REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-zovarc-redis-dev-2026}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-zovark-redis-dev-2026}
     ports:
       - "9121:9121"
     depends_on:
@@ -465,16 +465,16 @@ services:
           cpus: '0.1'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   worker-metrics:
     build:
       context: ./worker
-    container_name: zovarc-worker-metrics
+    container_name: zovark-worker-metrics
     command: python /app/monitoring/worker_metrics.py
     environment:
-      - DATABASE_URL=postgresql://zovarc:${POSTGRES_PASSWORD:-zovarc_dev_2026}@postgres:5432/zovarc
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovarc-redis-dev-2026}@redis:6379/0
+      - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@postgres:5432/zovark
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
       - METRICS_PORT=9093
     volumes:
       - ./monitoring:/app/monitoring:ro
@@ -491,18 +491,18 @@ services:
           cpus: '0.25'
     restart: unless-stopped
     networks:
-      - zovarc-internal
+      - zovark-internal
 
   # ─── EGRESS PROXY ──────────────────────────────────────
   squid-proxy:
     image: ubuntu/squid:latest
-    container_name: zovarc-egress-proxy
+    container_name: zovark-egress-proxy
     volumes:
       - ./proxy/squid.conf:/etc/squid/squid.conf:ro
     expose:
       - "3128"
     networks:
-      - zovarc-internal
+      - zovark-internal
     restart: unless-stopped
     deploy:
       resources:
@@ -510,9 +510,9 @@ services:
           memory: 128M
           cpus: '0.1'
 
-  zovarc-vllm-chat:
+  zovark-vllm-chat:
     image: vllm/vllm-openai:latest
-    container_name: zovarc-vllm-chat
+    container_name: zovark-vllm-chat
     command: --model /models/chat-model --port 8000 --max-model-len 4096
     volumes:
       - ./local_models/chat-model:/models/chat-model
@@ -524,22 +524,22 @@ services:
               count: 1
               capabilities: [gpu]
     networks:
-      - zovarc-internal
+      - zovark-internal
     profiles: ["vllm"]
 
-  zovarc-vllm-embed:
+  zovark-vllm-embed:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
-    container_name: zovarc-vllm-embed
+    container_name: zovark-vllm-embed
     command: --model-id /models/embed-model --port 8001
     volumes:
       - ./local_models/embed-model:/models/embed-model
     networks:
-      - zovarc-internal
+      - zovark-internal
     profiles: ["vllm"]
 
 # ─── NETWORKS ──────────────────────────────────────────
 networks:
-  zovarc-internal:
+  zovark-internal:
     driver: bridge
 
 # ─── VOLUMES ───────────────────────────────────────────

@@ -39,7 +39,7 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 
 ### #5 — API Key Authentication for M2M
 - **Files:** `api/apikeys.go`, `migrations/022_api_keys.sql`
-- `zovarc_` prefix key generation, SHA-256 hashing
+- `zovark_` prefix key generation, SHA-256 hashing
 - CRUD handlers: POST/GET/DELETE `/api/v1/api-keys`
 - `authenticateAPIKey()` checks `X-API-Key` header before JWT fallback
 - `api_keys` table: id, tenant_id, key_hash, name, scopes, is_active, last_used_at, expires_at, created_by
@@ -83,7 +83,7 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 - **File:** `api/oidc.go`
 - Lightweight OIDC using `net/http`: discovery endpoint, PKCE authorization code flow
 - GET `/auth/sso/login` — redirect to IdP
-- GET `/auth/callback` — handle OIDC response, issue ZOVARC JWT
+- GET `/auth/callback` — handle OIDC response, issue ZOVARK JWT
 - JIT user provisioning on first login
 - Configurable role claim mapping
 - Config: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`
@@ -245,7 +245,7 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 ### #21 — Dark Mode / Light Mode Toggle
 - **File:** `dashboard/src/hooks/useTheme.ts`
 - ThemeContext with dark/light toggle
-- localStorage persistence (`zovarc_theme`)
+- localStorage persistence (`zovark_theme`)
 - Light mode CSS variables + 30+ override rules
 - Sun/Moon toggle in sidebar footer
 
@@ -320,10 +320,10 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 - `.github/workflows/accuracy.yml` — GitHub Actions workflow
 
 ### #10 — Python SDK
-- **Directory:** `sdk/python/zovarc/`
-- `client.py` — `ZovarcClient` class: login, create_task, get_task, list_tasks, wait_for_completion, investigate_alert, get_stats, health_check
+- **Directory:** `sdk/python/zovark/`
+- `client.py` — `ZovarkClient` class: login, create_task, get_task, list_tasks, wait_for_completion, investigate_alert, get_stats, health_check
 - `models.py` — Data classes: Task, Alert, User, Stats, TaskList
-- `exceptions.py` — ZovarcAPIError, AuthenticationError, RateLimitError, NotFoundError, ForbiddenError
+- `exceptions.py` — ZovarkAPIError, AuthenticationError, RateLimitError, NotFoundError, ForbiddenError
 - `pyproject.toml` — zero dependencies (stdlib only)
 
 ### #13 — Investigation Report Export
@@ -348,7 +348,7 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 - **File:** `Caddyfile`
 - Reverse proxy config with HSTS, security headers, on-demand TLS
 - **Modified:** `docker-compose.yml` — added `caddy` service (caddy:2-alpine, ports 80/443, `tls` profile)
-- `ZOVARC_TLS_ENABLED` env var
+- `ZOVARK_TLS_ENABLED` env var
 
 ### #6 — Database Backup Automation
 - `scripts/backup-db.sh` — pg_dump + gzip + MinIO upload, 7 daily + 4 weekly retention
@@ -384,11 +384,11 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 
 ### #45 — Container Registry (CI/CD)
 - **File:** `.github/workflows/build.yml`
-- Build + push zovarc-api, zovarc-worker, zovarc-dashboard to ghcr.io
+- Build + push zovark-api, zovark-worker, zovark-dashboard to ghcr.io
 - Multi-arch builds (amd64, arm64), version+SHA tags
 
 ### #46 — Helm Chart
-- **Directory:** `helm/zovarc/`
+- **Directory:** `helm/zovark/`
 - `Chart.yaml`, `values.yaml`
 - 8 templates: deployments (api, worker), services, configmap, secret, ingress, HPA, helpers, NOTES.txt
 
@@ -471,7 +471,7 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 |---------|-----------------------|
 | SSO/OIDC | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI` |
 | Vault | `VAULT_ADDR`, `VAULT_TOKEN` |
-| TLS | `ZOVARC_DOMAIN`, `TLS_EMAIL`, `ZOVARC_TLS_ENABLED` |
+| TLS | `ZOVARK_DOMAIN`, `TLS_EMAIL`, `ZOVARK_TLS_ENABLED` |
 | Slack | `SLACK_WEBHOOK_URL` |
 | Jira | `JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` |
 | Teams | `TEAMS_WEBHOOK_URL` |

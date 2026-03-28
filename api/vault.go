@@ -79,13 +79,13 @@ func (vc *VaultClient) periodicRefresh() {
 	}
 }
 
-// refreshSecrets reads all ZOVARC secrets from Vault and updates the cache.
+// refreshSecrets reads all ZOVARK secrets from Vault and updates the cache.
 func (vc *VaultClient) refreshSecrets() {
 	secretPaths := map[string]string{
-		"database_url":       "secret/data/zovarc/database",
-		"jwt_secret":         "secret/data/zovarc/jwt",
-		"litellm_master_key": "secret/data/zovarc/litellm",
-		"redis_url":          "secret/data/zovarc/redis",
+		"database_url":       "secret/data/zovark/database",
+		"jwt_secret":         "secret/data/zovark/jwt",
+		"litellm_master_key": "secret/data/zovark/litellm",
+		"redis_url":          "secret/data/zovark/redis",
 	}
 
 	for key, path := range secretPaths {

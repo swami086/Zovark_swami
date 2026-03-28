@@ -1,8 +1,8 @@
-# ZOVARC SIEM Integration Guide
+# ZOVARK SIEM Integration Guide
 
 ## Overview
 
-ZOVARC accepts security alerts via REST API webhook. When a SIEM rule fires, it sends the alert to ZOVARC, which automatically investigates it through the V2 pipeline (Ingest → Analyze → Execute → Assess → Store) and produces a structured verdict.
+ZOVARK accepts security alerts via REST API webhook. When a SIEM rule fires, it sends the alert to ZOVARK, which automatically investigates it through the V2 pipeline (Ingest → Analyze → Execute → Assess → Store) and produces a structured verdict.
 
 ## Endpoint
 
@@ -17,7 +17,7 @@ Authorization: Bearer <JWT_TOKEN>
 ### Option 1: JWT Token (recommended for testing)
 ```bash
 # Get a token
-TOKEN=$(curl -s -X POST https://zovarc.yourdomain.com/api/v1/auth/login \
+TOKEN=$(curl -s -X POST https://zovark.yourdomain.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"siem-service@yourdomain.com","password":"<SERVICE_PASSWORD>"}' | jq -r '.token')
 ```
@@ -26,7 +26,7 @@ TOKEN=$(curl -s -X POST https://zovarc.yourdomain.com/api/v1/auth/login \
 ```
 Authorization: Bearer <API_KEY>
 ```
-API keys can be generated in the ZOVARC admin panel under Settings → API Keys.
+API keys can be generated in the ZOVARK admin panel under Settings → API Keys.
 
 ## Request Schema
 
@@ -130,7 +130,7 @@ Configure a webhook alert action:
 1. Go to **Settings → Alert Actions → Add New**
 2. Set the webhook URL:
    ```
-   https://zovarc.yourdomain.com/api/v1/tasks
+   https://zovark.yourdomain.com/api/v1/tasks
    ```
 3. Create a saved search with webhook action:
    ```spl
@@ -189,13 +189,13 @@ Configure a webhook alert action:
     }
   },
   "actions": {
-    "zovarc_webhook": {
+    "zovark_webhook": {
       "webhook": {
         "method": "POST",
-        "url": "https://zovarc.yourdomain.com/api/v1/tasks",
+        "url": "https://zovark.yourdomain.com/api/v1/tasks",
         "headers": {
           "Content-Type": "application/json",
-          "Authorization": "Bearer {{ctx.metadata.zovarc_api_key}}"
+          "Authorization": "Bearer {{ctx.metadata.zovark_api_key}}"
         },
         "body": "{\"task_type\":\"brute_force\",\"input\":{\"prompt\":\"Investigate SSH brute force\",\"severity\":\"high\",\"siem_event\":{\"title\":\"SSH Brute Force (Elastic)\",\"source_ip\":\"{{ctx.payload.aggregations.by_source.buckets.0.key}}\",\"rule_name\":\"elastic_ssh_brute_force\",\"raw_log\":\"{{ctx.payload.hits.total.value}} failed SSH attempts in 5 minutes\"}}}"
       }
@@ -209,7 +209,7 @@ Configure a webhook alert action:
 1. Create a new Logic App with **Microsoft Sentinel alert trigger**
 2. Add an HTTP action:
    - Method: `POST`
-   - URI: `https://zovarc.yourdomain.com/api/v1/tasks`
+   - URI: `https://zovark.yourdomain.com/api/v1/tasks`
    - Headers:
      - `Content-Type`: `application/json`
      - `Authorization`: `Bearer <API_KEY>`
@@ -235,9 +235,9 @@ Configure a webhook alert action:
 ### Generic curl Example
 
 ```bash
-curl -X POST https://zovarc.yourdomain.com/api/v1/tasks \
+curl -X POST https://zovark.yourdomain.com/api/v1/tasks \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $ZOVARC_TOKEN" \
+  -H "Authorization: Bearer $ZOVARK_TOKEN" \
   -d '{
     "task_type": "brute_force",
     "input": {
@@ -258,7 +258,7 @@ curl -X POST https://zovarc.yourdomain.com/api/v1/tasks \
 
 ## Field Mapping Reference
 
-| SIEM Field | ZOVARC Field | Notes |
+| SIEM Field | ZOVARK Field | Notes |
 |------------|-------------|-------|
 | Source IP / src_ip | `siem_event.source_ip` | IPv4 or IPv6 |
 | Destination IP / dst_ip | `siem_event.destination_ip` | Target system |
@@ -290,7 +290,7 @@ Alerts that exceed the rate limit receive HTTP 429. Implement exponential backof
 
 ## Deduplication
 
-ZOVARC automatically deduplicates identical alerts within a configurable window (default: 1 hour). Duplicate submissions return:
+ZOVARK automatically deduplicates identical alerts within a configurable window (default: 1 hour). Duplicate submissions return:
 ```json
 {
   "task_id": "original-task-id",

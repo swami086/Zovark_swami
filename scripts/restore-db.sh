@@ -1,24 +1,24 @@
 #!/bin/sh
 # ============================================================
-# ZOVARC Database Restore Script
+# ZOVARK Database Restore Script
 # Downloads backup from MinIO and restores to PostgreSQL
 # Usage: ./scripts/restore-db.sh [daily|weekly] [filename]
-#   e.g. ./scripts/restore-db.sh daily zovarc_daily_20260312_030000.sql.gz
+#   e.g. ./scripts/restore-db.sh daily zovark_daily_20260312_030000.sql.gz
 #   e.g. ./scripts/restore-db.sh  # lists available backups
 # ============================================================
 set -eu
 
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-POSTGRES_USER="${POSTGRES_USER:-zovarc}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-zovarc_dev_2026}"
-POSTGRES_DB="${POSTGRES_DB:-zovarc}"
-MINIO_ALIAS="${MINIO_ALIAS:-zovarc}"
+POSTGRES_USER="${POSTGRES_USER:-zovark}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-zovark_dev_2026}"
+POSTGRES_DB="${POSTGRES_DB:-zovark}"
+MINIO_ALIAS="${MINIO_ALIAS:-zovark}"
 MINIO_ENDPOINT="${MINIO_ENDPOINT:-http://localhost:9000}"
-MINIO_BUCKET="${MINIO_BUCKET:-zovarc-backups}"
-MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-zovarc}"
-MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-zovarc_dev_2026}"
-RESTORE_DIR="${RESTORE_DIR:-/tmp/zovarc-restore}"
+MINIO_BUCKET="${MINIO_BUCKET:-zovark-backups}"
+MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-zovark}"
+MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-zovark_dev_2026}"
+RESTORE_DIR="${RESTORE_DIR:-/tmp/zovark-restore}"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"

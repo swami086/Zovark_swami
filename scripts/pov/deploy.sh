@@ -1,5 +1,5 @@
 #!/bin/bash
-# ZOVARC 48-Hour PoV Deployment
+# ZOVARK 48-Hour PoV Deployment
 # Run on customer's Linux server with Docker installed.
 #
 # Usage: bash scripts/pov/deploy.sh
@@ -7,7 +7,7 @@
 set -e
 
 echo "╔══════════════════════════════════════╗"
-echo "║  ZOVARC PoV Deployment                ║"
+echo "║  ZOVARK PoV Deployment                ║"
 echo "║  Estimated time: 10 minutes          ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
@@ -32,21 +32,21 @@ echo "  ✓ Cryptographic secrets generated"
 echo ""
 echo "=== Configuring environment ==="
 if [ ! -f .env.example ]; then
-    echo "ERROR: .env.example not found. Are you in the zovarc-mvp directory?"
+    echo "ERROR: .env.example not found. Are you in the zovark-mvp directory?"
     exit 1
 fi
 
 cp .env.example .env
 sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
-sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=zovarc_pov_2026|" .env
-sed -i "s|^LITELLM_MASTER_KEY=.*|LITELLM_MASTER_KEY=sk-zovarc-pov-$(openssl rand -hex 8 2>/dev/null || echo 'dev-key')|" .env
-sed -i "s|^MINIO_ROOT_USER=.*|MINIO_ROOT_USER=zovarc-pov|" .env
+sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=zovark_pov_2026|" .env
+sed -i "s|^LITELLM_MASTER_KEY=.*|LITELLM_MASTER_KEY=sk-zovark-pov-$(openssl rand -hex 8 2>/dev/null || echo 'dev-key')|" .env
+sed -i "s|^MINIO_ROOT_USER=.*|MINIO_ROOT_USER=zovark-pov|" .env
 sed -i "s|^MINIO_ROOT_PASSWORD=.*|MINIO_ROOT_PASSWORD=$(openssl rand -hex 12 2>/dev/null || echo 'minio-pov-2026')|" .env
 
 # Add security vars if not present
 grep -q "REDIS_PASSWORD" .env || echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> .env
 grep -q "NATS_PASSWORD" .env || echo "NATS_PASSWORD=$NATS_PASSWORD" >> .env
-grep -q "ZOVARC_ENCRYPTION_KEY" .env || echo "ZOVARC_ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env
+grep -q "ZOVARK_ENCRYPTION_KEY" .env || echo "ZOVARK_ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env
 grep -q "BACKUP_PASSPHRASE" .env || echo "BACKUP_PASSPHRASE=$BACKUP_PASSPHRASE" >> .env
 echo "  ✓ .env configured with generated secrets"
 
@@ -63,7 +63,7 @@ fi
 
 # 5. Start stack
 echo ""
-echo "=== Starting ZOVARC stack ==="
+echo "=== Starting ZOVARK stack ==="
 docker compose up -d 2>&1 | tail -5
 echo "  ✓ Services starting..."
 
@@ -72,7 +72,7 @@ echo ""
 echo "=== Waiting for services ==="
 for i in $(seq 1 60); do
     if curl -sf http://localhost:8090/health | grep -q '"status"' 2>/dev/null; then
-        echo "  ✓ ZOVARC API is healthy!"
+        echo "  ✓ ZOVARK API is healthy!"
         break
     fi
     if [ "$i" -eq 60 ]; then
@@ -85,7 +85,7 @@ done
 # 7. Run migrations
 echo ""
 echo "=== Applying database migrations ==="
-docker compose exec -T zovarc-api ./zovarc-api migrate up 2>&1 || echo "  (migrations may already be applied)"
+docker compose exec -T zovark-api ./zovark-api migrate up 2>&1 || echo "  (migrations may already be applied)"
 echo "  ✓ Database ready"
 
 # 8. Create PoV admin user
@@ -93,17 +93,17 @@ echo ""
 echo "=== Creating PoV admin user ==="
 curl -sf -X POST http://localhost:8090/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"pov-admin","email":"admin@pov.local","password":"PoV-2026-Zovarc!"}' 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "  (user may already exist)"
+  -d '{"username":"pov-admin","email":"admin@pov.local","password":"PoV-2026-Zovark!"}' 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "  (user may already exist)"
 
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║  ZOVARC is running!                               ║"
+echo "║  ZOVARK is running!                               ║"
 echo "║                                                  ║"
 echo "║  Dashboard: http://localhost:3000                 ║"
 echo "║  API:       http://localhost:8090/health          ║"
 echo "║  Grafana:   http://localhost:3001                 ║"
 echo "║                                                  ║"
-echo "║  Login:     pov-admin / PoV-2026-Zovarc!          ║"
+echo "║  Login:     pov-admin / PoV-2026-Zovark!          ║"
 echo "║                                                  ║"
 echo "║  Next: Import alerts with:                       ║"
 echo "║  python scripts/pov/import_alerts.py \\           ║"

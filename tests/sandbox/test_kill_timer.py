@@ -71,7 +71,7 @@ class TestKillTimerIntegration:
 
     def test_container_killed_after_timeout(self):
         """A sleeping container should be killed after timeout."""
-        container_name = "zovarc-test-kill-timer"
+        container_name = "zovark-test-kill-timer"
 
         # Start a container that sleeps forever
         subprocess.run(
@@ -110,7 +110,7 @@ class TestKillTimerIntegration:
 
     def test_timer_cancel_prevents_kill(self):
         """Cancelling timer before timeout should leave container running."""
-        container_name = "zovarc-test-cancel-timer"
+        container_name = "zovark-test-cancel-timer"
 
         subprocess.run(
             [

@@ -1,11 +1,11 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: zovarc-worker-keda
-  namespace: zovarc
+  name: zovark-worker-keda
+  namespace: zovark
 spec:
   scaleTargetRef:
-    name: zovarc-worker
+    name: zovark-worker
   pollingInterval: 15
   cooldownPeriod: 120
   minReplicaCount: 2
@@ -14,6 +14,6 @@ spec:
     - type: prometheus
       metadata:
         serverAddress: http://prometheus:9090
-        metricName: zovarc_temporal_pending_tasks
-        query: zovarc_temporal_pending_tasks{task_queue="zovarc-tasks"}
+        metricName: zovark_temporal_pending_tasks
+        query: zovark_temporal_pending_tasks{task_queue="zovark-tasks"}
         threshold: "5"

@@ -1,5 +1,5 @@
 """
-ZOVARC — Complete Prompt Library v2
+ZOVARK — Complete Prompt Library v2
 ===================================
 Modular architecture. Every prompt is split into composable blocks:
   SYSTEM  — agent identity + hard constraints (stable, cached)
@@ -20,7 +20,7 @@ Total prompts: 16
   New patterns:      4 (retry, planning, report assembly, investigation specialist)
 
 Usage:
-    from zovarc_prompts_v2 import PromptAssembler
+    from zovark_prompts_v2 import PromptAssembler
     assembler = PromptAssembler()
     full_prompt = assembler.build_investigation_prompt(
         alert_json=alert,
@@ -36,11 +36,11 @@ from typing import Optional
 # =============================================================================
 # BLOCK 1: SYSTEM IDENTITY (stable — never changes between investigations)
 # =============================================================================
-# This block sits at the TOP of every prompt. It defines who ZOVARC is.
+# This block sits at the TOP of every prompt. It defines who ZOVARK is.
 # Because it never changes, it gets KV-cached across all investigations.
 # Manus principle: "Keep your prompt prefix stable."
 
-SYSTEM_IDENTITY = """You are ZOVARC, an autonomous Security Operations Center investigation engine.
+SYSTEM_IDENTITY = """You are ZOVARK, an autonomous Security Operations Center investigation engine.
 
 You run air-gapped on-premise. You never send data to external APIs.
 You investigate SIEM alerts by generating Python code that runs in a sandboxed Docker container.
@@ -475,7 +475,7 @@ Respond with ONLY corrected Python code. No markdown, no explanation."""
 
 
 # --- DPO 6: Skill Parameter Filling ---
-DPO_SKILL_PARAMETERS = """You are ZOVARC's skill parameter resolver. Fill template variables with values from the alert.
+DPO_SKILL_PARAMETERS = """You are ZOVARK's skill parameter resolver. Fill template variables with values from the alert.
 
 ## Skill Template
 {skill_template}

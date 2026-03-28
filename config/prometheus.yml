@@ -1,7 +1,7 @@
-# ZOVARC Prometheus Configuration — Sprint 1F
+# ZOVARK Prometheus Configuration — Sprint 1F
 # Start with: docker compose --profile monitoring up -d
 #
-# Scrapes all ZOVARC services and custom exporters for full observability.
+# Scrapes all ZOVARK services and custom exporters for full observability.
 
 global:
   scrape_interval: 15s
@@ -16,7 +16,7 @@ scrape_configs:
   # The API exposes /api/v1/metrics (JSON, requires auth).
   # This target uses the health endpoint for up/down monitoring.
   # For full metrics, the worker-metrics exporter queries the DB directly.
-  - job_name: 'zovarc-api'
+  - job_name: 'zovark-api'
     metrics_path: /health
     static_configs:
       - targets: ['api:8090']

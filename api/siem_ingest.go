@@ -19,7 +19,7 @@ import (
 // SIEM INGEST ENDPOINTS — Splunk HEC + Elastic SIEM
 // ============================================================
 
-// mapAlertToTaskType maps a SIEM alert signature/rule name to a ZOVARC task type
+// mapAlertToTaskType maps a SIEM alert signature/rule name to a ZOVARK task type
 // using regex patterns. Falls back to a sanitized version of the signature.
 func mapAlertToTaskType(signature string) string {
 	sig := strings.ToLower(signature)
@@ -113,7 +113,7 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	// Start Temporal workflow AFTER commit
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
-		TaskQueue: "zovarc-tasks",
+		TaskQueue: "zovark-tasks",
 	}
 
 	wfStart := time.Now()
@@ -124,7 +124,7 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	wfLatency := int(time.Since(wfStart).Milliseconds())
 	if err != nil {
 		if isTemporalTimeout(err) {
-			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/litellm", "zovarc-fast")
+			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/litellm", "zovark-fast")
 		}
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		return "", fmt.Errorf("failed to start workflow: %w", err)

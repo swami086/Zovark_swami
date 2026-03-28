@@ -18,9 +18,9 @@ import (
 // API KEY AUTHENTICATION FOR M2M (Issue #5)
 // ============================================================
 
-const apiKeyPrefix = "zovarc_"
+const apiKeyPrefix = "zovark_"
 
-// generateAPIKey creates a new API key with the zovarc_ prefix.
+// generateAPIKey creates a new API key with the zovark_ prefix.
 // Returns the raw key (shown once to the user) and its SHA-256 hash.
 func generateAPIKey() (rawKey string, keyHash string) {
 	b := make([]byte, 32)

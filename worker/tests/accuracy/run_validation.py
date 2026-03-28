@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Accuracy validation runner for ZOVARC investigation engine.
+"""Accuracy validation runner for ZOVARK investigation engine.
 
 Loads labeled test alerts, submits each through the investigation pipeline,
 compares verdicts to ground truth, and outputs precision/recall/F1 metrics.
@@ -66,7 +66,7 @@ async def submit_investigation(client, alert, timeout_s=60):
         "ExecuteTaskWorkflow",
         task_input,
         id=f"accuracy-test-{alert['id']}-{int(time.time())}",
-        task_queue="zovarc-tasks",
+        task_queue="zovark-tasks",
         retry_policy=RetryPolicy(maximum_attempts=1),
         execution_timeout=timedelta(seconds=timeout_s),
     )
@@ -196,13 +196,13 @@ def run_dry(alerts):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ZOVARC Accuracy Validation")
+    parser = argparse.ArgumentParser(description="ZOVARK Accuracy Validation")
     parser.add_argument("--dry-run", action="store_true",
                         help="Simulate verdicts without LLM (test pipeline)")
     args = parser.parse_args()
 
     print("=" * 60)
-    print("ZOVARC ACCURACY VALIDATION")
+    print("ZOVARK ACCURACY VALIDATION")
     print(f"Mode: {'DRY RUN (simulated)' if args.dry_run else 'LIVE (Temporal + LLM)'}")
     print("=" * 60)
 

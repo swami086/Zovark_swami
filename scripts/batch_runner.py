@@ -16,8 +16,8 @@ RESULTS_FILE = "batch_results_100.json"
 
 # Auth
 def get_token():
-    email = os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local")
-    password = os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026")
+    email = os.environ.get("ZOVARK_TEST_EMAIL", "admin@test.local")
+    password = os.environ.get("ZOVARK_TEST_PASSWORD", "TestPass2026")
     payload = json.dumps({"email": email, "password": password}).encode()
     req = urllib.request.Request(f"{API}/api/v1/auth/login", data=payload,
                                  headers={"Content-Type": "application/json"})

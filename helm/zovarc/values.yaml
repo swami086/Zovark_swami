@@ -1,17 +1,17 @@
 # ============================================================
-# ZOVARC Helm Chart — Default Values
+# ZOVARK Helm Chart — Default Values
 # ============================================================
 
 global:
   imageRegistry: ghcr.io
   imagePullSecrets: []
-  namespace: zovarc
+  namespace: zovark
 
 # ─── API Gateway ──────────────────────────────────────────
 api:
   replicaCount: 2
   image:
-    repository: ghcr.io/zovarc-soc/zovarc-api
+    repository: ghcr.io/zovark-soc/zovark-api
     tag: latest
     pullPolicy: IfNotPresent
   service:
@@ -32,7 +32,7 @@ api:
 worker:
   replicaCount: 2
   image:
-    repository: ghcr.io/zovarc-soc/zovarc-worker
+    repository: ghcr.io/zovark-soc/zovark-worker
     tag: latest
     pullPolicy: IfNotPresent
   resources:
@@ -52,14 +52,14 @@ worker:
     TEMPORAL_ADDRESS: "temporal:7233"
     LITELLM_URL: "http://litellm:4000/v1/chat/completions"
     REDIS_URL: "redis://redis:6379/0"
-    ZOVARC_LLM_MODEL: "fast"
+    ZOVARK_LLM_MODEL: "fast"
     PYTHONUNBUFFERED: "1"
 
 # ─── Dashboard ────────────────────────────────────────────
 dashboard:
   replicaCount: 1
   image:
-    repository: ghcr.io/zovarc-soc/zovarc-dashboard
+    repository: ghcr.io/zovark-soc/zovark-dashboard
     tag: latest
     pullPolicy: IfNotPresent
   service:
@@ -77,9 +77,9 @@ dashboard:
 postgresql:
   enabled: true
   auth:
-    username: zovarc
-    password: zovarc_dev_2026
-    database: zovarc
+    username: zovark
+    password: zovark_dev_2026
+    database: zovark
   primary:
     persistence:
       size: 20Gi
@@ -104,7 +104,7 @@ temporal:
 # ─── LiteLLM ─────────────────────────────────────────────
 litellm:
   enabled: true
-  masterKey: sk-zovarc-dev-2026
+  masterKey: sk-zovark-dev-2026
 
 # ─── Ingress ─────────────────────────────────────────────
 ingress:
@@ -114,7 +114,7 @@ ingress:
     # cert-manager.io/cluster-issuer: letsencrypt-prod
     # nginx.ingress.kubernetes.io/rate-limit: "100"
   hosts:
-    - host: zovarc.local
+    - host: zovark.local
       paths:
         - path: /api
           pathType: Prefix
@@ -125,15 +125,15 @@ ingress:
           service: dashboard
           port: 3000
   tls: []
-    # - secretName: zovarc-tls
+    # - secretName: zovark-tls
     #   hosts:
-    #     - zovarc.local
+    #     - zovark.local
 
 # ─── Secrets ─────────────────────────────────────────────
 secrets:
-  databaseUrl: "postgresql://zovarc:zovarc_dev_2026@postgresql:5432/zovarc"
-  jwtSecret: "zovarc-jwt-secret-dev-2026"
-  litellmMasterKey: "sk-zovarc-dev-2026"
+  databaseUrl: "postgresql://zovark:zovark_dev_2026@postgresql:5432/zovark"
+  jwtSecret: "zovark-jwt-secret-dev-2026"
+  litellmMasterKey: "sk-zovark-dev-2026"
 
 # ─── Integration Secrets (optional) ──────────────────────
 integrations:

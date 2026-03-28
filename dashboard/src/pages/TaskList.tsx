@@ -119,7 +119,7 @@ const TaskList = () => {
 
     useEffect(() => {
         loadData();
-        document.title = 'Investigations | Zovarc';
+        document.title = 'Investigations | Zovark';
         // Auto-refresh every 5 seconds for live updates
         const interval = window.setInterval(() => loadData(), 5000);
         return () => clearInterval(interval);

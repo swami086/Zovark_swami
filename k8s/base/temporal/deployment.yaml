@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: temporal
-  namespace: zovarc
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: temporal
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zovarc
+      app: zovark
       component: temporal
   template:
     metadata:
       labels:
-        app: zovarc
+        app: zovark
         component: temporal
     spec:
       containers:
@@ -30,11 +30,11 @@ spec:
             - name: DB_PORT
               value: "5432"
             - name: POSTGRES_USER
-              value: "zovarc"
+              value: "zovark"
             - name: POSTGRES_PWD
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-db-credentials
+                  name: zovark-db-credentials
                   key: password
             - name: POSTGRES_SEEDS
               value: "postgres"

@@ -19,7 +19,7 @@ import (
 func TestTenantIsolation_CrossTenantGDPR(t *testing.T) {
 	router := setupTestRouter()
 	// Admin belonging to tenant-a attempts to erase tenant-b.
-	token := createTestJWT("tenant-a", "user-1", "admin@zovarc.local", "admin")
+	token := createTestJWT("tenant-a", "user-1", "admin@zovark.local", "admin")
 	w := makeRequest(router, "DELETE", "/api/v1/tenants/tenant-b/data", nil, token)
 
 	switch w.Code {
@@ -42,7 +42,7 @@ func TestTenantIsolation_CrossTenantGDPR(t *testing.T) {
 // cannot view tenant-b's record via GET /tenants/:id.
 func TestTenantIsolation_CrossTenantView(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-a", "user-1", "admin@zovarc.local", "admin")
+	token := createTestJWT("tenant-a", "user-1", "admin@zovark.local", "admin")
 	w := makeRequest(router, "GET", "/api/v1/tenants/tenant-b", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Cross-tenant GET /tenants/:id should return 403, got %d (body: %s)",
@@ -54,7 +54,7 @@ func TestTenantIsolation_CrossTenantView(t *testing.T) {
 // cannot update tenant-b's settings via PUT /tenants/:id.
 func TestTenantIsolation_CrossTenantUpdate(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-a", "user-1", "admin@zovarc.local", "admin")
+	token := createTestJWT("tenant-a", "user-1", "admin@zovark.local", "admin")
 	w := makeRequest(router, "PUT", "/api/v1/tenants/tenant-b",
 		map[string]string{"name": "hacked"}, token)
 	if w.Code != http.StatusForbidden {
@@ -68,7 +68,7 @@ func TestTenantIsolation_CrossTenantUpdate(t *testing.T) {
 // rather than 200, but it must not return 403.
 func TestTenantIsolation_OwnTenantView(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-a", "user-1", "admin@zovarc.local", "admin")
+	token := createTestJWT("tenant-a", "user-1", "admin@zovark.local", "admin")
 	w := makeRequest(router, "GET", "/api/v1/tenants/tenant-a", nil, token)
 	if w.Code == http.StatusForbidden {
 		t.Errorf("Own-tenant GET /tenants/:id should not return 403, got %d", w.Code)
@@ -80,7 +80,7 @@ func TestTenantIsolation_OwnTenantView(t *testing.T) {
 // 404 (not found), but must not return 403.
 func TestTenantIsolation_OwnTenantUpdate(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-a", "user-1", "admin@zovarc.local", "admin")
+	token := createTestJWT("tenant-a", "user-1", "admin@zovark.local", "admin")
 	w := makeRequest(router, "PUT", "/api/v1/tenants/tenant-a",
 		map[string]string{"name": "updated"}, token)
 	if w.Code == http.StatusForbidden {
@@ -94,7 +94,7 @@ func TestTenantIsolation_OwnTenantUpdate(t *testing.T) {
 func TestTenantIsolation_NonAdminCrossTenantsBlocked(t *testing.T) {
 	router := setupTestRouter()
 	// analyst role from tenant-a trying to access tenant-b.
-	token := createTestJWT("tenant-a", "user-1", "analyst@zovarc.local", "analyst")
+	token := createTestJWT("tenant-a", "user-1", "analyst@zovark.local", "analyst")
 	w := makeRequest(router, "GET", "/api/v1/tenants/tenant-b", nil, token)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("Analyst cross-tenant view should return 403, got %d", w.Code)
@@ -109,7 +109,7 @@ func TestTenantIsolation_ListOnlyOwnTenant(t *testing.T) {
 	nonAdminRoles := []string{"analyst", "viewer"}
 	for _, role := range nonAdminRoles {
 		t.Run(role, func(t *testing.T) {
-			token := createTestJWT("tenant-a", "user-1", role+"@zovarc.local", role)
+			token := createTestJWT("tenant-a", "user-1", role+"@zovark.local", role)
 			w := makeRequest(router, "GET", "/api/v1/tenants", nil, token)
 			if w.Code != http.StatusForbidden {
 				t.Errorf("Role %q should get 403 on GET /api/v1/tenants, got %d", role, w.Code)

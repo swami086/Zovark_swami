@@ -2,11 +2,11 @@
 
 **Version: v0.10.1-security | Date: 2026-03-14**
 
-This document outlines the system architecture and security boundaries for **Project Zovarc**, explicitly designed for CISO review and InfoSec engineering teams.
+This document outlines the system architecture and security boundaries for **Project Zovark**, explicitly designed for CISO review and InfoSec engineering teams.
 
 ## High-Level Architecture
 
-Zovarc utilizes a distributed, 21-service Docker Compose stack spanning inference, orchestration, observability, messaging, and a hardened web tier. Only two ports are exposed to the host network: the Go API gateway (8090) and the React dashboard (3000). All other services communicate exclusively on an internal bridge network.
+Zovark utilizes a distributed, 21-service Docker Compose stack spanning inference, orchestration, observability, messaging, and a hardened web tier. Only two ports are exposed to the host network: the Go API gateway (8090) and the React dashboard (3000). All other services communicate exclusively on an internal bridge network.
 
 ```mermaid
 graph TD
@@ -51,34 +51,34 @@ graph TD
 
 | # | Service | Role |
 |---|---------|------|
-| 1 | **zovarc-api** | Go (Gin) API gateway — RBAC, tenant isolation, OIDC SSO, RESTful routing |
-| 2 | **zovarc-worker** | Python Temporal worker — investigation state machine, script execution |
-| 3 | **zovarc-dashboard** | React 19 / TypeScript / Tailwind 4 SOC analyst frontend |
-| 4 | **zovarc-temporal** | Workflow orchestration — exactly-once execution, durable timers, retries |
-| 5 | **zovarc-temporal-ui** | Temporal web console for workflow inspection |
-| 6 | **zovarc-postgres** | PostgreSQL 16 + pgvector (episodic memory) + pg_trgm (keyword matching) |
-| 7 | **zovarc-pgbouncer** | Connection pooling — limits DB connection exhaustion |
-| 8 | **zovarc-redis** | 256 MB LRU cache — rate limiting, session state, investigation cache |
-| 9 | **zovarc-litellm** | LLM inference routing proxy (fast / standard / reasoning tiers) |
-| 10 | **zovarc-ollama** | Air-gapped local LLM engine (sovereign inference fallback) |
-| 11 | **zovarc-embedding** | Local embedding server — 768-dim vectors for RAG retrieval |
-| 12 | **zovarc-nats** | NATS JetStream — 100k/sec alert buffering, anti-stampede coalescing |
-| 13 | **zovarc-minio** | S3-compliant object store — log uploads, forensic artifact retention |
-| 14 | **zovarc-caddy** | Reverse proxy / TLS termination |
-| 15 | **zovarc-jaeger** | Distributed tracing (OTLP) |
-| 16 | **zovarc-prometheus** | Metrics collection and alerting (6 alert rules) |
-| 17 | **zovarc-grafana** | 3 monitoring dashboards |
-| 18 | **zovarc-postgres-exporter** | PostgreSQL metrics exporter |
-| 19 | **zovarc-redis-exporter** | Redis metrics exporter |
-| 20 | **zovarc-temporal-exporter** | Temporal metrics exporter |
-| 21 | **zovarc-worker-metrics** | Worker performance metrics exporter |
+| 1 | **zovark-api** | Go (Gin) API gateway — RBAC, tenant isolation, OIDC SSO, RESTful routing |
+| 2 | **zovark-worker** | Python Temporal worker — investigation state machine, script execution |
+| 3 | **zovark-dashboard** | React 19 / TypeScript / Tailwind 4 SOC analyst frontend |
+| 4 | **zovark-temporal** | Workflow orchestration — exactly-once execution, durable timers, retries |
+| 5 | **zovark-temporal-ui** | Temporal web console for workflow inspection |
+| 6 | **zovark-postgres** | PostgreSQL 16 + pgvector (episodic memory) + pg_trgm (keyword matching) |
+| 7 | **zovark-pgbouncer** | Connection pooling — limits DB connection exhaustion |
+| 8 | **zovark-redis** | 256 MB LRU cache — rate limiting, session state, investigation cache |
+| 9 | **zovark-litellm** | LLM inference routing proxy (fast / standard / reasoning tiers) |
+| 10 | **zovark-ollama** | Air-gapped local LLM engine (sovereign inference fallback) |
+| 11 | **zovark-embedding** | Local embedding server — 768-dim vectors for RAG retrieval |
+| 12 | **zovark-nats** | NATS JetStream — 100k/sec alert buffering, anti-stampede coalescing |
+| 13 | **zovark-minio** | S3-compliant object store — log uploads, forensic artifact retention |
+| 14 | **zovark-caddy** | Reverse proxy / TLS termination |
+| 15 | **zovark-jaeger** | Distributed tracing (OTLP) |
+| 16 | **zovark-prometheus** | Metrics collection and alerting (6 alert rules) |
+| 17 | **zovark-grafana** | 3 monitoring dashboards |
+| 18 | **zovark-postgres-exporter** | PostgreSQL metrics exporter |
+| 19 | **zovark-redis-exporter** | Redis metrics exporter |
+| 20 | **zovark-temporal-exporter** | Temporal metrics exporter |
+| 21 | **zovark-worker-metrics** | Worker performance metrics exporter |
 
 ## Human-in-the-Loop AI Workflow
 
-Zovarc avoids the chaotic "agentic loop" problem by enforcing a highly deterministic state machine orchestrated by Temporal.
+Zovark avoids the chaotic "agentic loop" problem by enforcing a highly deterministic state machine orchestrated by Temporal.
 
 1. **Trigger**: An investigation is triggered via manual UI input or SIEM integration.
-2. **Contextual Retrieval**: The worker queries the **Zovarc Intelligence Fabric** to pull the best SOP-aligned methodology for the threat type.
+2. **Contextual Retrieval**: The worker queries the **Zovark Intelligence Fabric** to pull the best SOP-aligned methodology for the threat type.
 3. **Methodology Mapping**: The LLM maps the logs to the methodology, explicitly preventing unprompted hallucination.
 4. **Deterministic Script Generation**: The LLM outputs a Python containment script (or utilizes a pre-approved template).
 5. **Human Approval Gate**: Execution halts. The script is sent to the pending approvals queue. A Tier-1 or Tier-2 analyst must cryptographically review and approve the action.
@@ -96,7 +96,7 @@ All generated code is executed within an ephemeral Docker-in-Docker container bo
 
 ## RBAC and Tenant Isolation
 
-Zovarc enforces strict multi-tenancy at the database level. Every REST endpoint forces a `tenant_id` extraction from the decoded JWT. The API injects this `tenant_id` into every SQL statement, logically ensuring that cross-tenant data leakage is mathematically impossible within the relational domain. Roles (`admin`, `analyst`, `viewer`) gate the invocation of destructive or sensitive state transitions (e.g., bypassing approvals).
+Zovark enforces strict multi-tenancy at the database level. Every REST endpoint forces a `tenant_id` extraction from the decoded JWT. The API injects this `tenant_id` into every SQL statement, logically ensuring that cross-tenant data leakage is mathematically impossible within the relational domain. Roles (`admin`, `analyst`, `viewer`) gate the invocation of destructive or sensitive state transitions (e.g., bypassing approvals).
 
 ## v0.10.1 Security Hardening
 

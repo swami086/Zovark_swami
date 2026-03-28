@@ -13,19 +13,19 @@ import os
 # Per-tier LiteLLM model names (Sprint 5: multi-provider fallback)
 MODEL_TIERS = {
     "fast": {
-        "model": "zovarc-fast",
+        "model": "zovark-fast",
         "max_tokens": 1024,
         "temperature": 0.1,
         "description": "Low-latency tasks: entity extraction, parameter filling, memory synthesis",
     },
     "standard": {
-        "model": "zovarc-standard",
+        "model": "zovark-standard",
         "max_tokens": 4096,
         "temperature": 0.3,
         "description": "Balanced tasks: code generation, report writing, synthetic investigations",
     },
     "reasoning": {
-        "model": "zovarc-reasoning",
+        "model": "zovark-reasoning",
         "max_tokens": 4096,
         "temperature": 0.2,
         "description": "Complex analysis: FP reasoning, deobfuscation, multi-step chains",
@@ -73,7 +73,7 @@ def get_tier_config(activity_name: str) -> dict:
     config = MODEL_TIERS[tier_name].copy()
     config["tier"] = tier_name
     # Allow env override for model (only if explicitly set, not empty)
-    env_model = os.environ.get("ZOVARC_LLM_MODEL", "").strip()
+    env_model = os.environ.get("ZOVARK_LLM_MODEL", "").strip()
     if env_model:
         config["model"] = env_model
     return config

@@ -20,7 +20,7 @@ from model_config import get_tier_config
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
@@ -111,11 +111,11 @@ async def extract_entities(data: dict) -> dict:
     Returns: {entities, edges, usage_tokens, execution_ms}
     """
     # FAST_FILL: skip LLM, return empty entities (regex fallback handles it)
-    if os.environ.get('ZOVARC_FAST_FILL', '') == 'true':
+    if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
         return {"entities": [], "edges": [], "usage_tokens": {"prompt_tokens": 0, "completion_tokens": 0}, "execution_ms": 0}
 
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
     tier_config = get_tier_config("extract_entities")
     llm_model = tier_config["model"]
 
@@ -350,7 +350,7 @@ async def embed_investigation(data: dict) -> dict:
     Returns: {investigation_id, embedding_dim, execution_ms}
     """
     # FAST_FILL: skip embedding, still write the investigation row
-    if os.environ.get('ZOVARC_FAST_FILL', '') == 'true':
+    if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
         conn = _get_db()
         try:
             with conn.cursor() as cur:

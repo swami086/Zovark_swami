@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: zovarc-api
-  namespace: zovarc
+  name: zovark-api
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: zovarc
+      app: zovark
       component: api
   template:
     metadata:
       labels:
-        app: zovarc
+        app: zovark
         component: api
     spec:
       containers:
         - name: api
-          image: zovarc-mvp-api:latest
+          image: zovark-mvp-api:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8090
@@ -31,19 +31,19 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-db-credentials
+                  name: zovark-db-credentials
                   key: direct-url
             - name: TEMPORAL_ADDRESS
               value: "temporal:7233"
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-api-secrets
+                  name: zovark-api-secrets
                   key: litellm-master-key
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-api-secrets
+                  name: zovark-api-secrets
                   key: jwt-secret
           resources:
             requests:

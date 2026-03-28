@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-ZOVARC DPO Forge — generates preference pairs for DPO training.
+ZOVARK DPO Forge — generates preference pairs for DPO training.
 
 Architecture:
   NVIDIA API (Kimi K2.5) generates alerts and investigation code.
-  ZOVARC sandbox validates code execution.
+  ZOVARK sandbox validates code execution.
   LLM-as-Judge scores output quality.
   AST mutation engine creates rejected pairs.
   Log compressor ensures training pairs fit token budget.
@@ -423,10 +423,10 @@ def _judge_and_build(seed, alert_dict, sandbox_data,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ZOVARC DPO Forge")
+    parser = argparse.ArgumentParser(description="ZOVARK DPO Forge")
     parser.add_argument("--max-pairs", type=int, default=3000)
     parser.add_argument("--sandbox-url", default="http://localhost:8090")
-    parser.add_argument("--dataset-file", default="zovarc_dpo_dataset.jsonl")
+    parser.add_argument("--dataset-file", default="zovark_dpo_dataset.jsonl")
     args = parser.parse_args()
 
     # Validate prerequisites
@@ -458,8 +458,8 @@ def main():
     # Auth: auto-refreshing sandbox token (JWT TTL is 15 min, refresh every 10 min)
     sandbox_auth = SandboxAuth(
         sandbox_url=args.sandbox_url,
-        email=os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local"),
-        password=os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026"),
+        email=os.environ.get("ZOVARK_TEST_EMAIL", "admin@test.local"),
+        password=os.environ.get("ZOVARK_TEST_PASSWORD", "TestPass2026"),
     )
     try:
         sandbox_auth.get_token()

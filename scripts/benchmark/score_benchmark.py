@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ZOVARC Accuracy Scorer — generates detailed accuracy report from benchmark results.
+ZOVARK Accuracy Scorer — generates detailed accuracy report from benchmark results.
 
 Usage:
     python scripts/benchmark/score_benchmark.py
@@ -17,7 +17,7 @@ REPORT_PATH = Path("docs/ACCURACY_BENCHMARK.md")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ZOVARC Accuracy Scorer")
+    parser = argparse.ArgumentParser(description="ZOVARK Accuracy Scorer")
     parser.add_argument("--results", default=str(RESULTS_PATH))
     parser.add_argument("--output", default=str(REPORT_PATH))
     args = parser.parse_args()
@@ -107,13 +107,13 @@ def main():
     n_dedup = sum(1 for r in results if r["status"] == "deduplicated")
 
     # --- Generate report ---
-    report = f"""# ZOVARC Accuracy Benchmark Report
+    report = f"""# ZOVARK Accuracy Benchmark Report
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
 ## Executive Summary
 
-ZOVARC's V2 pipeline was tested against {total_submitted} labeled alerts with ground-truth verdicts.
+ZOVARK's V2 pipeline was tested against {total_submitted} labeled alerts with ground-truth verdicts.
 The system achieved **{accuracy*100:.1f}% verdict accuracy** across {n_completed} completed investigations,
 with an average investigation time of {avg_time:.0f}s and IOC recall of {avg_ioc_recall*100:.0f}% on true positive cases.
 
@@ -192,11 +192,11 @@ with an average investigation time of {avg_time:.0f}s and IOC recall of {avg_ioc
 
 - **Corpus:** {total_submitted} labeled alerts across 11 attack types
 - **Distribution:** 55 true_positive, 55 false_positive, 50 suspicious, 40 benign
-- **Pipeline:** ZOVARC V2 (Ingest -> Analyze -> Execute -> Assess -> Store)
+- **Pipeline:** ZOVARK V2 (Ingest -> Analyze -> Execute -> Assess -> Store)
 - **Model:** As configured in model_config.yaml
 - **Scoring:** Exact match on verdict category
 
-## Where ZOVARC Struggles
+## Where ZOVARK Struggles
 
 Based on error analysis:
 

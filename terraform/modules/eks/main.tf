@@ -1,12 +1,12 @@
 # ============================================================
-# ZOVARC EKS Module — Kubernetes cluster
+# ZOVARK EKS Module — Kubernetes cluster
 # Creates EKS cluster with managed node groups
 # ============================================================
 
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "zovarc"
+  default     = "zovark"
 }
 
 variable "environment" {

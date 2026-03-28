@@ -1,1 +1,1 @@
-"""Model registry and routing for ZOVARC."""
+"""Model registry and routing for ZOVARK."""

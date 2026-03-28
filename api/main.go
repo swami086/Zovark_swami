@@ -37,7 +37,7 @@ type Config struct {
 func init() {
 	appConfig = &Config{
 		Port:             getEnvOrDefault("PORT", "8090"),
-		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"),
+		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"),
 		TemporalAddress:  getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233"),
 		LiteLLMMasterKey: getEnvOrDefault("LITELLM_MASTER_KEY", ""),
 		JWTSecret:        getEnvOrDefault("JWT_SECRET", ""),
@@ -84,7 +84,7 @@ func main() {
 		return
 	}
 
-	log.Println("Starting Zovarc API Gateway...")
+	log.Println("Starting Zovark API Gateway...")
 
 	// Initialize Vault (for secrets management — must come before DB init)
 	initVault()
@@ -306,7 +306,7 @@ func main() {
 		api.POST("/response/executions/:id/approve", requireRole("admin"), approveResponseExecutionHandler)
 		api.POST("/response/executions/:id/rollback", requireRole("admin"), rollbackResponseExecutionHandler)
 
-		// Cipher Audit (Zovarc Sprint 2C)
+		// Cipher Audit (Zovark Sprint 2C)
 		api.GET("/cipher-audit/stats", cipherAuditStatsHandler)
 		api.GET("/cipher-audit/summary", cipherAuditSummaryHandler)
 		api.GET("/cipher-audit/findings", cipherAuditFindingsHandler)

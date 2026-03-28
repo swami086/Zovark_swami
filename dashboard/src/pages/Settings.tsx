@@ -156,7 +156,7 @@ const Settings = () => {
 
                     {/* Version */}
                     <div className="text-center text-xs text-slate-600 pt-4">
-                        ZOVARC v{health.version} • Build {new Date().toISOString().slice(0, 10)}
+                        ZOVARK v{health.version} • Build {new Date().toISOString().slice(0, 10)}
                     </div>
                 </>
             )}

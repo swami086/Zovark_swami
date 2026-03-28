@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pgbouncer
-  namespace: zovarc
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: pgbouncer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zovarc
+      app: zovark
       component: pgbouncer
   template:
     metadata:
       labels:
-        app: zovarc
+        app: zovark
         component: pgbouncer
     spec:
       containers:
@@ -28,7 +28,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-db-credentials
+                  name: zovark-db-credentials
                   key: direct-url
             - name: POOL_MODE
               value: "transaction"

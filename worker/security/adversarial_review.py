@@ -48,7 +48,7 @@ class AdversarialReviewer:
             os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
         )
         self.model_name = model_name or os.environ.get("ADVERSARIAL_MODEL", "fast")
-        self.api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+        self.api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
         self.timeout = timeout
         self._cache = {}
         self._cache_max = 1000

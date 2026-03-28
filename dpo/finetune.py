@@ -1,8 +1,8 @@
 """
-ZOVARC DPO Fine-Tuning — QLoRA on Qwen2.5-14B-Instruct
+ZOVARK DPO Fine-Tuning — QLoRA on Qwen2.5-14B-Instruct
 
 Trains a LoRA adapter using Direct Preference Optimization (DPO)
-on the ZOVARC investigation dataset (45 pairs across 5 attack categories).
+on the ZOVARK investigation dataset (45 pairs across 5 attack categories).
 
 Hardware: Requires >= 16GB VRAM for comfortable training, 8GB minimum with QLoRA.
           RTX 3050 4GB is insufficient — use cloud GPU (RunPod A100 / Lambda A10).
@@ -19,7 +19,7 @@ from peft import LoraConfig
 import torch, json, os
 
 MODEL_ID = "Qwen/Qwen2.5-14B-Instruct"
-OUTPUT_DIR = "models/zovarc-dpo-adapter"
+OUTPUT_DIR = "models/zovark-dpo-adapter"
 # Support both local (dpo/) and RunPod (/workspace/) paths
 DATASET_PATH = "training_dataset.jsonl" if os.path.exists("training_dataset.jsonl") else "dpo/training_dataset.jsonl"
 
@@ -95,4 +95,4 @@ print(f"\nAdapter saved to {OUTPUT_DIR}")
 print(f"Next steps:")
 print(f"  1. Merge adapter: python scripts/merge_adapter.py")
 print(f"  2. Convert to GGUF: python llama.cpp/convert_hf_to_gguf.py")
-print(f"  3. Benchmark: python scripts/accuracy_benchmark.py --model zovarc_aligned_14b")
+print(f"  3. Benchmark: python scripts/accuracy_benchmark.py --model zovark_aligned_14b")

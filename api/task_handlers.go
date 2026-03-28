@@ -20,11 +20,11 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-// Workflow version toggle — set ZOVARC_WORKFLOW_VERSION=InvestigationWorkflowV2 for V2 pipeline
+// Workflow version toggle — set ZOVARK_WORKFLOW_VERSION=InvestigationWorkflowV2 for V2 pipeline
 var workflowName = getWorkflowName()
 
 func getWorkflowName() string {
-	if v := os.Getenv("ZOVARC_WORKFLOW_VERSION"); v != "" {
+	if v := os.Getenv("ZOVARK_WORKFLOW_VERSION"); v != "" {
 		return v
 	}
 	return "ExecuteTaskWorkflow"
@@ -174,7 +174,7 @@ func createTaskHandler(c *gin.Context) {
 	// 6. Start Temporal Workflow AFTER commit (with timeout detection for model failover)
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
-		TaskQueue: "zovarc-tasks",
+		TaskQueue: "zovark-tasks",
 	}
 
 	wfStart := time.Now()
@@ -184,7 +184,7 @@ func createTaskHandler(c *gin.Context) {
 	if err != nil {
 		if isTemporalTimeout(err) {
 			fallbackModel := HandleModelTimeout(c.Request.Context(), tenantID, taskID, priority,
-				wfLatency, "temporal/litellm", "zovarc-fast")
+				wfLatency, "temporal/litellm", "zovark-fast")
 			log.Printf("Model timeout on task %s, fallback to %s", taskID, fallbackModel)
 		}
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
@@ -543,7 +543,7 @@ func uploadTaskHandler(c *gin.Context) {
 	// Start Temporal workflow AFTER commit
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
-		TaskQueue: "zovarc-tasks",
+		TaskQueue: "zovark-tasks",
 	}
 
 	req := TaskRequest{
@@ -863,7 +863,7 @@ func bulkCreateTasksHandler(c *gin.Context) {
 		taskID := taskIDs[i]
 		workflowOptions := client.StartWorkflowOptions{
 			ID:        "task-" + taskID,
-			TaskQueue: "zovarc-tasks",
+			TaskQueue: "zovark-tasks",
 		}
 
 		we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName,

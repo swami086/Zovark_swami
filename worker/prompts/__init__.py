@@ -1,1 +1,1 @@
-# Prompt templates for ZOVARC worker activities
+# Prompt templates for ZOVARK worker activities

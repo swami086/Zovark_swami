@@ -160,7 +160,7 @@ async def emit_feedback_summary(params: dict) -> dict:
         sock.connect((host, int(port)))
         # NATS protocol: PUB subject length\r\npayload\r\n
         payload = json.dumps(summary)
-        msg = f"PUB zovarc.feedback.summary {len(payload)}\r\n{payload}\r\n"
+        msg = f"PUB zovark.feedback.summary {len(payload)}\r\n{payload}\r\n"
         sock.sendall(msg.encode())
         sock.close()
         return {'emitted': True}

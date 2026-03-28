@@ -1,7 +1,7 @@
 """
-ZOVARC ServiceNow Integration — Temporal Activity
+ZOVARK ServiceNow Integration — Temporal Activity
 Creates ServiceNow incidents from investigation results via REST API.
-Maps ZOVARC severity to ServiceNow impact/urgency matrix.
+Maps ZOVARK severity to ServiceNow impact/urgency matrix.
 """
 import os
 import httpx
@@ -26,7 +26,7 @@ SEVERITY_MAP = {
 def _build_work_notes(data: dict) -> str:
     """Build ServiceNow work notes from investigation data."""
     parts = []
-    parts.append("=== ZOVARC Investigation Report ===")
+    parts.append("=== ZOVARK Investigation Report ===")
     parts.append(f"Investigation ID: {data.get('investigation_id', 'N/A')}")
     parts.append(f"Verdict: {data.get('verdict', 'unknown').upper()}")
     parts.append(f"Severity: {data.get('severity', 'medium').upper()}")
@@ -93,13 +93,13 @@ async def create_snow_incident(data: dict) -> dict:
     severity = data.get("severity", "medium").lower()
     impact_urgency = SEVERITY_MAP.get(severity, {"impact": "2", "urgency": "2"})
     investigation_id = data.get("investigation_id", "N/A")
-    title = data.get("title", f"ZOVARC Security Investigation: {investigation_id}")
+    title = data.get("title", f"ZOVARK Security Investigation: {investigation_id}")
 
     work_notes = _build_work_notes(data)
 
     incident_payload = {
         "short_description": title[:160],
-        "description": data.get("summary", "Automated investigation by ZOVARC SOC platform.")[:4000],
+        "description": data.get("summary", "Automated investigation by ZOVARK SOC platform.")[:4000],
         "impact": impact_urgency["impact"],
         "urgency": impact_urgency["urgency"],
         "category": data.get("category", "Security"),

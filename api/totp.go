@@ -23,7 +23,7 @@ import (
 
 // encryptSecret encrypts a plaintext string using AES-256-GCM (Security P2#21).
 func encryptSecret(plaintext string) (string, error) {
-	key := []byte(os.Getenv("ZOVARC_ENCRYPTION_KEY"))
+	key := []byte(os.Getenv("ZOVARK_ENCRYPTION_KEY"))
 	if len(key) != 32 {
 		return plaintext, nil // Graceful fallback if key not configured
 	}
@@ -49,9 +49,9 @@ func decryptSecret(encrypted string) (string, error) {
 	if len(encrypted) < 4 || encrypted[:4] != "enc:" {
 		return encrypted, nil
 	}
-	key := []byte(os.Getenv("ZOVARC_ENCRYPTION_KEY"))
+	key := []byte(os.Getenv("ZOVARK_ENCRYPTION_KEY"))
 	if len(key) != 32 {
-		return "", fmt.Errorf("ZOVARC_ENCRYPTION_KEY must be 32 bytes for decryption")
+		return "", fmt.Errorf("ZOVARK_ENCRYPTION_KEY must be 32 bytes for decryption")
 	}
 	data, err := base64.StdEncoding.DecodeString(encrypted[4:])
 	if err != nil {
@@ -83,7 +83,7 @@ func decryptSecret(encrypted string) (string, error) {
 const (
 	totpDigits = 6
 	totpPeriod = 30 // seconds
-	totpIssuer = "ZOVARC"
+	totpIssuer = "ZOVARK"
 )
 
 // generateTOTPSecret creates a random 20-byte secret encoded as base32.

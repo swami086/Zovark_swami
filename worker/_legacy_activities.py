@@ -50,7 +50,7 @@ def get_db_connection(tier="normal"):
     pool = _pools.get(tier) or _pools.get("normal")
     if pool is not None:
         return pool.getconn()
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
@@ -194,7 +194,7 @@ async def fetch_task(task_id: str) -> dict:
 @activity.defn
 async def generate_code(task_data: dict) -> dict:
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
 
     prompt = task_data.get("input", {}).get("prompt", "")
     task_type = task_data.get("task_type", "Log Analysis")
@@ -454,7 +454,7 @@ async def execute_code(code: str) -> dict:
     # Stage 1: Adversarial review — red-team LLM checks for sandbox escape attempts
     # Must run BEFORE AST prefilter (Stage 2) and Docker execution (Stage 3)
     # FAST_FILL: skip adversarial review (no LLM call)
-    if os.environ.get('ZOVARC_FAST_FILL', '') == 'true':
+    if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
         review_result = {"safe": True, "reason": "fast_fill_bypass", "review_ms": 0}
     else:
         review_result = review_code(code)
@@ -510,7 +510,7 @@ async def update_task_status(task_update: dict) -> None:
     worker_id = _get_worker_id()
 
     # Human review threshold — flag low-confidence or failed investigations
-    human_review_threshold = int(os.environ.get("ZOVARC_HUMAN_REVIEW_THRESHOLD", "60"))
+    human_review_threshold = int(os.environ.get("ZOVARK_HUMAN_REVIEW_THRESHOLD", "60"))
     risk_score = 0
     code_success = task_update.get("status") == "completed"
     output = task_update.get("output", {})
@@ -710,7 +710,7 @@ async def check_followup_needed(check_data: dict) -> dict:
 async def generate_followup_code(task_data: dict) -> dict:
     """Generate code for a follow-up step, including previous step context."""
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
 
     prompt = task_data.get("prompt", "")
     previous_context = task_data.get("previous_context", "")
@@ -1031,7 +1031,7 @@ async def fill_skill_parameters(data: dict) -> dict:
     siem_event = data.get("siem_event", {})
 
     # --- FAST FILL: bypass LLM for stress testing ---
-    if os.environ.get('ZOVARC_FAST_FILL', '') == 'true':
+    if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
         defaults = {p["name"]: p.get("default") for p in skill_params}
         filled = dict(defaults)
         if siem_event:
@@ -1061,7 +1061,7 @@ async def fill_skill_parameters(data: dict) -> dict:
         }
 
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
     tier_config = get_tier_config("fill_skill_parameters")
     model_name = tier_config["model"]
 
@@ -1256,7 +1256,7 @@ async def enrich_alert_with_memory(task_input: dict) -> dict:
         raw_entities = _extract_iocs_from_input(task_input)
         if not raw_entities:
             return {'exact_matches': [], 'similar_entities': [], 'related_investigations': []}
-        db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+        db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
         memory = InvestigationMemory(db_url=db_url)
         return await memory.enrich_alert(raw_entities)
     except Exception as e:
@@ -1295,7 +1295,7 @@ def _extract_iocs_from_input(task_input: dict) -> list:
 async def write_investigation_memory(memory_data: dict) -> None:
     try:
         litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-        api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+        api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
         tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 
         task_id = memory_data.get("task_id")
@@ -1310,7 +1310,7 @@ async def write_investigation_memory(memory_data: dict) -> None:
         recommended = final_output.get("recommendations", [])
 
         # --- FAST FILL: skip LLM summarization for stress testing ---
-        if os.environ.get('ZOVARC_FAST_FILL', '') == 'true':
+        if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
             conn = get_db_connection()
             try:
                 with conn.cursor() as cur:

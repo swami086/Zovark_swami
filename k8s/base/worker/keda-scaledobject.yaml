@@ -5,12 +5,12 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: zovarc-worker-keda
+  name: zovark-worker-keda
   labels:
-    app: zovarc-worker
+    app: zovark-worker
 spec:
   scaleTargetRef:
-    name: zovarc-worker
+    name: zovark-worker
   pollingInterval: 15
   cooldownPeriod: 120
   minReplicaCount: 2
@@ -35,8 +35,8 @@ spec:
     - type: prometheus
       metadata:
         serverAddress: http://prometheus:9090
-        metricName: zovarc_temporal_pending_tasks
-        query: zovarc_temporal_pending_tasks{task_queue="zovarc-tasks"}
+        metricName: zovark_temporal_pending_tasks
+        query: zovark_temporal_pending_tasks{task_queue="zovark-tasks"}
         threshold: "5"
 ---
 # Fallback CPU-based HPA — only active if KEDA is not installed.
@@ -44,16 +44,16 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: zovarc-worker-hpa-fallback
+  name: zovark-worker-hpa-fallback
   labels:
-    app: zovarc-worker
+    app: zovark-worker
   annotations:
     description: "CPU-based fallback. Use KEDA ScaledObject for queue-depth scaling."
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: zovarc-worker
+    name: zovark-worker
   minReplicas: 2
   maxReplicas: 20
   metrics:

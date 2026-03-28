@@ -19,7 +19,7 @@ import logger
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
@@ -57,9 +57,9 @@ _SAFE_IP_PREFIXES = ("0.", "127.", "10.", "172.16.", "172.17.", "172.18.", "172.
                      "192.168.", "255.")
 
 # Common hostnames to skip
-_SAFE_HOSTNAMES = {"example.com", "localhost.localdomain", "localhost", "zovarc.local"}
+_SAFE_HOSTNAMES = {"example.com", "localhost.localdomain", "localhost", "zovark.local"}
 
-REDIS_PII_PREFIX = "zovarc:pii_map:"
+REDIS_PII_PREFIX = "zovark:pii_map:"
 REDIS_PII_TTL = 3600  # 1 hour
 
 

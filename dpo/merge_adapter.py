@@ -1,7 +1,7 @@
 """
 Merge LoRA adapter into Qwen2.5-14B base model.
 Runs on CPU — no GPU needed. Takes ~5-10 min on cloud, needs ~30GB RAM + 30GB disk.
-Output: models/zovarc-merged/ (HuggingFace format, ~28GB)
+Output: models/zovark-merged/ (HuggingFace format, ~28GB)
 """
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -9,8 +9,8 @@ from peft import PeftModel
 import os, time
 
 BASE_MODEL = "Qwen/Qwen2.5-14B-Instruct"
-ADAPTER_PATH = os.environ.get("ADAPTER_PATH", "models/zovarc-dpo-adapter")
-MERGED_PATH = os.environ.get("MERGED_PATH", "models/zovarc-merged")
+ADAPTER_PATH = os.environ.get("ADAPTER_PATH", "models/zovark-dpo-adapter")
+MERGED_PATH = os.environ.get("MERGED_PATH", "models/zovark-merged")
 
 print(f"[1/4] Loading tokenizer from {BASE_MODEL}...")
 tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)

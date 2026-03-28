@@ -3,8 +3,8 @@ import time
 import requests
 import json
 
-API_BASE = os.environ.get("ZOVARC_API_URL", "http://localhost:8090/api/v1")
-DB_URI = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@localhost:5432/zovarc")
+API_BASE = os.environ.get("ZOVARK_API_URL", "http://localhost:8090/api/v1")
+DB_URI = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@localhost:5432/zovark")
 
 def get_db_output(task_id):
     import psycopg2
@@ -58,7 +58,7 @@ def main():
             log_path = os.path.join(os.path.dirname(__file__), "..", "tests", "corpus", skill, "easy.log")
             if not os.path.exists(log_path):
                 # Fallback to hardcoded absolute path
-                log_path = f"C:\\Users\\vinay\\Desktop\\ZOVARC\\zovarc-mvp\\tests\\corpus\\{skill}\\easy.log"
+                log_path = f"C:\\Users\\vinay\\Desktop\\ZOVARK\\zovark-mvp\\tests\\corpus\\{skill}\\easy.log"
                 if not os.path.exists(log_path):
                     print(f"SKIPPED {skill}: {log_path} not found")
                     results[skill] = "Skipped (No Log)"

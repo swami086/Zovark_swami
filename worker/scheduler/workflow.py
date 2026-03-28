@@ -14,7 +14,7 @@ with workflow.unsafe.imports_passed_through():
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
@@ -109,7 +109,7 @@ class ScheduledWorkflow:
                         DetectionGenerationWorkflow.run,
                         wf_params,
                         id=f"scheduled-detection-{schedule_id}",
-                        task_queue="zovarc-tasks",
+                        task_queue="zovark-tasks",
                     )
                 elif wf_type == "SelfHealingWorkflow":
                     from sre.workflow import SelfHealingWorkflow
@@ -117,7 +117,7 @@ class ScheduledWorkflow:
                         SelfHealingWorkflow.run,
                         wf_params,
                         id=f"scheduled-sre-{schedule_id}",
-                        task_queue="zovarc-tasks",
+                        task_queue="zovark-tasks",
                     )
                 elif wf_type == "CrossTenantRefreshWorkflow":
                     from intelligence.cross_tenant_workflow import CrossTenantRefreshWorkflow
@@ -125,7 +125,7 @@ class ScheduledWorkflow:
                         CrossTenantRefreshWorkflow.run,
                         wf_params,
                         id=f"scheduled-cross-tenant-{schedule_id}",
-                        task_queue="zovarc-tasks",
+                        task_queue="zovark-tasks",
                     )
                 else:
                     workflow.logger.info(f"Unknown scheduled workflow type: {wf_type}")

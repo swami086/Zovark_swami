@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Package ZOVARC model artifacts for distribution
-# Output: zovarc-model-{VERSION}.tar.gz
+# Package ZOVARK model artifacts for distribution
+# Output: zovark-model-{VERSION}.tar.gz
 #
 # Contents:
 #   - scripts/start_llama_server.sh
@@ -14,10 +14,10 @@
 set -euo pipefail
 
 VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
-OUTPUT="zovarc-model-${VERSION}.tar.gz"
+OUTPUT="zovark-model-${VERSION}.tar.gz"
 TMPDIR=$(mktemp -d)
 
-echo "Packaging ZOVARC model artifacts v${VERSION}..."
+echo "Packaging ZOVARK model artifacts v${VERSION}..."
 
 # Create manifest
 cat > "${TMPDIR}/model_manifest.json" << MANIFEST

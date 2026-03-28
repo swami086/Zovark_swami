@@ -1,15 +1,15 @@
 #!/bin/bash
 # ============================================================
-# ZOVARC Model Comparison — Qwen2.5-14B vs Nemotron 4B
+# ZOVARK Model Comparison — Qwen2.5-14B vs Nemotron 4B
 # Runs benchmark corpus against both models and generates report.
 # ============================================================
 set -euo pipefail
 
 CORPUS="scripts/benchmark_corpus_11.json"
-API_URL="${ZOVARC_API_URL:-http://localhost:8090}"
+API_URL="${ZOVARK_API_URL:-http://localhost:8090}"
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "=== ZOVARC Model Comparison ==="
+echo "=== ZOVARK Model Comparison ==="
 echo "Corpus: $CORPUS"
 echo "API: $API_URL"
 echo ""

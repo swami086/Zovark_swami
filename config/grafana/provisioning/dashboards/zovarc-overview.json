@@ -1,6 +1,6 @@
 {
   "annotations": { "list": [] },
-  "description": "ZOVARC SOC Platform — investigation pipeline, LLM performance, and infrastructure health",
+  "description": "ZOVARK SOC Platform — investigation pipeline, LLM performance, and infrastructure health",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -14,7 +14,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_investigations_total", "legendFormat": "Total", "refId": "A" }
+        { "expr": "zovark_worker_investigations_total", "legendFormat": "Total", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -35,7 +35,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "zovarc_temporal_completed_tasks_1h{task_queue=\"zovarc-tasks\"} / (zovarc_temporal_completed_tasks_1h{task_queue=\"zovarc-tasks\"} + zovarc_temporal_failed_tasks_1h{task_queue=\"zovarc-tasks\"} + 0.001) * 100",
+          "expr": "zovark_temporal_completed_tasks_1h{task_queue=\"zovark-tasks\"} / (zovark_temporal_completed_tasks_1h{task_queue=\"zovark-tasks\"} + zovark_temporal_failed_tasks_1h{task_queue=\"zovark-tasks\"} + 0.001) * 100",
           "legendFormat": "Success %",
           "refId": "A"
         }
@@ -63,7 +63,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_temporal_pending_tasks{task_queue=\"zovarc-tasks\"}", "legendFormat": "Pending", "refId": "A" }
+        { "expr": "zovark_temporal_pending_tasks{task_queue=\"zovark-tasks\"}", "legendFormat": "Pending", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -85,7 +85,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_temporal_failed_tasks_1h{task_queue=\"zovarc-tasks\"}", "legendFormat": "Failed", "refId": "A" }
+        { "expr": "zovark_temporal_failed_tasks_1h{task_queue=\"zovark-tasks\"}", "legendFormat": "Failed", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -106,7 +106,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_llm_tokens_total", "legendFormat": "Tokens", "refId": "A" }
+        { "expr": "zovark_worker_llm_tokens_total", "legendFormat": "Tokens", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -126,7 +126,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_llm_request_seconds", "legendFormat": "Avg (s)", "refId": "A" }
+        { "expr": "zovark_worker_llm_request_seconds", "legendFormat": "Avg (s)", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -144,12 +144,12 @@
     },
     {
       "title": "Worker Status",
-      "description": "Whether ZOVARC workers are running",
+      "description": "Whether ZOVARK workers are running",
       "type": "stat",
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_up", "legendFormat": "Workers", "refId": "A" }
+        { "expr": "zovark_worker_up", "legendFormat": "Workers", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -173,7 +173,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_sigma_rules_total", "legendFormat": "Rules", "refId": "A" }
+        { "expr": "zovark_worker_sigma_rules_total", "legendFormat": "Rules", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -193,7 +193,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 16, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_entities_total", "legendFormat": "Entities", "refId": "A" }
+        { "expr": "zovark_worker_entities_total", "legendFormat": "Entities", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -213,7 +213,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 20, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_temporal_active_tasks{task_queue=\"zovarc-tasks\"}", "legendFormat": "Active", "refId": "A" }
+        { "expr": "zovark_temporal_active_tasks{task_queue=\"zovark-tasks\"}", "legendFormat": "Active", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -234,8 +234,8 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_temporal_pending_tasks{task_queue=\"zovarc-tasks\"}", "legendFormat": "Pending", "refId": "A" },
-        { "expr": "zovarc_temporal_active_tasks{task_queue=\"zovarc-tasks\"}", "legendFormat": "Active", "refId": "B" }
+        { "expr": "zovark_temporal_pending_tasks{task_queue=\"zovark-tasks\"}", "legendFormat": "Pending", "refId": "A" },
+        { "expr": "zovark_temporal_active_tasks{task_queue=\"zovark-tasks\"}", "legendFormat": "Active", "refId": "B" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -255,8 +255,8 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_temporal_completed_tasks_1h{task_queue=\"zovarc-tasks\"}", "legendFormat": "Completed (1h)", "refId": "A" },
-        { "expr": "zovarc_temporal_failed_tasks_1h{task_queue=\"zovarc-tasks\"}", "legendFormat": "Failed (1h)", "refId": "B" }
+        { "expr": "zovark_temporal_completed_tasks_1h{task_queue=\"zovark-tasks\"}", "legendFormat": "Completed (1h)", "refId": "A" },
+        { "expr": "zovark_temporal_failed_tasks_1h{task_queue=\"zovark-tasks\"}", "legendFormat": "Failed (1h)", "refId": "B" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -284,7 +284,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_llm_request_seconds", "legendFormat": "LLM Avg Duration (s)", "refId": "A" }
+        { "expr": "zovark_worker_llm_request_seconds", "legendFormat": "LLM Avg Duration (s)", "refId": "A" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -306,7 +306,7 @@
       "gridPos": { "h": 8, "w": 6, "x": 12, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_verdict_total", "legendFormat": "{{verdict}}", "refId": "A" }
+        { "expr": "zovark_worker_verdict_total", "legendFormat": "{{verdict}}", "refId": "A" }
       ]
     },
     {
@@ -316,15 +316,15 @@
       "gridPos": { "h": 8, "w": 6, "x": 18, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "zovarc_worker_tasks_by_type", "legendFormat": "{{task_type}}", "refId": "A" }
+        { "expr": "zovark_worker_tasks_by_type", "legendFormat": "{{task_type}}", "refId": "A" }
       ]
     }
   ],
   "schemaVersion": 39,
-  "tags": ["zovarc", "overview"],
+  "tags": ["zovark", "overview"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "refresh": "30s",
-  "title": "ZOVARC -- Overview",
-  "uid": "zovarc-overview"
+  "title": "ZOVARK -- Overview",
+  "uid": "zovark-overview"
 }

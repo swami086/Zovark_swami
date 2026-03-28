@@ -1,1 +1,1 @@
-"""Fine-tuning data pipeline for ZOVARC."""
+"""Fine-tuning data pipeline for ZOVARK."""

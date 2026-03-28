@@ -1,10 +1,10 @@
-"""Seed 5 default SOAR response playbooks for ZOVARC."""
+"""Seed 5 default SOAR response playbooks for ZOVARK."""
 
 import os
 import json
 import psycopg2
 
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@localhost:5432/zovarc")
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@localhost:5432/zovark")
 
 PLAYBOOKS = [
     {
@@ -75,10 +75,10 @@ def seed():
     try:
         with conn.cursor() as cur:
             # Get the default tenant
-            cur.execute("SELECT id FROM tenants WHERE slug = 'zovarc-dev' LIMIT 1")
+            cur.execute("SELECT id FROM tenants WHERE slug = 'zovark-dev' LIMIT 1")
             row = cur.fetchone()
             if not row:
-                print("ERROR: No tenant found with slug 'zovarc-dev'")
+                print("ERROR: No tenant found with slug 'zovark-dev'")
                 return
             tenant_id = row[0]
 

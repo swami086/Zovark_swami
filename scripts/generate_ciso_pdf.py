@@ -1,4 +1,4 @@
-"""Generate ZOVARC CISO Brief PDF."""
+"""Generate ZOVARK CISO Brief PDF."""
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.colors import HexColor
 from reportlab.lib.units import inch
@@ -44,7 +44,7 @@ def generate_pdf(output_path):
     elements = []
 
     # HEADER
-    elements.append(Paragraph('ZOVARC', title_style))
+    elements.append(Paragraph('ZOVARK', title_style))
     elements.append(Paragraph('Autonomous Air-Gapped SOC Investigation', subtitle_style))
 
     # SECTION 1: THE PROBLEM
@@ -58,15 +58,15 @@ def generate_pdf(output_path):
         'Every major SOC AI tool — CrowdStrike Charlotte AI, Microsoft Copilot for Security, '
         'Google Chronicle — requires cloud connectivity. If your data cannot leave, you cannot use them.', body_style))
 
-    # SECTION 2: WHAT ZOVARC DOES
-    elements.append(Paragraph('WHAT ZOVARC DOES', section_style))
+    # SECTION 2: WHAT ZOVARK DOES
+    elements.append(Paragraph('WHAT ZOVARK DOES', section_style))
     elements.append(Paragraph(
-        'ZOVARC is an autonomous SOC investigation platform that runs entirely on your hardware. '
+        'ZOVARK is an autonomous SOC investigation platform that runs entirely on your hardware. '
         'It receives alerts from your SIEM (Splunk, Elastic, Sentinel), uses a local LLM to investigate '
         'each alert, executes investigation code in a hardened sandbox, and delivers structured verdicts '
         'with IOCs, risk scores, and MITRE ATT&amp;CK mapping. Zero data egress. No cloud dependency.', body_style))
     elements.append(Paragraph(
-        '<b>Key differentiator:</b> ZOVARC generates investigation code, not classifications. '
+        '<b>Key differentiator:</b> ZOVARK generates investigation code, not classifications. '
         'When it encounters a novel attack type never seen before, it writes a new investigation from scratch.', body_style))
 
     # SECTION 3: PROOF
@@ -139,7 +139,7 @@ def generate_pdf(output_path):
     elements.append(Paragraph(
         '<b>30-day pilot.</b> Your SIEM. Your alerts. Your hardware.', bold_style))
     elements.append(Paragraph(
-        'We connect to your Splunk or Elastic via webhook, run ZOVARC against live alerts, '
+        'We connect to your Splunk or Elastic via webhook, run ZOVARK against live alerts, '
         'and deliver weekly accuracy reports. No data leaves your network at any point.', body_style))
     elements.append(Paragraph(
         '<b>We provide:</b> deployment support, SIEM webhook integration, weekly accuracy reviews.<br/>'
@@ -149,11 +149,11 @@ def generate_pdf(output_path):
 
     # FOOTER
     elements.append(Paragraph(
-        'Confidential — ZOVARC v1.5.1 — 2026-03-24 — Not for distribution', footer_style))
+        'Confidential — ZOVARK v1.5.1 — 2026-03-24 — Not for distribution', footer_style))
 
     doc.build(elements)
     print(f"PDF generated: {output_path}")
 
 
 if __name__ == "__main__":
-    generate_pdf("/app/ZOVARC_CISO_Brief.pdf")
+    generate_pdf("/app/ZOVARK_CISO_Brief.pdf")

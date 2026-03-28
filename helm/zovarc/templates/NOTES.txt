@@ -1,5 +1,5 @@
 ============================================================
-  ZOVARC SOC Automation Platform
+  ZOVARK SOC Automation Platform
 ============================================================
 
 Deployment: {{ .Release.Name }}
@@ -24,15 +24,15 @@ Access the application:
 {{- end }}
 {{- else }}
   # Port-forward the API
-  kubectl port-forward svc/{{ include "zovarc.fullname" . }}-api 8090:{{ .Values.api.service.port }} -n {{ .Release.Namespace }}
+  kubectl port-forward svc/{{ include "zovark.fullname" . }}-api 8090:{{ .Values.api.service.port }} -n {{ .Release.Namespace }}
 
   # Port-forward the Dashboard
-  kubectl port-forward svc/{{ include "zovarc.fullname" . }}-dashboard 3000:{{ .Values.dashboard.service.port }} -n {{ .Release.Namespace }}
+  kubectl port-forward svc/{{ include "zovark.fullname" . }}-dashboard 3000:{{ .Values.dashboard.service.port }} -n {{ .Release.Namespace }}
 {{- end }}
 
 Default credentials:
-  Email:    admin@zovarc.local
-  Password: zovarc123
+  Email:    admin@zovark.local
+  Password: zovark123
 
 For production, update secrets in values.yaml:
   helm upgrade {{ .Release.Name }} . --set secrets.jwtSecret=<secure-secret>

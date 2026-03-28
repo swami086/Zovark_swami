@@ -4,14 +4,14 @@ import json
 import os
 import httpx
 
-API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+API_URL = os.environ.get("ZOVARK_API_URL", "http://localhost:8090")
 
 
 def main():
     # Login
     r = httpx.post(f"{API_URL}/api/v1/auth/login", json={
-        "email": os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local"),
-        "password": os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026"),
+        "email": os.environ.get("ZOVARK_TEST_EMAIL", "admin@test.local"),
+        "password": os.environ.get("ZOVARK_TEST_PASSWORD", "TestPass2026"),
     }, timeout=10)
     token = r.json()["token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -82,7 +82,7 @@ def main():
     findings_pct = int(with_findings / n * 100)
     iocs_pct = int(with_iocs / n * 100)
 
-    report = f"""# ZOVARC Baseline Accuracy — Fast Tier (Qwen 1.5B)
+    report = f"""# ZOVARK Baseline Accuracy — Fast Tier (Qwen 1.5B)
 
 **Date:** 2026-03-16
 **Model:** Qwen2.5-1.5B-Instruct-AWQ (local, RTX 3050)
@@ -110,7 +110,7 @@ def main():
     report += """
 ## Interpretation
 
-The 1.5B model serves as ZOVARC's baseline triage tier:
+The 1.5B model serves as ZOVARK's baseline triage tier:
 - **Code generation works** — the model generates executable Python investigation code
 - **Risk scoring functions** — non-zero risk scores produced for actual threats
 - **IOC extraction functional** — extracts IPs from investigation output
@@ -123,7 +123,7 @@ are expected to improve accuracy, reduce hallucination, and produce richer outpu
 
 1. Run `python scripts/accuracy_benchmark.py --model standard` with cloud API keys
 2. Run DPO training: `python dpo/dpo_forge.py` then `python scripts/dpo_train.py`
-3. Run post-training: `python scripts/accuracy_benchmark.py --model zovarc_aligned_1.5b`
+3. Run post-training: `python scripts/accuracy_benchmark.py --model zovark_aligned_1.5b`
 """
     with open("docs/BASELINE_ACCURACY.md", "w") as f:
         f.write(report)

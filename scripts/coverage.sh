@@ -1,5 +1,5 @@
 #!/bin/bash
-# ZOVARC Code Coverage Script
+# ZOVARK Code Coverage Script
 #
 # Runs pytest with coverage reporting. Designed to run both locally
 # and in CI. Fails if coverage drops below 60%.
@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "========================================="
-echo "  ZOVARC Code Coverage"
+echo "  ZOVARK Code Coverage"
 echo "  Threshold: ${THRESHOLD}%"
 echo "========================================="
 

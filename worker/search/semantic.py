@@ -12,13 +12,13 @@ from temporalio import activity
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
 EMBED_URL = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 LITELLM_EMBED_URL = os.environ.get("LITELLM_URL", "http://litellm:4000") + "/v1/embeddings"
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
 
 
 async def _get_embedding(text):

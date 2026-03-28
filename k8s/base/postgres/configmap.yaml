@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-config
-  namespace: zovarc
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: postgres
 data:
   postgresql.conf: |

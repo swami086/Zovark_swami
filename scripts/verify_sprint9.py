@@ -2,14 +2,14 @@
 """Sprint 9 verification: search, filters, pagination, stats."""
 import json, httpx, sys
 
-API = "http://zovarc-api:8090"
+API = "http://zovark-api:8090"
 
 # Login
 r = httpx.post(f"{API}/api/v1/auth/login", json={"email": "siem-test@testcorp.com", "password": "test1234"})
 if r.status_code != 200:
     # Try register
     import psycopg2
-    conn = psycopg2.connect("postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    conn = psycopg2.connect("postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     cur = conn.cursor()
     cur.execute("SELECT id FROM tenants LIMIT 1")
     tid = str(cur.fetchone()[0])
@@ -18,7 +18,7 @@ if r.status_code != 200:
     if r2.status_code not in (200, 201):
         print(f"Register failed: {r2.text}")
     # Set admin role
-    conn = psycopg2.connect("postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    conn = psycopg2.connect("postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     cur = conn.cursor()
     cur.execute("UPDATE users SET role='admin' WHERE email='test9@testcorp.com'")
     conn.commit()

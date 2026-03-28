@@ -12,7 +12,7 @@ with workflow.unsafe.imports_passed_through():
     import psycopg2
 
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 
 def _get_db():
@@ -28,7 +28,7 @@ async def export_finetuning_data(data: dict) -> dict:
     """Export training data from investigations."""
     min_quality = data.get("min_quality_score", 0.7)
     limit = data.get("limit", 1000)
-    output_dir = data.get("output_dir", "/tmp/zovarc-finetuning")
+    output_dir = data.get("output_dir", "/tmp/zovark-finetuning")
 
     os.makedirs(output_dir, exist_ok=True)
 

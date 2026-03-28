@@ -1,5 +1,5 @@
 """
-ZOVARC Slack Integration — Temporal Activity
+ZOVARK Slack Integration — Temporal Activity
 Posts investigation results to Slack via incoming webhooks.
 Supports: investigation_complete, approval_needed, sla_breach events.
 """
@@ -151,7 +151,7 @@ async def send_slack_notification(data: dict) -> dict:
     blocks = builder(data)
     payload = {
         "blocks": blocks,
-        "text": f"ZOVARC: {event_type.replace('_', ' ').title()}",
+        "text": f"ZOVARK: {event_type.replace('_', ' ').title()}",
     }
 
     if data.get("channel"):

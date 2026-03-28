@@ -15,7 +15,7 @@ with workflow.unsafe.imports_passed_through():
 @activity.defn
 async def _list_candidates_for_generation(data: dict) -> list:
     """List detection candidates that need Sigma rule generation."""
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     conn = psycopg2.connect(db_url)
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:

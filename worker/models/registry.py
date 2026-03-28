@@ -12,7 +12,7 @@ import random
 import psycopg2
 import logger
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 # Cache: refreshed every 60s by worker
 _model_cache = {}
@@ -67,7 +67,7 @@ def get_model_for_task(tenant_id: str = None, task_type: str = None) -> str:
     2. Tenant-specific routing rule
     3. Task-type-specific routing rule
     4. Default model
-    5. Fallback to env var ZOVARC_LLM_MODEL
+    5. Fallback to env var ZOVARK_LLM_MODEL
     """
     import time
 
@@ -76,7 +76,7 @@ def get_model_for_task(tenant_id: str = None, task_type: str = None) -> str:
         refresh_model_cache()
 
     if not _model_cache:
-        return os.environ.get("ZOVARC_LLM_MODEL", "fast")
+        return os.environ.get("ZOVARK_LLM_MODEL", "fast")
 
     # Check A/B tests
     ab_model = _check_ab_test(tenant_id, task_type)
@@ -104,7 +104,7 @@ def get_model_for_task(tenant_id: str = None, task_type: str = None) -> str:
         if model.get("is_default"):
             return model["model_id"]
 
-    return os.environ.get("ZOVARC_LLM_MODEL", "fast")
+    return os.environ.get("ZOVARK_LLM_MODEL", "fast")
 
 
 def _check_ab_test(tenant_id: str = None, task_type: str = None) -> str:

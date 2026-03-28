@@ -30,5 +30,5 @@ sleep 180
 
 echo ""
 echo "=== RESULTS ==="
-docker compose exec -T postgres psql -U zovarc -d zovarc -c \
+docker compose exec -T postgres psql -U zovark -d zovark -c \
 "SELECT output->>'verdict' as verdict, (output->>'risk_score')::int as risk, jsonb_array_length(COALESCE(output->'iocs','[]'::jsonb)) as iocs, status, left(input->>'prompt',40) as task FROM agent_tasks ORDER BY created_at DESC LIMIT 3;"

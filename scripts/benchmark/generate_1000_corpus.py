@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate 1000-alert benchmark corpus for ZOVARC v1.7.0.
+"""Generate 1000-alert benchmark corpus for ZOVARK v1.7.0.
 
 Distribution:
   500 Path A (template types, fast_fill)
@@ -239,7 +239,7 @@ for i in range(150):
 corpus = {
     "version": "1.7.0",
     "generated": datetime.utcnow().isoformat() + "Z",
-    "description": "1000-alert benchmark corpus for ZOVARC v1.7.0",
+    "description": "1000-alert benchmark corpus for ZOVARK v1.7.0",
     "distribution": {
         "path_a_template": len(path_a),
         "path_b_llm_fill": len(path_b),

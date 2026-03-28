@@ -1,10 +1,10 @@
-# ZOVARC — Autonomous SOC Investigation
+# ZOVARK — Autonomous SOC Investigation
 
 ## Headline
 Your AI SOC Analyst. On-Premise. Air-Gapped.
 
 ## Subheadline
-ZOVARC investigates security alerts in under 60 seconds — generating code,
+ZOVARK investigates security alerts in under 60 seconds — generating code,
 executing it in a sandbox, and delivering verdicts with evidence.
 No data leaves your network. Ever.
 
@@ -15,7 +15,7 @@ No data leaves your network. Ever.
 
 ## How It Works
 1. SIEM alert arrives via webhook (Splunk, Elastic, Sentinel)
-2. ZOVARC generates investigation code using a local LLM
+2. ZOVARK generates investigation code using a local LLM
 3. Code executes in an isolated Docker sandbox
 4. Verdict delivered with findings, IOCs, and recommendations
 5. All on-premise. Air-gapped. Your data stays yours.

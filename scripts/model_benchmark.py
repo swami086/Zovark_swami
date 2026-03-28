@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ZOVARC Model Benchmark — run labeled corpus against a specific model endpoint.
+ZOVARK Model Benchmark — run labeled corpus against a specific model endpoint.
 
 Usage:
     python scripts/model_benchmark.py --model-url http://localhost:11434/v1/chat/completions --model-name qwen25-14b --corpus scripts/benchmark_corpus_11.json --api-url http://localhost:8090
@@ -14,12 +14,12 @@ import time
 from datetime import datetime
 import urllib.request
 
-API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+API_URL = os.environ.get("ZOVARK_API_URL", "http://localhost:8090")
 
 
 def login(api_url: str) -> str:
-    email = os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local")
-    password = os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026")
+    email = os.environ.get("ZOVARK_TEST_EMAIL", "admin@test.local")
+    password = os.environ.get("ZOVARK_TEST_PASSWORD", "TestPass2026")
     payload = json.dumps({"email": email, "password": password}).encode()
     req = urllib.request.Request(f"{api_url}/api/v1/auth/login", data=payload,
                                  headers={"Content-Type": "application/json"})
@@ -31,7 +31,7 @@ def flush_redis():
     """Flush Redis dedup cache via docker compose."""
     import subprocess
     try:
-        redis_pw = os.environ.get("REDIS_PASSWORD", "zovarc-redis-dev-2026")
+        redis_pw = os.environ.get("REDIS_PASSWORD", "zovark-redis-dev-2026")
         subprocess.run(
             ["docker", "compose", "exec", "-T", "redis", "redis-cli", "-a", redis_pw, "FLUSHDB"],
             capture_output=True, timeout=10
@@ -121,11 +121,11 @@ def score_result(result: dict, ground_truth: dict) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ZOVARC Model Benchmark Runner")
+    parser = argparse.ArgumentParser(description="ZOVARK Model Benchmark Runner")
     parser.add_argument("--model-url", required=True, help="LLM endpoint URL")
     parser.add_argument("--model-name", required=True, help="Model label for results")
     parser.add_argument("--corpus", required=True, help="Path to benchmark corpus JSON")
-    parser.add_argument("--api-url", default=API_URL, help="ZOVARC API URL")
+    parser.add_argument("--api-url", default=API_URL, help="ZOVARK API URL")
     parser.add_argument("--timeout", type=int, default=300, help="Max seconds per investigation")
     parser.add_argument("--no-flush", action="store_true", help="Don't flush Redis cache")
     args = parser.parse_args()
@@ -134,7 +134,7 @@ def main():
     with open(args.corpus) as f:
         corpus = json.load(f)
 
-    print(f"ZOVARC Model Benchmark")
+    print(f"ZOVARK Model Benchmark")
     print(f"  Model:   {args.model_name}")
     print(f"  URL:     {args.model_url}")
     print(f"  Corpus:  {len(corpus)} alerts")

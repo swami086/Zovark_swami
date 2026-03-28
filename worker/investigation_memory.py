@@ -28,7 +28,7 @@ SIMILARITY_THRESHOLDS = {
 }
 
 # Override from env if needed
-SIMILARITY_OVERRIDE = float(os.environ.get('ZOVARC_SIMILARITY_THRESHOLD', '0'))
+SIMILARITY_OVERRIDE = float(os.environ.get('ZOVARK_SIMILARITY_THRESHOLD', '0'))
 
 
 class InvestigationMemory:
@@ -36,10 +36,10 @@ class InvestigationMemory:
 
     def __init__(self, db_url=None):
         self.db_url = db_url or os.environ.get(
-            "DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
+            "DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
         )
         self.litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-        self.litellm_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+        self.litellm_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
         self.embed_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 
     async def enrich_alert(self, alert_entities):

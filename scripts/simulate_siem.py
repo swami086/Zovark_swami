@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Simulated SIEM webhook test — sends 3 alerts in different formats.
-Run inside zovarc-worker container:
-  docker exec zovarc-worker python /app/simulate_siem.py
+Run inside zovark-worker container:
+  docker exec zovark-worker python /app/simulate_siem.py
 """
 import json
 import time
@@ -11,8 +11,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 
-API_BASE = "http://zovarc-api:8090/api/v1"
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+API_BASE = "http://zovark-api:8090/api/v1"
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 def get_tenant_id():
     conn = psycopg2.connect(DB_URL)
@@ -55,7 +55,7 @@ def register_and_login(tenant_id):
 
 def main():
     print("=" * 60)
-    print("ZOVARC SIEM WEBHOOK SIMULATION")
+    print("ZOVARK SIEM WEBHOOK SIMULATION")
     print("=" * 60)
 
     tenant_id = get_tenant_id()
@@ -89,7 +89,7 @@ def main():
 
     source = resp.json()
     source_id = source["id"]
-    webhook_url = f"http://zovarc-api:8090/api/v1/webhooks/{source_id}/alert"
+    webhook_url = f"http://zovark-api:8090/api/v1/webhooks/{source_id}/alert"
     print(f"Log source created: {source_id}")
     print(f"Webhook URL: {webhook_url}")
 

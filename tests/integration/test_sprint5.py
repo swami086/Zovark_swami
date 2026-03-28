@@ -131,28 +131,28 @@ class TestInvestigationPrompt:
 class TestModelConfig:
     """Test model tier configuration."""
 
-    def test_tiers_use_zovarc_prefix(self):
-        """Model names should use zovarc-* prefix."""
+    def test_tiers_use_zovark_prefix(self):
+        """Model names should use zovark-* prefix."""
         from model_config import MODEL_TIERS
-        assert MODEL_TIERS['fast']['model'] == 'zovarc-fast'
-        assert MODEL_TIERS['standard']['model'] == 'zovarc-standard'
-        assert MODEL_TIERS['reasoning']['model'] == 'zovarc-reasoning'
+        assert MODEL_TIERS['fast']['model'] == 'zovark-fast'
+        assert MODEL_TIERS['standard']['model'] == 'zovark-standard'
+        assert MODEL_TIERS['reasoning']['model'] == 'zovark-reasoning'
 
     def test_tier_config_returns_correct_model(self):
-        """get_tier_config returns zovarc-* model names (when no env override)."""
+        """get_tier_config returns zovark-* model names (when no env override)."""
         import os
-        old_val = os.environ.get('ZOVARC_LLM_MODEL')
-        os.environ['ZOVARC_LLM_MODEL'] = ''
+        old_val = os.environ.get('ZOVARK_LLM_MODEL')
+        os.environ['ZOVARK_LLM_MODEL'] = ''
         try:
             from model_config import get_tier_config
             config = get_tier_config('generate_code')
-            assert config['model'] == 'zovarc-standard'
+            assert config['model'] == 'zovark-standard'
             assert config['tier'] == 'standard'
         finally:
             if old_val is not None:
-                os.environ['ZOVARC_LLM_MODEL'] = old_val
-            elif 'ZOVARC_LLM_MODEL' in os.environ:
-                del os.environ['ZOVARC_LLM_MODEL']
+                os.environ['ZOVARK_LLM_MODEL'] = old_val
+            elif 'ZOVARK_LLM_MODEL' in os.environ:
+                del os.environ['ZOVARK_LLM_MODEL']
 
 
 class TestSkillRouting:
@@ -162,7 +162,7 @@ class TestSkillRouting:
         """Verify agent_skills table has data."""
         import psycopg2
         import os
-        db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+        db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
         conn = psycopg2.connect(db_url)
         try:
             with conn.cursor() as cur:

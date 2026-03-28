@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ZOVARC 1000-alert benchmark runner. Submits alerts, polls, reports."""
+"""ZOVARK 1000-alert benchmark runner. Submits alerts, polls, reports."""
 import json
 import os
 import sys
@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 
-API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+API_URL = os.environ.get("ZOVARK_API_URL", "http://localhost:8090")
 CORPUS_PATH = os.environ.get("CORPUS_PATH", "corpus_1000.json")
 
 def login(api_url):
@@ -94,7 +94,7 @@ def main():
     if args.limit > 0:
         alerts = alerts[:args.limit]
 
-    print(f"ZOVARC 1000-Alert Benchmark")
+    print(f"ZOVARK 1000-Alert Benchmark")
     print(f"  Corpus: {len(alerts)} alerts (start={args.start})")
     print(f"  Spacing: {args.spacing}s")
     print()

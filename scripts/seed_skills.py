@@ -2,7 +2,7 @@ import os
 import json
 import psycopg2
 
-DB_URL = os.getenv("POSTGRES_URI", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+DB_URL = os.getenv("POSTGRES_URI", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 # 1. Brute Force Investigation
 BF_PARAMS = [

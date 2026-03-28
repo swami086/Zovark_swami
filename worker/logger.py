@@ -1,4 +1,4 @@
-"""Structured JSON logging for ZOVARC worker."""
+"""Structured JSON logging for ZOVARK worker."""
 
 import json
 import sys

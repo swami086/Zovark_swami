@@ -1,12 +1,12 @@
 #!/bin/bash
-# ZOVARC Demo — 2-min walkthrough for CISO audience
+# ZOVARK Demo — 2-min walkthrough for CISO audience
 # Shows: alert in → investigation → IOCs extracted → verdict delivered
 set -e
 
 API="http://localhost:8090"
 MAX_WAIT=120  # seconds to wait for investigations to complete
 
-echo "=== ZOVARC Autonomous SOC — Live Demo ==="
+echo "=== ZOVARK Autonomous SOC — Live Demo ==="
 echo ""
 
 # Login

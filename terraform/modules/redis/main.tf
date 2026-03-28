@@ -1,12 +1,12 @@
 # ============================================================
-# ZOVARC Redis Module — ElastiCache Redis cluster
+# ZOVARK Redis Module — ElastiCache Redis cluster
 # Creates Redis cluster for caching and rate limiting
 # ============================================================
 
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "zovarc"
+  default     = "zovark"
 }
 
 variable "environment" {

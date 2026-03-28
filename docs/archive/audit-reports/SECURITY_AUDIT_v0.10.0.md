@@ -1,4 +1,4 @@
-# ZOVARC v0.10.0 — Security Audit Report
+# ZOVARK v0.10.0 — Security Audit Report
 
 **Date:** 2026-03-13
 **Audited by:** Claude Opus 4.6 (6 parallel deep-dive scans)
@@ -43,14 +43,14 @@ Any JWT ever issued works indefinitely. Stolen tokens = permanent access.
 **C2. Hardcoded JWT signing secret**
 `api/main.go:43`
 ```go
-JWTSecret: getEnvOrDefault("JWT_SECRET", "zovarc-jwt-secret-dev-2026"),
+JWTSecret: getEnvOrDefault("JWT_SECRET", "zovark-jwt-secret-dev-2026"),
 ```
 Public default = anyone can forge admin JWTs.
 **Fix:** Fail startup if `JWT_SECRET` not set. Require 256-bit random secret.
 
 **C3. Hardcoded database credentials**
 `api/main.go:40`
-Default `postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc` in source code.
+Default `postgresql://zovark:zovark_dev_2026@postgres:5432/zovark` in source code.
 **Fix:** Require `DATABASE_URL` as mandatory. No defaults.
 
 **C4. Open registration accepts any tenant_id**
@@ -123,7 +123,7 @@ Token parsed without JWKS validation. Attacker can inject arbitrary claims.
 **T5. Investigation cache has no tenant_id in cache key**
 `worker/investigation_cache.py:33-34`
 ```python
-REDIS_CACHE_PREFIX = "zovarc:inv_cache:"
+REDIS_CACHE_PREFIX = "zovark:inv_cache:"
 ```
 Cache key is computed from IOC indicators only. Tenant A's cached results served to Tenant B for same indicators.
 

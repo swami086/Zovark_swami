@@ -410,7 +410,7 @@ func checkTokenQuota() gin.HandlerFunc {
 			if costUsagePct > maxPct {
 				maxPct = costUsagePct
 			}
-			c.Header("X-Zovarc-Quota-Warning", fmt.Sprintf("%.1f%% of quota used", maxPct))
+			c.Header("X-Zovark-Quota-Warning", fmt.Sprintf("%.1f%% of quota used", maxPct))
 		}
 
 		c.Next()

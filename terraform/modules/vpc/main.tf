@@ -1,12 +1,12 @@
 # ============================================================
-# ZOVARC VPC Module — Network infrastructure
+# ZOVARK VPC Module — Network infrastructure
 # Creates VPC, subnets, security groups, NAT gateway
 # ============================================================
 
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "zovarc"
+  default     = "zovark"
 }
 
 variable "environment" {
@@ -161,7 +161,7 @@ resource "aws_route_table_association" "private" {
 resource "aws_security_group" "api" {
   name_prefix = "${var.project}-${var.environment}-api-"
   vpc_id      = aws_vpc.main.id
-  description = "ZOVARC API Gateway security group"
+  description = "ZOVARK API Gateway security group"
 
   ingress {
     from_port   = 8090
@@ -191,7 +191,7 @@ resource "aws_security_group" "api" {
 resource "aws_security_group" "database" {
   name_prefix = "${var.project}-${var.environment}-db-"
   vpc_id      = aws_vpc.main.id
-  description = "ZOVARC PostgreSQL security group"
+  description = "ZOVARK PostgreSQL security group"
 
   ingress {
     from_port       = 5432
@@ -220,7 +220,7 @@ resource "aws_security_group" "database" {
 resource "aws_security_group" "redis" {
   name_prefix = "${var.project}-${var.environment}-redis-"
   vpc_id      = aws_vpc.main.id
-  description = "ZOVARC Redis security group"
+  description = "ZOVARK Redis security group"
 
   ingress {
     from_port       = 6379

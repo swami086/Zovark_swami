@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================
-# ZOVARC Database Backup Script
+# ZOVARK Database Backup Script
 # Dumps PostgreSQL, compresses, uploads to MinIO
 # Retention: 7 daily + 4 weekly backups
 # Usage: ./scripts/backup-db.sh
@@ -10,15 +10,15 @@ set -eu
 # Configuration
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-POSTGRES_USER="${POSTGRES_USER:-zovarc}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-zovarc_dev_2026}"
-POSTGRES_DB="${POSTGRES_DB:-zovarc}"
-MINIO_ALIAS="${MINIO_ALIAS:-zovarc}"
+POSTGRES_USER="${POSTGRES_USER:-zovark}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-zovark_dev_2026}"
+POSTGRES_DB="${POSTGRES_DB:-zovark}"
+MINIO_ALIAS="${MINIO_ALIAS:-zovark}"
 MINIO_ENDPOINT="${MINIO_ENDPOINT:-http://localhost:9000}"
-MINIO_BUCKET="${MINIO_BUCKET:-zovarc-backups}"
-MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-zovarc}"
-MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-zovarc_dev_2026}"
-BACKUP_DIR="${BACKUP_DIR:-/tmp/zovarc-backups}"
+MINIO_BUCKET="${MINIO_BUCKET:-zovark-backups}"
+MINIO_ACCESS_KEY="${MINIO_ROOT_USER:-zovark}"
+MINIO_SECRET_KEY="${MINIO_ROOT_PASSWORD:-zovark_dev_2026}"
+BACKUP_DIR="${BACKUP_DIR:-/tmp/zovark-backups}"
 DAILY_RETENTION=7
 WEEKLY_RETENTION=4
 BACKUP_PASSPHRASE="${BACKUP_PASSPHRASE:-}"
@@ -26,8 +26,8 @@ BACKUP_PASSPHRASE="${BACKUP_PASSPHRASE:-}"
 # Timestamp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DAY_OF_WEEK=$(date +%u)
-DAILY_FILE="zovarc_daily_${TIMESTAMP}.sql.gz"
-WEEKLY_FILE="zovarc_weekly_${TIMESTAMP}.sql.gz"
+DAILY_FILE="zovark_daily_${TIMESTAMP}.sql.gz"
+WEEKLY_FILE="zovark_weekly_${TIMESTAMP}.sql.gz"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"

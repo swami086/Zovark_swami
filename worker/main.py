@@ -12,7 +12,7 @@ from stages.register import get_v2_activities, get_v2_workflows
 from activities import fetch_task, log_audit, log_audit_event, record_usage, update_task_status, check_rate_limit_activity, decrement_active_activity, heartbeat_lease_activity, check_requires_approval, create_approval_request, update_approval_request
 from entity_graph import extract_entities, write_entity_graph, embed_investigation
 # Non-investigation workflows
-from workflows.zovarc_workflows import (
+from workflows.zovark_workflows import (
     ZeekIngestionWorkflow, DeepLogAnalysisWorkflow,
     SandboxAnalysisWorkflow, InvestigationEnrichmentWorkflow,
 )
@@ -132,7 +132,7 @@ async def main():
 
     worker = Worker(
         client,
-        task_queue="zovarc-tasks",
+        task_queue="zovark-tasks",
         # 16 workflows
         # V2 investigation pipeline + non-investigation workflows
         workflows=get_v2_workflows() + [
@@ -216,7 +216,7 @@ async def main():
             refresh_cipher_audit_summary, flag_new_critical_ciphers, compute_cipher_trend_metrics,
         ],
     )
-    logger.info("Worker starting", task_queue="zovarc-tasks", workflows=17, activities=107)
+    logger.info("Worker starting", task_queue="zovark-tasks", workflows=17, activities=107)
 
     try:
         await worker.run()

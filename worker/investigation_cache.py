@@ -30,7 +30,7 @@ SEMANTIC_DEDUP_THRESHOLD = 0.95
 
 # Redis config
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
-REDIS_CACHE_PREFIX = "zovarc:inv_cache:"
+REDIS_CACHE_PREFIX = "zovark:inv_cache:"
 REDIS_CACHE_TTL = 3600  # 1 hour default Redis TTL (seconds)
 
 
@@ -144,7 +144,7 @@ def check_cache(task_input, tenant_id=None):
     try:
         db_url = os.environ.get(
             "DATABASE_URL",
-            "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
+            "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
         )
         conn = psycopg2.connect(db_url)
         try:
@@ -203,7 +203,7 @@ def check_semantic_dedup(embedding, severity=None, tenant_id=None):
     try:
         db_url = os.environ.get(
             "DATABASE_URL",
-            "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
+            "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
         )
         conn = psycopg2.connect(db_url)
         try:
@@ -286,7 +286,7 @@ def store_cache(task_input, investigation_id, task_id=None,
     try:
         db_url = os.environ.get(
             "DATABASE_URL",
-            "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
+            "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
         )
         conn = psycopg2.connect(db_url)
         try:

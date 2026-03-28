@@ -14,7 +14,7 @@ from model_config import get_tier_config
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
@@ -77,7 +77,7 @@ async def analyze_false_positive(data: dict) -> dict:
     Returns: {confidence, verdict, reasoning, evidence, recommendation}
 
     FAST_FILL bypass: skip LLM, return default confidence."""
-    if os.environ.get('ZOVARC_FAST_FILL', '') == 'true':
+    if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
         return {"confidence": 0.75, "verdict": "suspicious", "reasoning": "fast_fill",
                 "evidence": [], "recommendation": "Investigate further"}
 
@@ -90,7 +90,7 @@ async def analyze_false_positive(data: dict) -> dict:
     risk_score = data.get("risk_score", 0)
 
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
     tier_config = get_tier_config("analyze_false_positive")
     llm_model = tier_config["model"]
     tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")

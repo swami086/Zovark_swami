@@ -1,12 +1,12 @@
 # ============================================================
-# ZOVARC RDS Module — PostgreSQL with pgvector
+# ZOVARK RDS Module — PostgreSQL with pgvector
 # Creates RDS PostgreSQL instance with read replicas
 # ============================================================
 
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "zovarc"
+  default     = "zovark"
 }
 
 variable "environment" {
@@ -50,13 +50,13 @@ variable "max_allocated_storage" {
 variable "db_name" {
   description = "Database name"
   type        = string
-  default     = "zovarc"
+  default     = "zovark"
 }
 
 variable "db_username" {
   description = "Master username"
   type        = string
-  default     = "zovarc"
+  default     = "zovark"
 }
 
 variable "db_password" {

@@ -10,7 +10,7 @@ _find() {
   find . "$@" -not -path "*/.claude/*" -not -path "*/node_modules/*" -not -path "*/__pycache__/*" -not -path "*/.venv/*" -not -path "*/.git/*" 2>/dev/null
 }
 
-echo "# ZOVARC Codebase Census" > "$OUTPUT"
+echo "# ZOVARK Codebase Census" > "$OUTPUT"
 echo "" >> "$OUTPUT"
 echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$OUTPUT"
 echo "Commit: $(git rev-parse --short HEAD)" >> "$OUTPUT"

@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
+    "DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
 )
 
 

@@ -30,7 +30,7 @@ const Login = () => {
             <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
                 <Hexagon className="w-12 h-12 text-cyan-500 fill-cyan-500/20 mx-auto" />
                 <h2 className="mt-4 text-3xl font-bold tracking-tight text-white mb-2">
-                    Sign in to ZOVARC
+                    Sign in to ZOVARK
                 </h2>
                 <p className="text-sm font-medium text-slate-400">
                     Security Operations Platform

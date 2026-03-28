@@ -7,28 +7,28 @@ resources:
 
 images:
   - name: pgvector/pgvector
-    newName: internal-registry.local:5000/zovarc/pgvector
+    newName: internal-registry.local:5000/zovark/pgvector
     newTag: pg16
   - name: edoburu/pgbouncer
-    newName: internal-registry.local:5000/zovarc/pgbouncer
+    newName: internal-registry.local:5000/zovark/pgbouncer
     newTag: latest
   - name: redis
-    newName: internal-registry.local:5000/zovarc/redis
+    newName: internal-registry.local:5000/zovark/redis
     newTag: 7-alpine
   - name: temporalio/auto-setup
-    newName: internal-registry.local:5000/zovarc/temporal-auto-setup
+    newName: internal-registry.local:5000/zovark/temporal-auto-setup
     newTag: "1.24.2"
   - name: docker.litellm.ai/berriai/litellm-database
-    newName: internal-registry.local:5000/zovarc/litellm-database
+    newName: internal-registry.local:5000/zovark/litellm-database
     newTag: main-stable
-  - name: zovarc-mvp-worker
-    newName: internal-registry.local:5000/zovarc/worker
+  - name: zovark-mvp-worker
+    newName: internal-registry.local:5000/zovark/worker
     newTag: latest
-  - name: zovarc-mvp-api
-    newName: internal-registry.local:5000/zovarc/api
+  - name: zovark-mvp-api
+    newName: internal-registry.local:5000/zovark/api
     newTag: latest
-  - name: zovarc-mvp-dashboard
-    newName: internal-registry.local:5000/zovarc/dashboard
+  - name: zovark-mvp-dashboard
+    newName: internal-registry.local:5000/zovark/dashboard
     newTag: latest
 
 patches:

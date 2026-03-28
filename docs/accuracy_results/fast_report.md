@@ -1,4 +1,4 @@
-# ZOVARC Accuracy Report — fast tier
+# ZOVARK Accuracy Report — fast tier
 
 **Generated:** 2026-03-16T14:39:24Z
 **Corpus:** 70 labeled alerts

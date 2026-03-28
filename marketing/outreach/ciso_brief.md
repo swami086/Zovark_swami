@@ -1,4 +1,4 @@
-# ZOVARC — Autonomous SOC Investigation on Air-Gapped Infrastructure
+# ZOVARK — Autonomous SOC Investigation on Air-Gapped Infrastructure
 
 **One-Page Technical Brief for Security Leadership**
 
@@ -17,11 +17,11 @@ Every major SOC AI tool today — CrowdStrike Charlotte AI, Microsoft Copilot fo
 
 ## The Solution
 
-ZOVARC runs entirely on your infrastructure with zero data egress.
+ZOVARK runs entirely on your infrastructure with zero data egress.
 
 It receives SIEM alerts via webhook (Splunk HEC or Elastic format), generates Python investigation code using a local LLM, executes that code in a hardened sandbox (4-layer isolation: AST prefilter, seccomp, network deny-all, kill timer), and delivers structured verdicts with IOCs, risk scores, MITRE ATT&CK mapping, and response recommendations.
 
-**What makes ZOVARC different:** It generates investigation code, not classifications. When ZOVARC encounters a novel attack type it has never seen before, it writes a new investigation from scratch — no template required.
+**What makes ZOVARK different:** It generates investigation code, not classifications. When ZOVARK encounters a novel attack type it has never seen before, it writes a new investigation from scratch — no template required.
 
 ## The Proof
 

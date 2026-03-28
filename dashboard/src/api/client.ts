@@ -5,11 +5,11 @@ let jwtToken: string | null = null;
 let currentUser: any = null;
 
 // Restore token and user from sessionStorage (survives page navigation, cleared on tab close)
-const savedToken = sessionStorage.getItem('zovarc_token');
+const savedToken = sessionStorage.getItem('zovark_token');
 if (savedToken) {
     jwtToken = savedToken;
 }
-const savedUser = sessionStorage.getItem('zovarc_user');
+const savedUser = sessionStorage.getItem('zovark_user');
 if (savedUser) {
     try { currentUser = JSON.parse(savedUser); } catch { /* ignore */ }
 }
@@ -18,18 +18,18 @@ export const setToken = (token: string, user: any) => {
     jwtToken = token;
     currentUser = user;
     // Store in sessionStorage so token survives page navigation (cleared on tab close)
-    sessionStorage.setItem('zovarc_token', token);
-    sessionStorage.setItem('zovarc_user', JSON.stringify(user));
+    sessionStorage.setItem('zovark_token', token);
+    sessionStorage.setItem('zovark_user', JSON.stringify(user));
 };
 
 export const clearToken = () => {
     jwtToken = null;
     currentUser = null;
-    sessionStorage.removeItem('zovarc_token');
-    sessionStorage.removeItem('zovarc_user');
+    sessionStorage.removeItem('zovark_token');
+    sessionStorage.removeItem('zovark_user');
     // Also clear any legacy localStorage tokens
-    localStorage.removeItem('zovarc_token');
-    localStorage.removeItem('zovarc_user');
+    localStorage.removeItem('zovark_token');
+    localStorage.removeItem('zovark_user');
 };
 
 export const getUser = () => currentUser;

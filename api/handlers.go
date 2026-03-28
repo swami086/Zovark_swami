@@ -8,11 +8,11 @@ import (
 )
 
 func healthCheckHandler(c *gin.Context) {
-	deploymentMode := getEnvOrDefault("ZOVARC_DEPLOYMENT_MODE", "cloud")
-	llmModel := getEnvOrDefault("ZOVARC_LLM_MODEL", "fast")
+	deploymentMode := getEnvOrDefault("ZOVARK_DEPLOYMENT_MODE", "cloud")
+	llmModel := getEnvOrDefault("ZOVARK_LLM_MODEL", "fast")
 
 	llmProvider := "OpenRouter (Cloud)"
-	if llmModel == "zovarc-local" {
+	if llmModel == "zovark-local" {
 		llmProvider = "Ollama (Local)"
 	}
 

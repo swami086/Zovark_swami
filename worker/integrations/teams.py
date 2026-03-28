@@ -1,5 +1,5 @@
 """
-ZOVARC Microsoft Teams Integration — Temporal Activity
+ZOVARK Microsoft Teams Integration — Temporal Activity
 Posts adaptive cards to Teams via incoming webhook.
 """
 import os
@@ -33,7 +33,7 @@ def _build_adaptive_card(data: dict) -> dict:
     severity = data.get("severity", "medium").lower()
     investigation_id = data.get("investigation_id", "N/A")
     verdict = data.get("verdict", "unknown")
-    title = data.get("title", f"ZOVARC: {event_type.replace('_', ' ').title()}")
+    title = data.get("title", f"ZOVARK: {event_type.replace('_', ' ').title()}")
     summary = data.get("summary", "No summary available.")
     entities = data.get("entities", [])
     mitre = data.get("mitre_techniques", [])

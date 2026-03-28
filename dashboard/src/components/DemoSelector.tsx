@@ -17,7 +17,7 @@ export default function DemoSelector({ onStart }: DemoSelectorProps) {
 
         {/* Description */}
         <p className="text-slate-400 leading-relaxed">
-          Watch ZOVARC autonomously investigate a C2 beacon alert in real-time
+          Watch ZOVARK autonomously investigate a C2 beacon alert in real-time
         </p>
 
         {/* Start button */}

@@ -33,7 +33,7 @@ except Exception:
     SANDBOX_POLICY = None
     _POLICY_VERSION = "hardcoded-fallback"
 
-FAST_FILL = os.environ.get("ZOVARC_FAST_FILL", "false").lower() == "true"
+FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 
 # --- AST Prefilter (inlined from sandbox/ast_prefilter.py concepts) ---
 if SANDBOX_POLICY:

@@ -1,4 +1,4 @@
-# ZOVARC Demo Script (2 minutes)
+# ZOVARK Demo Script (2 minutes)
 
 ## Setup (before demo)
 1. Ensure all services running: `docker compose ps`
@@ -11,13 +11,13 @@
 ### Scene 1: The Problem (15 seconds)
 "SOC teams process thousands of alerts daily. 70% are false positives.
 Tier 1 analysts spend 30-60 minutes per investigation.
-ZOVARC does it in under 60 seconds."
+ZOVARK does it in under 60 seconds."
 
 ### Scene 2: Dashboard (20 seconds)
 - Open http://localhost:5173
 - Login with admin@test.local
 - Show: 350+ total investigations, 280+ resolved
-- "ZOVARC has already processed 350 security alerts autonomously"
+- "ZOVARK has already processed 350 security alerts autonomously"
 
 ### Scene 3: Live Investigation (60 seconds)
 - Submit a phishing alert via curl or the New Investigation page
@@ -34,7 +34,7 @@ ZOVARC does it in under 60 seconds."
 - "All of this happened on-premise. Zero data left your network."
 
 ### Scene 5: Close (15 seconds)
-"ZOVARC investigates like a senior analyst at Tier 1 speed.
+"ZOVARK investigates like a senior analyst at Tier 1 speed.
 Air-gapped. On-premise. No data leaves your network.
 We're looking for 3 design partners. Interested?"
 

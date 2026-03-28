@@ -63,7 +63,7 @@
 - Production Docker Compose with 8 core services
 - Install/health/backup/demo shell scripts in `deploy/`
 - Dashboard served via nginx in Docker
-- Windows startup script (`scripts/start_zovarc.bat`)
+- Windows startup script (`scripts/start_zovark.bat`)
 - Hardware tier documentation
 - SIEM integration guide (Splunk, Elastic, Sentinel)
 
@@ -86,7 +86,7 @@
 - PoV playbook (Day 1 deploy + historical analysis, Day 2 live + results)
 
 ## v0.16.0 — Deployment Hardening
-- Configurable CORS origins (`ZOVARC_CORS_ORIGINS` env var)
+- Configurable CORS origins (`ZOVARK_CORS_ORIGINS` env var)
 - vLLM containers restored (opt-in `--profile vllm`)
 - OpenAPI spec refreshed to v1.2.0 (9 new endpoints)
 - Legacy table cleanup (4 unused tables dropped)

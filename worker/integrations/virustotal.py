@@ -1,5 +1,5 @@
 """
-ZOVARC VirusTotal Integration — Temporal Activity
+ZOVARK VirusTotal Integration — Temporal Activity
 Enriches IOCs (hashes, domains, IPs) via VirusTotal API v3.
 """
 import os

@@ -117,7 +117,7 @@ func TestSecurityHeaders_PresentOnAuthenticatedEndpoints(t *testing.T) {
 // error details such as PostgreSQL error strings, table names, or SQL keywords.
 func TestErrorResponse_NoDBDetails(t *testing.T) {
 	router := setupTestRouter()
-	token := createTestJWT("tenant-1", "user-1", "test@zovarc.local", "admin")
+	token := createTestJWT("tenant-1", "user-1", "test@zovark.local", "admin")
 	// List tenants will hit the DB (nil pool) and call respondInternalError.
 	w := makeRequest(router, "GET", "/api/v1/tenants", nil, token)
 	body := w.Body.String()

@@ -1,7 +1,7 @@
 """Generate synthetic SIEM alerts from CISA KEV entries.
 
 Converts KEV vulnerability records into siem_alerts-format dicts
-suitable for ingestion and investigation by the ZOVARC pipeline.
+suitable for ingestion and investigation by the ZOVARK pipeline.
 """
 import uuid
 from datetime import datetime

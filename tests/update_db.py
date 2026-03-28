@@ -1,6 +1,6 @@
 import psycopg2
 
-conn = psycopg2.connect("postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+conn = psycopg2.connect("postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 cur = conn.cursor()
 
 to_update = [

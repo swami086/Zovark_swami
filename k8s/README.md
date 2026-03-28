@@ -1,4 +1,4 @@
-# ZOVARC Kubernetes Deployment
+# ZOVARK Kubernetes Deployment
 
 ## Quick Start (Dev)
 
@@ -24,9 +24,9 @@ kubectl apply -f k8s/base/secrets.yaml
 kubectl apply -k k8s/overlays/production
 
 # 4. Verify
-kubectl -n zovarc get pods
-kubectl -n zovarc get hpa
-kubectl -n zovarc get networkpolicy
+kubectl -n zovark get pods
+kubectl -n zovark get hpa
+kubectl -n zovark get networkpolicy
 ```
 
 ## Air-Gap Deployment
@@ -34,15 +34,15 @@ kubectl -n zovarc get networkpolicy
 ```bash
 # 1. Push images to internal registry
 for img in pgvector:pg16 pgbouncer:latest redis:7-alpine temporal-auto-setup:1.24.2 litellm-database:main-stable; do
-  docker tag <source>/$img internal-registry.local:5000/zovarc/$img
-  docker push internal-registry.local:5000/zovarc/$img
+  docker tag <source>/$img internal-registry.local:5000/zovark/$img
+  docker push internal-registry.local:5000/zovark/$img
 done
 
-# 2. Build and push ZOVARC images
-docker build -t internal-registry.local:5000/zovarc/worker:latest ./worker
-docker build -t internal-registry.local:5000/zovarc/api:latest ./api
-docker build -t internal-registry.local:5000/zovarc/dashboard:latest ./dashboard
-docker push internal-registry.local:5000/zovarc/{worker,api,dashboard}:latest
+# 2. Build and push ZOVARK images
+docker build -t internal-registry.local:5000/zovark/worker:latest ./worker
+docker build -t internal-registry.local:5000/zovark/api:latest ./api
+docker build -t internal-registry.local:5000/zovark/dashboard:latest ./dashboard
+docker push internal-registry.local:5000/zovark/{worker,api,dashboard}:latest
 
 # 3. Deploy
 kubectl apply -k k8s/overlays/airgap
@@ -63,41 +63,41 @@ Worker and API pods scale automatically based on CPU utilization (target: 70%).
 
 ```bash
 # Scale workers manually
-kubectl -n zovarc scale deployment zovarc-worker --replicas=8
+kubectl -n zovark scale deployment zovark-worker --replicas=8
 
 # Check current replicas
-kubectl -n zovarc get hpa
+kubectl -n zovark get hpa
 ```
 
 ## Security Verification
 
 ```bash
 # Verify NetworkPolicy is applied
-kubectl -n zovarc get networkpolicy
-kubectl -n zovarc describe networkpolicy zovarc-worker-netpol
+kubectl -n zovark get networkpolicy
+kubectl -n zovark describe networkpolicy zovark-worker-netpol
 
 # Test worker isolation (should fail — workers accept no inbound)
-kubectl -n zovarc exec deploy/zovarc-api -- curl -s http://zovarc-worker:8080 || echo "Correctly blocked"
+kubectl -n zovark exec deploy/zovark-api -- curl -s http://zovark-worker:8080 || echo "Correctly blocked"
 
 # Verify worker can only reach allowed services
-kubectl -n zovarc exec deploy/zovarc-worker -- curl -s http://litellm:4000/health/liveliness  # Should succeed
-kubectl -n zovarc exec deploy/zovarc-worker -- curl -s http://zovarc-dashboard:3000  # Should fail
+kubectl -n zovark exec deploy/zovark-worker -- curl -s http://litellm:4000/health/liveliness  # Should succeed
+kubectl -n zovark exec deploy/zovark-worker -- curl -s http://zovark-dashboard:3000  # Should fail
 ```
 
 ## Monitoring
 
 ```bash
 # Pod status
-kubectl -n zovarc get pods -o wide
+kubectl -n zovark get pods -o wide
 
 # HPA status
-kubectl -n zovarc get hpa
+kubectl -n zovark get hpa
 
 # Worker logs
-kubectl -n zovarc logs -l component=worker --tail=50 -f
+kubectl -n zovark logs -l component=worker --tail=50 -f
 
 # Resource usage
-kubectl -n zovarc top pods
+kubectl -n zovark top pods
 ```
 
 ## Overlay Comparison

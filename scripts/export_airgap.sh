@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== ZOVARC Air-Gap Deployment Package Builder ==="
+echo "=== ZOVARK Air-Gap Deployment Package Builder ==="
 echo ""
 
 DRY_RUN=false
@@ -11,7 +11,7 @@ if [[ "$1" == "--dry-run" ]]; then
   echo ""
 fi
 
-EXPORT_DIR="./zovarc-airgap-bundle"
+EXPORT_DIR="./zovark-airgap-bundle"
 
 run_or_print() {
   if $DRY_RUN; then
@@ -26,9 +26,9 @@ run_or_print "mkdir -p $EXPORT_DIR"
 # 1. Save all Docker images
 echo "[1/5] Saving Docker images..."
 IMAGES=(
-  "zovarc-mvp-api"
-  "zovarc-mvp-worker"
-  "zovarc-mvp-dashboard"
+  "zovark-mvp-api"
+  "zovark-mvp-worker"
+  "zovark-mvp-dashboard"
   "pgvector/pgvector:pg16"
   "temporalio/auto-setup:1.24.2"
   "redis:7-alpine"
@@ -37,8 +37,8 @@ IMAGES=(
 )
 
 # Tag litellm image for export
-run_or_print "docker tag docker.litellm.ai/berriai/litellm-database:main-stable zovarc-litellm:latest 2>/dev/null || true"
-IMAGES+=("zovarc-litellm:latest")
+run_or_print "docker tag docker.litellm.ai/berriai/litellm-database:main-stable zovark-litellm:latest 2>/dev/null || true"
+IMAGES+=("zovark-litellm:latest")
 
 for img in "${IMAGES[@]}"; do
   FILENAME=$(echo "$img" | tr '/:' '_').tar
@@ -49,12 +49,12 @@ done
 # 2. Export Ollama model weights
 echo ""
 echo "[2/5] Exporting LLM model weights..."
-run_or_print "docker cp zovarc-ollama:/root/.ollama '$EXPORT_DIR/ollama_models'"
+run_or_print "docker cp zovark-ollama:/root/.ollama '$EXPORT_DIR/ollama_models'"
 
 # 3. Export embedding model weights
 echo ""
 echo "[3/5] Exporting embedding model weights..."
-run_or_print "docker cp zovarc-embedding:/data '$EXPORT_DIR/embedding_model'"
+run_or_print "docker cp zovark-embedding:/data '$EXPORT_DIR/embedding_model'"
 
 # 4. Copy configuration files
 echo ""
@@ -70,10 +70,10 @@ run_or_print "cp -r worker/ '$EXPORT_DIR/worker_src/'"
 echo "  Creating .env for air-gap..."
 if ! $DRY_RUN; then
 cat > "$EXPORT_DIR/.env" << 'EOF'
-ZOVARC_LLM_MODEL=zovarc-local
+ZOVARK_LLM_MODEL=zovark-local
 JWT_SECRET=change-me-in-production
-DATABASE_URL=postgresql://zovarc:zovarc@postgres:5432/zovarc
-LITELLM_MASTER_KEY=sk-zovarc-local
+DATABASE_URL=postgresql://zovark:zovark@postgres:5432/zovark
+LITELLM_MASTER_KEY=sk-zovark-local
 OPENROUTER_API_KEY=not-needed-airgap
 EOF
 fi
@@ -85,7 +85,7 @@ if ! $DRY_RUN; then
 cat > "$EXPORT_DIR/install.sh" << 'INSTALLER'
 #!/bin/bash
 set -e
-echo "=== ZOVARC Air-Gap Installation ==="
+echo "=== ZOVARK Air-Gap Installation ==="
 echo "Loading Docker images (this may take several minutes)..."
 
 for tarfile in *.tar; do
@@ -101,7 +101,7 @@ echo "Restoring embedding model weights..."
 mkdir -p embedding_volume
 cp -r embedding_model/* embedding_volume/
 
-echo "Starting ZOVARC platform..."
+echo "Starting ZOVARK platform..."
 docker compose -f docker-compose.airgap.yml up -d
 
 echo "Waiting for services to start (60 seconds)..."
@@ -111,13 +111,13 @@ echo "Seeding threat intelligence skills..."
 docker exec $(docker ps --filter "name=worker" --format "{{.Names}}" | head -1) python /app/scripts/seed_skills.py
 
 echo ""
-echo "=== ZOVARC Installation Complete ==="
+echo "=== ZOVARK Installation Complete ==="
 echo "Dashboard: http://localhost:3000"
 echo "API: http://localhost:8090"
 echo ""
 echo "Default credentials:"
-echo "  Admin: admin@zovarc.local / admin123"
-echo "  Analyst: analyst@zovarc.local / analyst123"
+echo "  Admin: admin@zovark.local / admin123"
+echo "  Analyst: analyst@zovark.local / analyst123"
 echo ""
 echo "To verify: docker compose -f docker-compose.airgap.yml ps"
 INSTALLER
@@ -134,4 +134,4 @@ if ! $DRY_RUN; then
 fi
 echo ""
 echo "Transfer this directory to the air-gapped network."
-echo "On the target machine, run: cd zovarc-airgap-bundle && ./install.sh"
+echo "On the target machine, run: cd zovark-airgap-bundle && ./install.sh"

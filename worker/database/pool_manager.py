@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc"
+    "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
 )
 
 POOL_CONFIGS = {
@@ -47,7 +47,7 @@ def initialize_pools(database_url: str = None):
                 config["minconn"],
                 config["maxconn"],
                 dsn,
-                application_name=f"zovarc-{tier}",
+                application_name=f"zovark-{tier}",
             )
             _pools[tier] = pool
             logger.info(f"Pool '{tier}' initialized: min={config['minconn']}, max={config['maxconn']}")

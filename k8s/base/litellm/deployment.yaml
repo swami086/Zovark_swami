@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: litellm
-  namespace: zovarc
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: litellm
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zovarc
+      app: zovark
       component: litellm
   template:
     metadata:
       labels:
-        app: zovarc
+        app: zovark
         component: litellm
     spec:
       containers:
@@ -33,12 +33,12 @@ spec:
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-api-secrets
+                  name: zovark-api-secrets
                   key: litellm-master-key
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-api-secrets
+                  name: zovark-api-secrets
                   key: openrouter-api-key
           volumeMounts:
             - name: litellm-config

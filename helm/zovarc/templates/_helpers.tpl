@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "zovarc.name" -}}
+{{- define "zovark.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "zovarc.fullname" -}}
+{{- define "zovark.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "zovarc.chart" -}}
+{{- define "zovark.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "zovarc.labels" -}}
-helm.sh/chart: {{ include "zovarc.chart" . }}
-{{ include "zovarc.selectorLabels" . }}
+{{- define "zovark.labels" -}}
+helm.sh/chart: {{ include "zovark.chart" . }}
+{{ include "zovark.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,31 +43,31 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "zovarc.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "zovarc.name" . }}
+{{- define "zovark.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "zovark.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 API selector labels
 */}}
-{{- define "zovarc.api.selectorLabels" -}}
-{{ include "zovarc.selectorLabels" . }}
+{{- define "zovark.api.selectorLabels" -}}
+{{ include "zovark.selectorLabels" . }}
 app.kubernetes.io/component: api
 {{- end }}
 
 {{/*
 Worker selector labels
 */}}
-{{- define "zovarc.worker.selectorLabels" -}}
-{{ include "zovarc.selectorLabels" . }}
+{{- define "zovark.worker.selectorLabels" -}}
+{{ include "zovark.selectorLabels" . }}
 app.kubernetes.io/component: worker
 {{- end }}
 
 {{/*
 Dashboard selector labels
 */}}
-{{- define "zovarc.dashboard.selectorLabels" -}}
-{{ include "zovarc.selectorLabels" . }}
+{{- define "zovark.dashboard.selectorLabels" -}}
+{{ include "zovark.selectorLabels" . }}
 app.kubernetes.io/component: dashboard
 {{- end }}

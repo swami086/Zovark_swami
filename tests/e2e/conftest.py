@@ -1,14 +1,14 @@
-"""Shared fixtures for ZOVARC end-to-end tests."""
+"""Shared fixtures for ZOVARK end-to-end tests."""
 
 import os
 import time
 import pytest
 import requests
 
-API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
-ADMIN_EMAIL = "admin@zovarc.local"
-ADMIN_PASSWORD = "zovarc123"
-TEST_TENANT_ID = os.environ.get("ZOVARC_TEST_TENANT_ID", "zovarc-dev")
+API_URL = os.environ.get("ZOVARK_API_URL", "http://localhost:8090")
+ADMIN_EMAIL = "admin@zovark.local"
+ADMIN_PASSWORD = "zovark123"
+TEST_TENANT_ID = os.environ.get("ZOVARK_TEST_TENANT_ID", "zovark-dev")
 
 
 def wait_for_api(url=API_URL, timeout=120):

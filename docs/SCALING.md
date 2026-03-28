@@ -1,8 +1,8 @@
-# ZOVARC Horizontal Scaling Guide
+# ZOVARK Horizontal Scaling Guide
 
 ## Architecture Overview
 
-ZOVARC workers are **fully stateless** — all state lives in PostgreSQL (persistent), Redis (ephemeral counters), and Temporal (workflow state). This enables horizontal scaling by simply adding more worker instances.
+ZOVARK workers are **fully stateless** — all state lives in PostgreSQL (persistent), Redis (ephemeral counters), and Temporal (workflow state). This enables horizontal scaling by simply adding more worker instances.
 
 ```
                     ┌─────────────┐
@@ -65,13 +65,13 @@ Workers connect through PgBouncer for connection pooling:
 | Reserve Pool Size   | 20    |
 | Max DB Connections   | 50    |
 
-Workers use `DATABASE_URL=postgresql://zovarc:...@pgbouncer:5432/zovarc`.
+Workers use `DATABASE_URL=postgresql://zovark:...@pgbouncer:5432/zovark`.
 
 ## Rate Limiting
 
 Per-tenant concurrent investigation limits via Redis atomic counters:
 - Default: 50 concurrent investigations per tenant
-- Key pattern: `zovarc:active:{tenant_id}`
+- Key pattern: `zovark:active:{tenant_id}`
 - Safety: 1-hour TTL auto-expiry prevents counter drift
 - Implementation: `check_rate_limit_activity` / `decrement_active_activity` (Temporal activities)
 

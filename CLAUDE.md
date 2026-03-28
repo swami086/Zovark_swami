@@ -1,4 +1,4 @@
-# ZOVARC — Autonomous AI SOC Platform
+# ZOVARK — Autonomous AI SOC Platform
 
 > Air-gapped, on-premise security operations center powered by local LLMs.
 > Receives SIEM alerts → generates investigation code → executes in sandbox → delivers structured verdicts.
@@ -34,7 +34,7 @@ Sandbox policy: `worker/stages/sandbox_policy.yaml` (declarative, customer-audit
 ## Directory Map
 
 ```
-zovarc-mvp/
+zovark-mvp/
 ├── api/                    # Go REST API (45 files) — auth, handlers, middleware, RBAC
 ├── worker/                 # Python Temporal worker — investigation pipeline
 │   ├── stages/                # V2 pipeline (5 stages, 1392 lines total)
@@ -48,7 +48,7 @@ zovarc-mvp/
 │   │   └── register.py        # get_v2_activities() + get_v2_workflows()
 │   ├── _legacy_activities.py  # Shared activities (fetch_task, log_audit, etc.)
 │   ├── activities/            # Package re-exports shared activities
-│   ├── workflows/             # Non-investigation workflows (feedback/KEV/zovarc)
+│   ├── workflows/             # Non-investigation workflows (feedback/KEV/zovark)
 │   ├── database/              # Connection pool manager (psycopg2 ThreadedConnectionPool)
 │   ├── detection/             # Sigma rule generation
 │   ├── intelligence/          # Blast radius, FP analysis, cross-tenant
@@ -108,7 +108,7 @@ zovarc-mvp/
 - **Sandbox:** Docker with AST prefilter, network isolation, read-only fs, cap-drop ALL, seccomp profile
 - **Database:** 76+ tables, pgvector embeddings, connection pooling via PgBouncer
 - **Metrics:** `GET /api/v1/metrics` — investigation counts, LLM stats, performance, template health
-- **DPO:** Trained adapter available (`models/zovarc-dpo-adapter/`, 48MB), GGUF at `models/zovarc-dpo-Q4_K_M.gguf`
+- **DPO:** Trained adapter available (`models/zovark-dpo-adapter/`, 48MB), GGUF at `models/zovark-dpo-Q4_K_M.gguf`
 - **V2 unit tests:** 15/15 passing in <1s
 - **Whitepaper:** `docs/WHITEPAPER.md` — "Autonomous SOC Investigation on Air-Gapped Infrastructure"
 
@@ -149,7 +149,7 @@ See `docs/MODEL_TIER_STRATEGY.md` and `docs/HARDWARE_REQUIREMENTS.md`.
 - **New V2 activities:** Add to the appropriate `worker/stages/*.py` file, register in `worker/stages/register.py`
 - **New workflows:** Add to `worker/stages/`, register in `worker/stages/register.py`
 - **Legacy activities:** Still in `worker/_legacy_activities.py` (shared by non-investigation workflows). Do NOT add new code here.
-- **Migrations:** Sequential in `migrations/`, apply via `docker compose exec -T postgres psql -U zovarc -d zovarc < migrations/NNN_name.sql`
+- **Migrations:** Sequential in `migrations/`, apply via `docker compose exec -T postgres psql -U zovark -d zovark < migrations/NNN_name.sql`
 - **After Python changes:** `docker compose build worker && docker compose up -d worker`
 - **After Go changes:** `docker compose build api && docker compose up -d api`
 
@@ -163,10 +163,10 @@ docker compose up -d
 curl -s http://localhost:8090/health
 
 # Login
-# Set ZOVARC_ADMIN_EMAIL and ZOVARC_ADMIN_PASSWORD env vars
+# Set ZOVARK_ADMIN_EMAIL and ZOVARK_ADMIN_PASSWORD env vars
 TOKEN=$(curl -s -X POST http://localhost:8090/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"'"${ZOVARC_ADMIN_EMAIL}"'","password":"'"${ZOVARC_ADMIN_PASSWORD}"'"}' | \
+  -d '{"email":"'"${ZOVARK_ADMIN_EMAIL}"'","password":"'"${ZOVARK_ADMIN_PASSWORD}"'"}' | \
   sed 's/.*"token":"\([^"]*\)".*/\1/')
 
 # Submit investigation
@@ -224,7 +224,7 @@ pip install -r dpo/requirements.txt
 python scripts/dpo_train.py
 
 # Phase 4: Measure delta
-python scripts/accuracy_benchmark.py --model zovarc_aligned_1.5b
+python scripts/accuracy_benchmark.py --model zovark_aligned_1.5b
 ```
 
 ## Pending Work (Priority Order)

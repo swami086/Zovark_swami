@@ -1,4 +1,4 @@
-# ZOVARC Disaster Recovery Runbook
+# ZOVARK Disaster Recovery Runbook
 
 ## RTO/RPO Targets
 
@@ -19,24 +19,24 @@
    ./scripts/backup-db.sh
 
    # Restore to a test database (non-destructive)
-   export POSTGRES_DB=zovarc_dr_test
+   export POSTGRES_DB=zovark_dr_test
    ./scripts/restore-db.sh daily <latest-backup>
 
    # Verify table counts match
-   psql -h localhost -U zovarc -d zovarc_dr_test -c \
+   psql -h localhost -U zovark -d zovark_dr_test -c \
      "SELECT COUNT(*) FROM pg_tables WHERE schemaname='public';"
    ```
 
 2. **MinIO Backup Verification**
    ```bash
-   mc ls zovarc/zovarc-backups/daily/ | tail -1
-   mc stat zovarc/zovarc-backups/daily/<latest>
+   mc ls zovark/zovark-backups/daily/ | tail -1
+   mc stat zovark/zovark-backups/daily/<latest>
    ```
 
 3. **Temporal State Verification**
    ```bash
    tctl workflow list --status open | head -5
-   tctl namespace describe zovarc-tasks
+   tctl namespace describe zovark-tasks
    ```
 
 ### Weekly Manual Checks
@@ -66,7 +66,7 @@
 
 1. **Verify failure is real** (not transient)
    ```bash
-   pg_isready -h postgres-primary -U zovarc -d zovarc
+   pg_isready -h postgres-primary -U zovark -d zovark
    ```
 
 2. **Promote read replica**
@@ -78,21 +78,21 @@
 3. **Update connection strings**
    ```bash
    # Update Kubernetes secret
-   kubectl create secret generic zovarc-db-credentials \
-     --from-literal=direct-url="postgresql://zovarc:<pass>@<new-primary>:5432/zovarc" \
-     --from-literal=pgbouncer-url="postgresql://zovarc:<pass>@<new-primary>:5432/zovarc" \
+   kubectl create secret generic zovark-db-credentials \
+     --from-literal=direct-url="postgresql://zovark:<pass>@<new-primary>:5432/zovark" \
+     --from-literal=pgbouncer-url="postgresql://zovark:<pass>@<new-primary>:5432/zovark" \
      --dry-run=client -o yaml | kubectl apply -f -
    ```
 
 4. **Restart dependent services**
    ```bash
-   kubectl rollout restart deployment/zovarc-api -n zovarc
-   kubectl rollout restart deployment/zovarc-worker -n zovarc
+   kubectl rollout restart deployment/zovark-api -n zovark
+   kubectl rollout restart deployment/zovark-worker -n zovark
    ```
 
 5. **Verify recovery**
    ```bash
-   curl -s http://zovarc-api:8090/health | jq .
+   curl -s http://zovark-api:8090/health | jq .
    ```
 
 ### Scenario 2: API Gateway Failure
@@ -103,25 +103,25 @@
 
 1. **Check pod status**
    ```bash
-   kubectl get pods -l component=api -n zovarc
-   kubectl describe pod <failing-pod> -n zovarc
+   kubectl get pods -l component=api -n zovark
+   kubectl describe pod <failing-pod> -n zovark
    ```
 
 2. **If OOMKilled:** Increase memory limits
    ```bash
-   kubectl set resources deployment/zovarc-api --limits=memory=1Gi -n zovarc
+   kubectl set resources deployment/zovark-api --limits=memory=1Gi -n zovark
    ```
 
 3. **If CrashLoopBackOff:** Check logs and rollback
    ```bash
-   kubectl logs -l component=api -n zovarc --tail=50
-   kubectl rollout undo deployment/zovarc-api -n zovarc
+   kubectl logs -l component=api -n zovark --tail=50
+   kubectl rollout undo deployment/zovark-api -n zovark
    ```
 
 4. **If all pods down:** Scale from zero
    ```bash
-   kubectl scale deployment/zovarc-api --replicas=0 -n zovarc
-   kubectl scale deployment/zovarc-api --replicas=3 -n zovarc
+   kubectl scale deployment/zovark-api --replicas=0 -n zovark
+   kubectl scale deployment/zovark-api --replicas=3 -n zovark
    ```
 
 ### Scenario 3: Worker Failure (Temporal Tasks Stuck)
@@ -132,19 +132,19 @@
 
 1. **Check worker health**
    ```bash
-   kubectl get pods -l component=worker -n zovarc
-   kubectl logs -l component=worker -n zovarc --tail=20
+   kubectl get pods -l component=worker -n zovark
+   kubectl logs -l component=worker -n zovark --tail=20
    ```
 
 2. **Restart workers**
    ```bash
-   kubectl rollout restart deployment/zovarc-worker -n zovarc
+   kubectl rollout restart deployment/zovark-worker -n zovark
    ```
 
 3. **If Temporal queue is backed up:**
    ```bash
    # Scale up workers temporarily
-   kubectl scale deployment/zovarc-worker --replicas=10 -n zovarc
+   kubectl scale deployment/zovark-worker --replicas=10 -n zovark
    ```
 
 4. **If workflows are stuck permanently:**
@@ -173,7 +173,7 @@
 
 3. **Verify secondary region**
    ```bash
-   curl -s https://zovarc.example.com/health
+   curl -s https://zovark.example.com/health
    ```
 
 4. **Notify stakeholders** (see Communication Plan below)
@@ -187,12 +187,12 @@
 1. **Check Redis status**
    ```bash
    redis-cli -h redis ping
-   kubectl get pods -l component=redis -n zovarc
+   kubectl get pods -l component=redis -n zovark
    ```
 
 2. **Restart Redis**
    ```bash
-   kubectl rollout restart deployment/redis -n zovarc
+   kubectl rollout restart deployment/redis -n zovark
    ```
 
 3. **Impact:** Workers will function without Redis (rate limiting disabled, cache cold). No data loss expected.
@@ -203,9 +203,9 @@
 
 | Level | Criteria | Notification |
 |-------|----------|-------------|
-| SEV-1 | Complete outage, data at risk | Immediate: Slack #zovarc-incidents, PagerDuty, email to all stakeholders |
-| SEV-2 | Degraded service, no data loss | Within 15 min: Slack #zovarc-incidents, email to engineering leads |
-| SEV-3 | Single component failure, auto-healing | Within 1 hour: Slack #zovarc-ops |
+| SEV-1 | Complete outage, data at risk | Immediate: Slack #zovark-incidents, PagerDuty, email to all stakeholders |
+| SEV-2 | Degraded service, no data loss | Within 15 min: Slack #zovark-incidents, email to engineering leads |
+| SEV-3 | Single component failure, auto-healing | Within 1 hour: Slack #zovark-ops |
 | SEV-4 | Performance degradation | Next business day: Jira ticket |
 
 ### Stakeholder Contacts
@@ -222,7 +222,7 @@
 
 **Initial Notification:**
 ```
-[ZOVARC Incident] SEV-<N>: <Brief Description>
+[ZOVARK Incident] SEV-<N>: <Brief Description>
 Time: <timestamp UTC>
 Impact: <what is affected>
 Status: Investigating / Mitigating / Resolved
@@ -231,7 +231,7 @@ ETA: <estimated resolution time>
 
 **Status Update (every 30 min for SEV-1):**
 ```
-[ZOVARC Incident Update] <Incident ID>
+[ZOVARK Incident Update] <Incident ID>
 Current Status: <status>
 Actions Taken: <list>
 Next Steps: <list>
@@ -240,7 +240,7 @@ ETA: <updated estimate>
 
 ## Post-Incident Review Template
 
-### Incident Report: [ZOVARC-YYYY-MMDD-NNN]
+### Incident Report: [ZOVARK-YYYY-MMDD-NNN]
 
 **Date:** YYYY-MM-DD
 **Duration:** HH:MM

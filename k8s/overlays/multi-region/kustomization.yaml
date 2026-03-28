@@ -9,31 +9,31 @@ patches:
   # API: 3 replicas per region
   - target:
       kind: Deployment
-      name: zovarc-api
+      name: zovark-api
     patch: |
       - op: replace
         path: /spec/replicas
         value: 3
       - op: add
         path: /spec/template/metadata/labels/topology.kubernetes.io~1region
-        value: "${ZOVARC_REGION}"
+        value: "${ZOVARK_REGION}"
 
   # Worker: 4 replicas base (HPA scales further)
   - target:
       kind: Deployment
-      name: zovarc-worker
+      name: zovark-worker
     patch: |
       - op: replace
         path: /spec/replicas
         value: 4
       - op: add
         path: /spec/template/metadata/labels/topology.kubernetes.io~1region
-        value: "${ZOVARC_REGION}"
+        value: "${ZOVARK_REGION}"
 
   # Worker HPA: min 4, max 50 for multi-region
   - target:
       kind: HorizontalPodAutoscaler
-      name: zovarc-worker-hpa
+      name: zovark-worker-hpa
     patch: |
       - op: replace
         path: /spec/minReplicas
@@ -45,7 +45,7 @@ patches:
   # API HPA: min 3, max 15
   - target:
       kind: HorizontalPodAutoscaler
-      name: zovarc-api-hpa
+      name: zovark-api-hpa
     patch: |
       - op: replace
         path: /spec/minReplicas
@@ -70,9 +70,9 @@ patches:
             memory: 8Gi
 
 configMapGenerator:
-  - name: zovarc-region-config
+  - name: zovark-region-config
     literals:
-      - ZOVARC_REGION=${ZOVARC_REGION:-us-east-1}
-      - ZOVARC_ROLE=${ZOVARC_ROLE:-primary}
+      - ZOVARK_REGION=${ZOVARK_REGION:-us-east-1}
+      - ZOVARK_ROLE=${ZOVARK_ROLE:-primary}
       - DB_READ_REPLICA_URL=${DB_READ_REPLICA_URL:-}
       - REDIS_REPLICA_URL=${REDIS_REPLICA_URL:-}

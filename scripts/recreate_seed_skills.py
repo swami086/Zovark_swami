@@ -4,7 +4,7 @@ import psycopg2
 import urllib.request
 import urllib.error
 
-DB_URL = os.getenv("POSTGRES_URI", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+DB_URL = os.getenv("POSTGRES_URI", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 with open('/app/seed_skills.py', 'r') as f:
     content = f.read()

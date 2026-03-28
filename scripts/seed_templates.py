@@ -2,7 +2,7 @@ import json
 import psycopg2
 import os
 
-DB_URL = os.getenv("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+DB_URL = os.getenv("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 brute_force_template = """import json, re, sys
 from collections import defaultdict, Counter

@@ -496,7 +496,7 @@ func attemptDelivery(url, secret string, body []byte) (int, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "ZOVARC-Webhook/1.0")
+	req.Header.Set("User-Agent", "ZOVARK-Webhook/1.0")
 
 	// HMAC-SHA256 signature
 	if secret != "" {

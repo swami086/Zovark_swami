@@ -1,6 +1,6 @@
-"""ZOVARC Locust Load Test.
+"""ZOVARK Locust Load Test.
 
-Load test scenarios for the ZOVARC API gateway. Tests authentication,
+Load test scenarios for the ZOVARK API gateway. Tests authentication,
 task creation, task listing, and stats endpoints under load.
 
 Usage:
@@ -40,8 +40,8 @@ SAMPLE_LOGS = [
 TASK_TYPES = ["log_analysis", "Brute Force Investigation", "C2 Communication Hunt", "Phishing Investigation"]
 
 
-class ZovarcUser(HttpUser):
-    """Simulated ZOVARC platform user."""
+class ZovarkUser(HttpUser):
+    """Simulated ZOVARK platform user."""
 
     wait_time = between(1, 5)
     token = None
@@ -50,7 +50,7 @@ class ZovarcUser(HttpUser):
         """Login on start to get JWT token."""
         resp = self.client.post(
             "/api/v1/auth/login",
-            json={"email": "admin@zovarc.local", "password": "zovarc123"},
+            json={"email": "admin@zovark.local", "password": "zovark123"},
             name="/api/v1/auth/login",
         )
         if resp.status_code == 200:
@@ -64,7 +64,7 @@ class ZovarcUser(HttpUser):
                     "email": email,
                     "password": "LoadTest123!",
                     "display_name": "Load Test User",
-                    "tenant_id": "zovarc-dev",
+                    "tenant_id": "zovark-dev",
                 },
             )
             resp = self.client.post(

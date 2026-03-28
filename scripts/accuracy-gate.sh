@@ -1,5 +1,5 @@
 #!/bin/bash
-# ZOVARC Accuracy Gate
+# ZOVARK Accuracy Gate
 #
 # Runs accuracy validation tests and fails if accuracy drops below threshold.
 # Designed for CI pipelines and local pre-merge checks.
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "========================================="
-echo "  ZOVARC Accuracy Gate"
+echo "  ZOVARK Accuracy Gate"
 echo "  Threshold: ${THRESHOLD}%"
 echo "  Mode: ${MODE:-LIVE}"
 echo "========================================="

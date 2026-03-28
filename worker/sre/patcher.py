@@ -12,7 +12,7 @@ from model_config import get_tier_config
 
 
 def get_db_connection():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
@@ -80,7 +80,7 @@ async def _patch_logic_bug(diagnosis: dict) -> dict:
 
     tier_config = get_tier_config('generate_patch')
     litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
 
     system_prompt = (
         "You are an SRE agent generating minimal Python code fixes. "

@@ -1,5 +1,5 @@
 """
-Zovarc Cipher Audit Skill
+Zovark Cipher Audit Skill
 Deterministic TLS cipher-suite classification per NIST SP 800-57.
 
 Receives (protocol_version, cipher_suite_name) and returns a structured

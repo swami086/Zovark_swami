@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis
-  namespace: zovarc
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: redis
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zovarc
+      app: zovark
       component: redis
   template:
     metadata:
       labels:
-        app: zovarc
+        app: zovark
         component: redis
     spec:
       containers:

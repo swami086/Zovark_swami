@@ -1,5 +1,5 @@
 """
-ZOVARC DPO Prompt Library
+ZOVARK DPO Prompt Library
 
 Two versions of each prompt:
 - FULL_*: Used for Kimi API calls (no token limit)

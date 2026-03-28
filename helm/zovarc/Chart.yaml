@@ -1,6 +1,6 @@
 apiVersion: v2
-name: zovarc
-description: ZOVARC SOC Automation Platform — AI-powered security investigation and response
+name: zovark
+description: ZOVARK SOC Automation Platform — AI-powered security investigation and response
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
@@ -11,7 +11,7 @@ keywords:
   - llm
   - investigation
 maintainers:
-  - name: ZOVARC Team
-    email: admin@zovarc.local
+  - name: ZOVARK Team
+    email: admin@zovark.local
 sources:
-  - https://github.com/zovarc-soc/zovarc-mvp
+  - https://github.com/zovark-soc/zovark-mvp

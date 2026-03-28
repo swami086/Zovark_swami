@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# test-airgap.sh — Verify ZOVARC works without internet by invalidating cloud API keys
+# test-airgap.sh — Verify ZOVARK works without internet by invalidating cloud API keys
 set -euo pipefail
 
-echo "=== ZOVARC Air-Gap Test ==="
+echo "=== ZOVARK Air-Gap Test ==="
 echo ""
 
 # Check Ollama is running
@@ -33,10 +33,10 @@ echo ""
 echo "3. Testing LiteLLM fallback to Ollama..."
 echo "   (Using airgap model name directly)"
 LITELLM_RESP=$(curl -sf http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-zovarc-dev-2026}" \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-zovark-dev-2026}" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zovarc-fast-airgap",
+    "model": "zovark-fast-airgap",
     "messages": [{"role":"user","content":"Respond with only the word OK"}],
     "max_tokens": 10
   }' 2>&1) || true
@@ -54,7 +54,7 @@ echo ""
 echo "4. Submitting test investigation via API..."
 TOKEN=$(curl -sf http://localhost:8090/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@zovarc.local","password":"zovarc123"}' | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+  -d '{"email":"admin@zovark.local","password":"zovark123"}' | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
 if [ -z "$TOKEN" ]; then
   echo "   Login failed — skipping API test"

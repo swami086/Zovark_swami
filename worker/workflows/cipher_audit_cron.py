@@ -149,7 +149,7 @@ class CipherAuditCronWorkflow:
             --schedule-id cipher-audit-nightly \\
             --cron '0 3 * * *' \\
             --workflow-type CipherAuditCronWorkflow \\
-            --task-queue zovarc-tasks \\
+            --task-queue zovark-tasks \\
             --input '{}'
 
     Stages:

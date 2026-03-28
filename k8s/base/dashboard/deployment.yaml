@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: zovarc-dashboard
-  namespace: zovarc
+  name: zovark-dashboard
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: dashboard
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zovarc
+      app: zovark
       component: dashboard
   template:
     metadata:
       labels:
-        app: zovarc
+        app: zovark
         component: dashboard
     spec:
       containers:
         - name: dashboard
-          image: zovarc-mvp-dashboard:latest
+          image: zovark-mvp-dashboard:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000

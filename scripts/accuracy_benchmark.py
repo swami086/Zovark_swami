@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ZOVARC Accuracy Benchmark — runs labeled corpus against model tiers.
+"""ZOVARK Accuracy Benchmark — runs labeled corpus against model tiers.
 
 Submits each labeled alert through the investigation pipeline, compares
 results against ground truth, and produces a structured accuracy report.
@@ -23,7 +23,7 @@ import httpx
 
 GROUND_TRUTH_PATH = "tests/corpus/ground_truth.json"
 RESULTS_DIR = "docs/accuracy_results"
-API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+API_URL = os.environ.get("ZOVARK_API_URL", "http://localhost:8090")
 
 
 def load_ground_truth() -> dict:
@@ -34,8 +34,8 @@ def load_ground_truth() -> dict:
 def login(api_url: str) -> str:
     """Login and return access token."""
     resp = httpx.post(f"{api_url}/api/v1/auth/login", json={
-        "email": os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local"),
-        "password": os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026"),
+        "email": os.environ.get("ZOVARK_TEST_EMAIL", "admin@test.local"),
+        "password": os.environ.get("ZOVARK_TEST_PASSWORD", "TestPass2026"),
     }, timeout=10.0)
     resp.raise_for_status()
     return resp.json().get("token", "")
@@ -239,7 +239,7 @@ def compute_aggregates(scores: list) -> dict:
 def generate_markdown_report(model: str, aggregates: dict, scores: list) -> str:
     """Generate Markdown accuracy report."""
     a = aggregates
-    report = f"""# ZOVARC Accuracy Report — {model} tier
+    report = f"""# ZOVARK Accuracy Report — {model} tier
 
 **Generated:** {datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}
 **Corpus:** {a['total']} labeled alerts
@@ -281,7 +281,7 @@ def generate_markdown_report(model: str, aggregates: dict, scores: list) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ZOVARC Accuracy Benchmark")
+    parser = argparse.ArgumentParser(description="ZOVARK Accuracy Benchmark")
     parser.add_argument("--model", choices=["fast", "standard", "reasoning"], default="fast")
     parser.add_argument("--all", action="store_true", help="Run all tiers")
     parser.add_argument("--offline", action="store_true", help="Score existing results only")
@@ -313,7 +313,7 @@ def main():
                 print("Use --offline to score existing results, or start the Docker stack")
                 sys.exit(1)
 
-            os.environ["ZOVARC_LLM_MODEL"] = f"zovarc-{tier}" if tier != "fast" else "fast"
+            os.environ["ZOVARK_LLM_MODEL"] = f"zovark-{tier}" if tier != "fast" else "fast"
 
             for i, alert in enumerate(alerts):
                 alert_id = alert.get("id", f"alert-{i}")

@@ -1,6 +1,6 @@
-# ZOVARC Terraform Infrastructure
+# ZOVARK Terraform Infrastructure
 
-Modular Terraform configuration for deploying ZOVARC's cloud infrastructure on AWS.
+Modular Terraform configuration for deploying ZOVARK's cloud infrastructure on AWS.
 
 ## Modules
 
@@ -59,11 +59,11 @@ terraform apply -var="db_password=$DB_PASSWORD"
 ### Connect to EKS
 
 ```bash
-aws eks update-kubeconfig --name zovarc-dev --region us-east-1
+aws eks update-kubeconfig --name zovark-dev --region us-east-1
 kubectl get nodes
 ```
 
-### Deploy ZOVARC to EKS
+### Deploy ZOVARK to EKS
 
 After infrastructure is provisioned:
 
@@ -72,7 +72,7 @@ After infrastructure is provisioned:
 kubectl apply -k k8s/overlays/production/
 
 # Option B: Helm
-helm install zovarc ./helm/zovarc \
+helm install zovark ./helm/zovark \
   --set secrets.databaseUrl="$(terraform output -raw database_url)" \
   --set worker.env.REDIS_URL="$(terraform output -raw redis_url)"
 ```
@@ -85,7 +85,7 @@ helm install zovarc ./helm/zovarc \
 module "vpc" {
   source = "../../modules/vpc"
 
-  project              = "zovarc"
+  project              = "zovark"
   environment          = "dev"
   vpc_cidr             = "10.0.0.0/16"
   availability_zones   = ["us-east-1a", "us-east-1b"]
@@ -100,7 +100,7 @@ module "vpc" {
 module "rds" {
   source = "../../modules/rds"
 
-  project              = "zovarc"
+  project              = "zovark"
   environment        = "prod"
   vpc_id             = module.vpc.vpc_id
   subnet_ids         = module.vpc.private_subnet_ids
@@ -117,10 +117,10 @@ For production, enable remote state by uncommenting the backend block:
 
 ```hcl
 backend "s3" {
-  bucket         = "zovarc-terraform-state"
+  bucket         = "zovark-terraform-state"
   key            = "prod/terraform.tfstate"
   region         = "us-east-1"
-  dynamodb_table = "zovarc-terraform-locks"
+  dynamodb_table = "zovark-terraform-locks"
   encrypt        = true
 }
 ```
@@ -128,9 +128,9 @@ backend "s3" {
 Create the S3 bucket and DynamoDB table first:
 
 ```bash
-aws s3api create-bucket --bucket zovarc-terraform-state --region us-east-1
+aws s3api create-bucket --bucket zovark-terraform-state --region us-east-1
 aws dynamodb create-table \
-  --table-name zovarc-terraform-locks \
+  --table-name zovark-terraform-locks \
   --attribute-definitions AttributeName=LockID,AttributeType=S \
   --key-schema AttributeName=LockID,KeyType=HASH \
   --billing-mode PAY_PER_REQUEST

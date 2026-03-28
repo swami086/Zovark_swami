@@ -12,16 +12,16 @@ from temporalio import activity
 
 
 def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovarc:zovarc_dev_2026@postgres:5432/zovarc")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
     return psycopg2.connect(db_url)
 
 
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovarc-dev-2026")
+LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
 
 # Current embedding model version — update when model changes
-CURRENT_EMBED_MODEL = os.environ.get("ZOVARC_EMBED_MODEL", "nomic-embed-text-v1.5")
-CURRENT_EMBED_VERSION = os.environ.get("ZOVARC_EMBED_VERSION", "1.5")
+CURRENT_EMBED_MODEL = os.environ.get("ZOVARK_EMBED_MODEL", "nomic-embed-text-v1.5")
+CURRENT_EMBED_VERSION = os.environ.get("ZOVARK_EMBED_VERSION", "1.5")
 RE_EMBED_BATCH_SIZE = 100
 
 

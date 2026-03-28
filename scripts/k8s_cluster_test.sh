@@ -1,5 +1,5 @@
 #!/bin/bash
-# ZOVARC K8s Cluster Smoke Test
+# ZOVARK K8s Cluster Smoke Test
 # Tests actual deployment against a real Kubernetes cluster.
 #
 # Prerequisites:
@@ -24,10 +24,10 @@ case "$OVERLAY" in
   *) echo "Usage: $0 [dev|prod|airgap]"; exit 1 ;;
 esac
 
-NAMESPACE="zovarc-test-${OVERLAY}"
+NAMESPACE="zovark-test-${OVERLAY}"
 RESULTS_FILE="docs/K8S_VALIDATION_${OVERLAY}.md"
 
-echo "=== ZOVARC K8s Cluster Test — $OVERLAY overlay ==="
+echo "=== ZOVARK K8s Cluster Test — $OVERLAY overlay ==="
 echo "Namespace: $NAMESPACE"
 echo ""
 
@@ -47,7 +47,7 @@ echo "  ✓ Manifests applied"
 # Phase 3: Wait for pods
 echo ""
 echo "--- Phase 3: Wait for pods (timeout 5m) ---"
-for label in zovarc-api zovarc-worker zovarc-postgres zovarc-redis zovarc-temporal; do
+for label in zovark-api zovark-worker zovark-postgres zovark-redis zovark-temporal; do
   echo -n "  Waiting for $label... "
   if kubectl wait --for=condition=ready pod -l "app=$label" -n "$NAMESPACE" --timeout=300s 2>/dev/null; then
     echo "✓"
@@ -63,7 +63,7 @@ kubectl get pods -n "$NAMESPACE" -o wide
 # Phase 4: Health check
 echo ""
 echo "--- Phase 4: Health check ---"
-API_POD=$(kubectl get pod -l app=zovarc-api -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+API_POD=$(kubectl get pod -l app=zovark-api -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 HEALTH_RESULT="SKIPPED"
 if [ -n "$API_POD" ]; then
   HEALTH_RESULT=$(kubectl exec "$API_POD" -n "$NAMESPACE" -- curl -sf http://localhost:8090/health 2>&1 || echo "FAILED")
@@ -76,10 +76,10 @@ fi
 # Phase 5: Database connectivity
 echo ""
 echo "--- Phase 5: Database ---"
-PG_POD=$(kubectl get pod -l app=zovarc-postgres -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+PG_POD=$(kubectl get pod -l app=zovark-postgres -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 TABLE_COUNT="N/A"
 if [ -n "$PG_POD" ]; then
-  TABLE_COUNT=$(kubectl exec "$PG_POD" -n "$NAMESPACE" -- psql -U zovarc -d zovarc -tAc "SELECT COUNT(*) FROM pg_tables WHERE schemaname='public'" 2>/dev/null || echo "FAILED")
+  TABLE_COUNT=$(kubectl exec "$PG_POD" -n "$NAMESPACE" -- psql -U zovark -d zovark -tAc "SELECT COUNT(*) FROM pg_tables WHERE schemaname='public'" 2>/dev/null || echo "FAILED")
   echo "  Tables: $TABLE_COUNT"
   echo "  ✓ Database accessible"
 else
@@ -89,7 +89,7 @@ fi
 # Phase 6: Service connectivity
 echo ""
 echo "--- Phase 6: Services ---"
-for svc in zovarc-api zovarc-postgres zovarc-redis zovarc-temporal; do
+for svc in zovark-api zovark-postgres zovark-redis zovark-temporal; do
   if kubectl get svc "$svc" -n "$NAMESPACE" &>/dev/null; then
     echo "  ✓ Service $svc exists"
   else
@@ -116,7 +116,7 @@ echo "  Network policies: $NP_COUNT"
 echo ""
 echo "--- Generating report ---"
 cat > "$RESULTS_FILE" << EOF
-# ZOVARC K8s Cluster Validation — $OVERLAY
+# ZOVARK K8s Cluster Validation — $OVERLAY
 
 **Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
 **Overlay:** $OVERLAY

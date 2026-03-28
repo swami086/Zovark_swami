@@ -48,7 +48,7 @@ TK2=$(curl -s -X POST $API/api/v1/auth/login -H "Content-Type: application/json"
 
 BENIGN=0; SUSPICIOUS=0; TP=0; PENDING=0
 for TID in "${TASK_IDS[@]}"; do
-  ROW=$(docker compose exec -T postgres psql -U zovarc -d zovarc -t -c "SELECT status, COALESCE(output->>'verdict','?'), COALESCE((output->>'risk_score')::int, -1) FROM agent_tasks WHERE id='$TID';" 2>/dev/null | tr -d ' ')
+  ROW=$(docker compose exec -T postgres psql -U zovark -d zovark -t -c "SELECT status, COALESCE(output->>'verdict','?'), COALESCE((output->>'risk_score')::int, -1) FROM agent_tasks WHERE id='$TID';" 2>/dev/null | tr -d ' ')
   STATUS=$(echo "$ROW" | cut -d'|' -f1)
   VERDICT=$(echo "$ROW" | cut -d'|' -f2)
   RISK=$(echo "$ROW" | cut -d'|' -f3)

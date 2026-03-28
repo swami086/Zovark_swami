@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ZOVARC Alert Generator — continuous alert submission for demos.
+ZOVARK Alert Generator — continuous alert submission for demos.
 
 Usage:
     python scripts/alert_generator.py                          # 2/min, unlimited
@@ -17,7 +17,7 @@ import time
 import urllib.request
 from datetime import datetime
 
-API_URL = os.environ.get("ZOVARC_API_URL", "http://localhost:8090")
+API_URL = os.environ.get("ZOVARK_API_URL", "http://localhost:8090")
 
 # Randomization pools
 SOURCE_IPS = [f"10.0.0.{i}" for i in range(10, 100)]
@@ -29,8 +29,8 @@ USERNAMES = ["jsmith", "alice", "bob.jones", "m.chen", "s.patel", "k.williams", 
 
 
 def login(api_url: str) -> str:
-    email = os.environ.get("ZOVARC_TEST_EMAIL", "admin@test.local")
-    password = os.environ.get("ZOVARC_TEST_PASSWORD", "TestPass2026")
+    email = os.environ.get("ZOVARK_TEST_EMAIL", "admin@test.local")
+    password = os.environ.get("ZOVARK_TEST_PASSWORD", "TestPass2026")
     payload = json.dumps({"email": email, "password": password}).encode()
     req = urllib.request.Request(f"{api_url}/api/v1/auth/login", data=payload,
                                  headers={"Content-Type": "application/json"})
@@ -82,10 +82,10 @@ def pick_severity(dist: dict) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ZOVARC Alert Generator")
+    parser = argparse.ArgumentParser(description="ZOVARK Alert Generator")
     parser.add_argument("--rate", type=float, default=2, help="Alerts per minute (default: 2)")
     parser.add_argument("--total", type=int, default=0, help="Max alerts to generate (0=unlimited)")
-    parser.add_argument("--api-url", default=API_URL, help="ZOVARC API URL")
+    parser.add_argument("--api-url", default=API_URL, help="ZOVARK API URL")
     parser.add_argument("--severity-dist", default="critical:10,high:30,medium:40,low:20",
                         help="Severity distribution (e.g., 'critical:10,high:30,medium:40,low:20')")
     args = parser.parse_args()
@@ -117,7 +117,7 @@ def main():
         print("\n\nShutting down...")
     signal.signal(signal.SIGINT, handle_signal)
 
-    print(f"ZOVARC Alert Generator")
+    print(f"ZOVARK Alert Generator")
     print(f"  API:      {args.api_url}")
     print(f"  Rate:     {args.rate}/min (interval: {interval:.1f}s)")
     print(f"  Total:    {'unlimited' if args.total == 0 else args.total}")

@@ -1,7 +1,7 @@
-# Zovarc Platform - Sprint 12 Phase 3 Benchmark Report
+# Zovark Platform - Sprint 12 Phase 3 Benchmark Report
 
 ## Executive Summary
-The Zovarc automated security analysis platform has achieved a **100% detection accuracy** across the Phase 3 benchmark suite. All **20 out of 20** test cases passing natively, including clean logs, easy variations, hard variations, and multi-attack scenarios. The engine produced zero false positives on clean data, correctly computing risk scores and accurately classifying anomalies.
+The Zovark automated security analysis platform has achieved a **100% detection accuracy** across the Phase 3 benchmark suite. All **20 out of 20** test cases passing natively, including clean logs, easy variations, hard variations, and multi-attack scenarios. The engine produced zero false positives on clean data, correctly computing risk scores and accurately classifying anomalies.
 
 ## Performance Metrics
 - **Test Corpus Size**: 20 distinct log artifacts
@@ -30,7 +30,7 @@ The benchmark utilizes a dynamic execution methodology. For each test case:
 4. **Validation**: The JSON output (findings, risk score, extracted IOCs) is validated against deeply scrutinized `.expected.json` baselines. 
 
 ## MITRE ATT&CK Coverage
-Zovarc currently deploys the following AI-driven investigation skills. Active Mitre Tactics/Techniques mapping is under ongoing configuration:
+Zovark currently deploys the following AI-driven investigation skills. Active Mitre Tactics/Techniques mapping is under ongoing configuration:
 
 * Brute Force Investigation
 * Lateral Movement Detection

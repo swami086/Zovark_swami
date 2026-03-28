@@ -18,11 +18,11 @@ SKILL_MAPPING = {
 
 def get_db_connection():
     return psycopg2.connect(
-        host=os.environ.get("POSTGRES_HOST", "zovarc-postgres"),
+        host=os.environ.get("POSTGRES_HOST", "zovark-postgres"),
         port=5432,
-        dbname="zovarc",
-        user="zovarc",
-        password=os.environ.get("POSTGRES_PASSWORD", "zovarc_dev_2026")
+        dbname="zovark",
+        user="zovark",
+        password=os.environ.get("POSTGRES_PASSWORD", "zovark_dev_2026")
     )
 
 def fetch_skill_data(skill_slug):

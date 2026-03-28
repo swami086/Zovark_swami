@@ -2,21 +2,21 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  namespace: zovarc
+  namespace: zovark
   labels:
-    app: zovarc
+    app: zovark
     component: postgres
 spec:
   serviceName: postgres-headless
   replicas: 1
   selector:
     matchLabels:
-      app: zovarc
+      app: zovark
       component: postgres
   template:
     metadata:
       labels:
-        app: zovarc
+        app: zovark
         component: postgres
     spec:
       containers:
@@ -27,14 +27,14 @@ spec:
               name: postgres
           env:
             - name: POSTGRES_USER
-              value: "zovarc"
+              value: "zovark"
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: zovarc-db-credentials
+                  name: zovark-db-credentials
                   key: password
             - name: POSTGRES_DB
-              value: "zovarc"
+              value: "zovark"
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
@@ -64,9 +64,9 @@ spec:
               command:
                 - pg_isready
                 - -U
-                - zovarc
+                - zovark
                 - -d
-                - zovarc
+                - zovark
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
@@ -75,9 +75,9 @@ spec:
               command:
                 - pg_isready
                 - -U
-                - zovarc
+                - zovark
                 - -d
-                - zovarc
+                - zovark
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
