@@ -414,9 +414,13 @@ async def assess_results(data: dict) -> dict:
     severity = _severity_from_risk(risk_score)
     fp_conf = _fp_confidence(risk_score, len(iocs))
 
-    # If validation failed, override verdict
+    # If validation failed, override verdict — but not when risk is clearly an attack
     if not is_valid:
-        verdict = "needs_manual_review"
+        if risk_score >= 70:
+            verdict = "true_positive"
+            activity.logger.info(f"Overriding needs_manual_review → true_positive at risk {risk_score}")
+        else:
+            verdict = "needs_manual_review"
 
     # Summary
     if FAST_FILL:
