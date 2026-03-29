@@ -77,11 +77,11 @@ const Sidebar = () => {
 
   return (
     <div className="w-[240px] sidebar-bg border-r sidebar-border flex flex-col h-screen fixed top-0 left-0">
-      <div className="p-6 flex items-center space-x-3">
-        <img src="/zovark-logo.png" alt="Zovark" className="w-8 h-8 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display='none' }} />
-        <div className="flex flex-col">
-          <span className="font-bold text-lg tracking-wider sidebar-title leading-none">ZOVARK</span>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-[#00FF88]/70 font-semibold mt-0.5">Security Operations</span>
+      <div className="flex items-center gap-3 px-4 py-5">
+        <img src="/zovark-logo.png" alt="Zovark" className="w-10 h-10 object-contain" />
+        <div>
+          <div className="text-base font-bold tracking-wide text-white" style={{fontFamily: "'JetBrains Mono', monospace"}}>ZOVARK</div>
+          <div className="text-[10px] font-medium tracking-[0.2em] uppercase" style={{color: '#00FF88'}}>SECURITY OPERATIONS</div>
         </div>
       </div>
 

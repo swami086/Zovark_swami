@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/client';
-import { Hexagon, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -26,64 +26,84 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-[80vh] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8" style={{background: '#060A14'}}>
             <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-                <Hexagon className="w-12 h-12 text-cyan-500 fill-cyan-500/20 mx-auto" />
-                <h2 className="mt-4 text-3xl font-bold tracking-tight text-white mb-2">
+                <img
+                    src="/zovark-logo.png"
+                    alt="Zovark"
+                    className="w-24 h-24 mx-auto mb-4 object-contain"
+                />
+                <h1
+                    className="text-2xl font-bold tracking-wide text-white"
+                    style={{fontFamily: "'JetBrains Mono', monospace"}}
+                >
                     Sign in to ZOVARK
-                </h2>
-                <p className="text-sm font-medium text-slate-400">
+                </h1>
+                <p
+                    className="text-sm mt-1 tracking-[0.15em] uppercase"
+                    style={{color: '#00FF88', fontFamily: "'JetBrains Mono', monospace"}}
+                >
                     Security Operations Platform
                 </p>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-[#1E293B] py-8 px-4 shadow-xl sm:rounded-xl sm:px-10 border border-slate-700/50">
+                <div className="py-8 px-4 sm:rounded-xl sm:px-10" style={{background: '#0D1117', border: '1px solid #1B2432'}}>
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm font-medium px-4 py-3 rounded-md mb-6 transition-all">
+                            <div className="text-sm font-medium px-4 py-3 rounded-md mb-6" style={{background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.3)', color: '#FF4444'}}>
                                 {error}
                             </div>
                         )}
                         <div>
-                            <label className="block text-sm font-medium text-slate-300">
+                            <label className="block text-[11px] font-medium uppercase tracking-[0.15em] mb-2" style={{color: '#94A3B8', fontFamily: "'JetBrains Mono', monospace"}}>
                                 Email address
                             </label>
-                            <div className="mt-1">
-                                <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="appearance-none block w-full px-4 py-3 border border-slate-700 rounded-lg shadow-sm placeholder-slate-500 bg-[#0B1120] text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-all"
-                                    placeholder="analyst@security.corp"
-                                />
-                            </div>
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="appearance-none block w-full px-4 py-3 rounded-lg text-sm text-white focus:outline-none transition-all"
+                                style={{background: '#131B27', border: '1px solid #1B2432', fontFamily: "'JetBrains Mono', monospace"}}
+                                onFocus={(e) => e.target.style.borderColor = '#00FF88'}
+                                onBlur={(e) => e.target.style.borderColor = '#1B2432'}
+                                placeholder="analyst@security.corp"
+                            />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-300">
+                            <label className="block text-[11px] font-medium uppercase tracking-[0.15em] mb-2" style={{color: '#94A3B8', fontFamily: "'JetBrains Mono', monospace"}}>
                                 Password
                             </label>
-                            <div className="mt-1">
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="appearance-none block w-full px-4 py-3 border border-slate-700 rounded-lg shadow-sm placeholder-slate-500 bg-[#0B1120] text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm transition-all"
-                                    placeholder="••••••••"
-                                />
-                            </div>
+                            <input
+                                type="password"
+                                required
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="appearance-none block w-full px-4 py-3 rounded-lg text-sm text-white focus:outline-none transition-all"
+                                style={{background: '#131B27', border: '1px solid #1B2432', fontFamily: "'JetBrains Mono', monospace"}}
+                                onFocus={(e) => e.target.style.borderColor = '#00FF88'}
+                                onBlur={(e) => e.target.style.borderColor = '#1B2432'}
+                                placeholder="••••••••"
+                            />
                         </div>
 
                         <div>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1E293B] focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="w-full flex justify-center py-3 px-4 rounded-lg text-sm font-semibold uppercase tracking-[0.08em] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                style={{
+                                    background: 'transparent',
+                                    border: '1px solid #00FF88',
+                                    color: '#00FF88',
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                }}
+                                onMouseEnter={(e) => (e.target as HTMLElement).style.background = 'rgba(0,255,136,0.1)'}
+                                onMouseLeave={(e) => (e.target as HTMLElement).style.background = 'transparent'}
                             >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign in'}
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'SIGN IN'}
                             </button>
                         </div>
                     </form>
