@@ -1,8 +1,8 @@
 import pg from "pg";
 
 const DB_URL =
-  process.env.HYDRA_DB_URL ||
-  "postgresql://hydra:hydra_dev_2026@localhost:5432/hydra";
+  process.env.ZOVARK_DB_URL ||
+  "postgresql://zovark:hydra_dev_2026@localhost:5432/zovark";
 
 let pool: pg.Pool | null = null;
 

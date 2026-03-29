@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This file provides context for AI coding agents working on HYDRA.
+This file provides context for AI coding agents working on Zovark.
 
 ## Before Making Changes
 
@@ -14,7 +14,7 @@ This file provides context for AI coding agents working on HYDRA.
 
 - Temporal for all async work — never use raw goroutines or threading for the investigation pipeline
 - PostgreSQL + pgvector for all persistent state — no separate vector DB
-- LiteLLM as single gateway to all LLM providers — never call Ollama/models directly
+- Direct httpx to Ollama via ZOVARK_LLM_ENDPOINT — no LiteLLM (removed)
 - Docker sandbox for code execution — never run LLM-generated code in worker process
 - NATS for real-time events — never poll the database for status updates
 - Redis for ephemeral state only (rate limits, cache) — never for durable data
@@ -55,7 +55,7 @@ When adding new activities/workflows, add them to the `_legacy_*.py` files AND u
 ### Add a new migration
 1. Create `migrations/NNN_description.sql` (next number after 040)
 2. Use IF NOT EXISTS / IF EXISTS for idempotency
-3. Apply: `docker compose exec -T postgres psql -U hydra -d hydra < migrations/NNN_description.sql`
+3. Apply: `docker compose exec -T postgres psql -U zovark -d zovark < migrations/NNN_description.sql`
 
 ### Debug a failed investigation
 ```bash
@@ -79,7 +79,7 @@ docker compose exec temporal tctl --address temporal:7233 workflow show -w task-
 ### Update skill templates in the DB
 ```bash
 # Fix a template import
-docker compose exec -T postgres psql -U hydra -d hydra -c "
+docker compose exec -T postgres psql -U zovark -d zovark -c "
 UPDATE agent_skills
 SET code_template = REPLACE(code_template, 'import os', '# import os (blocked)')
 WHERE code_template LIKE '%import os%';
@@ -89,8 +89,8 @@ WHERE code_template LIKE '%import os%';
 ### Run the accuracy benchmark
 ```bash
 # Against existing completed investigations
-docker run --rm --network hydra-mvp_hydra-internal \
-  -v "$(pwd):/app" -w /app -e HYDRA_API_URL=http://hydra-api:8090 \
+docker run --rm --network hydra-mvp_zovark-internal \
+  -v "$(pwd):/app" -w /app -e ZOVARK_API_URL=http://zovark-api:8090 \
   python:3.11-slim sh -c "pip install -q httpx && python scripts/score_baseline.py"
 ```
 

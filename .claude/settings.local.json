@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "mcp__hydra__hydra_query"
+      "mcp__hydra__zovark_query"
     ]
   }
 }

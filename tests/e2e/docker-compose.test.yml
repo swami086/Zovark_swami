@@ -1,30 +1,30 @@
-# HYDRA E2E Test Stack
+# Zovark E2E Test Stack
 # Minimal services needed for end-to-end testing
 # Usage: docker compose -f tests/e2e/docker-compose.test.yml up -d
 
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: hydra-test-postgres
+    container_name: zovark-test-postgres
     environment:
-      POSTGRES_USER: hydra
+      POSTGRES_USER: zovark
       POSTGRES_PASSWORD: hydra_dev_2026
-      POSTGRES_DB: hydra
+      POSTGRES_DB: zovark
     volumes:
       - ../../init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hydra -d hydra"]
+      test: ["CMD-SHELL", "pg_isready -U zovark -d zovark"]
       interval: 5s
       timeout: 3s
       retries: 10
     networks:
-      - hydra-test
+      - zovark-test
 
   redis:
     image: redis:7-alpine
-    container_name: hydra-test-redis
+    container_name: zovark-test-redis
     command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
     ports:
       - "6380:6379"
@@ -34,15 +34,15 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - hydra-test
+      - zovark-test
 
   temporal:
     image: temporalio/auto-setup:1.24.2
-    container_name: hydra-test-temporal
+    container_name: zovark-test-temporal
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_USER=hydra
+      - POSTGRES_USER=zovark
       - POSTGRES_PWD=hydra_dev_2026
       - POSTGRES_SEEDS=postgres
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
@@ -54,13 +54,13 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - hydra-test
+      - zovark-test
 
   mock-llm:
     build:
       context: ../mock_llm
       dockerfile: Dockerfile
-    container_name: hydra-test-mock-llm
+    container_name: zovark-test-mock-llm
     ports:
       - "4001:4000"
     healthcheck:
@@ -69,21 +69,21 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - hydra-test
+      - zovark-test
 
   api:
     build:
       context: ../../api
       dockerfile: Dockerfile
-    container_name: hydra-test-api
+    container_name: zovark-test-api
     ports:
       - "8091:8090"
     environment:
       - PORT=8090
-      - DATABASE_URL=postgresql://hydra:hydra_dev_2026@postgres:5432/hydra
+      - DATABASE_URL=postgresql://zovark:hydra_dev_2026@postgres:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
-      - ZOVARK_LLM_KEY=sk-hydra-dev-2026
-      - JWT_SECRET=hydra-jwt-secret-dev-2026
+      - ZOVARK_LLM_KEY=sk-zovark-dev-2026
+      - JWT_SECRET=zovark-jwt-secret-dev-2026
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,18 +92,18 @@ services:
       mock-llm:
         condition: service_healthy
     networks:
-      - hydra-test
+      - zovark-test
 
   worker:
     build:
       context: ../../worker
       dockerfile: Dockerfile
-    container_name: hydra-test-worker
+    container_name: zovark-test-worker
     environment:
-      - DATABASE_URL=postgresql://hydra:hydra_dev_2026@postgres:5432/hydra
+      - DATABASE_URL=postgresql://zovark:hydra_dev_2026@postgres:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
       - ZOVARK_LLM_ENDPOINT=http://mock-llm:4000/v1/chat/completions
-      - ZOVARK_LLM_KEY=sk-hydra-dev-2026
+      - ZOVARK_LLM_KEY=sk-zovark-dev-2026
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
     volumes:
@@ -117,8 +117,8 @@ services:
       mock-llm:
         condition: service_healthy
     networks:
-      - hydra-test
+      - zovark-test
 
 networks:
-  hydra-test:
+  zovark-test:
     driver: bridge

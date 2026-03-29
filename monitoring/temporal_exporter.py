@@ -34,7 +34,7 @@ except ImportError:
     HAS_PSYCOPG2 = False
 
 TEMPORAL_ADDRESS = os.environ.get("TEMPORAL_ADDRESS", "temporal:7233")
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@postgres:5432/zovark")
 PORT = int(os.environ.get("EXPORTER_PORT", "9092"))
 
 # Cached metrics
@@ -78,7 +78,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
             # Prometheus text format
             lines = []
             for key, val in _metrics.items():
-                lines.append(f"hydra_temporal_{key}{{task_queue=\"hydra-tasks\"}} {val}")
+                lines.append(f"zovark_temporal_{key}{{task_queue=\"zovark-tasks\"}} {val}")
             self._respond(200, "\n".join(lines) + "\n", "text/plain")
         else:
             self._respond(200, json.dumps(_metrics, indent=2))

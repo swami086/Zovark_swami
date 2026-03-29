@@ -1,4 +1,4 @@
-name: HYDRA CI
+name: Zovark CI
 
 on:
   push:
@@ -31,16 +31,16 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: hydra
+          POSTGRES_USER: zovark
           POSTGRES_PASSWORD: hydra_dev_2026
-          POSTGRES_DB: hydra
+          POSTGRES_DB: zovark
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
       redis:
         image: redis:7-alpine
         ports: ['6379:6379']
     env:
-      DATABASE_URL: postgresql://hydra:hydra_dev_2026@localhost:5432/hydra
+      DATABASE_URL: postgresql://zovark:hydra_dev_2026@localhost:5432/zovark
       REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v4
@@ -83,24 +83,24 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: hydra
+          POSTGRES_USER: zovark
           POSTGRES_PASSWORD: hydra_dev_2026
-          POSTGRES_DB: hydra
+          POSTGRES_DB: zovark
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: Apply init.sql
-        run: PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f init.sql
+        run: PGPASSWORD=hydra_dev_2026 psql -h localhost -U zovark -d zovark -f init.sql
       - name: Apply all migrations
         run: |
           for f in migrations/*.sql; do
             echo "Applying $f..."
-            PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f "$f"
+            PGPASSWORD=hydra_dev_2026 psql -h localhost -U zovark -d zovark -f "$f"
           done
       - name: Verify key tables exist
         run: |
-          PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -c "
+          PGPASSWORD=hydra_dev_2026 psql -h localhost -U zovark -d zovark -c "
             SELECT tablename FROM pg_tables WHERE schemaname='public'
             AND tablename IN ('tenants','investigations','entities','detection_candidates','response_playbooks','llm_call_log')
             ORDER BY tablename;

@@ -12,7 +12,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_up", "legendFormat": "Workers Up" }
+        { "expr": "zovark_worker_up", "legendFormat": "Workers Up" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -31,7 +31,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_investigations_total", "legendFormat": "Total" }
+        { "expr": "zovark_worker_investigations_total", "legendFormat": "Total" }
       ]
     },
     {
@@ -40,7 +40,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_entities_total", "legendFormat": "Entities" }
+        { "expr": "zovark_worker_entities_total", "legendFormat": "Entities" }
       ]
     },
     {
@@ -49,7 +49,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_sigma_rules_total", "legendFormat": "Sigma Rules" }
+        { "expr": "zovark_worker_sigma_rules_total", "legendFormat": "Sigma Rules" }
       ]
     },
     {
@@ -58,7 +58,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_llm_request_seconds", "legendFormat": "LLM Duration (s)" }
+        { "expr": "zovark_worker_llm_request_seconds", "legendFormat": "LLM Duration (s)" }
       ],
       "fieldConfig": {
         "defaults": { "unit": "s" }
@@ -70,7 +70,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_llm_tokens_total", "legendFormat": "Tokens" }
+        { "expr": "zovark_worker_llm_tokens_total", "legendFormat": "Tokens" }
       ]
     },
     {
@@ -79,7 +79,7 @@
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_verdict_total", "legendFormat": "{{verdict}}" }
+        { "expr": "zovark_worker_verdict_total", "legendFormat": "{{verdict}}" }
       ]
     },
     {
@@ -88,7 +88,7 @@
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_tasks_by_type", "legendFormat": "{{task_type}}" }
+        { "expr": "zovark_worker_tasks_by_type", "legendFormat": "{{task_type}}" }
       ]
     },
     {
@@ -97,14 +97,14 @@
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_worker_active_leases", "legendFormat": "{{tenant_id}}" }
+        { "expr": "zovark_worker_active_leases", "legendFormat": "{{tenant_id}}" }
       ]
     }
   ],
   "schemaVersion": 39,
-  "tags": ["hydra", "worker"],
+  "tags": ["zovark", "worker"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
-  "title": "HYDRA — Worker Performance",
-  "uid": "hydra-worker"
+  "title": "Zovark — Worker Performance",
+  "uid": "zovark-worker"
 }

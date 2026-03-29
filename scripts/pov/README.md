@@ -1,9 +1,9 @@
-# HYDRA 48-Hour Proof of Value
+# Zovark 48-Hour Proof of Value
 
 ## Day 1 Morning: Deploy (30 minutes)
 
 1. Run `bash scripts/pov/deploy.sh` on your server
-2. Open http://localhost:3000, log in with `pov-admin` / `PoV-2026-Hydra!`
+2. Open http://localhost:3000, log in with `pov-admin` / `PoV-2026-Zovark!`
 3. Verify all services healthy in Grafana (http://localhost:3001)
 
 ## Day 1 Afternoon: Historical Analysis (3 hours)
@@ -29,12 +29,12 @@
 
 ## Day 2 Morning: Live Parallel (4 hours)
 
-1. Configure SIEM webhook to forward alerts to Hydra:
+1. Configure SIEM webhook to forward alerts to Zovark:
    ```
-   POST http://hydra-server:8090/api/v1/webhooks/<source_id>/alert
+   POST http://zovark-server:8090/api/v1/webhooks/<source_id>/alert
    ```
-2. Run Hydra in parallel with your analysts
-3. Compare: which alerts did Hydra flag that analysts missed?
+2. Run Zovark in parallel with your analysts
+3. Compare: which alerts did Zovark flag that analysts missed?
 
 ## Day 2 Afternoon: Results (2 hours)
 
@@ -62,4 +62,4 @@
 | Worker not processing | `docker compose logs worker` |
 | DB connection error | `docker compose logs postgres` |
 | Out of memory | Increase Docker memory limit to 8GB+ |
-| Slow investigations | Check LLM provider API keys in `.env` |
+| Slow investigations | Check LLM endpoint configuration in `.env` |

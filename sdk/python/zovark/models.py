@@ -1,4 +1,4 @@
-"""HYDRA SDK data models.
+"""Zovark SDK data models.
 
 Simple data classes (no external dependencies) representing API resources.
 """

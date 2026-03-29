@@ -1,4 +1,4 @@
-const API_URL = process.env.HYDRA_API_URL || "http://localhost:8090";
+const API_URL = process.env.ZOVARK_API_URL || "http://localhost:8090";
 
 interface JwtCache {
   token: string;
@@ -9,7 +9,7 @@ interface JwtCache {
 let cachedJwt: JwtCache | null = null;
 
 export async function getJwt(
-  tenantSlug: string = "hydra-dev"
+  tenantSlug: string = "zovark-dev"
 ): Promise<string> {
   if (
     cachedJwt &&
@@ -19,7 +19,7 @@ export async function getJwt(
     return cachedJwt.token;
   }
 
-  const email = `mcp-agent@${tenantSlug}.hydra`;
+  const email = `mcp-agent@${tenantSlug}.zovark`;
   const password = "mcp-agent-2026!";
 
   // Try login first

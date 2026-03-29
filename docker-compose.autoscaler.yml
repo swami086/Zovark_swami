@@ -21,12 +21,12 @@ services:
     depends_on:
       - temporal
     networks:
-      - hydra-internal
+      - zovark-internal
     restart: unless-stopped
     profiles:
       - autoscaler
 
 networks:
-  hydra-internal:
+  zovark-internal:
     external: true
-    name: hydra-mvp_hydra-internal
+    name: hydra-mvp_zovark-internal

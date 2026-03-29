@@ -1,5 +1,5 @@
 # ============================================================
-# HYDRA Optional Services
+# Zovark Optional Services
 # These services are not required for the core V2 pipeline.
 # Enable with: docker compose -f docker-compose.yml -f docker-compose.optional.yml up -d
 # ============================================================
@@ -9,10 +9,10 @@ services:
   # ─── LLM GATEWAY (bypassed — LITELLM_URL goes direct to llama-server) ────
   litellm:
     image: docker.litellm.ai/berriai/litellm-database:main-stable
-    container_name: hydra-litellm
+    container_name: zovark-litellm
     command: --config /app/config.yaml --port 4000
     environment:
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-hydra-dev-2026}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovark-dev-2026}
       - GROQ_API_KEY=${GROQ_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -37,20 +37,20 @@ services:
           cpus: '0.5'
     restart: unless-stopped
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # ─── MESSAGE BROKER (non-functional, graceful fallback exists) ────
   nats:
     image: nats:2.10-alpine
-    container_name: hydra-nats
-    command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER:-hydra}", "--pass", "${NATS_PASSWORD:-hydra-nats-dev-2026}"]
+    container_name: zovark-nats
+    command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER:-zovark}", "--pass", "${NATS_PASSWORD:-zovark-nats-dev-2026}"]
     expose:
       - "4222"
       - "8222"
     volumes:
       - nats-data:/data
     networks:
-      - hydra-internal
+      - zovark-internal
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "sh", "-c", "wget -q --spider http://localhost:8222/healthz || exit 1"]
@@ -65,13 +65,13 @@ services:
   # ─── EMBEDDING SERVER (not used by V2 pipeline) ────
   embedding-server:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
-    container_name: hydra-embedding
+    container_name: zovark-embedding
     environment:
       - MODEL_ID=BAAI/bge-base-en-v1.5
     expose:
       - "80"
     networks:
-      - hydra-internal
+      - zovark-internal
     deploy:
       resources:
         limits:
@@ -83,5 +83,5 @@ volumes:
   nats-data:
 
 networks:
-  hydra-internal:
+  zovark-internal:
     driver: bridge

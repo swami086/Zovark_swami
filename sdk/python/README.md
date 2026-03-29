@@ -1,6 +1,6 @@
-# HYDRA Python SDK
+# Zovark Python SDK
 
-Python client library for the HYDRA SOC automation platform. Uses only Python stdlib (no external dependencies).
+Python client library for the Zovark SOC automation platform. Uses only Python stdlib (no external dependencies).
 
 ## Installation
 
@@ -11,13 +11,13 @@ pip install -e sdk/python/
 ## Quick Start
 
 ```python
-from hydra import HydraClient
+from zovark import ZovarkClient
 
 # Initialize client with credentials
-client = HydraClient(
+client = ZovarkClient(
     "http://localhost:8090",
-    email="admin@hydra.local",
-    password="hydra123",
+    email="admin@test.local",
+    password="TestPass2026",
 )
 
 # Login (stores JWT internally)
@@ -48,7 +48,7 @@ print(f"Output: {result.output}")
 token = client.login()
 
 # Or use a pre-existing token
-client = HydraClient("http://localhost:8090", api_key="your-jwt-token")
+client = ZovarkClient("http://localhost:8090", api_key="your-jwt-token")
 
 # Register a new user
 user = client.register(
@@ -113,8 +113,8 @@ print(health["status"])  # "ok"
 ## Error Handling
 
 ```python
-from hydra.exceptions import (
-    HydraAPIError,
+from zovark.exceptions import (
+    ZovarkAPIError,
     AuthenticationError,
     RateLimitError,
     NotFoundError,
@@ -129,7 +129,7 @@ except AuthenticationError:
     client.login()
 except RateLimitError as e:
     print(f"Rate limited, retry after {e.retry_after}s")
-except HydraAPIError as e:
+except ZovarkAPIError as e:
     print(f"API error {e.status_code}: {e.message}")
 ```
 

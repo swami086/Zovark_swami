@@ -12,7 +12,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_temporal_pending_tasks", "legendFormat": "Pending" }
+        { "expr": "zovark_temporal_pending_tasks", "legendFormat": "Pending" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -32,7 +32,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_temporal_active_tasks", "legendFormat": "Active" }
+        { "expr": "zovark_temporal_active_tasks", "legendFormat": "Active" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -51,7 +51,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_temporal_completed_tasks_1h", "legendFormat": "Completed" }
+        { "expr": "zovark_temporal_completed_tasks_1h", "legendFormat": "Completed" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -69,7 +69,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_temporal_failed_tasks_1h", "legendFormat": "Failed" }
+        { "expr": "zovark_temporal_failed_tasks_1h", "legendFormat": "Failed" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -88,8 +88,8 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_temporal_pending_tasks", "legendFormat": "Pending" },
-        { "expr": "hydra_temporal_active_tasks", "legendFormat": "Active" }
+        { "expr": "zovark_temporal_pending_tasks", "legendFormat": "Pending" },
+        { "expr": "zovark_temporal_active_tasks", "legendFormat": "Active" }
       ]
     },
     {
@@ -98,15 +98,15 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "hydra_temporal_completed_tasks_1h", "legendFormat": "Completed" },
-        { "expr": "hydra_temporal_failed_tasks_1h", "legendFormat": "Failed" }
+        { "expr": "zovark_temporal_completed_tasks_1h", "legendFormat": "Completed" },
+        { "expr": "zovark_temporal_failed_tasks_1h", "legendFormat": "Failed" }
       ]
     }
   ],
   "schemaVersion": 39,
-  "tags": ["hydra"],
+  "tags": ["zovark"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
-  "title": "HYDRA — Overview",
-  "uid": "hydra-overview"
+  "title": "Zovark — Overview",
+  "uid": "zovark-overview"
 }

@@ -1,19 +1,19 @@
 groups:
-  - name: hydra_alerts
+  - name: zovark_alerts
     rules:
       # Task queue backing up
       - alert: HighPendingTasks
-        expr: hydra_temporal_pending_tasks{task_queue="hydra-tasks"} > 50
+        expr: zovark_temporal_pending_tasks{task_queue="zovark-tasks"} > 50
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High pending task count"
-          description: "{{ $value }} tasks pending in hydra-tasks queue for >5 minutes"
+          description: "{{ $value }} tasks pending in zovark-tasks queue for >5 minutes"
 
       # Task failures spiking
       - alert: HighTaskFailureRate
-        expr: hydra_temporal_failed_tasks_1h{task_queue="hydra-tasks"} > 10
+        expr: zovark_temporal_failed_tasks_1h{task_queue="zovark-tasks"} > 10
         for: 5m
         labels:
           severity: critical
@@ -43,17 +43,17 @@ groups:
 
       # Worker down
       - alert: NoActiveWorkers
-        expr: hydra_worker_up == 0 or absent(hydra_worker_up)
+        expr: zovark_worker_up == 0 or absent(zovark_worker_up)
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "No active HYDRA workers"
+          summary: "No active Zovark workers"
           description: "No workers reporting metrics for >2 minutes"
 
       # LLM latency
       - alert: HighLLMLatency
-        expr: hydra_worker_llm_request_seconds > 30
+        expr: zovark_worker_llm_request_seconds > 30
         for: 5m
         labels:
           severity: warning

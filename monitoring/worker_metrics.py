@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HYDRA worker metrics exporter — DB-backed Prometheus endpoint.
+"""Zovark worker metrics exporter — DB-backed Prometheus endpoint.
 
 Queries PostgreSQL for investigation/entity/detection metrics and
 exposes them on port 9093 in Prometheus text format.
@@ -30,7 +30,7 @@ try:
 except ImportError:
     HAS_REDIS = False
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://hydra:hydra_dev_2026@postgres:5432/hydra")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@postgres:5432/zovark")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 PORT = int(os.environ.get("METRICS_PORT", "9093"))
 
@@ -47,19 +47,19 @@ def _fetch_db_metrics():
         try:
             with conn.cursor() as cur:
                 # Worker up indicator
-                _metrics["hydra_worker_up"] = 1
+                _metrics["zovark_worker_up"] = 1
 
                 # Investigation counts
                 cur.execute("SELECT COUNT(*) FROM investigations")
-                _metrics["hydra_worker_investigations_total"] = cur.fetchone()[0]
+                _metrics["zovark_worker_investigations_total"] = cur.fetchone()[0]
 
                 # Entity counts
                 cur.execute("SELECT COUNT(*) FROM entities")
-                _metrics["hydra_worker_entities_total"] = cur.fetchone()[0]
+                _metrics["zovark_worker_entities_total"] = cur.fetchone()[0]
 
                 # Detection rules (Sigma)
                 cur.execute("SELECT COUNT(*) FROM detection_rules")
-                _metrics["hydra_worker_sigma_rules_total"] = cur.fetchone()[0]
+                _metrics["zovark_worker_sigma_rules_total"] = cur.fetchone()[0]
 
                 # Verdicts breakdown
                 cur.execute("""
@@ -68,7 +68,7 @@ def _fetch_db_metrics():
                     GROUP BY verdict
                 """)
                 for row in cur.fetchall():
-                    _metrics[f'hydra_worker_verdict_total{{verdict="{row[0]}"}}'] = row[1]
+                    _metrics[f'zovark_worker_verdict_total{{verdict="{row[0]}"}}'] = row[1]
 
                 # Tasks by type
                 cur.execute("""
@@ -76,7 +76,7 @@ def _fetch_db_metrics():
                     GROUP BY task_type
                 """)
                 for row in cur.fetchall():
-                    _metrics[f'hydra_worker_tasks_by_type{{task_type="{row[0]}"}}'] = row[1]
+                    _metrics[f'zovark_worker_tasks_by_type{{task_type="{row[0]}"}}'] = row[1]
 
                 # LLM usage stats (last hour)
                 cur.execute("""
@@ -87,12 +87,12 @@ def _fetch_db_metrics():
                     WHERE created_at > NOW() - INTERVAL '1 hour'
                 """)
                 row = cur.fetchone()
-                _metrics["hydra_worker_llm_request_seconds"] = round(float(row[0]), 2)
-                _metrics["hydra_worker_llm_tokens_total"] = int(row[1])
+                _metrics["zovark_worker_llm_request_seconds"] = round(float(row[0]), 2)
+                _metrics["zovark_worker_llm_tokens_total"] = int(row[1])
 
                 # Response playbooks
                 cur.execute("SELECT COUNT(*) FROM response_playbooks WHERE enabled = true")
-                _metrics["hydra_worker_playbooks_active"] = cur.fetchone()[0]
+                _metrics["zovark_worker_playbooks_active"] = cur.fetchone()[0]
 
                 # Response executions (last hour)
                 cur.execute("""
@@ -101,12 +101,12 @@ def _fetch_db_metrics():
                     GROUP BY status
                 """)
                 for row in cur.fetchall():
-                    _metrics[f'hydra_worker_response_executions{{status="{row[0]}"}}'] = row[1]
+                    _metrics[f'zovark_worker_response_executions{{status="{row[0]}"}}'] = row[1]
 
         finally:
             conn.close()
     except Exception as e:
-        _metrics["hydra_worker_up"] = 0
+        _metrics["zovark_worker_up"] = 0
         print(f"DB metrics fetch failed: {e}")
 
 
@@ -122,7 +122,7 @@ def _fetch_redis_metrics():
         for key in keys:
             tenant_id = key.split(":")[1]
             count = r.scard(key)
-            _metrics[f'hydra_worker_active_leases{{tenant_id="{tenant_id}"}}'] = count
+            _metrics[f'zovark_worker_active_leases{{tenant_id="{tenant_id}"}}'] = count
     except Exception as e:
         print(f"Redis metrics fetch failed: {e}")
 

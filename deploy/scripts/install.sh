@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# HYDRA Installation Script
+# Zovark Installation Script
 # Checks prerequisites, configures environment, starts services
 # ============================================================
 set -euo pipefail
@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEPLOY_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_DIR="$(dirname "$DEPLOY_DIR")"
 
-echo "=== HYDRA Installation ==="
+echo "=== Zovark Installation ==="
 echo ""
 
 # Check prerequisites
@@ -58,7 +58,7 @@ sleep 5
 
 # Wait for postgres
 for i in $(seq 1 30); do
-    if docker compose -f docker-compose.production.yml exec -T postgres pg_isready -U hydra -d hydra >/dev/null 2>&1; then
+    if docker compose -f docker-compose.production.yml exec -T postgres pg_isready -U zovark -d zovark >/dev/null 2>&1; then
         break
     fi
     sleep 2
@@ -67,7 +67,7 @@ done
 # Apply migrations
 for f in "$PROJECT_DIR"/migrations/*.sql; do
     echo "  Applying: $(basename "$f")"
-    docker compose -f docker-compose.production.yml exec -T postgres psql -U hydra -d hydra < "$f" 2>/dev/null || true
+    docker compose -f docker-compose.production.yml exec -T postgres psql -U zovark -d zovark < "$f" 2>/dev/null || true
 done
 
 echo ""
@@ -82,7 +82,7 @@ sleep 10
 "$SCRIPT_DIR/health-check.sh" || true
 
 echo ""
-echo "=== HYDRA is running ==="
+echo "=== Zovark is running ==="
 echo "  API:       http://localhost:${API_PORT:-8090}"
 echo "  Dashboard: http://localhost:${DASHBOARD_PORT:-3000}"
 echo "  Health:    http://localhost:${API_PORT:-8090}/health"

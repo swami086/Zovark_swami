@@ -1,4 +1,4 @@
-# HYDRA Upgrade Guide
+# Zovark Upgrade Guide
 
 ## Pre-Upgrade Checklist
 
@@ -17,8 +17,8 @@ Always back up before upgrading. This is not optional.
 cd /path/to/hydra-mvp
 
 # Database backup
-docker compose exec -T postgres pg_dump -U hydra -d hydra -Fc > \
-  "hydra_pre_upgrade_$(date +%Y%m%d_%H%M%S).dump"
+docker compose exec -T postgres pg_dump -U zovark -d zovark -Fc > \
+  "zovark_pre_upgrade_$(date +%Y%m%d_%H%M%S).dump"
 
 # Save current .env
 cp .env .env.backup.$(date +%Y%m%d)
@@ -69,7 +69,7 @@ git diff HEAD@{1}..HEAD --name-only -- migrations/
 for f in migrations/036_*.sql migrations/037_*.sql migrations/038_*.sql; do
   if [ -f "$f" ]; then
     echo "Applying $f ..."
-    docker compose exec -T postgres psql -U hydra -d hydra < "$f"
+    docker compose exec -T postgres psql -U zovark -d zovark < "$f"
   fi
 done
 ```
@@ -79,7 +79,7 @@ To apply all migrations safely (idempotent if already applied):
 ```bash
 for f in migrations/*.sql; do
   echo "Applying $f ..."
-  docker compose exec -T postgres psql -U hydra -d hydra < "$f" 2>&1 | \
+  docker compose exec -T postgres psql -U zovark -d zovark < "$f" 2>&1 | \
     grep -v "already exists" || true
 done
 ```
@@ -161,8 +161,8 @@ docker compose up -d postgres
 sleep 10
 
 # Restore from pre-upgrade backup
-docker compose exec -T postgres pg_restore -U hydra -d hydra \
-  --clean --if-exists < hydra_pre_upgrade_*.dump
+docker compose exec -T postgres pg_restore -U zovark -d zovark \
+  --clean --if-exists < zovark_pre_upgrade_*.dump
 
 # Rebuild and restart with old code
 docker compose build
@@ -178,14 +178,14 @@ curl -s http://localhost:8090/health
 
 ## Upgrading the LLM Model
 
-LLM model upgrades are independent of HYDRA code upgrades.
+LLM model upgrades are independent of Zovark code upgrades.
 
 ```bash
 # Ollama
 ollama pull qwen2.5:14b    # or desired model
 
 # llama.cpp — download new GGUF, restart server
-# Update HYDRA_LLM_MODEL in .env if model name changed
+# Update ZOVARK_LLM_MODEL in .env if model name changed
 
 # Restart worker to pick up model change
 docker compose restart worker

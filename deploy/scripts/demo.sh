@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# HYDRA Demo Mode
+# Zovark Demo Mode
 # Starts services and generates alerts at a steady pace
 # ============================================================
 set -euo pipefail
@@ -10,7 +10,7 @@ PROJECT_DIR="$(dirname "$DEPLOY_DIR")"
 
 cd "$DEPLOY_DIR"
 
-echo "=== HYDRA Demo Mode ==="
+echo "=== Zovark Demo Mode ==="
 echo ""
 
 # Start services if not running

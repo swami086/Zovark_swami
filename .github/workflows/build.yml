@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/hydra
+  IMAGE_PREFIX: ${{ github.repository_owner }}/zovark
 
 jobs:
   build-api:
@@ -44,7 +44,7 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
 
-      - name: Build and push hydra-api
+      - name: Build and push zovark-api
         uses: docker/build-push-action@v5
         with:
           context: ./api
@@ -88,7 +88,7 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
 
-      - name: Build and push hydra-worker
+      - name: Build and push zovark-worker
         uses: docker/build-push-action@v5
         with:
           context: ./worker
@@ -132,7 +132,7 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
 
-      - name: Build and push hydra-dashboard
+      - name: Build and push zovark-dashboard
         uses: docker/build-push-action@v5
         with:
           context: ./dashboard

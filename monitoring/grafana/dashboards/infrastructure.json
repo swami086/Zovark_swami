@@ -22,7 +22,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "pg_database_size_bytes{datname=\"hydra\"}", "legendFormat": "DB Size" }
+        { "expr": "pg_database_size_bytes{datname=\"zovark\"}", "legendFormat": "DB Size" }
       ],
       "fieldConfig": {
         "defaults": { "unit": "bytes" }
@@ -34,8 +34,8 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "rate(pg_stat_database_xact_commit{datname=\"hydra\"}[5m])", "legendFormat": "Commits/s" },
-        { "expr": "rate(pg_stat_database_xact_rollback{datname=\"hydra\"}[5m])", "legendFormat": "Rollbacks/s" }
+        { "expr": "rate(pg_stat_database_xact_commit{datname=\"zovark\"}[5m])", "legendFormat": "Commits/s" },
+        { "expr": "rate(pg_stat_database_xact_rollback{datname=\"zovark\"}[5m])", "legendFormat": "Rollbacks/s" }
       ]
     },
     {
@@ -94,9 +94,9 @@
     }
   ],
   "schemaVersion": 39,
-  "tags": ["hydra", "infrastructure"],
+  "tags": ["zovark", "infrastructure"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
-  "title": "HYDRA — Infrastructure",
-  "uid": "hydra-infrastructure"
+  "title": "Zovark — Infrastructure",
+  "uid": "zovark-infrastructure"
 }

@@ -8,7 +8,7 @@ import { dockerComposeExec, dockerComposeLogs } from "./exec.js";
 
 // ── Self-test mode ──────────────────────────────────────────────
 if (process.argv.includes("--test")) {
-  console.log("hydra-mcp server v1.0.0 — self-test");
+  console.log("zovark-mcp server v1.0.0 — self-test");
   const dbOk = await testConnection();
   console.log(`  postgres: ${dbOk ? "ok" : "FAIL"}`);
   const apiOk = await apiHealthCheck();
@@ -22,16 +22,16 @@ if (process.argv.includes("--test")) {
 
 // ── Server setup ────────────────────────────────────────────────
 const server = new McpServer(
-  { name: "hydra-mcp", version: "1.0.0" },
+  { name: "zovark-mcp", version: "1.0.0" },
   { capabilities: { tools: {}, resources: {}, prompts: {} } }
 );
 
 // ═══════════════════════════════════════════════════════════════
-//  TOOL 1: hydra_submit_alert
+//  TOOL 1: zovark_submit_alert
 // ═══════════════════════════════════════════════════════════════
 server.tool(
-  "hydra_submit_alert",
-  "Submit a security alert to HYDRA for automated investigation. Returns task_id for tracking.",
+  "zovark_submit_alert",
+  "Submit a security alert to Zovark for automated investigation. Returns task_id for tracking.",
   {
     alert_type: z
       .enum([
@@ -49,7 +49,7 @@ server.tool(
     prompt: z
       .string()
       .describe("Alert description, raw log data, or investigation prompt"),
-    tenant_slug: z.string().default("hydra-dev").describe("Tenant slug"),
+    tenant_slug: z.string().default("zovark-dev").describe("Tenant slug"),
   },
   async ({ alert_type, prompt, tenant_slug }) => {
     try {
@@ -107,11 +107,11 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════════
-//  TOOL 2: hydra_get_report
+//  TOOL 2: zovark_get_report
 // ═══════════════════════════════════════════════════════════════
 server.tool(
-  "hydra_get_report",
-  "Fetch an investigation report from HYDRA. Can look up by task_id, investigation_id, or get the latest.",
+  "zovark_get_report",
+  "Fetch an investigation report from Zovark. Can look up by task_id, investigation_id, or get the latest.",
   {
     task_id: z.string().optional().describe("Task UUID"),
     investigation_id: z.string().optional().describe("Investigation UUID"),
@@ -217,10 +217,10 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════════
-//  TOOL 3: hydra_create_tenant
+//  TOOL 3: zovark_create_tenant
 // ═══════════════════════════════════════════════════════════════
 server.tool(
-  "hydra_create_tenant",
+  "zovark_create_tenant",
   "Onboard a new customer: create tenant, admin user, and return JWT.",
   {
     name: z.string().describe("Tenant display name"),
@@ -315,14 +315,14 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════════
-//  TOOL 4: hydra_query
+//  TOOL 4: zovark_query
 // ═══════════════════════════════════════════════════════════════
 const WRITE_PATTERN =
   /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|COPY)\b/i;
 
 server.tool(
-  "hydra_query",
-  "Execute a read-only SQL query against HYDRA's PostgreSQL database. SELECT only — all write operations are blocked.",
+  "zovark_query",
+  "Execute a read-only SQL query against Zovark's PostgreSQL database. SELECT only — all write operations are blocked.",
   {
     sql: z.string().describe("SQL query (SELECT only)"),
     format: z.enum(["table", "json"]).default("json").describe("Output format"),
@@ -394,11 +394,11 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════════
-//  TOOL 5: hydra_health
+//  TOOL 5: zovark_health
 // ═══════════════════════════════════════════════════════════════
 server.tool(
-  "hydra_health",
-  "Check health status of all HYDRA services (API, worker, Postgres, Redis, LiteLLM, Temporal).",
+  "zovark_health",
+  "Check health status of all Zovark services (API, worker, Postgres, Redis, LiteLLM, Temporal).",
   {},
   async () => {
     const checks: Record<string, string> = {};
@@ -480,11 +480,11 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════════
-//  TOOL 6: hydra_logs
+//  TOOL 6: zovark_logs
 // ═══════════════════════════════════════════════════════════════
 server.tool(
-  "hydra_logs",
-  "Tail and filter Docker Compose service logs from HYDRA.",
+  "zovark_logs",
+  "Tail and filter Docker Compose service logs from Zovark.",
   {
     service: z
       .enum(["worker", "api", "litellm", "temporal", "postgres", "redis", "all"])
@@ -519,7 +519,7 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════════
-//  TOOL 7: hydra_trigger_workflow
+//  TOOL 7: zovark_trigger_workflow
 // ═══════════════════════════════════════════════════════════════
 //
 // SECURITY — HUMAN-IN-THE-LOOP APPROVAL GATE
@@ -527,12 +527,12 @@ server.tool(
 // All workflow executions require explicit human approval before they run.
 //
 // Flow:
-//   1. This tool submits a pending approval request to the HYDRA API
+//   1. This tool submits a pending approval request to the Zovark API
 //      (POST /api/v1/mcp/approvals/pending is handled by the API, but
 //       approval creation here calls the approval gate via the API).
 //   2. The tool returns immediately with status="pending_approval" and
 //      an approval_id that the human must act on.
-//   3. A HYDRA admin approves or denies via:
+//   3. A Zovark admin approves or denies via:
 //        POST /api/v1/mcp/approvals/:token/decide
 //   4. After approval, the caller (human or orchestrator) may re-invoke
 //      this tool with the same parameters — the second call checks Redis
@@ -543,10 +543,10 @@ server.tool(
 // the MCP caller. Only the short approval_id is surfaced. This prevents
 // the AI client from self-approving its own requests.
 server.tool(
-  "hydra_trigger_workflow",
+  "zovark_trigger_workflow",
   "Start a Temporal workflow (detection, self_healing, cross_tenant, bootstrap, finetuning). " +
     "REQUIRES human approval — returns pending_approval status on first call. " +
-    "A HYDRA admin must approve via POST /api/v1/mcp/approvals/:token/decide before the workflow runs.",
+    "A Zovark admin must approve via POST /api/v1/mcp/approvals/:token/decide before the workflow runs.",
   {
     workflow: z
       .enum([
@@ -575,7 +575,7 @@ server.tool(
       ),
     tenant_slug: z
       .string()
-      .default("hydra-dev")
+      .default("zovark-dev")
       .describe("Tenant slug for the approval context"),
   },
   async ({ workflow, params: paramsStr, dry_run, approval_token, tenant_slug }) => {
@@ -615,14 +615,14 @@ server.tool(
     // Phase 2 (token supplied): verify approval is in 'approved' state,
     //         then execute the workflow.
     if (!approval_token) {
-      // Request approval via the HYDRA API approval gate.
+      // Request approval via the Zovark API approval gate.
       try {
         const approvalResult = (await apiPost(
           "/api/v1/mcp/approvals/request",
           {
             workflow_id: wfType,
             workflow_args: wfParams,
-            requested_by: "mcp:hydra_trigger_workflow",
+            requested_by: "mcp:zovark_trigger_workflow",
             tenant_id: tenant_slug,
           },
           tenant_slug
@@ -647,11 +647,11 @@ server.tool(
                   message:
                     approvalResult.message ||
                     `Workflow '${wfType}' is pending human approval. ` +
-                      `A HYDRA admin must approve via the dashboard or ` +
+                      `A Zovark admin must approve via the dashboard or ` +
                       `POST /api/v1/mcp/approvals/:token/decide before execution proceeds. ` +
                       `Re-invoke this tool with approval_token=<token> after approval.`,
                   next_step:
-                    "Wait for a HYDRA admin to approve the request, then re-invoke " +
+                    "Wait for a Zovark admin to approve the request, then re-invoke " +
                     "this tool supplying the approval_token returned to the admin.",
                 },
                 null,
@@ -750,7 +750,7 @@ import asyncio, json
 from temporalio.client import Client
 async def main():
     c = await Client.connect('temporal:7233')
-    r = await c.execute_workflow('${wfType}', json.loads('${paramsJson}'), id='${wfId}', task_queue='hydra-tasks')
+    r = await c.execute_workflow('${wfType}', json.loads('${paramsJson}'), id='${wfId}', task_queue='zovark-tasks')
     print(json.dumps(r))
 asyncio.run(main())
 `.trim();
@@ -806,7 +806,7 @@ asyncio.run(main())
 
 server.resource(
   "Recent Investigations",
-  "hydra://investigations/recent",
+  "zovark://investigations/recent",
   { description: "Last 10 investigations with verdicts and risk scores" },
   async () => {
     const result = await query(`
@@ -818,7 +818,7 @@ server.resource(
     return {
       contents: [
         {
-          uri: "hydra://investigations/recent",
+          uri: "zovark://investigations/recent",
           mimeType: "application/json",
           text: JSON.stringify(result.rows, null, 2),
         },
@@ -829,7 +829,7 @@ server.resource(
 
 server.resource(
   "Top Threat Entities",
-  "hydra://entities/top-threats",
+  "zovark://entities/top-threats",
   { description: "Top 20 entities by threat score" },
   async () => {
     const result = await query(`
@@ -843,7 +843,7 @@ server.resource(
     return {
       contents: [
         {
-          uri: "hydra://entities/top-threats",
+          uri: "zovark://entities/top-threats",
           mimeType: "application/json",
           text: JSON.stringify(result.rows, null, 2),
         },
@@ -854,7 +854,7 @@ server.resource(
 
 server.resource(
   "Detection Rules",
-  "hydra://detection/rules",
+  "zovark://detection/rules",
   { description: "All active Sigma detection rules" },
   async () => {
     const result = await query(`
@@ -867,7 +867,7 @@ server.resource(
     return {
       contents: [
         {
-          uri: "hydra://detection/rules",
+          uri: "zovark://detection/rules",
           mimeType: "application/json",
           text: JSON.stringify(result.rows, null, 2),
         },
@@ -878,7 +878,7 @@ server.resource(
 
 server.resource(
   "Active Playbooks",
-  "hydra://playbooks/active",
+  "zovark://playbooks/active",
   { description: "Active SOAR response playbooks" },
   async () => {
     const result = await query(`
@@ -891,7 +891,7 @@ server.resource(
     return {
       contents: [
         {
-          uri: "hydra://playbooks/active",
+          uri: "zovark://playbooks/active",
           mimeType: "application/json",
           text: JSON.stringify(result.rows, null, 2),
         },
@@ -902,7 +902,7 @@ server.resource(
 
 server.resource(
   "Health Summary",
-  "hydra://health/summary",
+  "zovark://health/summary",
   { description: "Current system health overview" },
   async () => {
     const stats = await query(`
@@ -918,7 +918,7 @@ server.resource(
     return {
       contents: [
         {
-          uri: "hydra://health/summary",
+          uri: "zovark://health/summary",
           mimeType: "application/json",
           text: JSON.stringify(stats.rows[0], null, 2),
         },
@@ -929,7 +929,7 @@ server.resource(
 
 server.resource(
   "LLM Metrics",
-  "hydra://metrics/llm",
+  "zovark://metrics/llm",
   { description: "LLM call statistics — cost, latency, token usage" },
   async () => {
     const result = await query(`
@@ -948,7 +948,7 @@ server.resource(
     return {
       contents: [
         {
-          uri: "hydra://metrics/llm",
+          uri: "zovark://metrics/llm",
           mimeType: "application/json",
           text: JSON.stringify(result.rows, null, 2),
         },
@@ -959,7 +959,7 @@ server.resource(
 
 server.resource(
   "Feedback Accuracy",
-  "hydra://feedback/accuracy",
+  "zovark://feedback/accuracy",
   { description: "Investigation feedback accuracy — analyst verdicts and correction rates" },
   async () => {
     const result = await query(`
@@ -976,7 +976,7 @@ server.resource(
     return {
       contents: [
         {
-          uri: "hydra://feedback/accuracy",
+          uri: "zovark://feedback/accuracy",
           mimeType: "application/json",
           text: JSON.stringify(result.rows[0] || {}, null, 2),
         },
@@ -990,7 +990,7 @@ server.resource(
 // ═══════════════════════════════════════════════════════════════
 
 server.prompt(
-  "hydra-investigate-brute-force",
+  "zovark-investigate-brute-force",
   "Investigate a brute force attack — submits alert and tracks results",
   {
     source_ip: z.string().describe("Attacker source IP"),
@@ -1003,7 +1003,7 @@ server.prompt(
         role: "user" as const,
         content: {
           type: "text" as const,
-          text: `Investigate brute force attack: ${attempt_count} failed login attempts from ${source_ip} targeting ${target_account} in the last 30 minutes. Use hydra_submit_alert with alert_type="brute_force" and this description as the prompt. Then wait 30 seconds and use hydra_get_report with latest=true to get the results.`,
+          text: `Investigate brute force attack: ${attempt_count} failed login attempts from ${source_ip} targeting ${target_account} in the last 30 minutes. Use zovark_submit_alert with alert_type="brute_force" and this description as the prompt. Then wait 30 seconds and use zovark_get_report with latest=true to get the results.`,
         },
       },
     ],
@@ -1011,7 +1011,7 @@ server.prompt(
 );
 
 server.prompt(
-  "hydra-investigate-ransomware",
+  "zovark-investigate-ransomware",
   "Investigate a ransomware incident",
   {
     hostname: z.string().describe("Affected hostname"),
@@ -1023,7 +1023,7 @@ server.prompt(
         role: "user" as const,
         content: {
           type: "text" as const,
-          text: `Investigate ransomware on host ${hostname}. Indicators: ${indicators}. Use hydra_submit_alert with alert_type="ransomware" and this description. Then check the report.`,
+          text: `Investigate ransomware on host ${hostname}. Indicators: ${indicators}. Use zovark_submit_alert with alert_type="ransomware" and this description. Then check the report.`,
         },
       },
     ],
@@ -1031,7 +1031,7 @@ server.prompt(
 );
 
 server.prompt(
-  "hydra-investigate-c2",
+  "zovark-investigate-c2",
   "Investigate a C2 beacon / command-and-control communication",
   {
     beacon_ip: z.string().describe("Suspected C2 IP/domain"),
@@ -1043,7 +1043,7 @@ server.prompt(
         role: "user" as const,
         content: {
           type: "text" as const,
-          text: `Investigate suspected C2 beacon: ${internal_host} is communicating with ${beacon_ip} on unusual ports. Use hydra_submit_alert with alert_type="c2_beacon". Then retrieve the report.`,
+          text: `Investigate suspected C2 beacon: ${internal_host} is communicating with ${beacon_ip} on unusual ports. Use zovark_submit_alert with alert_type="c2_beacon". Then retrieve the report.`,
         },
       },
     ],
@@ -1051,19 +1051,19 @@ server.prompt(
 );
 
 server.prompt(
-  "hydra-daily-health-check",
-  "Run a comprehensive daily health check of the HYDRA platform",
+  "zovark-daily-health-check",
+  "Run a comprehensive daily health check of the Zovark platform",
   () => ({
     messages: [
       {
         role: "user" as const,
         content: {
           type: "text" as const,
-          text: `Perform a daily HYDRA health check:
-1. Run hydra_health to check all services
-2. Run hydra_trigger_workflow with workflow="self_healing" and dry_run=true to scan for failures
-3. Use hydra_query to get today's investigation stats: SELECT status, count(*) FROM agent_tasks WHERE created_at > NOW() - INTERVAL '24 hours' GROUP BY status
-4. Use hydra_query to check for high-risk entities: SELECT entity_type, value, threat_score FROM entities WHERE threat_score > 70 ORDER BY threat_score DESC LIMIT 10
+          text: `Perform a daily Zovark health check:
+1. Run zovark_health to check all services
+2. Run zovark_trigger_workflow with workflow="self_healing" and dry_run=true to scan for failures
+3. Use zovark_query to get today's investigation stats: SELECT status, count(*) FROM agent_tasks WHERE created_at > NOW() - INTERVAL '24 hours' GROUP BY status
+4. Use zovark_query to check for high-risk entities: SELECT entity_type, value, threat_score FROM entities WHERE threat_score > 70 ORDER BY threat_score DESC LIMIT 10
 5. Summarize the platform state and any issues found.`,
         },
       },
@@ -1072,7 +1072,7 @@ server.prompt(
 );
 
 server.prompt(
-  "hydra-onboard-customer",
+  "zovark-onboard-customer",
   "Walk through onboarding a new customer tenant",
   {
     company_name: z.string().describe("Company name"),
@@ -1087,8 +1087,8 @@ server.prompt(
           content: {
             type: "text" as const,
             text: `Onboard new customer "${company_name}":
-1. Use hydra_create_tenant with name="${company_name}", slug="${slug}", admin_email="${admin_email}", admin_password="ChangeMeN0w!"
-2. Verify with hydra_query: SELECT id, name, slug, tier FROM tenants WHERE slug='${slug}'
+1. Use zovark_create_tenant with name="${company_name}", slug="${slug}", admin_email="${admin_email}", admin_password="ChangeMeN0w!"
+2. Verify with zovark_query: SELECT id, name, slug, tier FROM tenants WHERE slug='${slug}'
 3. Report the tenant_id and JWT token for API access.`,
           },
         },
@@ -1098,19 +1098,19 @@ server.prompt(
 );
 
 server.prompt(
-  "hydra-generate-demo",
-  "Run 3 different investigation types to demo HYDRA capabilities",
+  "zovark-generate-demo",
+  "Run 3 different investigation types to demo Zovark capabilities",
   () => ({
     messages: [
       {
         role: "user" as const,
         content: {
           type: "text" as const,
-          text: `Generate a HYDRA demo by running 3 investigations:
-1. hydra_submit_alert: alert_type="brute_force", prompt="500 failed SSH login attempts from 203.0.113.50 targeting root@prod-server-01 over 10 minutes"
-2. hydra_submit_alert: alert_type="c2_beacon", prompt="Internal host 10.0.1.42 making periodic HTTPS connections to 185.220.100.252 every 60 seconds, user-agent: Mozilla/4.0"
-3. hydra_submit_alert: alert_type="ransomware", prompt="Files on FILESERVER01 being renamed with .locked extension, ransom note README_RESTORE.txt found in multiple directories"
-Wait 60 seconds, then get all 3 reports with hydra_get_report latest=true for each.
+          text: `Generate a Zovark demo by running 3 investigations:
+1. zovark_submit_alert: alert_type="brute_force", prompt="500 failed SSH login attempts from 203.0.113.50 targeting root@prod-server-01 over 10 minutes"
+2. zovark_submit_alert: alert_type="c2_beacon", prompt="Internal host 10.0.1.42 making periodic HTTPS connections to 185.220.100.252 every 60 seconds, user-agent: Mozilla/4.0"
+3. zovark_submit_alert: alert_type="ransomware", prompt="Files on FILESERVER01 being renamed with .locked extension, ransom note README_RESTORE.txt found in multiple directories"
+Wait 60 seconds, then get all 3 reports with zovark_get_report latest=true for each.
 Compile a summary of all findings, risk scores, and recommendations.`,
         },
       },

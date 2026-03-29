@@ -1,8 +1,8 @@
-"""HYDRA SDK exceptions."""
+"""Zovark SDK exceptions."""
 
 
-class HydraAPIError(Exception):
-    """Base exception for HYDRA API errors."""
+class ZovarkAPIError(Exception):
+    """Base exception for Zovark API errors."""
 
     def __init__(self, message, status_code=None, response_body=None):
         self.message = message
@@ -12,18 +12,18 @@ class HydraAPIError(Exception):
 
     def __str__(self):
         if self.status_code:
-            return f"HydraAPIError({self.status_code}): {self.message}"
-        return f"HydraAPIError: {self.message}"
+            return f"ZovarkAPIError({self.status_code}): {self.message}"
+        return f"ZovarkAPIError: {self.message}"
 
 
-class AuthenticationError(HydraAPIError):
+class AuthenticationError(ZovarkAPIError):
     """Raised when authentication fails (401)."""
 
     def __init__(self, message="Authentication failed", **kwargs):
         super().__init__(message, status_code=401, **kwargs)
 
 
-class RateLimitError(HydraAPIError):
+class RateLimitError(ZovarkAPIError):
     """Raised when rate limit is exceeded (429)."""
 
     def __init__(self, message="Rate limit exceeded", retry_after=None, **kwargs):
@@ -37,14 +37,14 @@ class RateLimitError(HydraAPIError):
         return base
 
 
-class NotFoundError(HydraAPIError):
+class NotFoundError(ZovarkAPIError):
     """Raised when a resource is not found (404)."""
 
     def __init__(self, message="Resource not found", **kwargs):
         super().__init__(message, status_code=404, **kwargs)
 
 
-class ForbiddenError(HydraAPIError):
+class ForbiddenError(ZovarkAPIError):
     """Raised when access is forbidden (403)."""
 
     def __init__(self, message="Access forbidden", **kwargs):

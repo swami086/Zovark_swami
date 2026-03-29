@@ -4,7 +4,7 @@ version: "2026-03"
 
 models:
   fast:
-    name: "hydra-fast"
+    name: "zovark-fast"
     endpoint: "http://host.docker.internal:11434/v1/chat/completions"
     model: "qwen2.5:14b"
     max_tokens: 4096
@@ -13,7 +13,7 @@ models:
     description: "Fast tier — Qwen2.5-14B for simple triage"
 
   standard:
-    name: "hydra-standard"
+    name: "zovark-standard"
     endpoint: "http://host.docker.internal:11434/v1/chat/completions"
     model: "qwen2.5:14b"
     max_tokens: 8192
@@ -22,9 +22,9 @@ models:
     description: "Standard tier — Qwen2.5-14B for full investigation"
 
   enterprise:
-    name: "hydra-enterprise"
+    name: "zovark-enterprise"
     endpoint: "http://localhost:8080/v1/chat/completions"
-    model: "hydra-enterprise"
+    model: "zovark-enterprise"
     max_tokens: 16384
     temperature: 0.1
     timeout_seconds: 600

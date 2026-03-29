@@ -1,4 +1,4 @@
-# HYDRA Installation Guide
+# Zovark Installation Guide
 
 ## Hardware Requirements
 
@@ -91,32 +91,31 @@ REDIS_PASSWORD=change-this-redis-password
 
 # === LLM Configuration ===
 
-# Points workers to LLM endpoint. Default uses host llama.cpp/Ollama.
+# Points workers to LLM endpoint. Default uses host Ollama.
 # For GPU on host machine:
-LITELLM_URL=http://host.docker.internal:11434/v1/chat/completions
+ZOVARK_LLM_ENDPOINT=http://host.docker.internal:11434/v1/chat/completions
 # For Ollama in Docker (air-gap profile):
-# LITELLM_URL=http://hydra-ollama:11434/v1/chat/completions
+# ZOVARK_LLM_ENDPOINT=http://zovark-ollama:11434/v1/chat/completions
 
 # Model name
-HYDRA_LLM_MODEL=qwen2.5:14b
+ZOVARK_LLM_MODEL=qwen2.5:14b
 
 # === Optional ===
 
 # NATS messaging credentials
-NATS_USER=hydra
+NATS_USER=zovark
 NATS_PASSWORD=change-this-nats-password
 
 # MinIO object storage
-MINIO_ROOT_USER=hydra
+MINIO_ROOT_USER=zovark
 MINIO_ROOT_PASSWORD=change-this-minio-password
-
-# LiteLLM master key
-LITELLM_MASTER_KEY=sk-hydra-change-me
 ```
+
+> **Note:** LiteLLM was previously used as an LLM proxy but has been removed due to supply chain risk (PyPI compromise). Zovark now communicates directly with Ollama via `ZOVARK_LLM_ENDPOINT`.
 
 ## Start the LLM Server (GPU Host)
 
-HYDRA expects a local LLM running on the host machine. Choose one:
+Zovark expects a local LLM running on the host machine. Choose one:
 
 ### Option A: Ollama (easiest)
 
@@ -168,13 +167,13 @@ Wait for all services to become healthy:
 docker compose ps
 
 # Expected output:
-# hydra-postgres    running (healthy)
-# hydra-redis       running (healthy)
-# hydra-pgbouncer   running (healthy)
-# hydra-temporal    running
-# hydra-api         running
-# hydra-dashboard   running
-# hydra-egress-proxy running
+# zovark-postgres    running (healthy)
+# zovark-redis       running (healthy)
+# zovark-pgbouncer   running (healthy)
+# zovark-temporal    running
+# zovark-api         running
+# zovark-dashboard   running
+# zovark-egress-proxy running
 # worker (1)        running (healthy)
 ```
 
@@ -186,7 +185,7 @@ On first install, the database schema is created by `init.sql`. Apply any additi
 # Apply all migrations in order
 for f in migrations/*.sql; do
   echo "Applying $f ..."
-  docker compose exec -T postgres psql -U hydra -d hydra < "$f"
+  docker compose exec -T postgres psql -U zovark -d zovark < "$f"
 done
 ```
 
@@ -205,7 +204,7 @@ docker compose logs worker --tail=20
 # Look for: "Worker started" or "Polling for tasks"
 
 # 4. Check database connectivity
-docker compose exec postgres psql -U hydra -d hydra -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';"
+docker compose exec postgres psql -U zovark -d zovark -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';"
 # Should return 70+ tables
 ```
 
@@ -272,7 +271,7 @@ The response includes:
 # Start Prometheus + Grafana stack
 docker compose --profile monitoring up -d
 
-# Grafana: http://localhost:3001 (admin/hydra)
+# Grafana: http://localhost:3001 (admin/zovark)
 # Prometheus: http://localhost:9090
 ```
 

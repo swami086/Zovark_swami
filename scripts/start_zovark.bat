@@ -1,6 +1,6 @@
 @echo off
 echo ============================================================
-echo   HYDRA SOC Platform — Starting...
+echo   Zovark SOC Platform — Starting...
 echo ============================================================
 echo.
 
@@ -46,7 +46,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   HYDRA is running!
+echo   Zovark is running!
 echo   API:       http://localhost:8090
 echo   Dashboard: http://localhost:3000 (Docker) or :5173 (dev)
 echo   Health:    http://localhost:8090/health

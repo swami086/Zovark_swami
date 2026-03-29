@@ -8,9 +8,9 @@
 #   Storage: 100GB for model weights
 
 services:
-  hydra-vllm-fast:
+  zovark-vllm-fast:
     image: vllm/vllm-openai:v0.15.1
-    container_name: hydra-vllm-fast
+    container_name: zovark-vllm-fast
     command: >
       --model /models/chat-model-7b
       --served-model-name fast
@@ -28,12 +28,12 @@ services:
               count: 1
               capabilities: [gpu]
     networks:
-      - hydra-internal
+      - zovark-internal
     restart: unless-stopped
 
-  hydra-vllm-standard:
+  zovark-vllm-standard:
     image: vllm/vllm-openai:v0.15.1
-    container_name: hydra-vllm-standard
+    container_name: zovark-vllm-standard
     command: >
       --model /models/chat-model-32b
       --served-model-name standard
@@ -52,19 +52,19 @@ services:
               count: 1
               capabilities: [gpu]
     networks:
-      - hydra-internal
+      - zovark-internal
     restart: unless-stopped
 
-  hydra-litellm:
+  zovark-litellm:
     volumes:
       - ./litellm_config_enterprise.yaml:/app/config.yaml:ro
 
   # Disable the 1.5B container in enterprise mode
-  hydra-vllm-chat:
+  zovark-vllm-chat:
     profiles:
       - disabled
 
 networks:
-  hydra-internal:
+  zovark-internal:
     external: true
-    name: hydra-mvp_hydra-internal
+    name: hydra-mvp_zovark-internal

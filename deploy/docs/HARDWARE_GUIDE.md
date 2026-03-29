@@ -1,8 +1,8 @@
-# HYDRA Hardware & GPU Guide
+# Zovark Hardware & GPU Guide
 
 ## Model Tiers
 
-HYDRA uses local LLMs for investigation. Larger models produce better verdicts but require more GPU memory.
+Zovark uses local LLMs for investigation. Larger models produce better verdicts but require more GPU memory.
 
 | Tier | Model Size | VRAM Required | Use Case | Investigation Time |
 |------|-----------|---------------|----------|-------------------|
@@ -40,7 +40,7 @@ HYDRA uses local LLMs for investigation. Larger models produce better verdicts b
 
 ## Quantization and VRAM
 
-Quantization reduces model size at the cost of some accuracy. HYDRA uses GGUF format with llama.cpp.
+Quantization reduces model size at the cost of some accuracy. Zovark uses GGUF format with llama.cpp.
 
 | Quantization | Size Multiplier | Quality | Recommended For |
 |-------------|----------------|---------|-----------------|

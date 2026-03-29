@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# HYDRA Health Check
+# Zovark Health Check
 # Checks status of all services
 # ============================================================
 set -euo pipefail
@@ -13,7 +13,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo "=== HYDRA Health Check ==="
+echo "=== Zovark Health Check ==="
 echo ""
 
 # Docker services
@@ -44,7 +44,7 @@ fi
 
 # Database
 echo -n "Database: "
-if docker compose -f docker-compose.production.yml exec -T postgres pg_isready -U hydra -d hydra >/dev/null 2>&1; then
+if docker compose -f docker-compose.production.yml exec -T postgres pg_isready -U zovark -d zovark >/dev/null 2>&1; then
     echo -e "${GREEN}HEALTHY${NC}"
 else
     echo -e "${RED}UNHEALTHY${NC}"
@@ -61,7 +61,7 @@ fi
 
 # LLM
 echo -n "LLM: "
-LLM_URL=$(grep LITELLM_URL .env 2>/dev/null | cut -d= -f2 || echo "http://host.docker.internal:11434/v1/chat/completions")
+LLM_URL=$(grep ZOVARK_LLM_ENDPOINT .env 2>/dev/null | cut -d= -f2 || echo "http://host.docker.internal:11434/v1/chat/completions")
 if curl -sf "${LLM_URL%/chat/completions}/models" >/dev/null 2>&1 || curl -sf "http://localhost:11434/v1/models" >/dev/null 2>&1; then
     echo -e "${GREEN}AVAILABLE${NC}"
 else

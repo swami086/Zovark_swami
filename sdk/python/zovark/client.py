@@ -1,12 +1,12 @@
-"""HYDRA Python SDK client.
+"""Zovark Python SDK client.
 
-Provides a high-level interface to the HYDRA SOC automation API.
+Provides a high-level interface to the Zovark SOC automation API.
 Uses only stdlib + requests (minimal dependencies).
 
 Usage:
-    from hydra import HydraClient
+    from zovark import ZovarkClient
 
-    client = HydraClient("http://localhost:8090", email="admin@hydra.local", password="hydra123")
+    client = ZovarkClient("http://localhost:8090", email="admin@test.local", password="TestPass2026")
     client.login()
 
     task = client.create_task(
@@ -24,9 +24,9 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 
-from hydra.models import Task, Alert, User, Stats, TaskList
-from hydra.exceptions import (
-    HydraAPIError,
+from zovark.models import Task, Alert, User, Stats, TaskList
+from zovark.exceptions import (
+    ZovarkAPIError,
     AuthenticationError,
     RateLimitError,
     NotFoundError,
@@ -34,8 +34,8 @@ from hydra.exceptions import (
 )
 
 
-class HydraClient:
-    """Client for the HYDRA SOC automation API.
+class ZovarkClient:
+    """Client for the Zovark SOC automation API.
 
     Args:
         base_url: API base URL (e.g., "http://localhost:8090")
@@ -111,13 +111,13 @@ class HydraClient:
                     response_body=resp_body,
                 )
             else:
-                raise HydraAPIError(
+                raise ZovarkAPIError(
                     error_msg,
                     status_code=e.code,
                     response_body=resp_body,
                 )
         except URLError as e:
-            raise HydraAPIError(f"Connection failed: {e.reason}")
+            raise ZovarkAPIError(f"Connection failed: {e.reason}")
 
     # ── Authentication ──────────────────────────────────
 
@@ -129,7 +129,7 @@ class HydraClient:
 
         Raises:
             AuthenticationError: If credentials are invalid.
-            HydraAPIError: If login fails for another reason.
+            ZovarkAPIError: If login fails for another reason.
         """
         if not self._email or not self._password:
             raise AuthenticationError("Email and password are required for login")

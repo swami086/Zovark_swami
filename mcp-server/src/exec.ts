@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const execFileAsync = promisify(execFile);
 
 const PROJECT_DIR =
-  process.env.HYDRA_PROJECT_DIR ||
+  process.env.ZOVARK_PROJECT_DIR ||
   "C:/Users/vinay/Desktop/HYDRA/hydra-mvp";
 
 export async function dockerComposeExec(

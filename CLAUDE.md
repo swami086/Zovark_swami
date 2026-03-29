@@ -114,7 +114,7 @@ SIEM Alert → Go API (:8090) → Temporal → InvestigationWorkflowV2 →
 | pgbouncer | edoburu/pgbouncer | 6432 | zovark-pgbouncer |
 | temporal | temporalio/auto-setup:1.24.2 | 7233 | zovark-temporal |
 | api | Custom Go build | 8090 | zovark-api |
-| worker | Custom Python build | — | hydra-mvp-worker-1 |
+| worker | Custom Python build | — | zovark-worker |
 | dashboard | Custom React (nginx) | 3000 | zovark-dashboard |
 | squid-proxy | ubuntu/squid | 3128 | zovark-egress-proxy |
 
@@ -236,7 +236,7 @@ curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $
 4. **`fetch_task` dependency** — V2 workflow still calls legacy `fetch_task`. Tech debt.
 5. **Redis password not renamed** — Still `hydra-redis-dev-2026` (not `zovark-*`). Non-breaking.
 6. **DB password not renamed** — Still `hydra_dev_2026` for user `zovark`. Non-breaking.
-7. **model_config.yaml tier names** — Still `hydra-fast`/`hydra-standard`/`hydra-enterprise`. Logical labels only.
+7. **model_config.yaml tier names** — Renamed to `zovark-fast`/`zovark-standard`/`zovark-enterprise`.
 8. **Single-GPU bottleneck** — RTX 3050 serializes LLM requests. Path C takes 120-280s.
 9. **Path C benign** — LLM sometimes over-scores benign (55-60 instead of ≤25). Mitigated by benign-system-event template routing.
 10. **DPO pipeline** — Data exists but no production model trained.

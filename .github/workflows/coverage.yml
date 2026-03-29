@@ -14,9 +14,9 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: hydra
+          POSTGRES_USER: zovark
           POSTGRES_PASSWORD: hydra_dev_2026
-          POSTGRES_DB: hydra
+          POSTGRES_DB: zovark
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
       redis:
@@ -24,7 +24,7 @@ jobs:
         ports: ['6379:6379']
 
     env:
-      DATABASE_URL: postgresql://hydra:hydra_dev_2026@localhost:5432/hydra
+      DATABASE_URL: postgresql://zovark:hydra_dev_2026@localhost:5432/zovark
       REDIS_URL: redis://localhost:6379/0
 
     steps:
@@ -41,10 +41,10 @@ jobs:
 
       - name: Apply database schema
         run: |
-          PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f init.sql
+          PGPASSWORD=hydra_dev_2026 psql -h localhost -U zovark -d zovark -f init.sql
           for f in migrations/*.sql; do
             echo "Applying $f..."
-            PGPASSWORD=hydra_dev_2026 psql -h localhost -U hydra -d hydra -f "$f" || true
+            PGPASSWORD=hydra_dev_2026 psql -h localhost -U zovark -d zovark -f "$f" || true
           done
 
       - name: Run coverage

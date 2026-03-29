@@ -1,5 +1,5 @@
 # ============================================================
-# HYDRA Production Docker Compose
+# Zovark Production Docker Compose
 # Usage: cd deploy && docker compose -f docker-compose.production.yml up -d
 # Prerequisites: Copy .env.example to .env and fill in values
 # ============================================================
@@ -9,11 +9,11 @@ services:
   # --- DATABASE ---
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: hydra-postgres
+    container_name: zovark-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-hydra}
+      POSTGRES_USER: ${POSTGRES_USER:-zovark}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-hydra}
+      POSTGRES_DB: ${POSTGRES_DB:-zovark}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -21,7 +21,7 @@ services:
       - ../config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     command: postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hydra -d hydra"]
+      test: ["CMD-SHELL", "pg_isready -U zovark -d zovark"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -37,12 +37,12 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # --- CACHE ---
   redis:
     image: redis:7-alpine
-    container_name: hydra-redis
+    container_name: zovark-redis
     command: >
       redis-server
       --maxmemory 256mb
@@ -70,14 +70,14 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # --- CONNECTION POOLER ---
   pgbouncer:
     image: edoburu/pgbouncer:latest
-    container_name: hydra-pgbouncer
+    container_name: zovark-pgbouncer
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-hydra}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hydra}
+      DATABASE_URL: postgres://${POSTGRES_USER:-zovark}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-zovark}
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: 400
@@ -104,16 +104,16 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # --- WORKFLOW ENGINE ---
   temporal:
     image: temporalio/auto-setup:1.24.2
-    container_name: hydra-temporal
+    container_name: zovark-temporal
     environment:
       - DB=postgres12
       - DB_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:-hydra}
+      - POSTGRES_USER=${POSTGRES_USER:-zovark}
       - POSTGRES_PWD=${POSTGRES_PASSWORD}
       - POSTGRES_SEEDS=postgres
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
@@ -140,26 +140,26 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # --- GO API ---
   api:
     build:
       context: ../api
       dockerfile: Dockerfile
-    container_name: hydra-api
+    container_name: zovark-api
     ports:
       - "${API_PORT:-8090}:8090"
     environment:
       - PORT=8090
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-hydra}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-hydra}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-zovark}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-zovark}
       - TEMPORAL_ADDRESS=temporal:7233
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - HYDRA_ENCRYPTION_KEY=${HYDRA_ENCRYPTION_KEY:-}
-      - HYDRA_WORKFLOW_VERSION=InvestigationWorkflowV2
+      - ZOVARK_ENCRYPTION_KEY=${ZOVARK_ENCRYPTION_KEY:-}
+      - ZOVARK_WORKFLOW_VERSION=InvestigationWorkflowV2
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -183,7 +183,7 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # --- PYTHON TEMPORAL WORKER ---
   worker:
@@ -192,13 +192,13 @@ services:
       dockerfile: Dockerfile
     # No container_name — allows docker compose --scale worker=N
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-hydra}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-hydra}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-zovark}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-zovark}
       - TEMPORAL_ADDRESS=temporal:7233
-      - LITELLM_URL=${LITELLM_URL}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - ZOVARK_LLM_ENDPOINT=${ZOVARK_LLM_ENDPOINT}
+      - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/../sandbox
-      - HYDRA_LLM_MODEL=${HYDRA_LLM_MODEL:-qwen2.5:14b}
+      - ZOVARK_LLM_MODEL=${ZOVARK_LLM_MODEL:-qwen2.5:14b}
       - DEDUP_ENABLED=true
       - PYTHONUNBUFFERED=1
       - HTTP_PROXY=http://squid-proxy:3128
@@ -229,14 +229,14 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # --- REACT DASHBOARD ---
   dashboard:
     build:
       context: ../dashboard
       dockerfile: Dockerfile
-    container_name: hydra-dashboard
+    container_name: zovark-dashboard
     ports:
       - "${DASHBOARD_PORT:-3000}:3000"
     depends_on:
@@ -259,12 +259,12 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
   # --- EGRESS PROXY ---
   squid-proxy:
     image: ubuntu/squid:latest
-    container_name: hydra-egress-proxy
+    container_name: zovark-egress-proxy
     volumes:
       - ../proxy/squid.conf:/etc/squid/squid.conf:ro
     healthcheck:
@@ -284,10 +284,10 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - hydra-internal
+      - zovark-internal
 
 networks:
-  hydra-internal:
+  zovark-internal:
     driver: bridge
 
 volumes:

@@ -1,4 +1,4 @@
-# HYDRA Administration Guide
+# Zovark Administration Guide
 
 ## Starting and Stopping
 
@@ -39,7 +39,7 @@ docker compose logs --tail=50 temporal
 docker compose logs -f worker
 
 # Check database connectivity
-docker compose exec postgres psql -U hydra -d hydra -c "SELECT 1;"
+docker compose exec postgres psql -U zovark -d zovark -c "SELECT 1;"
 
 # Check Redis
 docker compose exec redis redis-cli -a "${REDIS_PASSWORD:-hydra-redis-dev-2026}" ping
@@ -61,16 +61,16 @@ asyncio.run(check())
 
 ```bash
 # Full database dump (compressed)
-docker compose exec -T postgres pg_dump -U hydra -d hydra -Fc > \
-  "hydra_backup_$(date +%Y%m%d_%H%M%S).dump"
+docker compose exec -T postgres pg_dump -U zovark -d zovark -Fc > \
+  "zovark_backup_$(date +%Y%m%d_%H%M%S).dump"
 
 # SQL format (human-readable)
-docker compose exec -T postgres pg_dump -U hydra -d hydra > \
-  "hydra_backup_$(date +%Y%m%d_%H%M%S).sql"
+docker compose exec -T postgres pg_dump -U zovark -d zovark > \
+  "zovark_backup_$(date +%Y%m%d_%H%M%S).sql"
 
 # Data only (no schema — useful for migrations)
-docker compose exec -T postgres pg_dump -U hydra -d hydra --data-only -Fc > \
-  "hydra_data_$(date +%Y%m%d_%H%M%S).dump"
+docker compose exec -T postgres pg_dump -U zovark -d zovark --data-only -Fc > \
+  "zovark_data_$(date +%Y%m%d_%H%M%S).dump"
 ```
 
 ### Automated Daily Backups
@@ -78,9 +78,9 @@ docker compose exec -T postgres pg_dump -U hydra -d hydra --data-only -Fc > \
 Add to crontab (`crontab -e`):
 
 ```cron
-0 2 * * * cd /path/to/hydra-mvp && docker compose exec -T postgres pg_dump -U hydra -d hydra -Fc > /backups/hydra_$(date +\%Y\%m\%d).dump 2>&1
+0 2 * * * cd /path/to/hydra-mvp && docker compose exec -T postgres pg_dump -U zovark -d zovark -Fc > /backups/zovark_$(date +\%Y\%m\%d).dump 2>&1
 # Keep last 30 days
-0 3 * * * find /backups -name "hydra_*.dump" -mtime +30 -delete
+0 3 * * * find /backups -name "zovark_*.dump" -mtime +30 -delete
 ```
 
 ### Restore from Backup
@@ -90,10 +90,10 @@ Add to crontab (`crontab -e`):
 docker compose stop worker api
 
 # Restore from compressed dump
-docker compose exec -T postgres pg_restore -U hydra -d hydra --clean --if-exists < hydra_backup.dump
+docker compose exec -T postgres pg_restore -U zovark -d zovark --clean --if-exists < zovark_backup.dump
 
 # Or from SQL format
-docker compose exec -T postgres psql -U hydra -d hydra < hydra_backup.sql
+docker compose exec -T postgres psql -U zovark -d zovark < zovark_backup.sql
 
 # Restart services
 docker compose start api worker
@@ -118,7 +118,7 @@ docker compose logs worker 2>&1 | grep "TASK_ID_HERE"
 docker compose logs api 2>&1 | grep "POST\|PUT\|DELETE" | tail -20
 
 # Export logs to file
-docker compose logs --no-color > hydra_logs_$(date +%Y%m%d).txt
+docker compose logs --no-color > zovark_logs_$(date +%Y%m%d).txt
 ```
 
 ## Scaling Workers
@@ -152,7 +152,7 @@ Recommended: 2-3 workers for single-GPU setups, 5-10 for enterprise.
 ollama pull qwen2.5:14b
 
 # Switch models — update .env
-echo 'HYDRA_LLM_MODEL=qwen2.5:32b' >> .env
+echo 'ZOVARK_LLM_MODEL=qwen2.5:32b' >> .env
 
 # Restart worker to pick up the change
 docker compose restart worker
@@ -168,7 +168,7 @@ docker compose restart worker
 # Restart llama-server with the new model file
 
 # Update .env if model name changed
-echo 'HYDRA_LLM_MODEL=qwen2.5:32b' >> .env
+echo 'ZOVARK_LLM_MODEL=qwen2.5:32b' >> .env
 docker compose restart worker
 ```
 
@@ -179,15 +179,15 @@ docker compose restart worker
 docker system df
 
 # Per-volume disk usage
-docker system df -v | grep hydra
+docker system df -v | grep zovark
 
 # PostgreSQL database size
-docker compose exec postgres psql -U hydra -d hydra -c "
-  SELECT pg_size_pretty(pg_database_size('hydra')) AS db_size;
+docker compose exec postgres psql -U zovark -d zovark -c "
+  SELECT pg_size_pretty(pg_database_size('zovark')) AS db_size;
 "
 
 # Per-table sizes (top 10)
-docker compose exec postgres psql -U hydra -d hydra -c "
+docker compose exec postgres psql -U zovark -d zovark -c "
   SELECT relname AS table,
          pg_size_pretty(pg_total_relation_size(relid)) AS size
   FROM pg_catalog.pg_statio_user_tables
@@ -222,7 +222,7 @@ curl -s http://localhost:8090/api/v1/tasks/TASK_ID \
   -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 
 # Check investigation counts
-docker compose exec postgres psql -U hydra -d hydra -c "
+docker compose exec postgres psql -U zovark -d zovark -c "
   SELECT status, count(*) FROM agent_tasks GROUP BY status;
 "
 ```
@@ -285,7 +285,7 @@ nvidia-smi
 docker compose logs --tail=20 pgbouncer
 
 # Check active connections
-docker compose exec postgres psql -U hydra -d hydra -c "
+docker compose exec postgres psql -U zovark -d zovark -c "
   SELECT count(*) as active_connections FROM pg_stat_activity;
 "
 
@@ -293,7 +293,7 @@ docker compose exec postgres psql -U hydra -d hydra -c "
 docker compose restart pgbouncer
 
 # Check for long-running queries
-docker compose exec postgres psql -U hydra -d hydra -c "
+docker compose exec postgres psql -U zovark -d zovark -c "
   SELECT pid, now() - pg_stat_activity.query_start AS duration, query
   FROM pg_stat_activity
   WHERE state != 'idle'
@@ -302,7 +302,7 @@ docker compose exec postgres psql -U hydra -d hydra -c "
 "
 
 # Kill a stuck query
-docker compose exec postgres psql -U hydra -d hydra -c "
+docker compose exec postgres psql -U zovark -d zovark -c "
   SELECT pg_terminate_backend(PID_HERE);
 "
 ```
@@ -365,6 +365,6 @@ docker compose up -d
 
 # Re-apply migrations
 for f in migrations/*.sql; do
-  docker compose exec -T postgres psql -U hydra -d hydra < "$f"
+  docker compose exec -T postgres psql -U zovark -d zovark < "$f"
 done
 ```

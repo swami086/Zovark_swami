@@ -8,7 +8,13 @@ data/
 .claude/worktrees/
 unsloth_compiled_cache/
 security-fixes/
-models/hydra-merged/
+models/zovark-merged/
 *.gguf
 secrets.env
 !secrets.env.example
+
+# Development artifacts
+batch_results*.json
+benchmark_*.txt
+benchmark_*.json
+litellm_config*.yaml
