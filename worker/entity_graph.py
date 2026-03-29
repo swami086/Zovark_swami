@@ -114,8 +114,8 @@ async def extract_entities(data: dict) -> dict:
     if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
         return {"entities": [], "edges": [], "usage_tokens": {"prompt_tokens": 0, "completion_tokens": 0}, "execution_ms": 0}
 
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
     tier_config = get_tier_config("extract_entities")
     llm_model = tier_config["model"]
 
@@ -133,7 +133,7 @@ async def extract_entities(data: dict) -> dict:
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
-                litellm_url,
+                llm_endpoint,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": llm_model,

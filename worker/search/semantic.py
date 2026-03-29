@@ -17,8 +17,8 @@ def _get_db():
 
 
 EMBED_URL = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
-LITELLM_EMBED_URL = os.environ.get("LITELLM_URL", "http://litellm:4000") + "/v1/embeddings"
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+ZOVARK_EMBED_URL = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434") + "/v1/embeddings"
+ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
 
 async def _get_embedding(text):
@@ -27,9 +27,9 @@ async def _get_embedding(text):
         async with httpx.AsyncClient(timeout=10.0) as client:
             # Try LiteLLM embeddings endpoint first
             resp = await client.post(
-                LITELLM_EMBED_URL,
+                ZOVARK_EMBED_URL,
                 headers={
-                    "Authorization": f"Bearer {LITELLM_KEY}",
+                    "Authorization": f"Bearer {ZOVARK_LLM_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={"model": "embed", "input": text},

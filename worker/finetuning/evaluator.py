@@ -9,8 +9,8 @@ import time
 import httpx
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
-LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
 
 BENCHMARK_PROMPTS = [
@@ -61,9 +61,9 @@ def evaluate_model(model_name: str = "fast") -> dict:
         start = time.time()
         try:
             response = httpx.post(
-                LITELLM_URL,
+                ZOVARK_LLM_ENDPOINT,
                 headers={
-                    "Authorization": f"Bearer {LITELLM_KEY}",
+                    "Authorization": f"Bearer {ZOVARK_LLM_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={

@@ -10,8 +10,8 @@ from typing import Optional
 
 import httpx
 
-LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
 
@@ -31,8 +31,8 @@ async def llm_call(
     Makes LLM call and logs audit metadata including prompt version.
     Returns: {"content": str, "tokens_in": int, "tokens_out": int, "latency_ms": int, "model": str, "prompt_version": str}
     """
-    endpoint = model_config.get("endpoint", LITELLM_URL)
-    api_key = model_config.get("api_key", LITELLM_KEY)
+    endpoint = model_config.get("endpoint", ZOVARK_LLM_ENDPOINT)
+    api_key = model_config.get("api_key", ZOVARK_LLM_KEY)
     model_name = model_config.get("model", model_config.get("name", "unknown"))
 
     request_body = {
@@ -43,6 +43,7 @@ async def llm_call(
         ],
         "temperature": model_config.get("temperature", 0.1),
         "max_tokens": model_config.get("max_tokens", 4096),
+        "keep_alive": "30m",  # Keep model in VRAM between requests
     }
     if response_format:
         request_body["response_format"] = response_format
@@ -159,3 +160,20 @@ def _log_audit(
         conn.close()
     except Exception:
         pass  # Table may not exist yet — never block pipeline
+
+
+def preload_ollama_model():
+    """Pre-load model into VRAM at worker startup with 30m keep_alive."""
+    import logging
+    logger = logging.getLogger(__name__)
+    ollama_base = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    ollama_url = ollama_base.replace("/v1/chat/completions", "").replace("/v1/models", "")
+    model = os.environ.get("ZOVARK_MODEL_PATH_C", "qwen2.5:14b")
+    try:
+        import httpx
+        resp = httpx.post(f"{ollama_url}/api/generate", json={
+            "model": model, "prompt": "ok", "keep_alive": "30m", "stream": False,
+        }, timeout=60.0)
+        logger.info(f"Ollama model {model} pre-loaded with 30m keep_alive (status={resp.status_code})")
+    except Exception as e:
+        logger.warning(f"Failed to pre-load Ollama model: {e}")

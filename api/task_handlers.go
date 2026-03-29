@@ -184,7 +184,7 @@ func createTaskHandler(c *gin.Context) {
 	if err != nil {
 		if isTemporalTimeout(err) {
 			fallbackModel := HandleModelTimeout(c.Request.Context(), tenantID, taskID, priority,
-				wfLatency, "temporal/litellm", "zovark-fast")
+				wfLatency, "temporal/ollama", "zovark-fast")
 			log.Printf("Model timeout on task %s, fallback to %s", taskID, fallbackModel)
 		}
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)

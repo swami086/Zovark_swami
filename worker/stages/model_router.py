@@ -1,14 +1,14 @@
 """
 Model Router — selects model config based on severity and task type.
-Falls back to LITELLM_URL env var if YAML is missing (backward compat).
+Falls back to ZOVARK_LLM_ENDPOINT env var if YAML is missing (backward compat).
 """
 import os
 import yaml
 from pathlib import Path
 from typing import Optional
 
-LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
 _CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 
@@ -27,7 +27,7 @@ def get_model_config(severity: str = "", task_type: str = "") -> dict:
       1. task_type_overrides (if enabled)
       2. severity_overrides
       3. default tier
-      4. LITELLM_URL env var fallback
+      4. ZOVARK_LLM_ENDPOINT env var fallback
 
     Returns dict with: name, endpoint, model, max_tokens, temperature, timeout_seconds
     """
@@ -35,8 +35,8 @@ def get_model_config(severity: str = "", task_type: str = "") -> dict:
         # Fallback: no config file, use env var
         return {
             "name": "env-fallback",
-            "endpoint": LITELLM_URL,
-            "api_key": LITELLM_KEY,
+            "endpoint": ZOVARK_LLM_ENDPOINT,
+            "api_key": ZOVARK_LLM_KEY,
             "model": "zovark-standard",
             "max_tokens": 4096,
             "temperature": 0.1,
@@ -64,5 +64,5 @@ def get_model_config(severity: str = "", task_type: str = "") -> dict:
     # Resolve tier to model config
     model = models.get(tier, models.get("standard", {}))
     config = dict(model)  # copy
-    config["api_key"] = LITELLM_KEY
+    config["api_key"] = ZOVARK_LLM_KEY
     return config

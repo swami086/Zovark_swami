@@ -36,9 +36,9 @@ IMAGES=(
   "ollama/ollama:latest"
 )
 
-# Tag litellm image for export
-run_or_print "docker tag docker.litellm.ai/berriai/litellm-database:main-stable zovark-litellm:latest 2>/dev/null || true"
-IMAGES+=("zovark-litellm:latest")
+# Tag ollama image for export
+run_or_print "docker tag docker.ollama.ai/berriai/ollama-database:main-stable zovark-ollama:latest 2>/dev/null || true"
+IMAGES+=("zovark-ollama:latest")
 
 for img in "${IMAGES[@]}"; do
   FILENAME=$(echo "$img" | tr '/:' '_').tar
@@ -61,7 +61,7 @@ echo ""
 echo "[4/5] Copying configuration..."
 run_or_print "cp docker-compose.yml '$EXPORT_DIR/'"
 run_or_print "cp docker-compose.airgap.yml '$EXPORT_DIR/'"
-run_or_print "cp litellm_config.yaml '$EXPORT_DIR/'"
+run_or_print "cp ollama_config.yaml '$EXPORT_DIR/'"
 run_or_print "cp init.sql '$EXPORT_DIR/'"
 run_or_print "cp scripts/seed_skills.py '$EXPORT_DIR/'"
 run_or_print "cp -r worker/ '$EXPORT_DIR/worker_src/'"
@@ -73,7 +73,7 @@ cat > "$EXPORT_DIR/.env" << 'EOF'
 ZOVARK_LLM_MODEL=zovark-local
 JWT_SECRET=change-me-in-production
 DATABASE_URL=postgresql://zovark:zovark@postgres:5432/zovark
-LITELLM_MASTER_KEY=sk-zovark-local
+ZOVARK_LLM_KEY=sk-zovark-local
 OPENROUTER_API_KEY=not-needed-airgap
 EOF
 fi

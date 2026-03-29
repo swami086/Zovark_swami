@@ -1,6 +1,5 @@
 temporalio
 httpx
-litellm
 psycopg2-binary
 redis
 pytest

@@ -23,11 +23,11 @@ func healthCheckHandler(c *gin.Context) {
 		dbOK = (err == nil)
 	}
 
-	// Check LiteLLM
-	litellmOK := false
-	resp, err := http.Get("http://litellm:4000/health/liveliness")
+	// LLM health (Ollama on host — check is best-effort)
+	llmOK := false
+	resp, err := http.Get("http://host.docker.internal:11434/api/tags")
 	if err == nil {
-		litellmOK = (resp.StatusCode == 200)
+		llmOK = (resp.StatusCode == 200)
 		resp.Body.Close()
 	}
 
@@ -51,7 +51,7 @@ func healthCheckHandler(c *gin.Context) {
 		"services": gin.H{
 			"api":       true,
 			"db":        dbOK,
-			"litellm":   litellmOK,
+			"llm": llmOK,
 			"embedding": embeddingOK,
 		},
 	})

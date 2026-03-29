@@ -124,7 +124,7 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	wfLatency := int(time.Since(wfStart).Milliseconds())
 	if err != nil {
 		if isTemporalTimeout(err) {
-			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/litellm", "zovark-fast")
+			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/ollama", "zovark-fast")
 		}
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		return "", fmt.Errorf("failed to start workflow: %w", err)

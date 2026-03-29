@@ -32,8 +32,8 @@ echo ""
 # Test LiteLLM routing to Ollama (simulate cloud failure)
 echo "3. Testing LiteLLM fallback to Ollama..."
 echo "   (Using airgap model name directly)"
-LITELLM_RESP=$(curl -sf http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-zovark-dev-2026}" \
+LLM_RESP=$(curl -sf http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer ${ZOVARK_LLM_KEY:-sk-zovark-dev-2026}" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "zovark-fast-airgap",
@@ -41,11 +41,11 @@ LITELLM_RESP=$(curl -sf http://localhost:4000/v1/chat/completions \
     "max_tokens": 10
   }' 2>&1) || true
 
-if echo "$LITELLM_RESP" | grep -q "choices"; then
+if echo "$LLM_RESP" | grep -q "choices"; then
   echo "   LiteLLM → Ollama: OK"
 else
   echo "   LiteLLM → Ollama: FAILED"
-  echo "   Response: $LITELLM_RESP"
+  echo "   Response: $LLM_RESP"
   exit 1
 fi
 echo ""

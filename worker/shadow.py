@@ -46,8 +46,8 @@ async def generate_recommendation(params: dict) -> dict:
     tenant_id = params["tenant_id"]
     investigation_data = params.get("investigation_data", {})
 
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     tier_config = get_tier_config("generate_recommendation")
 
@@ -82,7 +82,7 @@ async def generate_recommendation(params: dict) -> dict:
 
     start_time = time.time()
     async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(litellm_url, json=payload, headers=headers)
+        response = await client.post(llm_endpoint, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
     execution_ms = int((time.time() - start_time) * 1000)

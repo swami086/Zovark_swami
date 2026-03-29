@@ -84,7 +84,7 @@ func (vc *VaultClient) refreshSecrets() {
 	secretPaths := map[string]string{
 		"database_url":       "secret/data/zovark/database",
 		"jwt_secret":         "secret/data/zovark/jwt",
-		"litellm_master_key": "secret/data/zovark/litellm",
+		"llm_api_key": "secret/data/zovark/llm",
 		"redis_url":          "secret/data/zovark/redis",
 	}
 

@@ -25,8 +25,8 @@ from stages.output_validator import validate_investigation_output, safe_default_
 from stages.mitre_mapping import get_mitre_techniques
 
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
-LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
 
 # --- Verdict derivation ---

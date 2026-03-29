@@ -79,8 +79,8 @@ async def _patch_logic_bug(diagnosis: dict) -> dict:
         return {'type': 'no_patch', 'reason': f'Could not locate source for activity: {activity_name}'}
 
     tier_config = get_tier_config('generate_patch')
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     system_prompt = (
         "You are an SRE agent generating minimal Python code fixes. "
@@ -101,7 +101,7 @@ async def _patch_logic_bug(diagnosis: dict) -> dict:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                litellm_url,
+                llm_endpoint,
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
                     "model": tier_config["model"],

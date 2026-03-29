@@ -16,8 +16,8 @@ def _get_db():
     return psycopg2.connect(db_url)
 
 
-LITELLM_URL = os.environ.get("LITELLM_URL", "http://litellm:4000")
-LITELLM_KEY = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434")
+ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
 # Current embedding model version — update when model changes
 CURRENT_EMBED_MODEL = os.environ.get("ZOVARK_EMBED_MODEL", "nomic-embed-text-v1.5")
@@ -189,9 +189,9 @@ async def _batch_embed(texts):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                f"{LITELLM_URL}/v1/embeddings",
+                f"{ZOVARK_LLM_ENDPOINT}/v1/embeddings",
                 headers={
-                    "Authorization": f"Bearer {LITELLM_KEY}",
+                    "Authorization": f"Bearer {ZOVARK_LLM_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={"model": "embed", "input": texts},

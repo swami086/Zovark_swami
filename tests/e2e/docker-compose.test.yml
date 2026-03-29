@@ -82,7 +82,7 @@ services:
       - PORT=8090
       - DATABASE_URL=postgresql://hydra:hydra_dev_2026@postgres:5432/hydra
       - TEMPORAL_ADDRESS=temporal:7233
-      - LITELLM_MASTER_KEY=sk-hydra-dev-2026
+      - ZOVARK_LLM_KEY=sk-hydra-dev-2026
       - JWT_SECRET=hydra-jwt-secret-dev-2026
     depends_on:
       postgres:
@@ -102,8 +102,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://hydra:hydra_dev_2026@postgres:5432/hydra
       - TEMPORAL_ADDRESS=temporal:7233
-      - LITELLM_URL=http://mock-llm:4000/v1/chat/completions
-      - LITELLM_MASTER_KEY=sk-hydra-dev-2026
+      - ZOVARK_LLM_ENDPOINT=http://mock-llm:4000/v1/chat/completions
+      - ZOVARK_LLM_KEY=sk-hydra-dev-2026
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
     volumes:

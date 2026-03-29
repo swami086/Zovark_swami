@@ -91,8 +91,8 @@ async def generate_sigma_rule(data: dict) -> dict:
     Input: {candidate_id, technique_id, pattern_description, entity_types, edge_patterns}
     Returns: {candidate_id, sigma_yaml, valid, error}
     """
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
     tier_config = get_tier_config("generate_sigma_rule")
     llm_model = tier_config["model"]
 
@@ -161,7 +161,7 @@ async def generate_sigma_rule(data: dict) -> dict:
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
-                litellm_url,
+                llm_endpoint,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": llm_model,

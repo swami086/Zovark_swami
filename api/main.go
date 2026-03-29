@@ -17,7 +17,7 @@ type Config struct {
 	Port             string
 	DatabaseURL      string
 	TemporalAddress  string
-	LiteLLMMasterKey string
+	OllamaMasterKey string
 	JWTSecret        string
 	// OIDC/SSO configuration
 	OIDCIssuerURL    string
@@ -39,7 +39,7 @@ func init() {
 		Port:             getEnvOrDefault("PORT", "8090"),
 		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"),
 		TemporalAddress:  getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233"),
-		LiteLLMMasterKey: getEnvOrDefault("LITELLM_MASTER_KEY", ""),
+		OllamaMasterKey: getEnvOrDefault("ZOVARK_LLM_KEY", ""),
 		JWTSecret:        getEnvOrDefault("JWT_SECRET", ""),
 		// OIDC
 		OIDCIssuerURL:    getEnvOrDefault("OIDC_ISSUER_URL", ""),

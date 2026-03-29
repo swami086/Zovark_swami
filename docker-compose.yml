@@ -250,7 +250,7 @@ services:
       - PORT=8090
       - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovark-dev-2026}
+      - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY:-sk-zovark-dev-2026}
       - JWT_SECRET=${JWT_SECRET:-zovark-jwt-secret-dev-2026-CHANGE-ME-IN-PRODUCTION-min-32-chars}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
       - REDIS_PASSWORD=${REDIS_PASSWORD:-zovark-redis-dev-2026}
@@ -280,8 +280,8 @@ services:
       # Workers go through PgBouncer (transaction pooling)
       - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
-      - LITELLM_URL=${LITELLM_URL:-http://host.docker.internal:11434/v1/chat/completions}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-zovark-dev-2026}
+      - ZOVARK_LLM_ENDPOINT=${ZOVARK_LLM_ENDPOINT:-http://host.docker.internal:11434/v1/chat/completions}
+      - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY:-sk-zovark-dev-2026}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
       - ZOVARK_LLM_MODEL=${ZOVARK_LLM_MODEL:-qwen2.5:14b}
@@ -290,7 +290,7 @@ services:
       - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222
       - HTTP_PROXY=http://squid-proxy:3128
       - HTTPS_PROXY=http://squid-proxy:3128
-      - NO_PROXY=litellm,postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,zovark-api,pgbouncer,host.docker.internal,api
+      - NO_PROXY=postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,zovark-api,pgbouncer,host.docker.internal,api
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro

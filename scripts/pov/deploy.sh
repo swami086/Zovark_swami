@@ -39,7 +39,7 @@ fi
 cp .env.example .env
 sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
 sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=zovark_pov_2026|" .env
-sed -i "s|^LITELLM_MASTER_KEY=.*|LITELLM_MASTER_KEY=sk-zovark-pov-$(openssl rand -hex 8 2>/dev/null || echo 'dev-key')|" .env
+sed -i "s|^ZOVARK_LLM_KEY=.*|ZOVARK_LLM_KEY=sk-zovark-pov-$(openssl rand -hex 8 2>/dev/null || echo 'dev-key')|" .env
 sed -i "s|^MINIO_ROOT_USER=.*|MINIO_ROOT_USER=zovark-pov|" .env
 sed -i "s|^MINIO_ROOT_PASSWORD=.*|MINIO_ROOT_PASSWORD=$(openssl rand -hex 12 2>/dev/null || echo 'minio-pov-2026')|" .env
 

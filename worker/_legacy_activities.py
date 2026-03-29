@@ -193,8 +193,8 @@ async def fetch_task(task_id: str) -> dict:
 
 @activity.defn
 async def generate_code(task_data: dict) -> dict:
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     prompt = task_data.get("input", {}).get("prompt", "")
     task_type = task_data.get("task_type", "Log Analysis")
@@ -312,7 +312,7 @@ async def generate_code(task_data: dict) -> dict:
 
     start_time = time.time()
     async with httpx.AsyncClient(timeout=900.0) as client:
-        response = await client.post(litellm_url, json=payload, headers=headers)
+        response = await client.post(llm_endpoint, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
 
@@ -709,8 +709,8 @@ async def check_followup_needed(check_data: dict) -> dict:
 @activity.defn
 async def generate_followup_code(task_data: dict) -> dict:
     """Generate code for a follow-up step, including previous step context."""
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     prompt = task_data.get("prompt", "")
     previous_context = task_data.get("previous_context", "")
@@ -769,7 +769,7 @@ async def generate_followup_code(task_data: dict) -> dict:
 
     start_time = time.time()
     async with httpx.AsyncClient(timeout=900.0) as client:
-        response = await client.post(litellm_url, json=payload, headers=headers)
+        response = await client.post(llm_endpoint, json=payload, headers=headers)
         response.raise_for_status()
         result = response.json()
 
@@ -1060,8 +1060,8 @@ async def fill_skill_parameters(data: dict) -> dict:
             "input_tokens": 0, "output_tokens": 0,
         }
 
-    litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-    api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
     tier_config = get_tier_config("fill_skill_parameters")
     model_name = tier_config["model"]
 
@@ -1087,7 +1087,7 @@ async def fill_skill_parameters(data: dict) -> dict:
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                litellm_url,
+                llm_endpoint,
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
                     "model": model_name,
@@ -1294,8 +1294,8 @@ def _extract_iocs_from_input(task_input: dict) -> list:
 @activity.defn
 async def write_investigation_memory(memory_data: dict) -> None:
     try:
-        litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-        api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+        api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
         tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 
         task_id = memory_data.get("task_id")
@@ -1341,7 +1341,7 @@ async def write_investigation_memory(memory_data: dict) -> None:
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(litellm_url, json=payload, headers={"Authorization": f"Bearer {api_key}"})
+            resp = await client.post(llm_endpoint, json=payload, headers={"Authorization": f"Bearer {api_key}"})
             resp.raise_for_status()
             memory_summary = resp.json()["choices"][0]["message"]["content"].strip()
 

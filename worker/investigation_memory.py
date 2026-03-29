@@ -38,8 +38,8 @@ class InvestigationMemory:
         self.db_url = db_url or os.environ.get(
             "DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
         )
-        self.litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-        self.litellm_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+        self.llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+        self.llm_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
         self.embed_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 
     async def enrich_alert(self, alert_entities):

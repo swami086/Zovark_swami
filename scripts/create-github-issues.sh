@@ -175,7 +175,7 @@ create_issue \
     "$(cat <<'BODY'
 ## Description
 
-ZOVARK stores all secrets in `.env` files and environment variables: `POSTGRES_PASSWORD`, `LITELLM_MASTER_KEY`, `MINIO_ROOT_PASSWORD`, webhook secrets, JWT signing key. These are visible in `docker inspect`, process environment, and logs. Production requires a proper secrets manager.
+ZOVARK stores all secrets in `.env` files and environment variables: `POSTGRES_PASSWORD`, `ZOVARK_LLM_KEY`, `MINIO_ROOT_PASSWORD`, webhook secrets, JWT signing key. These are visible in `docker inspect`, process environment, and logs. Production requires a proper secrets manager.
 
 ## Acceptance Criteria
 

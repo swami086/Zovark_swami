@@ -300,8 +300,8 @@ async def coalesced_llm_call(params: dict) -> dict:
     def _do_llm_call():
         from model_config import get_tier_config as _get_tier_config
         tier_config = _get_tier_config(model_tier)
-        litellm_url = os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
-        api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+        api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
         payload = {
             "model": tier_config["model"],
@@ -320,7 +320,7 @@ async def coalesced_llm_call(params: dict) -> dict:
         # Synchronous call (used within coalescer)
         import urllib.request
         req = urllib.request.Request(
-            litellm_url,
+            llm_endpoint,
             data=json.dumps(payload).encode(),
             headers=headers,
             method="POST",

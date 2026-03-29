@@ -45,10 +45,10 @@ class AdversarialReviewer:
     def __init__(self, model_url: str = None, model_name: str = None, timeout: int = 10):
         self.model_url = model_url or os.environ.get(
             "ADVERSARIAL_LLM_URL",
-            os.environ.get("LITELLM_URL", "http://litellm:4000/v1/chat/completions")
+            os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
         )
         self.model_name = model_name or os.environ.get("ADVERSARIAL_MODEL", "fast")
-        self.api_key = os.environ.get("LITELLM_MASTER_KEY", "sk-zovark-dev-2026")
+        self.api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
         self.timeout = timeout
         self._cache = {}
         self._cache_max = 1000
