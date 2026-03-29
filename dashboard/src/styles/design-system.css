@@ -417,3 +417,30 @@
   cursor: pointer;
   user-select: none;
 }
+
+/* ---- Global cyan→green override ---- */
+/* Remaps all Tailwind cyan utilities to green accent (#00FF88) */
+/* This applies the SOC War Room palette without editing every component */
+
+.text-cyan-400, .text-cyan-500 { color: #00FF88 !important; }
+.text-cyan-300 { color: #10B981 !important; }
+.text-cyan-600 { color: #059669 !important; }
+
+.bg-cyan-500 { background-color: #00FF88 !important; }
+.bg-cyan-600 { background-color: #059669 !important; }
+.bg-cyan-500\/10, [class*="bg-cyan-500/10"] { background-color: rgba(0, 255, 136, 0.1) !important; }
+.bg-cyan-500\/20, [class*="bg-cyan-500/20"] { background-color: rgba(0, 255, 136, 0.2) !important; }
+
+.border-cyan-500, .border-cyan-400 { border-color: #00FF88 !important; }
+.border-cyan-500\/20, [class*="border-cyan-500/20"] { border-color: rgba(0, 255, 136, 0.2) !important; }
+.border-cyan-500\/30, [class*="border-cyan-500/30"] { border-color: rgba(0, 255, 136, 0.3) !important; }
+.border-cyan-500\/50, [class*="border-cyan-500/50"] { border-color: rgba(0, 255, 136, 0.5) !important; }
+
+.fill-cyan-500\/20, [class*="fill-cyan-500/20"] { fill: rgba(0, 255, 136, 0.2) !important; }
+
+.hover\:bg-cyan-500:hover { background-color: #059669 !important; }
+.hover\:text-cyan-400:hover, .hover\:text-cyan-500:hover { color: #00FF88 !important; }
+.hover\:border-cyan-500:hover { border-color: #00FF88 !important; }
+
+.focus\:border-cyan-500:focus, .focus\:border-cyan-500\/50:focus { border-color: rgba(0, 255, 136, 0.5) !important; }
+.focus\:ring-cyan-500:focus { --tw-ring-color: #00FF88 !important; }

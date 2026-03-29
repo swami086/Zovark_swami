@@ -70,7 +70,7 @@ const Sidebar = () => {
   ];
 
   const roleColors: Record<string, string> = {
-    admin: "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30",
+    admin: "bg-emerald-500/20 text-[#00FF88] border border-emerald-500/30",
     analyst: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
     viewer: "bg-slate-500/20 text-slate-400 border border-slate-500/30",
   };
@@ -78,10 +78,10 @@ const Sidebar = () => {
   return (
     <div className="w-[240px] sidebar-bg border-r sidebar-border flex flex-col h-screen fixed top-0 left-0">
       <div className="p-6 flex items-center space-x-3">
-        <Hexagon className="w-6 h-6 text-cyan-500 fill-cyan-500/20" />
+        <Hexagon className="w-6 h-6 text-[#00FF88] fill-[#00FF88]/20" />
         <div className="flex flex-col">
           <span className="font-bold text-lg tracking-wider sidebar-title leading-none">ZOVARK</span>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400/70 font-semibold mt-0.5">Security Operations</span>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-[#00FF88]/70 font-semibold mt-0.5">Security Operations</span>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ const Sidebar = () => {
                 : 'nav-inactive'
                 }`}
             >
-              <item.icon className={`w-4 h-4 ${isActive ? 'text-cyan-500' : 'nav-icon'}`} />
+              <item.icon className={`w-4 h-4 ${isActive ? 'text-[#00FF88]' : 'nav-icon'}`} />
               <span className="font-medium text-[13px] flex-1">{item.name}</span>
               {showBadge && (
                 <span className="bg-amber-500 text-[10px] font-bold text-black w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
@@ -122,7 +122,7 @@ const Sidebar = () => {
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
-              className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 transition-all duration-200 w-full"
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-400 hover:text-[#00FF88] hover:bg-slate-800/50 transition-all duration-200 w-full"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               <span className="font-medium text-sm">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
