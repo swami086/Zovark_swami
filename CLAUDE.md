@@ -1,157 +1,174 @@
-# ZOVARK — Autonomous AI SOC Platform
+# ZOVARK — Autonomous AI SOC Agent
 
-> Air-gapped, on-premise security operations center powered by local LLMs.
+> Air-gapped SOC investigation platform for regulated enterprises (GDPR/HIPAA/CMMC).
 > Receives SIEM alerts → generates investigation code → executes in sandbox → delivers structured verdicts.
+> Rebranded from HYDRA → Zovarc → Zovark. All source files use "Zovark" branding.
 
 ## Quick Reference
 
-- **Version:** v1.2.0 (latest: see `git log -1 --format=%h`)
-- **Status:** V2 Pipeline BULLETPROOF — 11/11 templates completing, MITRE ATT&CK mapped, schema validated
-- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL + Redis + llama.cpp (Qwen2.5-14B)
-- **Pipeline:** V2 5-stage with LLM audit gateway + model routing + schema validation + MITRE mapping
-- **Tests:** 44 Go + 179 Python + 15 V2 pipeline = 238 test functions
-- **Services:** 6 core Docker containers (NATS/LiteLLM/TEI moved to optional)
-- **Dashboard:** React 19 + Vite 7 + Tailwind 4, 15 pages, dark mode, live polling, MITRE ATT&CK badges
+- **Version:** v1.8.1 (latest: `git log -1 --format=%h`)
+- **Commits:** 190+ on master
+- **Status:** Production-ready — 100% attack detection, 0% FP on 200-benign calibration
+- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama (Qwen2.5-14B)
+- **Pipeline:** V2 5-stage with LLM audit gateway, schema validation, MITRE mapping, evidence citations
+- **LLM:** Qwen2.5-14B-Instruct Q4_K_M via Ollama on host (:11434). **No litellm dependency.**
+- **Tests:** 44 Go + 179 Python + 15 V2 pipeline + 10 cipher audit = 248 test functions
+- **Services:** 8 core Docker containers + optional monitoring/storage
+- **Dashboard:** React 19 + Vite 7 + Tailwind 4, 15 pages, dark mode, MITRE ATT&CK badges
+
+## Critical: Credentials & Passwords
+
+- **Admin:** admin@test.local / TestPass2026 (tenant e1c1bc5d)
+- **DB:** user=zovark, password=hydra_dev_2026 (password NOT renamed during rebrand), db=zovark
+- **Redis:** password=hydra-redis-dev-2026 (NOT renamed during rebrand)
+- **LLM endpoint:** `ZOVARK_LLM_ENDPOINT=http://host.docker.internal:11434/v1/chat/completions`
+- **LLM key:** `ZOVARK_LLM_KEY=sk-zovark-dev-2026`
 
 ## Architecture (V2 Pipeline)
 
 ```
-SIEM Alert → Go API (:8090) → Temporal: InvestigationWorkflowV2 →
-  Stage 1 INGEST:  dedup (Redis) → PII mask → skill retrieval     [NO LLM]
-  Stage 2 ANALYZE: template fill OR full LLM code generation       [LLM ①]
-  Stage 3 EXECUTE: AST prefilter → Docker sandbox                  [NO LLM]
-  Stage 4 ASSESS:  verdict → schema validation → MITRE mapping      [LLM ②]
-  Stage 5 STORE:   agent_tasks + investigations + memory            [NO LLM]
-  → Structured Verdict (findings, IOCs, recommendations, risk score, MITRE ATT&CK)
+SIEM Alert → Go API (:8090) → Temporal → InvestigationWorkflowV2 →
+
+  Stage 1 INGEST   [NO LLM]  Dedup (Redis) → PII mask → skill retrieval → attack indicator check
+  Stage 2 ANALYZE  [LLM ①]   Path A: template fast-fill (~350ms)
+                              Path B: template + LLM param fill (~30-90s)
+                              Path C: full LLM code generation (~120-280s)
+  Stage 3 EXECUTE  [NO LLM]  AST prefilter → Docker sandbox (network=none, seccomp, 512MB, 120s)
+                              Safety wrapper on Path C (guarantees JSON on crash, risk=0 not 50)
+  Stage 4 ASSESS   [LLM ②]   Verdict derivation → IOC extraction with evidence_refs → MITRE mapping
+                              Attack signal boost (7 regex patterns: SQLi, XSS, etc.)
+                              Benign: risk≤35 → benign unconditionally
+  Stage 5 STORE    [NO LLM]  agent_tasks + investigations + audit_events + memory
+
+  → Structured Verdict: findings, IOCs (with evidence_refs), risk_score, verdict, MITRE ATT&CK
 ```
 
-LLM calls routed through `worker/stages/llm_gateway.py` (audit logging, timeout handling)
-LLM model selection via `worker/stages/model_router.py` + `worker/stages/model_config.yaml`
-Schema validation: `worker/stages/output_validator.py` (validates before storage, re-prompts on failure)
-MITRE ATT&CK mapping: `worker/stages/mitre_mapping.py` (11 investigation types mapped)
-Sandbox policy: `worker/stages/sandbox_policy.yaml` (declarative, customer-auditable)
+### Three Code Paths (all verified with live LLM inference)
 
-## Directory Map
+| Path | Trigger | Speed | Example |
+|------|---------|-------|---------|
+| A (template) | task_type matches skill template | ~350ms | brute_force, phishing, ransomware |
+| B (template + LLM fill) | template + LLM param extraction | ~30-90s | lateral_movement with enriched SIEM |
+| C (full LLM gen) | no matching template | ~120-280s | kerberoasting, golden_ticket, defense_evasion |
+| Benign | task_type matches benign-system-event template | ~350ms | password_change, windows_update, health_check |
 
-```
-zovark-mvp/
-├── api/                    # Go REST API (45 files) — auth, handlers, middleware, RBAC
-├── worker/                 # Python Temporal worker — investigation pipeline
-│   ├── stages/                # V2 pipeline (5 stages, 1392 lines total)
-│   │   ├── __init__.py        # Typed dataclass contracts (IngestOutput, AnalyzeOutput, etc.)
-│   │   ├── ingest.py          # Stage 1: dedup, PII mask, skill retrieval (NO LLM)
-│   │   ├── analyze.py         # Stage 2: template/LLM/stub code generation (LLM HERE)
-│   │   ├── execute.py         # Stage 3: AST prefilter + Docker sandbox (NO LLM)
-│   │   ├── assess.py          # Stage 4: verdict + LLM summary (LLM HERE)
-│   │   ├── store.py           # Stage 5: DB writes (NO LLM)
-│   │   ├── investigation_workflow.py  # InvestigationWorkflowV2 (~40 lines)
-│   │   └── register.py        # get_v2_activities() + get_v2_workflows()
-│   ├── _legacy_activities.py  # Shared activities (fetch_task, log_audit, etc.)
-│   ├── activities/            # Package re-exports shared activities
-│   ├── workflows/             # Non-investigation workflows (feedback/KEV/zovark)
-│   ├── database/              # Connection pool manager (psycopg2 ThreadedConnectionPool)
-│   ├── detection/             # Sigma rule generation
-│   ├── intelligence/          # Blast radius, FP analysis, cross-tenant
-│   ├── investigation/         # DeepLog LSTM, memory
-│   ├── response/              # SOAR playbooks + template resolver
-│   ├── security/              # Injection detection, adversarial review, sanitization
-│   ├── bootstrap/             # MITRE/CISA corpus loading
-│   └── tests/                 # 179 test functions
-├── dashboard/              # React 19 + Vite 7 + Tailwind 4 (33 TS/TSX files)
-├── dpo/                    # DPO training pipeline (6 files) — forge, prompts, validators
-├── mcp-server/             # TypeScript MCP server (25 files)
-├── sandbox/                # AST prefilter + seccomp + kill timer (6 files)
-├── migrations/             # PostgreSQL migrations (40 files, 001-040)
-├── k8s/                    # Kubernetes manifests (32 files — dev/prod/airgap overlays)
-├── scripts/                # Utility scripts (40 files) — accuracy, deploy, census
-├── docs/                   # Documentation (34 files)
-├── helm/                   # Helm charts for K8s deployment
-├── terraform/              # IaC for AWS/GCP
-├── config/                 # PostgreSQL configuration
-├── security-fixes/         # Remediation specs (historical)
-├── tests/                  # Integration tests + test corpus + ground truth
-├── litellm_config.yaml     # LLM routing (fast → Ollama qwen2.5:14b)
-├── docker-compose.yml      # 11 core services + monitoring stack
-└── docker-compose.enterprise.yml  # 48GB+ VRAM override (7B + 32B models)
-```
+### Benign Routing (Inverted Logic)
 
-## Version History
+`worker/stages/ingest.py` has `ATTACK_INDICATORS` list. If task_type/rule_name/title do NOT match any attack indicator, the alert routes to the `benign-system-event` skill template (31 benign task types registered). This means novel benign alerts default to benign, not to expensive LLM Path C.
 
-| Version | Commit | What Changed |
-|---------|--------|-------------|
-| v0.10.1 | `f1974bd` | Initial security fixes (JWT, OIDC, httpOnly cookies) |
-| v0.11.0 | `7bf17e9` | 30/30 security audit findings resolved |
-| v0.12.0 | `2f25c32` | 5 hardening features (Vault, egress proxy, adversarial review, MCP gate) |
-| v0.13.0 | `2785bc9` | 10 features (DeepLog, Zeek, WebSocket, DB pools, attack surface) |
-| v0.14.0 | `11539af` | Test infrastructure (44 Go + Python tests, CI pipeline, migration runner) |
-| v0.15.0 | `83d1f34` | Architectural fixes + operational readiness (template resolver, feedback, KEV) |
-| v0.16.0 | `e31d329` | Deployment hardening (CORS, vLLM, OpenAPI v1.2.0, legacy cleanup) |
-| v0.17.0 | `63df379` | 48-hour PoV package (SIEM import, report generator, deploy script) |
-| v0.18.0 | `0128f60` | CHANGELOG |
-| v1.0.0-rc1 | `377db3c` | Release candidate — runtime validated |
-| post-rc1 | `0f01672` | Compile fixes (missing json import, unused fmt import, NATS flags) |
-| post-rc1 | `388435a` | Project standardization (CLAUDE.md, AGENTS.md, .cursorrules, census) |
-| post-rc1 | `d467057` | CTO review response (accuracy benchmark, enterprise profiles, model tiers) |
-| post-rc1 | `dffc3d5` | DPO pipeline Phase 0 (forge, prompts, validators, compressor, sandbox endpoint) |
-| post-rc1 | `820e456` | Pipeline debug — 5 root causes fixed, investigations complete end-to-end |
-| post-rc1 | `e17ccad` | Updated baseline — 7 investigations scored |
+## Key Files
 
-## Current State (What Works)
+| File | LOC | Purpose |
+|------|-----|---------|
+| `worker/stages/ingest.py` | 230 | Stage 1: dedup, PII mask, skill retrieval, attack indicator check |
+| `worker/stages/analyze.py` | 460 | Stage 2: Path A/B/C code generation, system prompts |
+| `worker/stages/execute.py` | 260 | Stage 3: AST prefilter, Docker sandbox, safety wrapper |
+| `worker/stages/assess.py` | 430 | Stage 4: verdict, IOC extraction, evidence_refs, MITRE, signal boost |
+| `worker/stages/store.py` | 270 | Stage 5: DB writes, audit events, synchronous_commit |
+| `worker/stages/llm_gateway.py` | 180 | LLM call routing, audit logging, keep_alive, preload |
+| `worker/stages/output_validator.py` | 95 | Schema validation, IOC normalization, benign empty-findings allowed |
+| `worker/stages/mitre_mapping.py` | 83 | MITRE ATT&CK technique mapping for 11 types |
+| `worker/stages/investigation_workflow.py` | 110 | InvestigationWorkflowV2 orchestrator |
+| `worker/stages/skills/cipher_audit.py` | ~200 | Cipher audit skill (NIST SP 800-57) |
+| `dpo/prompts_v2.py` | ~900 | Full prompt library (system, task, tools, RAG, retry, DPO) |
+| `api/main.go` | 320 | Go API router, ~90 registered routes |
+| `api/siem_ingest.go` | 340 | Splunk HEC + Elastic SIEM webhook ingest |
+| `api/cipher_audit_handlers.go` | ~300 | 5 cipher audit API endpoints |
 
-- **V2 Investigation pipeline:** 11/11 templates, schema validated, MITRE ATT&CK mapped
-- **Race condition:** FIXED — `ExecuteWorkflow` called after `tx.Commit()`, 10/10 rapid-fire test
-- **Schema validation:** `output_validator.py` validates all output, safe default on failure
-- **MITRE ATT&CK:** All 11 investigation types mapped to ATT&CK techniques
-- **Auth flow:** Register → login → JWT (15min) → refresh (7d) → RBAC (admin/analyst/viewer)
-- **LLM:** Qwen2.5-14B-Instruct Q4_K_M via llama.cpp (native Windows, NOT Docker)
-- **LITELLM_URL:** `http://host.docker.internal:11434/v1/chat/completions` (bypasses LiteLLM container)
-- **Sandbox:** Docker with AST prefilter, network isolation, read-only fs, cap-drop ALL, seccomp profile
-- **Database:** 76+ tables, pgvector embeddings, connection pooling via PgBouncer
-- **Metrics:** `GET /api/v1/metrics` — investigation counts, LLM stats, performance, template health
-- **DPO:** Trained adapter available (`models/zovark-dpo-adapter/`, 48MB), GGUF at `models/zovark-dpo-Q4_K_M.gguf`
-- **V2 unit tests:** 15/15 passing in <1s
-- **Whitepaper:** `docs/WHITEPAPER.md` — "Autonomous SOC Investigation on Air-Gapped Infrastructure"
+## Database
 
-## Performance (V2 Pipeline)
+- **Engine:** PostgreSQL 16 + pgvector
+- **User:** zovark (password: hydra_dev_2026)
+- **Database:** zovark
+- **Tables:** 85+
+- **Migrations:** 54 files (001-054)
+- **Connection pooling:** PgBouncer (400 client / 25 server)
+- **Key tables:** agent_tasks, investigations, agent_skills (12 templates), llm_audit_log, cipher_audit_events, audit_events (partitioned), entities, entity_edges, detection_rules, response_playbooks, cross_tenant_entities
 
-| Test | Completion | Avg Time |
-|------|-----------|----------|
-| V2 + FAST_FILL (100 investigations) | 100/100 | <2s each |
-| V2 + LLM (10 investigations) | 10/10 | 52s each |
-| Legacy pipeline (100 investigations) | 61/100 | 368s each |
+## Skill Templates (12 total)
 
-## Known Issues
+11 attack investigation templates + 1 benign template, stored in `agent_skills.code_template`:
 
-1. **NATS hostname resolution** — Non-fatal warning on worker startup. Consumer initializes despite it.
-2. **Old Temporal workflows** — Stale `ExecuteTaskWorkflow` replays in Temporal history cause non-blocking errors. Terminate via `tctl workflow terminate`.
-3. **`investigations` table source constraint** — Only allows `production`, `bootstrap`, `synthetic`. V2 uses `production`.
-4. **`investigation_memory` table** — Name is SINGULAR. Code that references `investigation_memories` (plural) silently fails.
-5. **`fetch_task` dependency** — V2 workflow still calls legacy `fetch_task` by string name. Tech debt — should be moved to stages/ingest.py.
-6. **Race condition** — FIXED in v1.2.0. `ExecuteWorkflow` now called after `tx.Commit()` in all 3 code paths. Retry loop kept as defense-in-depth.
+| Slug | Types | Purpose |
+|------|-------|---------|
+| brute-force-investigation | 4 | Auth failure counting, credential stuffing, protocol detection |
+| phishing-investigation | 3 | URL analysis, email headers, typosquatting, attachments |
+| ransomware-triage | 3 | Shadow copy deletion, mass encryption, ransom notes |
+| data-exfiltration-detection | 9 | Transfer volume, cloud storage, encoding, off-hours |
+| privilege-escalation-hunt | 1 | Sudo/su, UAC bypass, SUID, token manipulation |
+| c2-communication-hunt | 1 | Beacon intervals, DGA entropy, C2 signatures |
+| lateral-movement-detection | 1 | PsExec/WMI/WinRM, pass-the-hash, admin shares |
+| insider-threat-detection | 1 | Off-hours, bulk access, data staging, HR context |
+| network-beaconing | 4 | Timestamp analysis, DNS anomalies, fixed payloads |
+| cloud-infrastructure-attack | 1 | IAM changes, CloudTrail tampering, resource spikes |
+| supply-chain-compromise | 1 | Hash mismatches, typosquatted packages, CI/CD mods |
+| **benign-system-event** | **31** | Returns risk=15, verdict=benign for routine system operations |
 
-## Model Tiers
+## Docker Services
 
-| Tier | Purpose | Model | Hardware |
-|------|---------|-------|----------|
-| Fast | Triage, classification | Local qwen2.5:14b via Ollama | Any NVIDIA GPU |
-| Standard | Full investigation | 32B or cloud 70B | A6000 (48GB) or cloud API |
-| Reasoning | Complex analysis | 70B+ or cloud | A100 (80GB) or cloud API |
+### Core (always run)
+| Service | Image | Port | Container Name |
+|---------|-------|------|---------------|
+| postgres | pgvector/pgvector:pg16 | 5432 | zovark-postgres |
+| redis | redis:7-alpine | 6379 | zovark-redis |
+| pgbouncer | edoburu/pgbouncer | 6432 | zovark-pgbouncer |
+| temporal | temporalio/auto-setup:1.24.2 | 7233 | zovark-temporal |
+| api | Custom Go build | 8090 | zovark-api |
+| worker | Custom Python build | — | hydra-mvp-worker-1 |
+| dashboard | Custom React (nginx) | 3000 | zovark-dashboard |
+| squid-proxy | ubuntu/squid | 3128 | zovark-egress-proxy |
 
-See `docs/MODEL_TIER_STRATEGY.md` and `docs/HARDWARE_REQUIREMENTS.md`.
+### Optional (profiles)
+- temporal-ui (debug), minio (storage), jaeger (monitoring), caddy (tls)
+- prometheus, grafana, postgres-exporter, redis-exporter (monitoring profile)
+- ollama (airgap-ollama profile — for when Ollama isn't on host)
+
+### LLM (runs on HOST, not Docker)
+- **Ollama** on port 11434 with `qwen2.5:14b` model
+- Worker connects via `http://host.docker.internal:11434/v1/chat/completions`
+- **litellm is NOT used** — removed due to supply chain risk (PyPI 1.82.7-1.82.8 compromised)
+- Env var: `ZOVARK_LLM_ENDPOINT` (not LITELLM_URL — fully renamed)
+
+## Benchmarks
+
+| Benchmark | Result |
+|-----------|--------|
+| 1000-alert corpus | 983/1000 completed, 100% attack detection, 0 false negatives |
+| Juice Shop (100 real-traffic) | 99/100 accuracy (70/70 attacks, 29/30 benign) |
+| 200-benign calibration | 200/200 benign, 0% false positive rate |
+| Path C novel attacks (10 types) | 10/10 correct (kerberoasting, golden_ticket, LOLBins, etc.) |
+| Template fast-fill throughput | ~350ms per investigation |
+
+## Security Implementation
+
+| Layer | What | Status |
+|-------|------|--------|
+| AST Prefilter | Blocks os/sys/subprocess/socket/eval/exec + 7 patterns | IMPLEMENTED |
+| Docker Sandbox | network=none, read-only, cap-drop ALL, 512MB, 64 PIDs, seccomp | IMPLEMENTED |
+| Kill Timer | 120s subprocess timeout | IMPLEMENTED |
+| Safety Wrapper | Path C code wrapped in try/except, risk=0 on crash (not 50) | IMPLEMENTED |
+| JWT Auth | 15min access + 7d refresh (httpOnly cookie) | IMPLEMENTED |
+| RBAC | admin/analyst/viewer/api_key enforced in middleware | IMPLEMENTED |
+| OIDC/SSO | Azure AD, Okta (api/oidc.go, 657 LOC) | IMPLEMENTED |
+| TOTP 2FA | RFC 6238 (api/totp.go) | IMPLEMENTED |
+| Audit Trail | audit_events table, monthly partitions | IMPLEMENTED |
+| Synchronous Commit | Critical writes use `SET LOCAL synchronous_commit = on` | IMPLEMENTED |
+| Evidence Citations | Every IOC has evidence_refs linking to source log line | IMPLEMENTED |
+| Zero Hallucination | Prompt rules forbid inventing IOCs not in log data | IMPLEMENTED |
 
 ## Coding Conventions
 
 - **Tenant isolation:** Every DB query MUST include `tenant_id` in WHERE clause
 - **Error handling (Go):** Use `respondInternalError()` — never expose `err.Error()` to clients
-- **LLM calls:** Always through LiteLLM (`LITELLM_URL`), never call Ollama directly
-- **Sandbox code:** Must pass AST prefilter — no `os`, `sys`, `subprocess`, `socket`, dunder traversal
-- **Skill templates:** Must NOT import `os`, `sys`, `subprocess`, `socket` (blocked by AST prefilter v2)
-- **New V2 activities:** Add to the appropriate `worker/stages/*.py` file, register in `worker/stages/register.py`
-- **New workflows:** Add to `worker/stages/`, register in `worker/stages/register.py`
-- **Legacy activities:** Still in `worker/_legacy_activities.py` (shared by non-investigation workflows). Do NOT add new code here.
+- **LLM calls:** Always through `worker/stages/llm_gateway.py` via `ZOVARK_LLM_ENDPOINT`
+- **No litellm:** Direct httpx POST to Ollama. Zero AI proxy libraries.
+- **Sandbox code:** Must pass AST prefilter — no `os`, `sys`, `subprocess`, `socket`
+- **Skill templates:** Stored in `agent_skills.code_template` column, use `{{siem_event_json}}` placeholder
+- **New activities:** Add to `worker/stages/*.py`, register in `worker/stages/register.py`
 - **Migrations:** Sequential in `migrations/`, apply via `docker compose exec -T postgres psql -U zovark -d zovark < migrations/NNN_name.sql`
 - **After Python changes:** `docker compose build worker && docker compose up -d worker`
 - **After Go changes:** `docker compose build api && docker compose up -d api`
+- **Before benchmarks:** Terminate stale Temporal workflows: `docker exec zovark-temporal tctl --ad temporal:7233 --ns default workflow list --open` then terminate each
 
 ## How to Run
 
@@ -159,80 +176,76 @@ See `docs/MODEL_TIER_STRATEGY.md` and `docs/HARDWARE_REQUIREMENTS.md`.
 # Start all services
 docker compose up -d
 
+# Start Ollama on host (if not already running)
+ollama serve  # or: ollama run qwen2.5:14b
+
 # Verify health
 curl -s http://localhost:8090/health
 
 # Login
-# Set ZOVARK_ADMIN_EMAIL and ZOVARK_ADMIN_PASSWORD env vars
 TOKEN=$(curl -s -X POST http://localhost:8090/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"'"${ZOVARK_ADMIN_EMAIL}"'","password":"'"${ZOVARK_ADMIN_PASSWORD}"'"}' | \
-  sed 's/.*"token":"\([^"]*\)".*/\1/')
+  -d '{"email":"admin@test.local","password":"TestPass2026"}' \
+  | sed 's/.*"token":"\([^"]*\)".*/\1/')
 
 # Submit investigation
 curl -s -X POST http://localhost:8090/api/v1/tasks \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"task_type":"brute_force","input":{"prompt":"Analyze SSH brute force from 10.0.0.99","severity":"high"}}'
+  -d '{"task_type":"brute_force","input":{"prompt":"SSH brute force","severity":"high","siem_event":{"title":"SSH BF","source_ip":"185.220.101.45","username":"root","rule_name":"BruteForce","raw_log":"500 failed for root from 185.220.101.45"}}}'
 
 # Poll for result
 curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $TOKEN"
-```
-
-## How to Test
-
-```bash
-# Go tests (44 test functions)
-cd api && go test -v -count=1 ./...
-
-# Python tests (179 test functions)
-cd worker && python -m pytest tests/ -v
-
-# Or via Docker
-docker compose exec worker python -m pytest tests/ -v
 ```
 
 ## Key Docs
 
 | Doc | Path |
 |-----|------|
+| Implementation Audit | `docs/ZOVARK_IMPLEMENTATION_AUDIT.md` |
 | Architecture | `docs/ARCHITECTURE.md` |
-| API Spec (v1.2.0) | `docs/openapi.yaml` |
+| API Spec | `docs/openapi.yaml` |
 | Whitepaper | `docs/WHITEPAPER.md` |
-| Conference Submissions | `docs/CONFERENCE_SUBMISSIONS.md` |
 | Sandbox Security | `docs/SANDBOX_SECURITY.md` |
-| Security Audit | `docs/SECURITY_AUDIT_v0.10.0.md` |
-| Model Tiers | `docs/MODEL_TIER_STRATEGY.md` |
-| Hardware Requirements | `docs/HARDWARE_REQUIREMENTS.md` |
-| Accuracy Report | `docs/ACCURACY_REPORT.md` |
-| Baseline Accuracy | `docs/BASELINE_ACCURACY.md` |
-| PoV Playbook | `scripts/pov/README.md` |
-| Changelog | `CHANGELOG.md` |
-| Project Status | `docs/PROJECT_STATUS.md` |
+| SIEM Integration | `docs/SIEM_INTEGRATION.md` |
+| Juice Shop Benchmark | `docs/JUICE_SHOP_BENCHMARK.md` |
+| BlackHat CFP | `docs/outreach/blackhat_cfp.md` |
+| CISO Brief (PDF) | `marketing/outreach/ZOVARK_CISO_Brief.pdf` |
+| Cold Email Templates | `docs/outreach/outreach_templates.md` |
+| Demo Script | `docs/outreach/demo_talking_points.md` |
 
-## DPO Training Pipeline (Phase 0 complete)
+## Sprints Shipped
 
-Files in `dpo/`: `dpo_forge.py`, `prompts.py`, `validators.py`, `log_compressor.py`, `seed_database.json`, `requirements.txt`
+| Sprint | What |
+|--------|------|
+| 1E | Production hardening — sync commit, SCRAM auth, audit events, FK constraints |
+| 1F | Observability — Prometheus + Grafana monitoring stack |
+| 1H | Bootstrap pipeline — MITRE ATT&CK + CISA KEV ingestion |
+| 1I | Model tiering — prompt versioning + performance tracking |
+| 1J | Autoscaling — KEDA ScaledObject + queue depth exporter |
+| 1K | Cross-tenant entity resolution with privacy-preserving hashes |
+| 2A | Self-generating detection engine — Sigma rule generator |
+| 2B | SOAR response playbooks — 5 defaults, approval gates, rollback |
+| 2C | Cipher audit skill — NIST SP 800-57 deterministic + LLM narration |
 
-```bash
-# Phase 2: Generate training data (overnight, ~$50 Kimi API)
-export KIMI_API_KEY=your_key
-python dpo/dpo_forge.py
+## Known Issues
 
-# Phase 3: Train (4-6 hours on RTX 3050)
-pip install -r dpo/requirements.txt
-python scripts/dpo_train.py
+1. **NATS hostname resolution** — Non-fatal warning on worker startup. NATS is optional.
+2. **Stale Temporal workflows** — Must terminate before benchmark runs: `tctl workflow terminate`.
+3. **`investigation_memory` table** — Name is SINGULAR. Plural reference silently fails.
+4. **`fetch_task` dependency** — V2 workflow still calls legacy `fetch_task`. Tech debt.
+5. **Redis password not renamed** — Still `hydra-redis-dev-2026` (not `zovark-*`). Non-breaking.
+6. **DB password not renamed** — Still `hydra_dev_2026` for user `zovark`. Non-breaking.
+7. **model_config.yaml tier names** — Still `hydra-fast`/`hydra-standard`/`hydra-enterprise`. Logical labels only.
+8. **Single-GPU bottleneck** — RTX 3050 serializes LLM requests. Path C takes 120-280s.
+9. **Path C benign** — LLM sometimes over-scores benign (55-60 instead of ≤25). Mitigated by benign-system-event template routing.
+10. **DPO pipeline** — Data exists but no production model trained.
 
-# Phase 4: Measure delta
-python scripts/accuracy_benchmark.py --model zovark_aligned_1.5b
-```
+## Pending Work
 
-## Pending Work (Priority Order)
-
-1. ~~**Fix fetch_task race condition**~~ — DONE in v1.2.0
-2. **Remove `_legacy_activities.py`** — Migrate shared activities to V2 modules
-3. **Multi-worker scaling test** — Run V2 with `docker compose --scale worker=3`
-4. **Run Juice Shop benchmark v2** — 100 real-traffic alerts with v1.2.0 pipeline
-5. **Nemotron 4B benchmark** — Head-to-head vs Qwen2.5-14B
-6. **Submit BlackHat Arsenal CFP** — Abstract in `docs/CONFERENCE_SUBMISSIONS.md`
-7. **Record 2-min demo video** — Script in `docs/DEMO_SCRIPT.md`
+1. **Speed optimization** — Ollama keep_alive, Redis code cache, sandbox pool, 7B model for param fill
+2. **Design partner outreach** — 3 CISOs targeted (EU bank, US healthcare, defense)
+3. **BlackHat Arsenal CFP** — Abstract ready in `docs/outreach/blackhat_cfp.md`
+4. **Real SIEM connection** — Splunk/Elastic webhook endpoints exist, untested with live SIEM
+5. **RunPod A100 benchmark** — Rerun 1000-alert benchmark on fast hardware (~2h vs 38h)
+6. **Zovark Core** — Log normalizer / ZCS schema — NOT IMPLEMENTED (planning only)
