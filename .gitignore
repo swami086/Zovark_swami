@@ -18,3 +18,4 @@ batch_results*.json
 benchmark_*.txt
 benchmark_*.json
 litellm_config*.yaml
+siem-lab/logs/
