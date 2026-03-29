@@ -158,7 +158,7 @@ def preflight_check(code: str) -> Tuple[bool, str, List[str]]:
 # ============================================================
 
 def _scrub_code(code: str) -> str:
-    """Remove markdown fences, LLM special tokens, fix common hallucinations."""
+    """Remove markdown fences, LLM prose wrapping, special tokens, fix common hallucinations."""
     if code.startswith("```python"):
         code = code[9:]
     if code.startswith("```"):
@@ -169,6 +169,48 @@ def _scrub_code(code: str) -> str:
     # Strip LLM special tokens
     code = re.sub(r'<[｜|][^>]*[｜|]>', '', code)
     code = re.sub(r'<\|(?:im_start|im_end|endoftext|begin_of_sentence|end_of_sentence|fim_prefix|fim_middle|fim_suffix)\|>', '', code)
+
+    # Strip prose before/after code (Llama 8B often wraps code in explanatory text)
+    lines = code.split('\n')
+    code_start = 0
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped and (
+            stripped.startswith('import ') or
+            stripped.startswith('from ') or
+            stripped.startswith('def ') or
+            stripped.startswith('class ') or
+            stripped.startswith('#') or
+            stripped.startswith('"""') or
+            stripped.startswith("'''") or
+            'json.loads' in stripped or
+            'siem_event' in stripped or
+            stripped.startswith('try:') or
+            stripped.startswith('result') or
+            stripped.startswith('{')
+        ):
+            code_start = i
+            break
+
+    code_end = len(lines)
+    for i in range(len(lines) - 1, -1, -1):
+        stripped = lines[i].strip()
+        if stripped and (
+            stripped.startswith('print(') or
+            stripped.startswith('}') or
+            stripped.startswith('except') or
+            stripped.startswith('return ') or
+            stripped.endswith(')') or
+            stripped.endswith(':') or
+            stripped.startswith('#') or
+            stripped.startswith('"""') or
+            stripped.startswith("'''")
+        ):
+            code_end = i + 1
+            break
+
+    if code_start > 0 or code_end < len(lines):
+        code = '\n'.join(lines[code_start:code_end])
 
     # Fix common hallucinations
     code = code.replace("import requests", "import urllib.request as urllib2")

@@ -165,20 +165,31 @@ Optional (extract if present): {optional_iocs}
 
 2. EVIDENCE REQUIREMENT: Every IOC must include a context field citing specific log evidence.
 
-3. CALIBRATED RISK SCORING:
+3. SCORING ANCHORS (use these as reference points):
+   - SSH brute force (500+ failed attempts from single IP): risk 95-100
+   - Phishing URL clicked (typosquatting domain, credential harvest): risk 80-90
+   - Lateral movement with mimikatz: risk 90-100
+   - Ransomware (shadow copy deletion + mass encryption): risk 95-100
+   - Kerberoasting (RC4 downgrade, service ticket request): risk 80-90
+   - Data exfiltration (large transfer to external IP, off-hours): risk 75-85
+   - C2 beaconing (regular interval callbacks to suspicious domain): risk 70-80
+   - Single failed login: risk 15-25
+   - Port scan from internal IP: risk 40-55
+
+4. CALIBRATED RISK SCORING:
    - Routine operations (password changes, updates, backups, health checks, cert renewals, scheduled tasks, service restarts, log rotation, AV updates): risk 10-25
    - Ambiguous activity without clear malicious indicators: risk 35-55
    - Single weak indicator (unusual port, non-standard user agent): risk 40-55
    - Multiple correlated indicators (suspicious IP + encoded payload + off-hours): risk 65-80
    - Confirmed attack pattern with evidence chain: risk 80-100
 
-4. BENIGN RECOGNITION: Routine administrative and operational actions MUST score risk 10-25. The presence of security-adjacent keywords (password, credential, admin, root, execute, modify) in routine operation logs is NOT evidence of a threat.
+5. BENIGN RECOGNITION: Routine administrative and operational actions MUST score risk 10-25. The presence of security-adjacent keywords (password, credential, admin, root, execute, modify) in routine operation logs is NOT evidence of a threat.
 
-5. MULTI-SIGNAL REASONING: A single indicator is weak. Multiple independent indicators from different log fields compound risk. Score based on the NUMBER and INDEPENDENCE of suspicious signals, not on the scariest single keyword.
+6. MULTI-SIGNAL REASONING: A single indicator is weak. Multiple independent indicators from different log fields compound risk. Score based on the NUMBER and INDEPENDENCE of suspicious signals, not on the scariest single keyword.
 
-6. FALSE POSITIVE BIAS: When uncertain between suspicious and benign, prefer benign. SOC analysts lose more productivity from false positives than from alerts classified as suspicious. Under-scoring is better than over-scoring.
+7. FALSE POSITIVE BIAS: When uncertain between suspicious and benign, prefer benign. SOC analysts lose more productivity from false positives than from alerts classified as suspicious. Under-scoring is better than over-scoring.
 
-7. SCOPE: Score this alert in isolation. Do not assume other related alerts exist. Do not speculate about attack chains beyond what is evidenced in this single alert.
+8. SCOPE: Score this alert in isolation. Do not assume other related alerts exist. Do not speculate about attack chains beyond what is evidenced in this single alert.
 
 ## Investigation Steps
 1. Parse the alert JSON and extract all text fields

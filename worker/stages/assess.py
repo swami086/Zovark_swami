@@ -393,6 +393,18 @@ async def assess_results(data: dict) -> dict:
             iocs.append(new_ioc)
             existing_by_value[val] = new_ioc
 
+    # Template attack risk floor: if the alert matched a known attack template
+    # (Path A) but the LLM under-scored it, ensure risk >= 70.
+    # Only applies when risk is in the ambiguous 36-69 range — doesn't override
+    # genuinely benign verdicts (<=35) or already-high scores (>=70).
+    from stages.ingest import _has_attack_indicators
+    siem_rule_name = siem_event.get("rule_name", "") if isinstance(siem_event, dict) else ""
+    siem_title_val = siem_event.get("title", "") if isinstance(siem_event, dict) else ""
+    if _has_attack_indicators(task_type, siem_rule_name, siem_title_val):
+        if 36 <= risk_score < 70:
+            activity.logger.info(f"Boosting template-matched attack from risk {risk_score} to 70")
+            risk_score = 70
+
     # Check for verdict_override from safety wrapper (crashed Path C code)
     verdict_override = data.get("verdict_override", "")
     if verdict_override == "error":
