@@ -7,48 +7,51 @@ on:
     branches: [master, main]
 
 jobs:
-  lint:
+  # ─── Job 1: Unit Tests (no Docker, no LLM) ──────────────
+  unit-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: python
+            lang: python
+          - name: go
+            lang: go
     steps:
       - uses: actions/checkout@v4
+
+      # Python setup
       - uses: actions/setup-python@v5
+        if: matrix.lang == 'python'
         with:
           python-version: '3.11'
+      - name: Install Python dependencies
+        if: matrix.lang == 'python'
+        run: |
+          pip install pytest pytest-cov
+          pip install psycopg2-binary redis pyyaml httpx
+
+      # Go setup
+      - uses: actions/setup-go@v5
+        if: matrix.lang == 'go'
+        with:
+          go-version: '1.22'
+
+      # Python unit tests
+      - name: Run Python unit tests
+        if: matrix.lang == 'python'
+        run: cd worker && python -m pytest tests/ -v --tb=short
+
+      # Python lint
       - name: Python lint
+        if: matrix.lang == 'python'
         run: |
           pip install flake8
           cd worker && flake8 --max-line-length=120 --ignore=E501,W503,E402 *.py security/ detection/ response/
-      - name: Validate migrations
-        run: |
-          for f in migrations/*.sql; do
-            echo "Checking $f..."
-            head -1 "$f"
-          done
 
-  test-imports:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: zovark
-          POSTGRES_PASSWORD: hydra_dev_2026
-          POSTGRES_DB: zovark
-        ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports: ['6379:6379']
-    env:
-      DATABASE_URL: postgresql://zovark:hydra_dev_2026@localhost:5432/zovark
-      REDIS_URL: redis://localhost:6379/0
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install -r worker/requirements.txt
-      - name: Test core imports
+      # Python import validation
+      - name: Validate core imports
+        if: matrix.lang == 'python'
         run: |
           cd worker
           python -c "
@@ -66,7 +69,10 @@ jobs:
           from response.actions import ACTION_REGISTRY, ResponseAction
           print('All core imports OK')
           "
+
+      # Entity normalization tests
       - name: Test entity normalization
+        if: matrix.lang == 'python'
         run: |
           cd worker
           python -c "
@@ -77,6 +83,30 @@ jobs:
           print('Normalization tests passed')
           "
 
+      # Go unit tests
+      - name: Run Go unit tests
+        if: matrix.lang == 'go'
+        run: cd api && go test -v -race -count=1 ./... 2>&1
+
+  # ─── Lint & Validate ─────────────────────────────────────
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Docker Compose configs
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.test.yml config --quiet
+      - name: Validate migration files
+        run: |
+          count=$(ls migrations/*.sql 2>/dev/null | wc -l)
+          echo "$count migration files found"
+          for f in migrations/*.sql; do
+            echo "Checking $f..."
+            head -1 "$f"
+          done
+
+  # ─── Validate Migrations (apply to real DB) ──────────────
   validate-migrations:
     runs-on: ubuntu-latest
     services:
@@ -106,31 +136,7 @@ jobs:
             ORDER BY tablename;
           "
 
-  go-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - name: Run Go tests
-        run: cd api && go test -v -race -count=1 ./... 2>&1
-
-  python-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          pip install pytest pytest-cov
-          pip install psycopg2-binary redis pyyaml httpx
-      - name: Run Python tests
-        run: |
-          cd worker && python -m pytest tests/ -v --tb=short 2>&1
-
+  # ─── Build Check ─────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
     steps:
@@ -138,21 +144,102 @@ jobs:
       - run: docker compose config --quiet
       - run: docker compose build api worker
 
-  integration:
+  # ─── Job 2: Integration Tests (mock Ollama, Docker stack) ─
+  integration-tests:
     runs-on: ubuntu-latest
-    needs: [go-tests, python-tests]
+    needs: [unit-tests, build]
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - name: Start stack
-        run: docker compose up -d --wait || docker compose up -d
-      - name: Wait for services
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
         run: |
+          pip install pytest httpx psycopg2-binary redis pyyaml
+
+      - name: Build and start stack with mock Ollama
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build
+        env:
+          POSTGRES_PASSWORD: hydra_dev_2026
+          REDIS_PASSWORD: hydra-redis-dev-2026
+
+      - name: Wait for API health
+        run: |
+          echo "Waiting for API to become healthy..."
           for i in $(seq 1 60); do
-            curl -sf http://localhost:8090/health && break || sleep 5
+            if curl -sf http://localhost:8090/health > /dev/null 2>&1; then
+              echo "API healthy after $((i * 5)) seconds"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "API did not become healthy within 5 minutes"
+              docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=50 api
+              exit 1
+            fi
+            sleep 5
           done
-      - name: Run integration tests
-        run: python -m pytest tests/integration/ -v --tb=short || true
+
+      - name: Verify mock Ollama is responding
+        run: |
+          curl -sf http://localhost:11434/health && echo "Mock Ollama healthy" || echo "Mock Ollama not reachable (may be internal-only)"
+
+      - name: Test authentication
+        run: |
+          TOKEN=$(curl -sf -X POST http://localhost:8090/api/v1/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@test.local","password":"TestPass2026"}' \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
+          if [ -n "$TOKEN" ]; then
+            echo "Authentication successful"
+            echo "TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          else
+            echo "Authentication failed"
+            exit 1
+          fi
+
+      - name: Submit test investigation
+        run: |
+          RESPONSE=$(curl -sf -X POST http://localhost:8090/api/v1/tasks \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "task_type": "brute_force",
+              "input": {
+                "prompt": "SSH brute force CI test",
+                "severity": "high",
+                "siem_event": {
+                  "title": "SSH Brute Force",
+                  "source_ip": "10.99.99.99",
+                  "username": "root",
+                  "rule_name": "BruteForce",
+                  "raw_log": "500 failed for root from 10.99.99.99"
+                }
+              }
+            }')
+          echo "Task response: $RESPONSE"
+
+      - name: Run integration test suite
+        run: |
+          if [ -d "tests/integration" ]; then
+            python -m pytest tests/integration/ -v --tb=short || true
+          else
+            echo "No integration test directory found, skipping"
+          fi
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== API logs ==="
+          docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=100 api
+          echo "=== Worker logs ==="
+          docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=100 worker
+          echo "=== Mock Ollama logs ==="
+          docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=50 mock-ollama
+
       - name: Stop stack
         if: always()
-        run: docker compose down
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml down --volumes --remove-orphans
