@@ -342,7 +342,7 @@ services:
     container_name: zovark-juice-shop
     ports:
       - "3001:3000"
-    profiles: ["benchmark"]
+    profiles: ["benchmark", "siem-lab"]
     deploy:
       resources:
         limits:
@@ -540,6 +540,71 @@ services:
       - zovark-internal
     profiles: ["vllm"]
 
+  # ─── SIEM LAB (opt-in profile) ──────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    profiles: ["siem-lab"]
+    container_name: zovark-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health | grep -q '"status"'
+      interval: 10s
+      retries: 20
+      start_period: 30s
+    networks:
+      - zovark-internal
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    profiles: ["siem-lab"]
+    container_name: zovark-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - zovark-internal
+
+  nginx-proxy:
+    image: nginx:alpine
+    profiles: ["siem-lab"]
+    container_name: zovark-nginx-proxy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./siem-lab/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - juice-shop
+    networks:
+      - zovark-internal
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.0
+    profiles: ["siem-lab"]
+    container_name: zovark-filebeat
+    user: root
+    command: filebeat -e --strict.perms=false
+    volumes:
+      - ./siem-lab/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - nginx-logs:/var/log/nginx:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - zovark-internal
+
 # ─── NETWORKS ──────────────────────────────────────────
 networks:
   zovark-internal:
@@ -555,3 +620,5 @@ volumes:
   grafana_data:
   caddy_data:
   caddy_config:
+  es-data:
+  nginx-logs:

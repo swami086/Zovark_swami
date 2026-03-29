@@ -1,0 +1,18 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+    json.keys_under_root: true
+    json.add_error_key: true
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "nginx-access-%{+yyyy.MM.dd}"
+
+setup.ilm.enabled: false
+setup.template.name: "nginx-access"
+setup.template.pattern: "nginx-access-*"
+
+logging.level: info
+logging.to_stderr: true
