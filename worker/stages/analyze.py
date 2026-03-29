@@ -35,6 +35,7 @@ from temporalio import activity
 from stages import AnalyzeOutput, IngestOutput
 from stages.llm_gateway import llm_call, MODEL_FAST, MODEL_CODE
 from stages.model_router import get_model_config
+from stages.code_cache import get_alert_signature, get_cached_code, set_cached_code
 
 # --- Configuration (read once at import) ---
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
@@ -45,6 +46,11 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_20
 # Model tier defaults — American models only (Meta Llama)
 TIER_GENERATE = {"model": MODEL_CODE, "max_tokens": 4096, "temperature": 0.3}   # Path C: code gen
 TIER_FILL = {"model": MODEL_FAST, "max_tokens": 1024, "temperature": 0.1}       # Path B: param fill
+
+# Redis client for code cache (mirrors ingest.py pattern)
+import redis as _redis
+_redis_url = os.environ.get("REDIS_URL", "redis://:hydra-redis-dev-2026@redis:6379/0")
+_redis_client = _redis.from_url(_redis_url, decode_responses=True)
 
 # Mock requests shim prepended to all generated code
 MOCK_REQUESTS_SHIM = """
@@ -419,24 +425,39 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
     else:
         augmented_prompt = prompt
 
-    # Call LLM
-    severity = ingest.siem_event.get("severity", "high") if isinstance(ingest.siem_event, dict) else "high"
-    routed_config = get_model_config(severity=severity, task_type=task_type)
-    # Override with TIER_GENERATE settings for full code gen
-    gen_config = {**routed_config, **TIER_GENERATE}
-    activity.logger.info(f"Model selected: {gen_config.get('name', 'unknown')} for {task_type} (severity: {severity})")
-    result = await llm_call(
-        prompt=augmented_prompt,
-        system_prompt=system_prompt,
-        model_config=gen_config,
-        task_id=ingest.task_id,
-        stage="analyze",
-        task_type=task_type,
-        tenant_id=ingest.tenant_id,
-        timeout=900.0,
-    )
+    # --- Code cache: check for cached LLM-generated code ---
+    rule_name = siem_event.get("rule_name", "") if isinstance(siem_event, dict) else ""
+    cache_sig = get_alert_signature(task_type, rule_name, siem_event)
+    cached_code = get_cached_code(_redis_client, cache_sig)
 
-    code = _scrub_code(result["content"])
+    if cached_code:
+        activity.logger.info(f"Code cache HIT for {task_type} (sig={cache_sig}), skipping LLM")
+        code = cached_code
+        tokens_in, tokens_out = 0, 0
+    else:
+        # Call LLM
+        severity = ingest.siem_event.get("severity", "high") if isinstance(ingest.siem_event, dict) else "high"
+        routed_config = get_model_config(severity=severity, task_type=task_type)
+        # Override with TIER_GENERATE settings for full code gen
+        gen_config = {**routed_config, **TIER_GENERATE}
+        activity.logger.info(f"Model selected: {gen_config.get('name', 'unknown')} for {task_type} (severity: {severity})")
+        result = await llm_call(
+            prompt=augmented_prompt,
+            system_prompt=system_prompt,
+            model_config=gen_config,
+            task_id=ingest.task_id,
+            stage="analyze",
+            task_type=task_type,
+            tenant_id=ingest.tenant_id,
+            timeout=900.0,
+        )
+
+        code = _scrub_code(result["content"])
+        tokens_in, tokens_out = result["tokens_in"], result["tokens_out"]
+
+        # Cache the scrubbed code for future repeat alerts
+        set_cached_code(_redis_client, cache_sig, code)
+
     generation_ms = int((time.time() - t0) * 1000)
 
     # Preflight
@@ -447,8 +468,8 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
         source="llm",
         preflight_passed=passed,
         preflight_fixes=fixes,
-        tokens_in=result["tokens_in"],
-        tokens_out=result["tokens_out"],
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
         generation_ms=generation_ms,
     )
 

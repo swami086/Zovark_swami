@@ -27,6 +27,7 @@ from stages.mitre_mapping import get_mitre_techniques
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
 ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+ASSESS_SUMMARY_TIMEOUT = float(os.getenv("ZOVARK_ASSESS_TIMEOUT", "45"))
 
 
 # --- Verdict derivation ---
@@ -94,7 +95,7 @@ async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id
             stage="assess",
             task_type=task_type,
             tenant_id=tenant_id,
-            timeout=15.0,  # Short — template summary fallback is fine
+            timeout=ASSESS_SUMMARY_TIMEOUT,
         )
         return result["content"]
     except Exception as e:
@@ -392,6 +393,16 @@ async def assess_results(data: dict) -> dict:
         else:
             iocs.append(new_ioc)
             existing_by_value[val] = new_ioc
+
+    # --- Findings synthesis: generate findings from IOCs when sandbox produced none ---
+    if iocs and not findings and risk_score >= 50:
+        for ioc in iocs[:10]:
+            findings.append({
+                "title": f"Detected {ioc.get('type', 'unknown')}: {ioc.get('value', '')}",
+                "severity": "high" if risk_score >= 70 else "medium",
+                "synthesized": True,
+            })
+        activity.logger.info(f"Synthesized {len(findings)} findings from IOCs")
 
     # Template attack risk floor: if the alert matched a known attack template
     # (Path A) but the LLM under-scored it, ensure risk >= 70.

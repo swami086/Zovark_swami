@@ -20,6 +20,19 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_20
 MODEL_FAST = os.environ.get("ZOVARK_MODEL_FAST", "llama3.2:3b")
 MODEL_CODE = os.environ.get("ZOVARK_MODEL_CODE", "llama3.1:8b")
 
+# Dual-endpoint support: route FAST and CODE models to separate Ollama instances
+_DEFAULT_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT",
+    "http://host.docker.internal:11434/v1/chat/completions")
+ENDPOINT_FAST = os.environ.get("ZOVARK_LLM_ENDPOINT_FAST", _DEFAULT_ENDPOINT)
+ENDPOINT_CODE = os.environ.get("ZOVARK_LLM_ENDPOINT_CODE", _DEFAULT_ENDPOINT)
+
+
+def _get_endpoint_for_model(model: str) -> str:
+    """Route model to the correct Ollama instance endpoint."""
+    if model == MODEL_FAST:
+        return ENDPOINT_FAST
+    return ENDPOINT_CODE
+
 
 def get_model_for_task(stage: str, path: str = "") -> str:
     """Route to appropriate model based on pipeline stage and code path."""
@@ -50,9 +63,9 @@ async def llm_call(
     Makes LLM call and logs audit metadata including prompt version.
     Returns: {"content": str, "tokens_in": int, "tokens_out": int, "latency_ms": int, "model": str, "prompt_version": str}
     """
-    endpoint = model_config.get("endpoint", ZOVARK_LLM_ENDPOINT)
-    api_key = model_config.get("api_key", ZOVARK_LLM_KEY)
     model_name = model_config.get("model", model_config.get("name", "unknown"))
+    endpoint = model_config.get("endpoint") or _get_endpoint_for_model(model_name)
+    api_key = model_config.get("api_key", ZOVARK_LLM_KEY)
 
     request_body = {
         "model": model_name,
@@ -182,16 +195,16 @@ def _log_audit(
 
 
 def preload_ollama_model():
-    """Pre-load CODE model into VRAM at worker startup with 30m keep_alive."""
+    """Pre-load CODE and FAST models into VRAM on their respective Ollama instances with 30m keep_alive."""
     import logging
     logger = logging.getLogger(__name__)
-    ollama_base = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
-    ollama_url = ollama_base.replace("/v1/chat/completions", "").replace("/v1/models", "")
-    try:
-        import httpx
-        resp = httpx.post(f"{ollama_url}/api/generate", json={
-            "model": MODEL_CODE, "prompt": "ok", "keep_alive": "30m", "stream": False,
-        }, timeout=60.0)
-        logger.info(f"Ollama CODE model {MODEL_CODE} pre-loaded with 30m keep_alive (status={resp.status_code})")
-    except Exception as e:
-        logger.warning(f"Failed to pre-load Ollama model: {e}")
+    for model, ep in [(MODEL_CODE, ENDPOINT_CODE), (MODEL_FAST, ENDPOINT_FAST)]:
+        ollama_url = ep.replace("/v1/chat/completions", "").replace("/v1/models", "")
+        try:
+            import httpx
+            resp = httpx.post(f"{ollama_url}/api/generate", json={
+                "model": model, "prompt": "ok", "keep_alive": "30m", "stream": False,
+            }, timeout=60.0)
+            logger.info(f"Pre-loaded {model} on {ollama_url} (status={resp.status_code})")
+        except Exception as e:
+            logger.warning(f"Failed to pre-load {model} on {ollama_url}: {e}")

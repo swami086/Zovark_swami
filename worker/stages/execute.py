@@ -36,6 +36,7 @@ except Exception:
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 
 # --- AST Prefilter (inlined from sandbox/ast_prefilter.py concepts) ---
+# Legacy YAML-driven blocklists (kept for sandbox_policy.yaml compatibility)
 if SANDBOX_POLICY:
     FORBIDDEN_IMPORTS = frozenset(SANDBOX_POLICY["ast_prefilter"]["blocked_imports"])
 else:
@@ -55,14 +56,87 @@ else:
         r'\bexec\s*\(',
     ]
 
+# --- Allowlist-based validation (layered on top of YAML blocklists) ---
+ALLOWED_IMPORTS = {
+    "json", "re", "datetime", "collections", "math", "hashlib",
+    "ipaddress", "base64", "urllib.parse", "csv", "statistics",
+    "string", "copy", "itertools", "functools", "typing",
+}
+
+BLOCKED_PATTERNS = [
+    "import os", "import sys", "import subprocess", "import socket",
+    "import urllib.request", "import http.client", "import http.server",
+    "import ftplib", "import smtplib", "import xmlrpc",
+    "import requests", "import aiohttp",
+    "__import__", "importlib", "ctypes", "cffi",
+    "import shutil", "import tempfile", "import pathlib",
+    "import glob", "import fnmatch",
+    "os.environ", "os.getenv", "getpass",
+    "import pickle", "import shelve",
+    "builtins",
+]
+
+BLOCKED_BUILTINS = {'open', 'eval', 'exec', 'compile', '__import__', 'breakpoint'}
+
+
+def _check_blocked_strings(code: str) -> Tuple[bool, str]:
+    """Layer 1: Fast string-based pattern scan before AST parsing."""
+    code_lower = code.lower()
+    for pattern in BLOCKED_PATTERNS:
+        if pattern.lower() in code_lower:
+            return False, f"Blocked pattern: {pattern}"
+    return True, "OK"
+
+
+def _validate_imports_allowlist(tree: ast.Module) -> Tuple[bool, str]:
+    """Layer 3: Only allow imports from the explicit allowlist."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                module_root = alias.name.split(".")[0]
+                if alias.name not in ALLOWED_IMPORTS and module_root not in ALLOWED_IMPORTS:
+                    return False, f"Blocked import: {alias.name}"
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                module_root = node.module.split(".")[0]
+                if node.module not in ALLOWED_IMPORTS and module_root not in ALLOWED_IMPORTS:
+                    return False, f"Blocked from-import: {node.module}"
+    return True, "OK"
+
+
+def _validate_builtin_calls(tree: ast.Module) -> Tuple[bool, str]:
+    """Layer 4: Block dangerous builtin function calls."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in BLOCKED_BUILTINS:
+                return False, f"Blocked builtin call: {node.func.id}"
+    return True, "OK"
+
 
 def _ast_check(code: str) -> Tuple[bool, str]:
-    """Static AST analysis. Returns (is_safe, reason)."""
+    """Static AST analysis with 4-layer validation. Returns (is_safe, reason)."""
+    # Layer 1: Fast blocked-string scan
+    safe, reason = _check_blocked_strings(code)
+    if not safe:
+        return False, reason
+
+    # Layer 2: Parse AST (catches syntax errors)
     try:
         tree = ast.parse(code)
     except SyntaxError as e:
         return False, f"SyntaxError at line {e.lineno}: {e.msg}"
 
+    # Layer 3: Allowlist-based import validation
+    safe, reason = _validate_imports_allowlist(tree)
+    if not safe:
+        return False, reason
+
+    # Layer 4: Blocked builtin calls
+    safe, reason = _validate_builtin_calls(tree)
+    if not safe:
+        return False, reason
+
+    # Legacy YAML-driven blocklist checks (kept for backward compatibility)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:

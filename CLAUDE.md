@@ -21,6 +21,9 @@ Zovark is an **air-gapped Security Operations Center (SOC) automation platform**
 - **Pipeline:** V2 5-stage — only 2 of 5 stages call the LLM
 - **Tests:** 44 Go + 179 Python + 15 V2 pipeline + 10 cipher audit = 248 test functions
 - **Services:** 8 core Docker containers + optional monitoring/storage
+- **LLM Routing:** Dual Ollama — CPU instance (3B fast, port 11434) + GPU instance (8B code, port 11435)
+- **Security:** Input sanitization + allowlist AST prefilter + sandbox (network=none, seccomp)
+- **Caching:** Redis code cache (24h TTL) — repeat Path C patterns skip LLM
 - **Dashboard:** React 19 + Vite 7 + Tailwind 4, 15 pages, dark mode, MITRE ATT&CK badges
 
 ## Credentials
@@ -76,6 +79,19 @@ Zovark routes LLM calls to different models based on task complexity:
 
 **Why two models:** Only 1 model fits in 4GB VRAM at a time. Ollama swaps on demand (3-5s penalty, negligible vs 60s+ inference). The 3B model handles simple param extraction 5x faster than the 8B model.
 
+### Dual Ollama Routing (v2.0)
+
+Two Ollama instances eliminate model swap latency entirely:
+
+| Instance | Port  | Hardware | Model | Purpose |
+|----------|-------|----------|-------|---------|
+| CPU      | 11434 | 24GB RAM | llama3.2:3b | Path B param fill — always loaded |
+| GPU      | 11435 | RTX 3050 4GB VRAM | llama3.1:8b | Path C code gen + Assess — always loaded |
+
+- Backward-compatible: if only `ZOVARK_LLM_ENDPOINT` is set, both use same instance
+- Dual-instance opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_CODE`
+- Dev hardware: i5-12450H + RTX 3050 4GB + Intel UHD (iGPU unused — no CUDA) + 24GB RAM
+
 ### Benign Routing (Inverted Logic)
 
 `worker/stages/ingest.py` has `ATTACK_INDICATORS` list (45 patterns). If task_type/rule_name/title do NOT match any attack indicator, the alert routes to the `benign-system-event` skill template (31 benign task types). Novel benign alerts default to benign, not to expensive LLM Path C.
@@ -107,6 +123,14 @@ Zovark routes LLM calls to different models based on task complexity:
 | `api/main.go` | Go API router, ~90 registered routes |
 | `api/siem_ingest.go` | Splunk HEC + Elastic SIEM webhook ingest |
 | `api/cipher_audit_handlers.go` | 5 cipher audit API endpoints |
+
+### Investigation Code Cache (v2.0)
+
+Redis-based cache for Path C generated code. Repeat alert patterns skip LLM entirely.
+- Key: hash(task_type + rule_name + sorted SIEM field names) — structural, not value-based
+- TTL: 24 hours (configurable via `ZOVARK_CODE_CACHE_TTL`)
+- Flush after prompt updates: `scripts/flush_code_cache.sh`
+- Implemented in `worker/stages/code_cache.py`, integrated in `analyze.py`
 
 ## Database
 
@@ -179,6 +203,14 @@ Zovark routes LLM calls to different models based on task complexity:
 | Evidence Citations | Every IOC has evidence_refs linking to source log line |
 | Zero Hallucination | Prompt rules forbid inventing IOCs not in log data |
 | Error Handling | `respondInternalError()` — never expose Go errors to clients |
+
+### Input Sanitization (v2.0)
+
+All SIEM event data is sanitized BEFORE reaching LLM prompt construction:
+- 12 prompt injection patterns detected and stripped (ignore instructions, system role, code fences, etc.)
+- Field length truncation at 10,000 chars
+- Shannon entropy analysis flags suspicious high-entropy fields
+- Implemented in `worker/stages/input_sanitizer.py`, called from `ingest.py` Stage 1
 
 ## Benchmarks
 
@@ -280,6 +312,9 @@ curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $
 | 2B | SOAR response playbooks — 5 defaults, approval gates, rollback |
 | 2C | Cipher audit skill — NIST SP 800-57 deterministic + LLM narration |
 | 2D | Two-model routing — American models only (Meta Llama), Qwen removed |
+| 2E | Dual Ollama routing — CPU (3B) + GPU (8B), zero swap latency |
+| 2F | Security hardening — input sanitizer, allowlist AST prefilter |
+| 2G | Code cache — Redis-based, repeat patterns skip LLM |
 
 ## Known Issues
 
@@ -288,10 +323,10 @@ curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $
 3. **`investigation_memory` table** — Name is SINGULAR. Plural reference silently fails.
 4. **`fetch_task` dependency** — V2 workflow still calls legacy `fetch_task`. Tech debt.
 5. **Redis/DB passwords not renamed** — Still `hydra-redis-dev-2026` / `hydra_dev_2026`. Non-breaking.
-6. **Single-GPU bottleneck** — RTX 3050 serializes LLM requests. Path C takes 120-280s.
-7. **Path C empty findings** — Llama 8B code gen sometimes produces IOCs but empty findings array. Mitigated: validator override promotes to `true_positive` when risk ≥ 70.
+6. **Single-GPU bottleneck** — MITIGATED: Dual Ollama routing (CPU + GPU). Both models always loaded.
+7. **Path C empty findings** — MITIGATED: Findings synthesis from IOCs in assess.py.
 8. **Path C prose wrapping** — Llama 8B wraps code in explanatory text. Mitigated: `_scrub_code()` strips prose before/after Python.
-9. **Assess summary timeout** — 15s timeout for LLM summary call too short for Ollama model swaps. Non-fatal (falls back to template summary).
+9. **Assess summary timeout** — FIXED: Increased to 45s (configurable via ZOVARK_ASSESS_TIMEOUT).
 10. **DPO pipeline** — Training data exists in `dpo/` but no production model trained yet.
 
 ## Pending Work

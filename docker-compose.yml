@@ -281,6 +281,8 @@ services:
       - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
       - ZOVARK_LLM_ENDPOINT=${ZOVARK_LLM_ENDPOINT:-http://host.docker.internal:11434/v1/chat/completions}
+      - ZOVARK_LLM_ENDPOINT_FAST=${ZOVARK_LLM_ENDPOINT_FAST:-http://host.docker.internal:11434/v1/chat/completions}
+      - ZOVARK_LLM_ENDPOINT_CODE=${ZOVARK_LLM_ENDPOINT_CODE:-http://host.docker.internal:11434/v1/chat/completions}
       - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY:-sk-zovark-dev-2026}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox

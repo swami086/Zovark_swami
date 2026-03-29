@@ -55,6 +55,16 @@ You provide: SIEM webhook access, one GPU server, one analyst for ground-truth l
 
 **No data leaves your network. No cloud dependency. No per-query pricing.**
 
+## Supply Chain Security
+
+Zovark's dependency tree is deliberately minimal:
+- **LLM calls:** Direct HTTP to local Ollama endpoint. No proxy libraries (litellm, langchain, etc.)
+- **Model provenance:** American open-source models (Meta Llama) with open weights. Zero Chinese AI dependencies.
+- **Input sanitization:** All SIEM data sanitized for prompt injection before LLM processing (12 injection patterns + entropy analysis).
+- **Sandbox security:** Generated code runs in network-isolated Docker container with allowlist-based import validation.
+- **Zero cloud dependencies:** No API keys to external services. No telemetry. No phone-home.
+- **Dependency list available** for customer security review on request.
+
 ---
 
 Contact: [your-email] | GitHub: [repo-url]

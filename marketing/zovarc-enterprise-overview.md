@@ -47,7 +47,7 @@ Alert Ingestion --> LLM Code Generation --> Sandboxed Execution --> Entity Graph
 
 1. **Alert Ingestion.** SIEM webhooks (Splunk, Sentinel, Elastic) deliver alerts to Zovark's API gateway. SHA-256 fingerprinting deduplicates at intake.
 
-2. **LLM Code Generation.** A local large language model (Meta Llama 3.1 8B, swappable) generates Python investigation code tailored to the alert type -- DNS resolution, IOC enrichment, log correlation, behavioral analysis.
+2. **LLM Code Generation.** A local large language model (American open-source, Meta Llama, swappable) generates Python investigation code tailored to the alert type -- DNS resolution, IOC enrichment, log correlation, behavioral analysis.
 
 3. **Sandboxed Execution.** Generated code runs inside a hardened Docker container with AST pre-filtering, seccomp syscall whitelisting, network isolation, and a 30-second kill timer. No escape path.
 
