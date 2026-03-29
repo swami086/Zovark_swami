@@ -1,6 +1,6 @@
 # ============================================================
 # PROJECT ZOVARK — MVP Docker Compose Stack v1.1.1 (RTX 3050 4GB)
-# Model: Qwen2.5-1.5B-Instruct-AWQ (chat) + nomic-embed-text (embed)
+# Model: Meta Llama (3.2 3B + 3.1 8B) (chat) + nomic-embed-text (embed)
 # VRAM: 0.40 chat + 0.15 embed = ~2.2GB of 4GB
 # 6 errors from v1.0 fixed — see ZOVARK_CORRECTED_WALKTHROUGH.md
 # Boot: docker compose up -d
@@ -215,11 +215,11 @@ services:
       - zovark-internal
 
   # ─── LOCAL LLM ───────────────────────────────────────
-  # Primary: llama.cpp server running on host (not in Docker)
-  #   Start with: scripts/start_llama_server.sh
+  # Primary: Ollama running on host (not in Docker)
+  #   Start with: ollama serve
   #   Endpoint: http://host.docker.internal:11434/v1/chat/completions
-  #   Model: qwen2.5-14b-instruct Q4_K_M via llama.cpp
-  #   GPU: --n-gpu-layers 20 for RTX 3050 4GB, 49 for 16GB+
+  #   Models: Meta Llama 3.1 8B (code/assess) + Meta Llama 3.2 3B (fast/param fill)
+  #   GPU: RTX 3050 4GB — only 1 model loaded at a time, Ollama swaps on demand
   #
   # Fallback (air-gap without host GPU): Ollama in Docker
   ollama:
@@ -284,7 +284,8 @@ services:
       - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY:-sk-zovark-dev-2026}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
-      - ZOVARK_LLM_MODEL=${ZOVARK_LLM_MODEL:-qwen2.5:14b}
+      - ZOVARK_MODEL_FAST=${ZOVARK_MODEL_FAST:-llama3.2:3b}
+      - ZOVARK_MODEL_CODE=${ZOVARK_MODEL_CODE:-llama3.1:8b}
       - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
       - PYTHONUNBUFFERED=1
       - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222

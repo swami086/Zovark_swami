@@ -343,7 +343,7 @@ async def generate_code(task_data: dict) -> dict:
     if code.endswith("```"):
         code = code[:-3]
 
-    # Strip LLM special tokens that leak into generated code (deepseek-coder, qwen, llama)
+    # Strip LLM special tokens that leak into generated code (deepseek-coder, llama)
     code = re.sub(r'<[｜|][^>]*[｜|]>', '', code)
     code = re.sub(r'<\|(?:im_start|im_end|endoftext|begin_of_sentence|end_of_sentence|fim_prefix|fim_middle|fim_suffix)\|>', '', code)
 

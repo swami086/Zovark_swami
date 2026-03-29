@@ -56,8 +56,8 @@ Investigation flow works end-to-end:
 | PostgreSQL | Healthy | 76+ tables, 55+ migrations |
 | Redis | Healthy | go-redis/v9 pooled |
 | Temporal | Healthy | Task queue: zovark-tasks |
-| LiteLLM | Healthy | Routes fast → Ollama qwen2.5:14b |
-| Ollama | Healthy | qwen2.5:14b, llama3.1:8b available |
+| LiteLLM | Healthy | Routes fast → Ollama llama3.1:8b |
+| Ollama | Healthy | llama3.1:8b, llama3.2:3b available |
 | NATS | Healthy | JetStream enabled |
 | Dashboard | Running | React 19 on port 3000 |
 | Embedding | Running | HuggingFace TEI (CPU) |

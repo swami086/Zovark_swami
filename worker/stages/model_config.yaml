@@ -1,25 +1,26 @@
 # ZOVARK Model Routing Configuration
-# Maps investigation parameters to model endpoints
+# American models only: Meta Llama (NVIDIA Nemotron fallback when available)
+# Zero Chinese model dependencies
 version: "2026-03"
 
 models:
   fast:
     name: "zovark-fast"
     endpoint: "http://host.docker.internal:11434/v1/chat/completions"
-    model: "qwen2.5:14b"
-    max_tokens: 4096
+    model: "llama3.2:3b"
+    max_tokens: 1024
     temperature: 0.1
-    timeout_seconds: 120
-    description: "Fast tier — Qwen2.5-14B for simple triage"
+    timeout_seconds: 60
+    description: "Fast tier — Meta Llama 3.2 3B for param fill (Path B)"
 
   standard:
     name: "zovark-standard"
     endpoint: "http://host.docker.internal:11434/v1/chat/completions"
-    model: "qwen2.5:14b"
-    max_tokens: 8192
+    model: "llama3.1:8b"
+    max_tokens: 4096
     temperature: 0.1
     timeout_seconds: 300
-    description: "Standard tier — Qwen2.5-14B for full investigation"
+    description: "Standard tier — Meta Llama 3.1 8B for code gen + assess"
 
   enterprise:
     name: "zovark-enterprise"
@@ -38,9 +39,3 @@ routing:
     medium: "standard"
     high: "standard"
     critical: "standard"
-
-  # Override by task type (optional, uncomment to enable)
-  # task_type_overrides:
-  #   phishing_investigation: "fast"
-  #   ransomware_triage: "standard"
-  #   supply_chain_compromise: "enterprise"

@@ -19,7 +19,7 @@ import httpx
 
 from temporalio import activity
 from stages import AssessOutput
-from stages.llm_gateway import llm_call
+from stages.llm_gateway import llm_call, MODEL_CODE
 from stages.model_router import get_model_config
 from stages.output_validator import validate_investigation_output, safe_default_output
 from stages.mitre_mapping import get_mitre_techniques
@@ -85,7 +85,7 @@ async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id
     """Call LLM to generate a 2-3 sentence investigation summary."""
     try:
         summary_config = get_model_config(severity="low", task_type=task_type)
-        summary_config.update({"temperature": 0.1, "max_tokens": 200})
+        summary_config.update({"model": MODEL_CODE, "temperature": 0.1, "max_tokens": 200})
         result = await llm_call(
             prompt=stdout[:2000],
             system_prompt="Summarize this investigation in 2-3 sentences.",

@@ -68,7 +68,7 @@ graph TD
         end
 
         subgraph "LLM Inference (Host)"
-            LLM[llama.cpp<br>Qwen2.5-14B-Q4_K_M<br>:11434]
+            LLM[llama.cpp<br>Meta Llama 3.1 8B<br>:11434]
         end
 
         subgraph "Sandbox (Ephemeral)"
@@ -398,7 +398,7 @@ ZOVARK is designed to run within a complete air-gap. The boundary is defined as 
 | Parameter | Value |
 |-----------|-------|
 | Runtime | llama.cpp (native binary on host) |
-| Model | Qwen2.5-14B-Instruct-Q4_K_M |
+| Model | Meta Llama 3.1 8B (originally benchmarked with Qwen2.5-14B) |
 | Model Size | 8.1 GB |
 | GPU Layers | 20 (offloaded to GPU) |
 | VRAM Usage | ~3.8 GB |
@@ -410,7 +410,7 @@ ZOVARK is designed to run within a complete air-gap. The boundary is defined as 
 
 | Tier | Purpose | Model | Hardware Requirement |
 |------|---------|-------|---------------------|
-| Fast | Triage, classification | qwen2.5:14b (or Nemotron 4B) | Any NVIDIA GPU |
+| Fast | Triage, classification | llama3.1:8b (or Nemotron 4B) | Any NVIDIA GPU |
 | Standard | Full investigation | 32B or cloud 70B | A6000 (48GB) or cloud |
 | Reasoning | Complex analysis | 70B+ | A100 (80GB) or cloud |
 
@@ -493,7 +493,7 @@ docker compose -f docker-compose.optional.yml up -d
 ### Host Process (LLM)
 
 ```bash
-llama-server -m Qwen2.5-14B-Instruct-Q4_K_M.gguf -ngl 20 --port 11434
+llama-server -m Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -ngl 20 --port 11434
 ```
 
 ---

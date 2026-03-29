@@ -237,8 +237,8 @@ DataFlowBadge, DemoBanner, DemoSelector, ExecutiveSummary, GuardrailScoreBar, In
 
 ### Model Configuration
 - **Runtime:** Ollama on host (port 11434)
-- **Primary model:** qwen2.5:14b (14.8B params, Q4_K_M quantization, 8.99GB)
-- **Also available:** deepseek-coder:6.7b, llava:7b, llama3.1:8b, qwen2.5-coder:14b
+- **Primary model:** llama3.1:8b (Meta Llama 3.1 8B-Instruct)
+- **Also available:** llama3.2:3b (Meta Llama 3.2 3B-Instruct)
 - **Worker env:** `LITELLM_URL=http://host.docker.internal:11434/v1/chat/completions`
 
 ### Prompt Files

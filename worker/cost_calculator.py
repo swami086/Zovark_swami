@@ -25,7 +25,8 @@ COST_PER_1K = {
     'zovark-fast-airgap': {'input': 0.0, 'output': 0.0},
     'zovark-standard-airgap': {'input': 0.0, 'output': 0.0},
     'zovark-reasoning-airgap': {'input': 0.0, 'output': 0.0},
-    'ollama/qwen2.5:7b': {'input': 0.0, 'output': 0.0},
+    'ollama/llama3.2:3b': {'input': 0.0, 'output': 0.0},
+    'ollama/llama3.1:8b': {'input': 0.0, 'output': 0.0},
     # Legacy
     'fast': {'input': 0.0002, 'output': 0.0002},
 }

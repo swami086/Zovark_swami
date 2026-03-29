@@ -18,7 +18,7 @@ echo ""
 # Test direct Ollama inference
 echo "2. Testing direct Ollama inference..."
 OLLAMA_RESP=$(docker compose exec ollama curl -sf http://localhost:11434/api/generate \
-  -d '{"model":"qwen2.5:7b","prompt":"Say hello in one word","stream":false}' 2>&1) || true
+  -d '{"model":"llama3.2:3b","prompt":"Say hello in one word","stream":false}' 2>&1) || true
 
 if echo "$OLLAMA_RESP" | grep -q "response"; then
   echo "   Direct Ollama: OK"
@@ -80,4 +80,4 @@ fi
 echo ""
 echo "=== AIR-GAP TEST: PASSED ==="
 echo "Investigation infrastructure works without internet."
-echo "All LLM calls can fall back to local Ollama (qwen2.5:7b)."
+echo "All LLM calls can fall back to local Ollama (llama3.2:3b)."

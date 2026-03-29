@@ -35,7 +35,7 @@ You have evaluated AI-powered triage tools. Every one of them requires your tele
 - **Alert fatigue** -- Duplicate and low-fidelity alerts are fingerprinted and suppressed before they reach a human.
 - **Analyst burnout** -- Autonomous investigation handles the repetitive 80%, freeing analysts for threat hunting and incident response.
 - **Compliance constraints** -- Fully air-gappable architecture. No external model APIs. Deployable in classified, regulated, and sovereign environments.
-- **Vendor lock-in** -- Open model weights (Qwen, Mistral, Llama). No proprietary inference dependency.
+- **Vendor lock-in** -- Open model weights (Llama, Mistral). American open-source models. No proprietary inference dependency.
 
 ---
 
@@ -47,7 +47,7 @@ Alert Ingestion --> LLM Code Generation --> Sandboxed Execution --> Entity Graph
 
 1. **Alert Ingestion.** SIEM webhooks (Splunk, Sentinel, Elastic) deliver alerts to Zovark's API gateway. SHA-256 fingerprinting deduplicates at intake.
 
-2. **LLM Code Generation.** A local large language model (Qwen 2.5, swappable) generates Python investigation code tailored to the alert type -- DNS resolution, IOC enrichment, log correlation, behavioral analysis.
+2. **LLM Code Generation.** A local large language model (Meta Llama 3.1 8B, swappable) generates Python investigation code tailored to the alert type -- DNS resolution, IOC enrichment, log correlation, behavioral analysis.
 
 3. **Sandboxed Execution.** Generated code runs inside a hardened Docker container with AST pre-filtering, seccomp syscall whitelisting, network isolation, and a 30-second kill timer. No escape path.
 

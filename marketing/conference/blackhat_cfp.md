@@ -10,7 +10,7 @@ We present ZOVARK, an autonomous security investigation platform that generates,
 
 ### The Architecture
 
-ZOVARK implements a five-stage investigation pipeline orchestrated by Temporal durable workflows: (1) alert ingestion with Redis-backed deduplication and PII masking, (2) investigation code generation via local LLM (Qwen2.5-14B, quantized to 4-bit), (3) sandboxed execution in a Docker container with AST prefiltering, seccomp profile, cap-drop ALL, network deny-all, and a 120-second kill timer, (4) LLM-powered verdict assessment with schema validation, and (5) structured persistence with MITRE ATT&CK mapping and entity graph correlation.
+ZOVARK implements a five-stage investigation pipeline orchestrated by Temporal durable workflows: (1) alert ingestion with Redis-backed deduplication and PII masking, (2) investigation code generation via local LLM (Meta Llama 3.1 8B, American open-source model from Meta AI), (3) sandboxed execution in a Docker container with AST prefiltering, seccomp profile, cap-drop ALL, network deny-all, and a 120-second kill timer, (4) LLM-powered verdict assessment with schema validation, and (5) structured persistence with MITRE ATT&CK mapping and entity graph correlation.
 
 ### What Makes This Novel: Code Generation, Not Classification
 

@@ -70,7 +70,7 @@ def main():
     with_findings = sum(1 for r in results if r["findings"] > 0)
     with_iocs = sum(1 for r in results if r["iocs"] > 0)
 
-    print(f"\n=== BASELINE SUMMARY (fast tier / Qwen 1.5B) ===")
+    print(f"\n=== BASELINE SUMMARY (fast tier / Llama 3.2 3B) ===")
     print(f"Investigations scored: {n}")
     print(f"Code generation success: {code_rate*100:.0f}%")
     print(f"Mean risk score: {avg_risk:.0f}")
@@ -82,10 +82,10 @@ def main():
     findings_pct = int(with_findings / n * 100)
     iocs_pct = int(with_iocs / n * 100)
 
-    report = f"""# ZOVARK Baseline Accuracy — Fast Tier (Qwen 1.5B)
+    report = f"""# ZOVARK Baseline Accuracy — Fast Tier (Llama 3.2 3B)
 
 **Date:** 2026-03-16
-**Model:** Qwen2.5-1.5B-Instruct-AWQ (local, RTX 3050)
+**Model:** Meta Llama 3.2 3B (local, RTX 3050)
 **Investigations scored:** {n} (from prior completed runs)
 
 ## Summary

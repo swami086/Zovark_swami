@@ -130,7 +130,7 @@ def generate_pdf(output_path):
 
     elements.append(Spacer(1, 4))
     elements.append(Paragraph(
-        '<b>Stack:</b> Go API + Python Temporal Worker + PostgreSQL/pgvector + Local LLM (Qwen2.5-14B) + '
+        '<b>Stack:</b> Go API + Python Temporal Worker + PostgreSQL/pgvector + Local LLM (Meta Llama 3.1 8B) + '
         'React Dashboard. 6 core containers, single GPU, air-gapped. '
         '161 commits. 65,000+ lines. 55 database migrations.', body_style))
 

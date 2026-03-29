@@ -61,7 +61,7 @@ Zovark requires significant local compute due to the Zero-Egress, sovereign natu
    model_list:
      - model_name: fast
        litellm_params:
-         model: ollama_chat/qwen2.5-coder
+         model: ollama_chat/llama3.1:8b
          api_base: "http://ollama:11434"
    ```
 

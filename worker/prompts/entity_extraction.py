@@ -37,12 +37,12 @@ Rules:
 
 
 def build_entity_extraction_prompt(investigation_output: str, task_type: str, max_chars: int = 3000) -> str:
-    """Build user prompt for entity extraction, truncating to fit Qwen 1.5B context.
+    """Build user prompt for entity extraction, truncating to fit Llama 3.2 3B context.
 
     Args:
         investigation_output: The raw stdout/JSON from the sandbox execution
         task_type: The investigation type (brute_force, ransomware, etc.)
-        max_chars: Max characters for the investigation output (default 3000 for Qwen 1.5B)
+        max_chars: Max characters for the investigation output (default 3000 for Llama 3.2 3B)
 
     Returns:
         Formatted user prompt string

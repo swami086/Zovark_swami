@@ -86,11 +86,11 @@ func HandleModelTimeout(ctx context.Context, tenantID, taskID, priority string, 
 	})
 	_, _ = dbPool.Exec(ctx,
 		`INSERT INTO usage_records (tenant_id, task_id, record_type, model_name, metadata)
-		 VALUES ($1, $2, 'llm_call', 'ollama/qwen2.5:7b', $3)`,
+		 VALUES ($1, $2, 'llm_call', 'ollama/llama3.1:8b', $3)`,
 		tenantID, taskID, fallbackMeta,
 	)
 
-	return "ollama/qwen2.5:7b"
+	return "ollama/llama3.1:8b"
 }
 
 // ============================================================

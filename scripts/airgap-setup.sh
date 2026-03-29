@@ -17,8 +17,12 @@ for i in $(seq 1 30); do
 done
 
 echo ""
-echo "Pulling qwen2.5:7b (chat model)..."
-docker compose exec ollama ollama pull qwen2.5:7b
+echo "Pulling llama3.2:3b (fast chat model)..."
+docker compose exec ollama ollama pull llama3.2:3b
+
+echo ""
+echo "Pulling llama3.1:8b (standard chat model)..."
+docker compose exec ollama ollama pull llama3.1:8b
 
 echo ""
 echo "Pulling nomic-embed-text (embedding model)..."

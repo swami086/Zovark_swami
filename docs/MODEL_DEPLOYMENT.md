@@ -1,8 +1,8 @@
 # ZOVARK Model Deployment Guide
 
-## Model: Qwen2.5-14B-Instruct (Q4_K_M quantization)
+## Model: Meta Llama 3.1 8B-Instruct
 
-ZOVARK uses a local LLM for security investigation code generation. The model runs on-premise via llama.cpp — no cloud API required.
+ZOVARK uses a local LLM for security investigation code generation. The model runs on-premise via llama.cpp or Ollama — no cloud API required. American open-source model from Meta AI with zero Chinese model dependencies.
 
 ## Hardware Requirements
 
@@ -35,8 +35,8 @@ tar xzf llama-*.tar.gz -C ~/llama-cpp/
 
 ```bash
 mkdir -p ~/models
-curl -L -o ~/models/Qwen2.5-14B-Instruct-Q4_K_M.gguf \
-  https://huggingface.co/bartowski/Qwen2.5-14B-Instruct-GGUF/resolve/main/Qwen2.5-14B-Instruct-Q4_K_M.gguf
+curl -L -o ~/models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf \
+  https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
 ```
 
 ### 3. Start the Server
@@ -60,7 +60,7 @@ curl http://localhost:11434/health
 
 curl http://localhost:11434/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"qwen2.5","messages":[{"role":"user","content":"Hello"}],"max_tokens":10}'
+  -d '{"model":"llama3.1:8b","messages":[{"role":"user","content":"Hello"}],"max_tokens":10}'
 ```
 
 ## How ZOVARK Uses the Model
@@ -72,7 +72,7 @@ Skill templates with hand-coded Python. LLM only fills parameters.
 
 ### Path B (LLM Generated) — novel/unknown alert types
 LLM generates full investigation Python script from scratch.
-- 80% execution rate, 89% IOC extraction (with qwen2.5:14b)
+- 80% execution rate, 89% IOC extraction (originally benchmarked with Qwen2.5-14B, now using Meta Llama 3.1 8B)
 - Slower (~12 min on 4GB VRAM, ~2 min on 16GB)
 
 ### Worker Configuration
@@ -81,7 +81,7 @@ The ZOVARK worker connects to llama.cpp via environment variables in `docker-com
 
 ```yaml
 LITELLM_URL: http://host.docker.internal:11434/v1/chat/completions
-ZOVARK_LLM_MODEL: qwen2.5:14b
+ZOVARK_LLM_MODEL: llama3.1:8b
 ```
 
 ## Performance Benchmarks (Path B)

@@ -33,7 +33,7 @@ from psycopg2.extras import RealDictCursor
 from temporalio import activity
 
 from stages import AnalyzeOutput, IngestOutput
-from stages.llm_gateway import llm_call
+from stages.llm_gateway import llm_call, MODEL_FAST, MODEL_CODE
 from stages.model_router import get_model_config
 
 # --- Configuration (read once at import) ---
@@ -42,9 +42,9 @@ ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.
 ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
-# Model tier defaults (inlined to avoid _legacy dependency)
-TIER_GENERATE = {"model": "qwen2.5:14b", "max_tokens": 4096, "temperature": 0.3}
-TIER_FILL = {"model": "qwen2.5:14b", "max_tokens": 1024, "temperature": 0.1}
+# Model tier defaults — American models only (Meta Llama)
+TIER_GENERATE = {"model": MODEL_CODE, "max_tokens": 4096, "temperature": 0.3}   # Path C: code gen
+TIER_FILL = {"model": MODEL_FAST, "max_tokens": 1024, "temperature": 0.1}       # Path B: param fill
 
 # Mock requests shim prepended to all generated code
 MOCK_REQUESTS_SHIM = """

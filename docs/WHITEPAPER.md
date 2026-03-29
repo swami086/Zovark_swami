@@ -8,7 +8,7 @@
 
 ## Abstract
 
-Security operations centers process an average of 11,000 alerts per day, with false positive rates exceeding 70%. Tier-1 analysts spend 30-60 minutes per investigation, creating unsustainable backlogs that allow genuine threats to dwell undetected for a median of 10 days. Simultaneously, data sovereignty regulations---GDPR, HIPAA, NERC CIP, CMMC Level 2---prohibit many organizations from transmitting security telemetry to cloud-based AI services. This paper presents ZOVARK, an autonomous SOC investigation platform that runs entirely on air-gapped infrastructure using locally-hosted large language models. ZOVARK implements a five-stage investigation pipeline orchestrated by Temporal workflows: alert ingestion with deduplication and PII masking, LLM-driven code generation using skill templates, sandboxed execution with AST prefiltering and seccomp containment, LLM-powered verdict assessment, and structured evidence storage. We evaluate ZOVARK against the OWASP Juice Shop benchmark corpus of 100 real-traffic attack alerts, achieving 100% attack detection across all 100 investigations with an average investigation time of 15 seconds for template-based and 90 seconds for full LLM investigations---approximately 140x faster than manual analyst triage. The system runs on a single NVIDIA RTX 3050 (4GB VRAM) using a quantized Qwen2.5-14B model with zero data egress, demonstrating that meaningful SOC automation is feasible on consumer-grade hardware within fully isolated networks.
+Security operations centers process an average of 11,000 alerts per day, with false positive rates exceeding 70%. Tier-1 analysts spend 30-60 minutes per investigation, creating unsustainable backlogs that allow genuine threats to dwell undetected for a median of 10 days. Simultaneously, data sovereignty regulations---GDPR, HIPAA, NERC CIP, CMMC Level 2---prohibit many organizations from transmitting security telemetry to cloud-based AI services. This paper presents ZOVARK, an autonomous SOC investigation platform that runs entirely on air-gapped infrastructure using locally-hosted large language models. ZOVARK implements a five-stage investigation pipeline orchestrated by Temporal workflows: alert ingestion with deduplication and PII masking, LLM-driven code generation using skill templates, sandboxed execution with AST prefiltering and seccomp containment, LLM-powered verdict assessment, and structured evidence storage. We evaluate ZOVARK against the OWASP Juice Shop benchmark corpus of 100 real-traffic attack alerts, achieving 100% attack detection across all 100 investigations with an average investigation time of 15 seconds for template-based and 90 seconds for full LLM investigations---approximately 140x faster than manual analyst triage. The system runs on a single NVIDIA RTX 3050 (4GB VRAM) using Meta Llama 3.1 8B (originally benchmarked with Qwen2.5-14B) with zero data egress, demonstrating that meaningful SOC automation is feasible on consumer-grade hardware within fully isolated networks.
 
 ---
 
@@ -95,7 +95,7 @@ All LLM interactions are routed through a centralized audit gateway (`llm_gatewa
 
 ### 2.3 Model Routing
 
-A YAML-driven model router (`model_config.yaml`) selects the appropriate model tier based on alert severity and investigation type. The current deployment uses Qwen2.5-14B-Instruct (Q4_K_M quantization) via llama.cpp for all tiers on the reference RTX 3050 hardware. Enterprise deployments with larger GPU budgets can configure separate fast (7B), standard (32B), and reasoning (70B+) tiers.
+A YAML-driven model router (`model_config.yaml`) selects the appropriate model tier based on alert severity and investigation type. The current deployment uses Meta Llama 3.1 8B-Instruct via Ollama for all tiers on the reference RTX 3050 hardware (originally benchmarked with Qwen2.5-14B-Instruct Q4_K_M). Enterprise deployments with larger GPU budgets can configure separate fast (7B), standard (32B), and reasoning (70B+) tiers.
 
 ### 2.4 Component Stack
 
@@ -169,14 +169,14 @@ All benchmarks were conducted on the following reference hardware, chosen to rep
 - **RAM:** 16GB DDR4
 - **Storage:** NVMe SSD
 - **OS:** Windows 11 with Docker Desktop (WSL2 backend)
-- **Model:** Qwen2.5-14B-Instruct-Q4_K_M (8.1GB, 20 GPU layers offloaded)
-- **Runtime:** llama.cpp (native Windows build)
+- **Model:** Meta Llama 3.1 8B-Instruct (originally benchmarked with Qwen2.5-14B-Instruct-Q4_K_M)
+- **Runtime:** Ollama (llama.cpp backend, native Windows build)
 
 ### 4.2 Model Performance
 
 | Model | Parameters | Quantization | Tokens/sec | VRAM | Use Case |
 |-------|-----------|-------------|-----------|------|----------|
-| Qwen2.5-14B | 14B | Q4_K_M | ~4 tok/s | 3.8GB | Primary (current) |
+| Meta Llama 3.1 8B | 8B | Q4_K_M | ~8 tok/s | 4.9GB | Primary (current) |
 | Nemotron-Mini-4B | 4B | Q4_K_M | ~37 tok/s | 1.8GB | Fast triage (planned) |
 
 The 14B model produces higher-quality investigation verdicts but processes at approximately 4 tokens per second on the reference hardware, making it the throughput bottleneck. The 4B model achieves 9x faster inference and is being evaluated for triage-tier investigations where speed matters more than depth.
@@ -303,7 +303,7 @@ We are seeking design partners among enterprise SOC teams to validate the platfo
 3. MITRE Corporation. "ATT&CK Framework v14." https://attack.mitre.org/
 4. OWASP Foundation. "Juice Shop." https://owasp.org/www-project-juice-shop/
 5. Temporal Technologies. "Temporal: Durable Execution." https://temporal.io/
-6. Qwen Team. "Qwen2.5 Technical Report." 2024.
+6. Meta AI. "Llama 3.1 Model Card." 2024.
 7. NVIDIA. "NemoClaw: Agentic Security Analysis." 2025.
 8. European Parliament. "General Data Protection Regulation (GDPR)." Regulation 2016/679.
 9. U.S. Department of Defense. "CMMC 2.0 Framework." 2024.

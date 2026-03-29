@@ -99,7 +99,7 @@ Key settings (`config/postgresql.conf`):
 
 ### Test Environment
 - Machine: Windows 11, RTX 3050 4GB
-- LLM: Qwen2.5-1.5B-Instruct-AWQ via LiteLLM/OpenRouter
+- LLM: Meta Llama 3.2 3B via LiteLLM/OpenRouter
 - DB: PostgreSQL 16 + pgvector + PgBouncer
 - Workflow: Temporal 1.24.2
 

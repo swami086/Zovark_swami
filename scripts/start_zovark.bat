@@ -39,7 +39,7 @@ if errorlevel 1 (
 curl -s http://localhost:11434/v1/models >nul 2>nul
 if errorlevel 1 (
     echo LLM: NOT RUNNING
-    echo   Start with: C:\Users\vinay\llama-cpp\llama-server.exe -m C:\Users\vinay\models\Qwen2.5-14B-Instruct-Q4_K_M.gguf -ngl 20 --port 11434
+    echo   Start with: ollama serve
 ) else (
     echo LLM: OK (http://localhost:11434)
 )

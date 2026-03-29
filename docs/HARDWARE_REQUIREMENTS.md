@@ -7,7 +7,7 @@
 ### Developer / Demo (Current Default)
 - **GPU:** NVIDIA RTX 3050 (4GB VRAM) or equivalent
 - **RAM:** 16GB system
-- **Model:** Qwen2.5-14B-Instruct-Q4_K_M via llama.cpp or Ollama on host (fast tier)
+- **Model:** Meta Llama 3.1 8B via llama.cpp or Ollama on host (fast tier)
 - **Capability:** Full investigation pipeline including triage, code generation, and verdict
 - **Investigation quality:** Demo and development ready. 100% attack detection on Juice Shop benchmark.
 - **Config:** `docker-compose.yml` + LLM on host (port 11434)
@@ -25,7 +25,7 @@
 - **GPU:** 48GB+ VRAM — NVIDIA A6000, L40S, or dual RTX 4090
 - **RAM:** 64GB system minimum, 128GB recommended
 - **Storage:** 100GB SSD for model weights
-- **Model:** Qwen2.5-7B (fast) + Qwen2.5-32B (standard/reasoning), all local
+- **Model:** Meta Llama 3.2 3B (fast) + Llama 3.1 70B (standard/reasoning), all local
 - **Capability:** Full investigation pipeline, zero cloud dependency
 - **Investigation quality:** Production-grade, fully air-gapped
 - **Config:** `docker-compose.yml` + `docker-compose.enterprise.yml` + `litellm_config_enterprise.yaml`
@@ -34,7 +34,7 @@
 ### Enterprise Server (Maximum Quality)
 - **GPU:** NVIDIA A100 (80GB) or H100
 - **RAM:** 128GB+ system
-- **Model:** Qwen2.5-72B or Llama 3 70B (full precision or 8-bit)
+- **Model:** Meta Llama 3.1 70B (full precision or 8-bit)
 - **Capability:** Maximum investigation quality, 128k context window
 - **Investigation quality:** Matches or exceeds cloud API quality
 - **Config:** Custom `litellm_config_a100.yaml` with 72B model

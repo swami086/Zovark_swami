@@ -6,7 +6,7 @@ ZOVARK's investigation quality depends entirely on model capability. The platfor
 supports three tiers, each mapped to a different use case and hardware profile.
 
 ### Tier 1: Fast (Triage)
-- **Model:** Qwen2.5-1.5B or 7B (AWQ quantized)
+- **Model:** Meta Llama 3.2 3B (AWQ quantized)
 - **VRAM:** 1.6GB - 4GB
 - **Context:** 8k tokens
 - **Use case:** Alert classification, entity extraction, quick risk scoring
@@ -15,7 +15,7 @@ supports three tiers, each mapped to a different use case and hardware profile.
 - **When to use:** Every incoming alert passes through this tier first
 
 ### Tier 2: Standard (Investigation)
-- **Model:** Qwen2.5-32B (AWQ) or Llama 3 70B via cloud
+- **Model:** Meta Llama 3.1 70B (AWQ) or via cloud
 - **VRAM:** 18GB local or cloud API
 - **Context:** 32k-128k tokens
 - **Use case:** Full investigation pipeline — code generation, log analysis, IOC correlation

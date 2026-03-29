@@ -14,6 +14,25 @@ ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.
 ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
 
+# Two-model routing: American models only (Meta Llama)
+# FAST: small model for simple param extraction (Path B)
+# CODE: larger model for code generation (Path C) + IOC extraction (Assess)
+MODEL_FAST = os.environ.get("ZOVARK_MODEL_FAST", "llama3.2:3b")
+MODEL_CODE = os.environ.get("ZOVARK_MODEL_CODE", "llama3.1:8b")
+
+
+def get_model_for_task(stage: str, path: str = "") -> str:
+    """Route to appropriate model based on pipeline stage and code path."""
+    if stage == "analyze":
+        if path in ("C", "path_c", "llm", "llm_gen", "full_llm"):
+            return MODEL_CODE
+        else:
+            return MODEL_FAST
+    elif stage == "assess":
+        return MODEL_CODE
+    else:
+        return MODEL_CODE
+
 
 async def llm_call(
     prompt: str,
@@ -163,17 +182,16 @@ def _log_audit(
 
 
 def preload_ollama_model():
-    """Pre-load model into VRAM at worker startup with 30m keep_alive."""
+    """Pre-load CODE model into VRAM at worker startup with 30m keep_alive."""
     import logging
     logger = logging.getLogger(__name__)
     ollama_base = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
     ollama_url = ollama_base.replace("/v1/chat/completions", "").replace("/v1/models", "")
-    model = os.environ.get("ZOVARK_MODEL_PATH_C", "qwen2.5:14b")
     try:
         import httpx
         resp = httpx.post(f"{ollama_url}/api/generate", json={
-            "model": model, "prompt": "ok", "keep_alive": "30m", "stream": False,
+            "model": MODEL_CODE, "prompt": "ok", "keep_alive": "30m", "stream": False,
         }, timeout=60.0)
-        logger.info(f"Ollama model {model} pre-loaded with 30m keep_alive (status={resp.status_code})")
+        logger.info(f"Ollama CODE model {MODEL_CODE} pre-loaded with 30m keep_alive (status={resp.status_code})")
     except Exception as e:
         logger.warning(f"Failed to pre-load Ollama model: {e}")

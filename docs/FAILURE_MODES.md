@@ -8,7 +8,7 @@ Contextual error logging and recovery for the `/v1/investigate` pipeline.
 
 | # | Failure Mode | Audit Event Type | Context Logged | Recovery Action |
 |---|-------------|-----------------|----------------|-----------------|
-| 1 | Model Latency/Timeout | `model_timeout` | alert_id, model_provider, latency_ms, tier_attempted | Failover to local vLLM (Ollama qwen2.5:7b). Record `usage_records` with `fallback=true`. |
+| 1 | Model Latency/Timeout | `model_timeout` | alert_id, model_provider, latency_ms, tier_attempted | Failover to local vLLM (Ollama llama3.2:3b). Record `usage_records` with `fallback=true`. |
 | 2 | Telemetry Access Denied | `telemetry_access_denied` | mssp_id, client_token_expiry, siem_endpoint, http_status | Webhook alert to MSSP for credential rotation. Set `agent_tasks.status='blocked_credentials'`. |
 | 3 | Schema Validation Error | `schema_validation_error` | raw_llm_output_snippet (500 chars), target_schema, alert_type, validation_errors[] | Re-route to reasoning tier (Claude Sonnet) for JSON repair. Max 1 retry. |
 | 4 | PostgreSQL Lock (5s) | `postgres_lock` | query_type, active_transactions, table_name, lock_wait_ms | Cancel query. Revert to `investigation_memory`. Return HTTP 503 with `Retry-After: 5`. |
@@ -36,7 +36,7 @@ Every failure event captures:
 
 **Recovery flow:**
 1. Log `FailureContext` to `audit_events`
-2. Insert `usage_records` entry with `metadata.fallback=true`, `model_name=ollama/qwen2.5:7b`
+2. Insert `usage_records` entry with `metadata.fallback=true`, `model_name=ollama/llama3.2:3b`
 3. Caller retries with Ollama or Tier-2 model
 
 **Audit event metadata:**

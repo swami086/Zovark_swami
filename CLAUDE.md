@@ -9,9 +9,9 @@
 - **Version:** v1.8.1 (latest: `git log -1 --format=%h`)
 - **Commits:** 190+ on master
 - **Status:** Production-ready — 100% attack detection, 0% FP on 200-benign calibration
-- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama (Qwen2.5-14B)
+- **Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama (Meta Llama 3.1 8B)
 - **Pipeline:** V2 5-stage with LLM audit gateway, schema validation, MITRE mapping, evidence citations
-- **LLM:** Qwen2.5-14B-Instruct Q4_K_M via Ollama on host (:11434). **No litellm dependency.**
+- **LLM:** Meta Llama 3.1 8B via Ollama on host (:11434). **No litellm dependency.**
 - **Tests:** 44 Go + 179 Python + 15 V2 pipeline + 10 cipher audit = 248 test functions
 - **Services:** 8 core Docker containers + optional monitoring/storage
 - **Dashboard:** React 19 + Vite 7 + Tailwind 4, 15 pages, dark mode, MITRE ATT&CK badges
@@ -124,7 +124,7 @@ SIEM Alert → Go API (:8090) → Temporal → InvestigationWorkflowV2 →
 - ollama (airgap-ollama profile — for when Ollama isn't on host)
 
 ### LLM (runs on HOST, not Docker)
-- **Ollama** on port 11434 with `qwen2.5:14b` model
+- **Ollama** on port 11434 with `llama3.1:8b` model
 - Worker connects via `http://host.docker.internal:11434/v1/chat/completions`
 - **litellm is NOT used** — removed due to supply chain risk (PyPI 1.82.7-1.82.8 compromised)
 - Env var: `ZOVARK_LLM_ENDPOINT` (not LITELLM_URL — fully renamed)
@@ -177,7 +177,7 @@ SIEM Alert → Go API (:8090) → Temporal → InvestigationWorkflowV2 →
 docker compose up -d
 
 # Start Ollama on host (if not already running)
-ollama serve  # or: ollama run qwen2.5:14b
+ollama serve  # or: ollama run llama3.1:8b
 
 # Verify health
 curl -s http://localhost:8090/health
