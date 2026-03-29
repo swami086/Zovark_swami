@@ -19,6 +19,7 @@ from psycopg2.extras import RealDictCursor
 from temporalio import activity
 from stages import IngestOutput
 from stages.input_sanitizer import sanitize_siem_event
+from stages.normalizer import normalize_siem_event
 
 # --- Config ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
@@ -183,6 +184,8 @@ async def ingest_alert(task_data: dict) -> dict:
     siem_event = sanitize_siem_event(siem_event)
     if siem_event.get("_injection_warning"):
         activity.logger.warning(f"Prompt injection patterns detected in SIEM data for task {task_id}")
+    siem_event = normalize_siem_event(siem_event)
+    activity.logger.info(f"Normalized: style={siem_event.get('_field_style', 'unknown')}, fields={len(siem_event.get('_original_fields', {}))}")
     prompt = task_data.get("input", {}).get("prompt", "")
 
     result = IngestOutput(

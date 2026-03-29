@@ -132,14 +132,14 @@ func loginHandler(c *gin.Context) {
 
 	recordSuccessfulLogin(req.Email)
 
-	// Access token: 15 minutes
+	// Access token: 30 minutes
 	accessClaims := CustomClaims{
 		TenantID: user.TenantID,
 		UserID:   user.ID,
 		Email:    user.Email,
 		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   "access",
 		},
@@ -227,7 +227,7 @@ func refreshHandler(c *gin.Context) {
 		Email:    claims.Email,
 		Role:     claims.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   "access",
 		},

@@ -475,9 +475,10 @@ func dashboardStatsHandler(c *gin.Context) {
 	`, tenantID).Scan(&truePositives, &suspicious, &benignFromAttack)
 
 	var detectionRate, falsePositiveRate float64
-	if completedCount > 0 {
-		detectionRate = float64(truePositives+suspicious) / float64(completedCount) * 100
-		falsePositiveRate = float64(benignFromAttack) / float64(completedCount) * 100
+	attackTotal := truePositives + suspicious + benignFromAttack
+	if attackTotal > 0 {
+		detectionRate = float64(truePositives+suspicious) / float64(attackTotal) * 100
+		falsePositiveRate = float64(benignFromAttack) / float64(attackTotal) * 100
 	}
 
 	// Auto-templates count

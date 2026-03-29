@@ -347,7 +347,7 @@ func listTasksHandler(c *gin.Context) {
 	dataArgs = append(dataArgs, limit, offset)
 
 	query := fmt.Sprintf(
-		"SELECT id, status, COALESCE(task_type, 'code_gen'), created_at, execution_ms, input->>'prompt' FROM agent_tasks %s ORDER BY %s %s LIMIT $%d OFFSET $%d",
+		"SELECT id, status, COALESCE(task_type, 'code_gen'), created_at, execution_ms, input->>'prompt', output->>'verdict', (output->>'risk_score')::int, COALESCE(path_taken, '') FROM agent_tasks %s ORDER BY %s %s LIMIT $%d OFFSET $%d",
 		where, sortCol, sortOrder, argN, argN+1,
 	)
 
@@ -363,9 +363,11 @@ func listTasksHandler(c *gin.Context) {
 		var id, statusVal, taskTypeVal string
 		var createdAt time.Time
 		var executionMs *int
-		var prompt *string
+		var prompt, verdict *string
+		var riskScore *int
+		var pathTaken string
 
-		if err := rows.Scan(&id, &statusVal, &taskTypeVal, &createdAt, &executionMs, &prompt); err != nil {
+		if err := rows.Scan(&id, &statusVal, &taskTypeVal, &createdAt, &executionMs, &prompt, &verdict, &riskScore, &pathTaken); err != nil {
 			log.Printf("Error scanning task row: %v", err)
 			continue
 		}
@@ -377,6 +379,9 @@ func listTasksHandler(c *gin.Context) {
 			"created_at":   createdAt,
 			"execution_ms": executionMs,
 			"prompt":       prompt,
+			"verdict":      verdict,
+			"risk_score":   riskScore,
+			"path_taken":   pathTaken,
 		}
 		tasks = append(tasks, task)
 	}
