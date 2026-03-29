@@ -461,4 +461,9 @@ async def assess_results(data: dict) -> dict:
         "pipeline_version": "v2",
         "schema_validated": is_valid,
     }
+    # Override status to "completed" when assess produced a valid verdict.
+    # The execute stage may have set status="failed" from non-zero exit code,
+    # but if assess derived a real verdict with risk > 0, the investigation succeeded.
+    if verdict in ("true_positive", "suspicious", "benign") and risk_score > 0:
+        out["status"] = "completed"
     return out

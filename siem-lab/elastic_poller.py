@@ -345,7 +345,7 @@ def detect_sqli(since: str) -> List[Dict[str, Any]]:
                 )
 
                 alerts.append({
-                    "task_type": "web_attack",
+                    "task_type": "malware",
                     "title": f"SQL injection attempt from {ip}: {request_str[:120]}",
                     "severity": "critical",
                     "source_ip": ip,
@@ -422,7 +422,7 @@ def detect_xss(since: str) -> List[Dict[str, Any]]:
                 )
 
                 alerts.append({
-                    "task_type": "web_attack",
+                    "task_type": "malware",
                     "title": f"XSS attempt from {ip}: {request_str[:120]}",
                     "severity": "high",
                     "source_ip": ip,
@@ -495,7 +495,7 @@ def detect_path_traversal(since: str) -> List[Dict[str, Any]]:
                 )
 
                 alerts.append({
-                    "task_type": "web_attack",
+                    "task_type": "data_exfiltration",
                     "title": f"Path traversal attempt from {ip}: {request_str[:120]}",
                     "severity": "high",
                     "source_ip": ip,

@@ -66,7 +66,8 @@ TASK_TYPE_PATTERNS: list[tuple[str, str]] = [
     (r"exfil|large.?transfer|dns.?tunnel", "data_exfiltration"),
     (r"privilege.?escalat|sudo|uac", "privilege_escalation"),
     (r"insider|unauthorized.?access", "insider_threat"),
-    (r"sql.?inject|xss|cross.?site|command.?inject|path.?traversal", "web_attack"),
+    (r"sql.?inject|xss|cross.?site|command.?inject", "malware"),
+    (r"path.?traversal|directory.?traversal|lfi", "data_exfiltration"),
     (r"denial.?of.?service|ddos|dos", "dos_attack"),
     (r"suspicious.?process|fileless|powershell.?abuse", "endpoint_anomaly"),
 ]
