@@ -365,6 +365,7 @@ async def assess_results(data: dict) -> dict:
         (r"command.?injection|cmd.?inject|;\s*cat\s|;\s*ls\s|`.*`|\$\(.*\)|%0a|rce\b", "Command injection"),
         (r"ssrf|server.?side.?request|localhost.*redirect|127\.0\.0\.1.*access", "SSRF"),
         (r"file.?upload|unrestricted.?upload|webshell|\.php\b.*upload|\.jsp\b.*upload", "File upload attack"),
+        (r"beacon.*\d+\s*s|c2.?beacon|c2.?detect|command.?and.?control|callback.*interval|beaconing", "C2 communication"),
     ]
     attack_boost = 0
     attack_types_found = []

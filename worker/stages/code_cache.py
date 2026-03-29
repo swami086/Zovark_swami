@@ -27,7 +27,15 @@ def get_cached_code(redis_client, signature: str) -> Optional[str]:
         cached = redis_client.get(key)
         if cached:
             logger.info(f"Code cache HIT: {signature}")
+            try:
+                redis_client.incr("zovark:cache_hits")
+            except Exception:
+                pass
             return cached.decode("utf-8") if isinstance(cached, bytes) else cached
+        try:
+            redis_client.incr("zovark:cache_misses")
+        except Exception:
+            pass
         return None
     except Exception as e:
         logger.warning(f"Code cache read error: {e}")
