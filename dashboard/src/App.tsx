@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
-import { Hexagon, LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play, ShieldAlert, DollarSign, Share2, AlertTriangle, Sun, Moon, Users, Sparkles, Layers } from 'lucide-react';
+import { LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play, ShieldAlert, DollarSign, Share2, AlertTriangle, Sun, Moon, Users, Sparkles, Layers } from 'lucide-react';
 import { getUser, clearToken, fetchPendingApprovals, fetchPromotionQueue } from './api/client';
 import { ThemeContext, useThemeProvider, useTheme } from './hooks/useTheme';
 
@@ -78,7 +78,7 @@ const Sidebar = () => {
   return (
     <div className="w-[240px] sidebar-bg border-r sidebar-border flex flex-col h-screen fixed top-0 left-0">
       <div className="p-6 flex items-center space-x-3">
-        <Hexagon className="w-6 h-6 text-[#00FF88] fill-[#00FF88]/20" />
+        <img src="/zovark-logo.png" alt="Zovark" className="w-8 h-8 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display='none' }} />
         <div className="flex flex-col">
           <span className="font-bold text-lg tracking-wider sidebar-title leading-none">ZOVARK</span>
           <span className="text-[10px] uppercase tracking-[0.2em] text-[#00FF88]/70 font-semibold mt-0.5">Security Operations</span>
