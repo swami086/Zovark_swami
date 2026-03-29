@@ -5,14 +5,22 @@ filebeat.inputs:
       - /var/log/nginx/access.log
     json.keys_under_root: true
     json.add_error_key: true
+    scan_frequency: 5s
+    ignore_older: 24h
+    close_inactive: 1m
+    clean_inactive: 25h
+    fields:
+      source_type: nginx_access
+      environment: siem-lab
+    fields_under_root: true
 
 output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
-  index: "nginx-access-%{+yyyy.MM.dd}"
+  index: "juice-shop-access-%{+yyyy.MM.dd}"
 
 setup.ilm.enabled: false
-setup.template.name: "nginx-access"
-setup.template.pattern: "nginx-access-*"
+setup.template.name: "juice-shop-access"
+setup.template.pattern: "juice-shop-access-*"
 
 logging.level: info
 logging.to_stderr: true

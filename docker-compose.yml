@@ -584,7 +584,7 @@ services:
       - "8080:80"
     volumes:
       - ./siem-lab/nginx.conf:/etc/nginx/nginx.conf:ro
-      - nginx-logs:/var/log/nginx
+      - ./siem-lab/logs:/var/log/nginx
     depends_on:
       - juice-shop
     networks:
@@ -598,7 +598,7 @@ services:
     command: filebeat -e --strict.perms=false
     volumes:
       - ./siem-lab/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - nginx-logs:/var/log/nginx:ro
+      - ./siem-lab/logs:/var/log/nginx:ro
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -621,4 +621,4 @@ volumes:
   caddy_data:
   caddy_config:
   es-data:
-  nginx-logs:
+  # nginx-logs: replaced with bind mount ./siem-lab/logs
