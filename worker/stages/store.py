@@ -34,7 +34,8 @@ def _get_worker_id():
 def _update_task_status(conn, task_id: str, status: str, output: dict,
                         tokens_in: int = 0, tokens_out: int = 0,
                         execution_ms: int = 0, severity: str = None,
-                        error_message: str = None, model_name: str = "unknown"):
+                        error_message: str = None, model_name: str = "unknown",
+                        path_taken: str = "", generated_code: str = ""):
     """Update agent_tasks with final status. Uses synchronous_commit for durability."""
     worker_id = _get_worker_id()
     human_review_threshold = int(os.environ.get("ZOVARK_HUMAN_REVIEW_THRESHOLD", "60"))
@@ -62,6 +63,7 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
                 severity = %s, worker_id = COALESCE(%s, worker_id),
                 needs_human_review = %s, review_reason = %s,
                 model_name = %s,
+                path_taken = %s, generated_code = %s,
                 completed_at = NOW()
             WHERE id = %s
         """, (
@@ -70,6 +72,7 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
             severity, worker_id,
             needs_review, review_reason,
             model_name,
+            path_taken or None, (generated_code or "")[:50000] if generated_code else None,
             task_id,
         ))
 
@@ -180,6 +183,8 @@ async def store_investigation(data: dict) -> dict:
     task_type = data.get("task_type", "")
     model_name = data.get("model_name", "unknown")
     siem_event = data.get("siem_event", {})
+    path_taken = data.get("path_taken", "")
+    generated_code = data.get("generated_code", data.get("code", ""))
 
     severity = _severity_from_risk(risk_score)
     investigation_id = None
@@ -213,6 +218,7 @@ async def store_investigation(data: dict) -> dict:
             tokens_in=tokens_in, tokens_out=tokens_out,
             execution_ms=execution_ms, severity=severity,
             model_name=model_name,
+            path_taken=path_taken, generated_code=generated_code,
         )
 
         # 2. Save investigation pattern (no LLM)

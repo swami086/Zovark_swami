@@ -312,6 +312,13 @@ func main() {
 		api.GET("/cipher-audit/findings", cipherAuditFindingsHandler)
 		api.GET("/cipher-audit/servers", cipherAuditServersHandler)
 		api.POST("/cipher-audit/analyze", requireRole("admin", "analyst"), cipherAuditAnalyzeHandler)
+
+		// Template Promotion Flywheel (Sprint 2D)
+		api.GET("/promotion-queue", promotionQueueHandler)
+		api.POST("/analyst-feedback", requireRole("admin", "analyst"), analystFeedbackHandler)
+		api.GET("/auto-templates", autoTemplatesHandler)
+		api.DELETE("/auto-templates/:slug", requireRole("admin"), disableAutoTemplateHandler)
+		api.GET("/dashboard-stats", dashboardStatsHandler)
 	}
 
 	// Start server

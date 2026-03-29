@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
-import { Hexagon, LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play, ShieldAlert, DollarSign, Share2, AlertTriangle, Sun, Moon, Users } from 'lucide-react';
-import { getUser, clearToken, fetchPendingApprovals } from './api/client';
+import { Hexagon, LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play, ShieldAlert, DollarSign, Share2, AlertTriangle, Sun, Moon, Users, Sparkles, Layers } from 'lucide-react';
+import { getUser, clearToken, fetchPendingApprovals, fetchPromotionQueue } from './api/client';
 import { ThemeContext, useThemeProvider, useTheme } from './hooks/useTheme';
 
 import TaskList from './pages/TaskList';
@@ -20,12 +20,15 @@ import EntityGraph from './pages/EntityGraph';
 import PlaybookBuilder from './pages/PlaybookBuilder';
 import SIEMAlerts from './pages/SIEMAlerts';
 import Notifications from './components/Notifications';
+import PromotionQueue from './pages/PromotionQueue';
+import AutoTemplates from './pages/AutoTemplates';
 
 const Sidebar = () => {
   const location = useLocation();
   const user = getUser();
   const { theme, toggleTheme } = useTheme();
   const [pendingCount, setPendingCount] = useState(0);
+  const [promotionCount, setPromotionCount] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +36,10 @@ const Sidebar = () => {
       try {
         const data = await fetchPendingApprovals();
         setPendingCount(data.count || 0);
+      } catch { /* ignore */ }
+      try {
+        const pq = await fetchPromotionQueue();
+        setPromotionCount(pq.awaiting_review || 0);
       } catch { /* ignore */ }
     };
     loadCount();
@@ -47,6 +54,8 @@ const Sidebar = () => {
     { name: 'Investigations', icon: Search, path: '/tasks' },
     ...(user?.role !== 'viewer' ? [{ name: 'New Investigation', icon: PlusCircle, path: '/tasks/new' }] : []),
     { name: 'Approvals', icon: ShieldAlert, path: '/approvals' },
+    { name: 'Promotion Queue', icon: Sparkles, path: '/promotion-queue' },
+    { name: 'Auto Templates', icon: Layers, path: '/auto-templates' },
     { name: 'SIEM Alerts', icon: AlertTriangle, path: '/siem-alerts' },
     { name: 'Demo', icon: Play, path: '/demo' },
     { name: 'Threat Intel', icon: Shield, path: '/threat-intel' },
@@ -79,7 +88,7 @@ const Sidebar = () => {
       <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/tasks');
-          const showBadge = item.name === 'Approvals' && pendingCount > 0;
+          const showBadge = (item.name === 'Approvals' && pendingCount > 0) || (item.name === 'Promotion Queue' && promotionCount > 0);
           return (
             <Link
               key={item.name}
@@ -93,7 +102,7 @@ const Sidebar = () => {
               <span className="font-medium text-[13px] flex-1">{item.name}</span>
               {showBadge && (
                 <span className="bg-amber-500 text-[10px] font-bold text-black w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
-                  {pendingCount}
+                  {item.name === 'Promotion Queue' ? promotionCount : pendingCount}
                 </span>
               )}
             </Link>
@@ -162,6 +171,8 @@ function AppContent() {
               <Route path="/threat-intel" element={<ProtectedRoute><ThreatIntel /></ProtectedRoute>} />
               <Route path="/log-sources" element={<ProtectedRoute><LogSources /></ProtectedRoute>} />
               <Route path="/approvals" element={<ProtectedRoute><ApprovalQueue /></ProtectedRoute>} />
+              <Route path="/promotion-queue" element={<ProtectedRoute><PromotionQueue /></ProtectedRoute>} />
+              <Route path="/auto-templates" element={<ProtectedRoute><AutoTemplates /></ProtectedRoute>} />
               <Route path="/siem-alerts" element={<ProtectedRoute><SIEMAlerts /></ProtectedRoute>} />
               <Route path="/entity-graph" element={<ProtectedRoute><EntityGraph /></ProtectedRoute>} />
               <Route path="/costs" element={<ProtectedRoute><CostDashboard /></ProtectedRoute>} />

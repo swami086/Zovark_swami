@@ -434,6 +434,14 @@ async def assess_results(data: dict) -> dict:
         else:
             verdict = "needs_manual_review"
 
+    # Path C learning gate: flag for analyst review to enable template promotion
+    path_taken = data.get("path_taken", "")
+    if path_taken == "C" and verdict == "true_positive":
+        # Store original verdict for reference, but flag for review
+        data["_original_verdict"] = verdict
+        verdict = "needs_analyst_review"
+        activity.logger.info(f"Path C learning gate: {verdict} for task {task_id} (original: true_positive)")
+
     # Summary
     if FAST_FILL:
         summary = _template_summary(task_type, findings, iocs, risk_score)
@@ -464,6 +472,6 @@ async def assess_results(data: dict) -> dict:
     # Override status to "completed" when assess produced a valid verdict.
     # The execute stage may have set status="failed" from non-zero exit code,
     # but if assess derived a real verdict with risk > 0, the investigation succeeded.
-    if verdict in ("true_positive", "suspicious", "benign") and risk_score > 0:
+    if verdict in ("true_positive", "suspicious", "benign", "needs_analyst_review") and risk_score > 0:
         out["status"] = "completed"
     return out

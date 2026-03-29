@@ -1,0 +1,419 @@
+/* =============================================================
+   ZOVARK SOC War Room Design System
+   =============================================================
+   Monospace-first, outline-only, dark command center aesthetic.
+   Import AFTER index.css / tailwind so these layers take effect.
+   ============================================================= */
+
+/* ---- Custom Properties ---- */
+:root {
+  /* Backgrounds */
+  --bg-base: #060A14;
+  --bg-surface: #0D1117;
+  --bg-elevated: #131B27;
+  --bg-overlay: rgba(6, 10, 20, 0.85);
+
+  /* Borders */
+  --border-default: #1E293B;
+  --border-subtle: #131B27;
+  --border-bright: #334155;
+
+  /* Accents */
+  --accent-green: #00FF88;
+  --accent-cyan: #00D4FF;
+  --accent-red: #FF4444;
+  --accent-amber: #FFAA00;
+  --accent-blue: #3B82F6;
+
+  /* Text */
+  --text-primary: #E2E8F0;
+  --text-secondary: #94A3B8;
+  --text-muted: #475569;
+
+  /* Glow shadows */
+  --glow-green: 0 0 12px rgba(0, 255, 136, 0.25);
+  --glow-red: 0 0 12px rgba(255, 68, 68, 0.25);
+  --glow-amber: 0 0 12px rgba(255, 170, 0, 0.20);
+  --glow-cyan: 0 0 12px rgba(0, 212, 255, 0.20);
+
+  /* Font */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', monospace;
+}
+
+/* ---- Base body overrides (war room pages) ---- */
+.war-room {
+  font-family: var(--font-mono);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ---- Typography utilities ---- */
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.metric-number {
+  font-family: var(--font-mono);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.metric-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.body-text {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ---- Cards ---- */
+.card-surface {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.card-elevated {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+/* ---- Badge classes (outline pills, no fill) ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-width: 1px;
+  border-style: solid;
+  background: transparent;
+}
+
+/* Verdict badges */
+.badge-true_positive {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.badge-suspicious {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+
+.badge-benign {
+  color: var(--text-muted);
+  border-color: var(--text-muted);
+}
+
+.badge-needs_review,
+.badge-needs_analyst_review {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+
+.badge-error,
+.badge-failed {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+}
+
+/* Severity badges */
+.badge-critical {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+}
+
+.badge-high {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+
+.badge-medium {
+  color: #EAB308;
+  border-color: #EAB308;
+}
+
+.badge-low {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+/* Status badges */
+.badge-pending {
+  color: var(--text-muted);
+  border-color: var(--text-muted);
+}
+
+.badge-executing {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
+.badge-completed {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+/* ---- Buttons (outline only, no fill) ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  border-width: 1px;
+  border-style: solid;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: rgba(0, 255, 136, 0.10);
+  box-shadow: var(--glow-green);
+}
+
+.btn-danger {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: rgba(255, 68, 68, 0.10);
+  box-shadow: var(--glow-red);
+}
+
+.btn-secondary {
+  color: var(--text-secondary);
+  border-color: var(--border-bright);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background-color: rgba(148, 163, 184, 0.06);
+}
+
+.btn-ghost {
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--text-secondary);
+  background-color: rgba(148, 163, 184, 0.06);
+}
+
+.btn-warning {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: rgba(255, 170, 0, 0.10);
+  box-shadow: var(--glow-amber);
+}
+
+.btn-info {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.btn-info:hover:not(:disabled) {
+  background-color: rgba(59, 130, 246, 0.10);
+}
+
+/* Small button variant */
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* ---- Terminal block ---- */
+.terminal-window {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.terminal-titlebar {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background-color: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-default);
+  position: relative;
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.terminal-dot-red { background-color: #FF5F56; }
+.terminal-dot-amber { background-color: #FFBD2E; }
+.terminal-dot-green { background-color: #27C93F; }
+
+.terminal-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.terminal-body {
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.terminal-body pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- Pipeline visualization ---- */
+.pipeline-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.2s ease;
+  min-width: 80px;
+  text-align: center;
+}
+
+.pipeline-stage-active {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+  box-shadow: var(--glow-green);
+}
+
+.pipeline-stage-completed {
+  color: var(--accent-green);
+  border-color: rgba(0, 255, 136, 0.4);
+}
+
+.pipeline-stage-failed {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+  box-shadow: var(--glow-red);
+}
+
+.pipeline-stage-queued {
+  color: var(--text-muted);
+  border-color: var(--border-default);
+}
+
+.pipeline-connector {
+  width: 24px;
+  border-top: 2px dashed var(--border-default);
+}
+
+.pipeline-connector-active {
+  border-color: rgba(0, 255, 136, 0.4);
+}
+
+/* ---- Risk bar ---- */
+.risk-bar-track {
+  width: 100%;
+  height: 8px;
+  background-color: var(--bg-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.risk-bar-low {
+  background-color: var(--text-muted);
+}
+
+.risk-bar-medium {
+  background-color: var(--accent-amber);
+}
+
+.risk-bar-high {
+  background-color: var(--accent-red);
+  box-shadow: var(--glow-red);
+}
+
+/* ---- Row hover for tables ---- */
+.row-hover {
+  transition: background-color 0.15s ease;
+}
+
+.row-hover:hover {
+  background-color: rgba(30, 41, 59, 0.5);
+}
+
+/* ---- Expandable section ---- */
+.expand-toggle {
+  cursor: pointer;
+  user-select: none;
+}

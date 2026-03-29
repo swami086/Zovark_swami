@@ -271,7 +271,7 @@ def generate_fast_fill_stub(siem_event: dict, task_type: str) -> AnalyzeOutput:
         f'"iocs":iocs,"risk_score":75,"recommendations":["Investigate further"]}}))\n'
     )
 
-    return AnalyzeOutput(code=code, source="fast_fill", preflight_passed=True, generation_ms=0)
+    return AnalyzeOutput(code=code, source="fast_fill", path_taken="A", preflight_passed=True, generation_ms=0)
 
 
 # ============================================================
@@ -367,16 +367,19 @@ async def _analyze_template(ingest: IngestOutput) -> AnalyzeOutput:
     if FAST_FILL or not params:
         filled = _fill_parameters_fast(params, ingest.siem_event)
         tokens_in, tokens_out = 0, 0
+        used_llm_fill = False
     else:
         try:
             filled, tokens_in, tokens_out = await _fill_parameters_llm(
                 params, ingest.prompt, ingest.siem_event,
                 task_id=ingest.task_id, task_type=ingest.task_type, tenant_id=ingest.tenant_id,
             )
+            used_llm_fill = True
         except Exception as e:
             print(f"LLM param fill failed, falling back to fast fill: {e}")
             filled = _fill_parameters_fast(params, ingest.siem_event)
             tokens_in, tokens_out = 0, 0
+            used_llm_fill = False
 
     # Always ensure siem_event_json is available (LLM fill doesn't produce it)
     if "siem_event_json" not in filled:
@@ -388,9 +391,18 @@ async def _analyze_template(ingest: IngestOutput) -> AnalyzeOutput:
     # Preflight
     passed, code, fixes = preflight_check(code)
 
+    # Determine path: benign template → "benign", LLM param fill → "B", fast fill → "A"
+    if ingest.task_type == "benign_system_event" or ingest.skill_id == "benign-system-event":
+        path_taken = "benign"
+    elif used_llm_fill:
+        path_taken = "B"
+    else:
+        path_taken = "A"
+
     return AnalyzeOutput(
         code=code,
         source="template",
+        path_taken=path_taken,
         skill_id=ingest.skill_id,
         preflight_passed=passed,
         preflight_fixes=fixes,
@@ -466,6 +478,7 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
     return AnalyzeOutput(
         code=code,
         source="llm",
+        path_taken="C",
         preflight_passed=passed,
         preflight_fixes=fixes,
         tokens_in=tokens_in,

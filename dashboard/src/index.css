@@ -1,35 +1,37 @@
 @import "tailwindcss";
+@import "./styles/design-system.css";
 
 @theme {
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 @layer base {
   body {
-    @apply antialiased font-sans;
+    @apply antialiased;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
   }
 
-  /* Dark mode (default) */
+  /* Dark mode (default) — SOC War Room palette */
   body,
   .dark-mode {
-    --app-bg: #0B1120;
-    --app-text: #94a3b8;
-    --card-bg: #1E293B;
-    --sidebar-bg: #0F172A;
-    --sidebar-border: rgba(51, 65, 85, 0.5);
-    --sidebar-title: #ffffff;
-    --nav-active-bg: #1e293b;
-    --nav-active-text: #ffffff;
-    --nav-inactive-text: #94a3b8;
-    --nav-icon: #64748b;
-    --input-bg: rgba(30, 41, 59, 0.5);
-    --input-border: rgba(51, 65, 85, 0.5);
-    --modal-bg: #0F172A;
-    --modal-overlay: rgba(15, 23, 42, 0.8);
+    --app-bg: #060A14;
+    --app-text: #94A3B8;
+    --card-bg: #0D1117;
+    --sidebar-bg: #060A14;
+    --sidebar-border: #1B2432;
+    --sidebar-title: #E2E8F0;
+    --nav-active-bg: #131B27;
+    --nav-active-text: #00FF88;
+    --nav-inactive-text: #94A3B8;
+    --nav-icon: #475569;
+    --input-bg: #0D1117;
+    --input-border: #1B2432;
+    --modal-bg: #0D1117;
+    --modal-overlay: rgba(6, 10, 20, 0.9);
     color-scheme: dark;
   }
 
-  /* Light mode */
+  /* Light mode (retained for future use) */
   .light-mode {
     --app-bg: #f1f5f9;
     --app-text: #334155;
@@ -57,67 +59,67 @@
 
 /* Theme-aware utility classes */
 .app-bg {
-  background-color: var(--app-bg, #0B1120);
+  background-color: var(--app-bg, #060A14);
 }
 
 .app-text {
-  color: var(--app-text, #94a3b8);
+  color: var(--app-text, #94A3B8);
 }
 
 .sidebar-bg {
-  background-color: var(--sidebar-bg, #0F172A);
+  background-color: var(--sidebar-bg, #060A14);
 }
 
 .sidebar-border {
-  border-color: var(--sidebar-border, rgba(51, 65, 85, 0.5));
+  border-color: var(--sidebar-border, #1B2432);
 }
 
 .sidebar-title {
-  color: var(--sidebar-title, #ffffff);
+  color: var(--sidebar-title, #E2E8F0);
 }
 
 .nav-active {
-  background-color: var(--nav-active-bg, #1e293b);
-  color: var(--nav-active-text, #ffffff);
+  background-color: var(--nav-active-bg, #131B27);
+  color: var(--nav-active-text, #00FF88);
 }
 
 .nav-inactive {
-  color: var(--nav-inactive-text, #94a3b8);
+  color: var(--nav-inactive-text, #94A3B8);
 }
 
 .nav-inactive:hover {
-  color: var(--nav-active-text, #ffffff);
-  background-color: var(--nav-active-bg, #1e293b);
+  color: var(--nav-active-text, #00FF88);
+  background-color: var(--nav-active-bg, #131B27);
   opacity: 0.5;
 }
 
 .nav-icon {
-  color: var(--nav-icon, #64748b);
+  color: var(--nav-icon, #475569);
 }
 
 /* Light mode overrides for common patterns */
-.light-mode .bg-\[\#0B1120\] {
+.light-mode .bg-\[\#060A14\] {
   background-color: var(--app-bg) !important;
 }
 
-.light-mode .bg-\[\#0F172A\] {
-  background-color: #f8fafc !important;
-}
-
-.light-mode .bg-\[\#0F172A\]\/50 {
-  background-color: rgba(248, 250, 252, 0.5) !important;
-}
-
-.light-mode .bg-\[\#0F172A\]\/30 {
-  background-color: rgba(248, 250, 252, 0.3) !important;
-}
-
-.light-mode .bg-\[\#1E293B\] {
+.light-mode .bg-\[\#0D1117\] {
   background-color: var(--card-bg) !important;
 }
 
-.light-mode .bg-\[\#1E293B\]\/80 {
-  background-color: rgba(255, 255, 255, 0.8) !important;
+.light-mode .bg-\[\#0D1117\]\/50 {
+  background-color: rgba(248, 250, 252, 0.5) !important;
+}
+
+.light-mode .bg-\[\#131B27\] {
+  background-color: #f8fafc !important;
+}
+
+.light-mode .bg-\[\#131B27\]\/50 {
+  background-color: rgba(248, 250, 252, 0.5) !important;
+}
+
+.light-mode .border-\[\#1B2432\] {
+  border-color: #e2e8f0 !important;
 }
 
 .light-mode .border-slate-700\/50 {

@@ -37,6 +37,7 @@ class AnalyzeOutput:
     """Stage 2 output — generated investigation code."""
     code: str = ""
     source: Literal["template", "llm", "stub", "fast_fill"] = "llm"
+    path_taken: Literal["A", "B", "C", "benign", "unknown"] = "unknown"
     skill_id: Optional[str] = None
     preflight_passed: bool = True
     preflight_fixes: List[str] = field(default_factory=list)
@@ -63,7 +64,7 @@ class ExecuteOutput:
 @dataclass
 class AssessOutput:
     """Stage 4 output — verdict and enrichment."""
-    verdict: Literal["true_positive", "suspicious", "benign", "inconclusive", "needs_manual_review"] = "inconclusive"
+    verdict: Literal["true_positive", "suspicious", "benign", "inconclusive", "needs_manual_review", "needs_analyst_review"] = "inconclusive"
     risk_score: int = 0
     severity: Literal["critical", "high", "medium", "low", "informational"] = "medium"
     confidence: float = 0.5

@@ -68,6 +68,9 @@ class InvestigationWorkflowV2:
             return {"status": "failed", "task_id": ingested["task_id"],
                     "error": "Code generation produced no output"}
 
+        # Derive path_taken from analyze output
+        path_taken = analyzed.get("path_taken", analyzed.get("source", "unknown"))
+
         # Stage 3: EXECUTE — sandbox execution (no LLM)
         executed = await workflow.execute_activity(
             execute_investigation,
@@ -84,6 +87,7 @@ class InvestigationWorkflowV2:
                 "tenant_id": ingested["tenant_id"],
                 "task_type": ingested["task_type"],
                 "siem_event": ingested.get("siem_event", {}),
+                "path_taken": path_taken,
             },
             start_to_close_timeout=timedelta(seconds=60),
         )
@@ -103,6 +107,8 @@ class InvestigationWorkflowV2:
                 "code": analyzed.get("code", ""),
                 "tokens_in": analyzed.get("tokens_in", 0),
                 "tokens_out": analyzed.get("tokens_out", 0),
+                "path_taken": path_taken,
+                "generated_code": analyzed.get("code", ""),
             },
             start_to_close_timeout=timedelta(seconds=30),
         )

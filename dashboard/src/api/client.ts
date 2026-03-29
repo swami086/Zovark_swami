@@ -752,3 +752,117 @@ export const fetchNotifications = async (since?: string): Promise<Notification[]
         return [];
     }
 };
+
+// --- Template Promotion API ---
+
+export interface PromotionItem {
+    task_id: string;
+    task_type: string;
+    path_taken: string;
+    risk_score: number;
+    verdict: string;
+    findings: any[];
+    iocs: any[];
+    mitre_attack: string[];
+    siem_event: any;
+    created_at: string;
+    execution_ms: number;
+    generated_code?: string;
+}
+
+export interface AutoTemplate {
+    slug: string;
+    name: string;
+    task_types: string[];
+    auto_promoted: boolean;
+    source_task_id: string;
+    promoted_at: string;
+    promoted_by: string;
+    status: string;
+}
+
+export interface DashboardStats {
+    total_investigations: number;
+    avg_response_ms: number;
+    detection_rate: number;
+    false_positive_rate: number;
+    auto_templates_count: number;
+    awaiting_review: number;
+    path_distribution: Record<string, number>;
+    analyst_hours_saved: number;
+}
+
+export const fetchPromotionQueue = async (): Promise<{ items: PromotionItem[], total: number, awaiting_review: number }> => {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/promotion-queue`, {
+        headers: getHeaders(),
+        cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) {
+        // Return empty if endpoint not yet implemented
+        return { items: [], total: 0, awaiting_review: 0 };
+    }
+    return response.json();
+};
+
+export const submitAnalystFeedback = async (feedback: {
+    task_id: string;
+    analyst_verdict: string;
+    analyst_risk_score?: number;
+    analyst_notes?: string;
+    promote?: boolean;
+}): Promise<{ status: string, promoted_slug?: string }> => {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/analyst-feedback`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(feedback),
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) throw new Error('Failed to submit analyst feedback');
+    return response.json();
+};
+
+export const fetchAutoTemplates = async (): Promise<{ items: AutoTemplate[] }> => {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/auto-templates`, {
+        headers: getHeaders(),
+        cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) {
+        // Return empty if endpoint not yet implemented
+        return { items: [] };
+    }
+    return response.json();
+};
+
+export const disableAutoTemplate = async (slug: string): Promise<{ status: string }> => {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/auto-templates/${slug}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) throw new Error('Failed to disable auto template');
+    return response.json();
+};
+
+export const fetchDashboardStats = async (): Promise<DashboardStats> => {
+    const response = await fetchWithRefresh(`${API_BASE_URL}/dashboard-stats`, {
+        headers: getHeaders(),
+        cache: 'no-store'
+    });
+    if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
+    if (!response.ok) {
+        // Return defaults if endpoint not yet implemented
+        return {
+            total_investigations: 0,
+            avg_response_ms: 0,
+            detection_rate: 0,
+            false_positive_rate: 0,
+            auto_templates_count: 0,
+            awaiting_review: 0,
+            path_distribution: {},
+            analyst_hours_saved: 0,
+        };
+    }
+    return response.json();
+};
