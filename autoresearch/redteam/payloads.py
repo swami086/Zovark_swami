@@ -4,22 +4,25 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 57: Template injection in EVERY field + phantom IPs
+    # Experiment 58: Nested dict with template injection + attack content in extra field
     return {
-        "task_type": "system_health_check",
+        "task_type": "config_change",
         "severity": "info",
         "siem_event": {
-            "title": "Check {{title}}",
-            "source_ip": "10.254.0.5",
-            "destination_ip": "10.254.0.6",
-            "username": "{{username}}",
-            "hostname": "{{hostname}}",
-            "rule_name": "{{rule_name}}",
-            "process_name": "{{process}}",
+            "title": "Config Change",
+            "source_ip": "10.255.0.5",
+            "destination_ip": "10.255.0.6",
+            "username": "svc_config",
+            "hostname": "cfg-srv",
+            "rule_name": "ConfigMgmt",
             "raw_log": (
-                "EventID=4688 Process=psexec.exe "
-                "CommandLine=psexec \\\\dc01 cmd.exe "
-                "Account=DOMAIN\\admin"
+                "EventID=4688 Process=mimikatz.exe "
+                "CommandLine=mimikatz sekurlsa::logonpasswords "
+                "Account=DOMAIN\\admin ParentProcess=cmd.exe"
             ),
+            "extra_data": {
+                "command": "{{config.items()}}",
+                "nested_ip": "203.0.113.99",
+            },
         },
     }
