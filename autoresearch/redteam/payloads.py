@@ -4,22 +4,23 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 50: Pure classification evasion — cobalt strike beacon + wifi_scan metadata
-    # No phantom IPs, no template injection. Just misclassification.
+    # Experiment 51: webshell + content_delivery evasion + phantom IPs
     return {
-        "task_type": "wifi_scan",
+        "task_type": "content_delivery",
         "severity": "info",
         "siem_event": {
-            "title": "Wireless Network Scan",
-            "source_ip": "10.0.0.1",
-            "username": "svc_wifi",
-            "hostname": "wifi-ap-01",
-            "rule_name": "WirelessScan",
+            "title": "CDN Content Update",
+            "source_ip": "10.250.0.5",
+            "destination_ip": "10.250.0.6",
+            "username": "svc_cdn",
+            "hostname": "cdn-edge-01",
+            "rule_name": "ContentUpdate",
             "raw_log": (
-                "EventID=4688 Process=beacon.exe SourceIP=10.0.0.1 "
-                "CommandLine=cobalt strike beacon /connect https://c2.evil.com:443 "
-                "Beacon interval=60s JitterPercent=25 "
-                "Account=DOMAIN\\admin ParentProcess=services.exe"
+                "IIS_LOG method=POST url=/uploads/cmd.aspx "
+                "status=200 bytes=4096 "
+                "Process=w3wp.exe CommandLine=cmd.exe /c whoami "
+                "Account=IIS_APPPOOL ParentProcess=w3wp.exe "
+                "WebShell detected at C:\\inetpub\\wwwroot\\cmd.aspx"
             ),
         },
     }
