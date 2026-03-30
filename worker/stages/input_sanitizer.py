@@ -21,6 +21,25 @@ INJECTION_PATTERNS = [
     r'(?i)act\s+as\s+(a|an)\s+',
     r'(?i)new\s+instructions?\s*:',
     r'(?i)override\s+(previous|prior|all)',
+    # --- Red team patches (Sprint 3) ---
+    # Template injection — Jinja2/Mustache double curly braces
+    r'\{\{.*?\}\}',
+    # Jinja2 block tags
+    r'\{%.*?%\}',
+    # Code injection variants missed by original patterns
+    r'(?i)open\s*\(',
+    r'(?i)import\s+sys\b',
+    r'(?i)import\s+shutil\b',
+    r'(?i)import\s+pathlib\b',
+    r'(?i)import\s+glob\b',
+    r'(?i)import\s+pickle\b',
+    r'(?i)import\s+shelve\b',
+    r'(?i)from\s+builtins\s+import',
+    # Jinja2/SSTI exploitation
+    r'(?i)__globals__',
+    r'(?i)__subclasses__',
+    r'(?i)__builtins__',
+    r'(?i)config\s*\.\s*__class__',
 ]
 
 MAX_FIELD_LENGTH = 10_000
@@ -105,6 +124,20 @@ def smart_truncate(value: str, max_len: int = 10000) -> str:
     return result
 
 
+def _scan_field_tail(value: str) -> bool:
+    """
+    Check the tail of long fields for hidden content.
+    Attackers pad benign data then append injection near the truncation boundary.
+    """
+    if len(value) < 1000:
+        return False
+    tail = value[-200:]
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, tail):
+            return True
+    return False
+
+
 def sanitize_siem_event(event: dict) -> dict:
     if not isinstance(event, dict):
         return event
@@ -126,6 +159,12 @@ def sanitize_siem_event(event: dict) -> dict:
             if len(value) > MAX_FIELD_LENGTH:
                 value = smart_truncate(value, MAX_FIELD_LENGTH)
                 logger.warning(f"Smart-truncated oversized SIEM field: {key}")
+
+            # Tail scan for padding attacks (benign padding + attack at end)
+            if _scan_field_tail(value):
+                injection_detected = True
+                value = re.sub(r'.{200}$', '[INJECTION_STRIPPED_TAIL]', value)
+                logger.warning(f"Injection pattern detected in tail of field: {key}")
 
             canonical_key = key.split(".")[-1].lower()
             if canonical_key in ENTROPY_CHECK_FIELDS and len(value) > 50:

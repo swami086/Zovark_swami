@@ -54,6 +54,42 @@ def _has_attack_indicators(task_type: str, rule_name: str, title: str) -> bool:
     return any(indicator in combined for indicator in ATTACK_INDICATORS)
 
 
+# HIGH-CONFIDENCE attack content patterns in raw_log (Red team patch)
+# These indicate real attacks regardless of what the metadata says
+RAW_LOG_ATTACK_PATTERNS = [
+    r'(?i)mimikatz|sekurlsa|lsadump|kerberos::',
+    r'(?i)certutil\s+(-urlcache|-split|-f\s+http)',
+    r'(?i)bitsadmin.*transfer.*http',
+    r'(?i)mshta\s+http',
+    r'(?i)rundll32.*javascript',
+    r'(?i)wscript.*\.(js|vbs)\b',
+    r'(?i)powershell.*(-enc\b|-encodedcommand)',
+    r'(?i)invoke-(mimikatz|expression|webrequest)',
+    r'(?i)net\s+(user|localgroup)\s+.*(/add|/delete)',
+    r'(?i)schtasks.*/create.*(/sc|/tn|/tr)',
+    r'(?i)reg\s+add.*\\\\run\b',
+    r'(?i)vssadmin.*delete\s+shadows',
+    r'(?i)wmic.*process\s+call\s+create',
+    r'(?i)psexec|paexec',
+    r'(?i)impacket|secretsdump|ntlmrelayx',
+    r'(?i)bloodhound|sharphound',
+    r'(?i)rubeus\s+(asreproast|kerberoast|hash)',
+    r'(?i)\\\\[^\\]+\\(c|admin|ipc)\$',
+    r'(?i)CreateRemoteThread|NtMapViewOfSection',
+    r'(?i)lsass\.exe|ntds\.dit|sam\s+dump',
+]
+
+
+def _has_raw_log_attack_content(raw_log: str) -> bool:
+    """Check if raw_log contains high-confidence attack indicators."""
+    if not raw_log or len(raw_log) < 10:
+        return False
+    for pattern in RAW_LOG_ATTACK_PATTERNS:
+        if re.search(pattern, raw_log):
+            return True
+    return False
+
+
 # --- Dedup (inlined from dedup/stage1_exact.py) ---
 TIMESTAMP_PATTERNS = [
     r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?',
@@ -260,10 +296,23 @@ async def ingest_alert(task_data: dict) -> dict:
         try:
             skill = _retrieve_skill(task_type, prompt, conn)
             if skill:
-                result.skill_id = str(skill.get("id", ""))
-                result.skill_template = skill.get("code_template")
-                result.skill_params = skill.get("parameters", [])
-                result.skill_methodology = skill.get("investigation_methodology", "")
+                # Red team patch: content-based override
+                # If skill routes to benign but raw_log has attack content, block benign routing
+                skill_slug = skill.get("skill_slug", "")
+                if skill_slug == "benign-system-event":
+                    raw_log = siem_event.get("raw_log", "")
+                    if _has_raw_log_attack_content(raw_log):
+                        activity.logger.warning(
+                            f"Classification override: benign metadata but attack content "
+                            f"in raw_log for task {task_id}. Forcing investigation."
+                        )
+                        skill = None  # Clear benign skill — force Path C investigation
+
+                if skill:
+                    result.skill_id = str(skill.get("id", ""))
+                    result.skill_template = skill.get("code_template")
+                    result.skill_params = skill.get("parameters", [])
+                    result.skill_methodology = skill.get("investigation_methodology", "")
         finally:
             conn.close()
     except Exception as e:

@@ -476,15 +476,71 @@ async def assess_results(data: dict) -> dict:
             iocs.append(new_ioc)
             existing_by_value[val] = new_ioc
 
+    # --- IOC provenance validation (Red team patch: prevents phantom IP fabrication) ---
+    if raw_log:
+        for ioc in iocs:
+            if not isinstance(ioc, dict):
+                continue
+            value = str(ioc.get("value", ""))
+            if not value:
+                continue
+            # Check if IOC value appears in raw_log
+            if ioc.get("type") in ("ipv4", "ip", "ip_address"):
+                value_in_raw = bool(re.search(re.escape(value), raw_log))
+            else:
+                value_in_raw = value.lower() in raw_log.lower()
+
+            if value_in_raw:
+                ioc.setdefault("confidence", "high")
+            else:
+                # IOC only in structured fields — downgrade
+                has_struct_source = any(
+                    ref.get("source", "").startswith(("siem_event.", "source_ip", "destination_ip", "title", "rule_name"))
+                    for ref in ioc.get("evidence_refs", [])
+                )
+                if has_struct_source:
+                    ioc["confidence"] = "low"
+                    ioc["provenance_warning"] = (
+                        f"IOC '{value}' in structured field only, not confirmed in raw_log"
+                    )
+
+    # Count only confirmed IOCs for risk/verdict decisions
+    confirmed_iocs = [i for i in iocs if isinstance(i, dict) and i.get("confidence") != "low"]
+
+    # --- Suppression phrase detection (Red team patch: adversarial risk manipulation) ---
+    SUPPRESSION_PATTERNS = [
+        r'(?i)scheduled\s+(penetration\s+)?test',
+        r'(?i)authorized\s+(security\s+)?scan',
+        r'(?i)do\s+not\s+escalate',
+        r'(?i)false\s+positive\s+(confirmed|verified)',
+        r'(?i)(compliance|audit)\s+(drill|exercise)',
+        r'(?i)test\s+alert\s*[-—:]\s*(ignore|disregard)',
+        r'(?i)simulation\s+exercise',
+        r'(?i)approved\s+activity',
+    ]
+    has_suppression = any(re.search(p, combined_signal) for p in SUPPRESSION_PATTERNS)
+    if has_suppression and (attack_boost > 0 or risk_score >= 50):
+        # Attack indicators + suppression language = adversarial manipulation
+        risk_score = max(risk_score, 75)
+        findings.append({
+            "title": "Adversarial Risk Suppression Detected",
+            "details": (
+                "Alert contains both attack indicators and suppression language. "
+                "Legitimate security tests are documented in change management, "
+                "not embedded in alert data."
+            ),
+            "severity": "high",
+        })
+
     # --- Findings synthesis: generate findings from IOCs when sandbox produced none ---
-    if iocs and not findings and risk_score >= 50:
-        for ioc in iocs[:10]:
+    if confirmed_iocs and not findings and risk_score >= 50:
+        for ioc in confirmed_iocs[:10]:
             findings.append({
                 "title": f"Detected {ioc.get('type', 'unknown')}: {ioc.get('value', '')}",
                 "severity": "high" if risk_score >= 70 else "medium",
                 "synthesized": True,
             })
-        activity.logger.info(f"Synthesized {len(findings)} findings from IOCs")
+        activity.logger.info(f"Synthesized {len(findings)} findings from confirmed IOCs")
 
     # Template attack risk floor: if the alert matched a known attack template
     # (Path A) but the LLM under-scored it, ensure risk >= 70.
@@ -503,7 +559,7 @@ async def assess_results(data: dict) -> dict:
     if verdict_override == "error":
         verdict = "error"
     else:
-        verdict = _derive_verdict(risk_score, len(iocs), len(findings))
+        verdict = _derive_verdict(risk_score, len(confirmed_iocs), len(findings))
     severity = _severity_from_risk(risk_score)
     fp_conf = _fp_confidence(risk_score, len(iocs))
 
