@@ -541,6 +541,30 @@ services:
       - zovark-internal
     profiles: ["vllm"]
 
+  # ─── FLEET AGENT (self-healer) ──────────────────────────
+  healer:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: zovark-healer
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - healer-logs:/var/log/zovark
+    environment:
+      - HEALER_CHECK_INTERVAL=30
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-hydra-redis-dev-2026}
+      - POSTGRES_USER=${POSTGRES_USER:-zovark}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-hydra_dev_2026}
+      - POSTGRES_DB=${POSTGRES_DB:-zovark}
+      - ZOVARK_MODEL_FAST=${ZOVARK_MODEL_FAST:-llama3.2:3b}
+    ports:
+      - "8081:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - zovark-internal
+
   # ─── SIEM LAB (opt-in profile) ──────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
@@ -622,4 +646,5 @@ volumes:
   caddy_data:
   caddy_config:
   es-data:
+  healer-logs:
   # nginx-logs: replaced with bind mount ./siem-lab/logs

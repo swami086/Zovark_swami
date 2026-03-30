@@ -19,3 +19,6 @@ benchmark_*.txt
 benchmark_*.json
 litellm_config*.yaml
 siem-lab/logs/
+agent/keys/zovark_signing_key.pem
+bundles/
+*.zvk
