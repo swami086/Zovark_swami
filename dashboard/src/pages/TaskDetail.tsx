@@ -835,6 +835,24 @@ ${recommendations.length ? '<h3>Recommendations</h3><ul>' + recommendations.slic
                         </div>
                     )}
 
+                    {/* Plain-English Summary */}
+                    {(task?.output as any)?.plain_english_summary && (
+                      <div className="mb-6">
+                        <h3 className="text-[11px] uppercase tracking-[0.15em] mb-3"
+                            style={{color: '#94A3B8', fontFamily: "'JetBrains Mono', monospace"}}>
+                          INVESTIGATION SUMMARY
+                        </h3>
+                        <div className="rounded-lg p-4"
+                             style={{borderColor: '#1B2432', border: '1px solid #1B2432', background: '#0D1117'}}>
+                          {((task.output as any).plain_english_summary as string).split('\n').map((line: string, i: number) => (
+                            <p key={i} className="text-sm mb-1" style={{color: '#E2E8F0', fontFamily: "'JetBrains Mono', monospace"}}>
+                              {line}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Detection Script */}
                     {task.output?.code && (
                         <div className="bg-[#0B1120] border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">

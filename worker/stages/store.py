@@ -212,6 +212,7 @@ async def store_investigation(data: dict) -> dict:
             "generated_code": (code or "")[:2000],
             "mitre_attack": data.get("mitre_attack", []),
             "investigation_metadata": data.get("investigation_metadata", {}),
+            "plain_english_summary": data.get("plain_english_summary", ""),
         }
         _update_task_status(
             conn, task_id, status, output,

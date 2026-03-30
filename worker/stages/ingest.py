@@ -20,6 +20,7 @@ from temporalio import activity
 from stages import IngestOutput
 from stages.input_sanitizer import sanitize_siem_event
 from stages.normalizer import normalize_siem_event
+from stages.smart_batcher import get_batcher
 
 # --- Config ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
@@ -188,6 +189,40 @@ async def ingest_alert(task_data: dict) -> dict:
     activity.logger.info(f"Normalized: style={siem_event.get('_field_style', 'unknown')}, fields={len(siem_event.get('_original_fields', {}))}")
     prompt = task_data.get("input", {}).get("prompt", "")
 
+    # --- Redis client (shared by smart batcher + dedup) ---
+    _redis_client = None
+    try:
+        import redis
+        _redis_client = redis.from_url(REDIS_URL)
+    except Exception as e:
+        print(f"Redis connection failed (non-fatal, batcher/dedup use fallback): {e}")
+
+    # --- Smart batching: aggregate similar alerts within time window ---
+    if siem_event and _redis_client:
+        try:
+            batcher = get_batcher(_redis_client)
+            severity = task_data.get("input", {}).get("severity", "medium")
+            should_skip, aggregated = batcher.should_batch(task_type, siem_event, severity)
+
+            if should_skip:
+                activity.logger.info(f"Smart batcher: alert absorbed into batch for {task_type}")
+                return asdict(IngestOutput(
+                    task_id=task_id,
+                    tenant_id=tenant_id,
+                    task_type=task_type,
+                    siem_event=siem_event,
+                    prompt="",
+                    is_duplicate=True,
+                    duplicate_of="batch",
+                    dedup_reason="smart_batch",
+                ))
+
+            if aggregated:
+                siem_event = aggregated
+                activity.logger.info(f"Smart batcher: processing aggregated batch of {aggregated.get('_batch_count', 1)} alerts")
+        except Exception as e:
+            print(f"Smart batching failed (non-fatal): {e}")
+
     result = IngestOutput(
         task_id=task_id,
         tenant_id=tenant_id,
@@ -197,19 +232,17 @@ async def ingest_alert(task_data: dict) -> dict:
     )
 
     # --- Dedup (Redis) ---
-    if DEDUP_ENABLED and siem_event:
+    if DEDUP_ENABLED and siem_event and _redis_client:
         try:
-            import redis
-            r = redis.from_url(REDIS_URL)
             alert_for_dedup = {**siem_event, "task_type": task_type}
-            match = _check_exact_dedup(alert_for_dedup, r)
+            match = _check_exact_dedup(alert_for_dedup, _redis_client)
             if match:
                 result.is_duplicate = True
                 result.duplicate_of = match
                 result.dedup_reason = "exact_duplicate"
                 return asdict(result)
             # Register for future dedup
-            _register_dedup(alert_for_dedup, task_id, r)
+            _register_dedup(alert_for_dedup, task_id, _redis_client)
         except Exception as e:
             print(f"Dedup check failed (non-fatal): {e}")
 

@@ -39,6 +39,7 @@ from stages.code_cache import get_alert_signature, get_cached_code, set_cached_c
 
 # --- Configuration (read once at import) ---
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
+ZOVARK_MODE = os.getenv("ZOVARK_MODE", "full")  # "full" or "templates-only"
 ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
 ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
@@ -526,6 +527,21 @@ async def analyze_alert(data) -> dict:
     # Path B: template available
     if ingest.skill_template:
         return asdict(await _analyze_template(ingest))
+
+    # Template-only mode: skip LLM entirely for unmatched alerts
+    if ZOVARK_MODE == "templates-only":
+        task_type = ingest.task_type
+        activity.logger.info(f"Template-only mode: no template for {task_type}, returning requires_template")
+        return asdict(AnalyzeOutput(
+            code="import json\nresult = {\"findings\": [\"No template for this alert type. Template-only mode active.\"], \"iocs\": [], \"risk_score\": 0, \"recommendations\": [\"Upgrade to Professional tier for AI investigation\"]}\nprint(json.dumps(result))",
+            source="stub",
+            path_taken="A",
+            preflight_passed=True,
+            preflight_fixes=[],
+            tokens_in=0,
+            tokens_out=0,
+            generation_ms=0,
+        ))
 
     # Path C: LLM fallback
     return asdict(await _analyze_llm(ingest))

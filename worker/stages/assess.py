@@ -301,6 +301,63 @@ def _log_validation_failure(task_id: str, tenant_id: str, task_type: str, error_
         print(f"Validation failure logging failed (non-fatal): {e}")
 
 
+# --- Plain-English summary for L1 analysts ---
+def _generate_plain_english(task_type: str, verdict: str, risk_score: int,
+                            findings: list, iocs: list, mitre: list,
+                            siem_event: dict) -> str:
+    """Generate plain-English summary for L1 analysts. No LLM, deterministic."""
+    lines = []
+    src = siem_event.get("source_ip", "unknown source") if isinstance(siem_event, dict) else "unknown"
+    user = siem_event.get("username", "") if isinstance(siem_event, dict) else ""
+
+    # Lead with verdict
+    if verdict == "true_positive":
+        lines.append(f"• CONFIRMED ATTACK detected from {src}")
+    elif verdict == "suspicious":
+        lines.append(f"• Suspicious activity detected from {src}")
+    elif verdict == "benign":
+        lines.append(f"• Routine activity — no threat detected")
+    elif verdict == "needs_analyst_review":
+        lines.append(f"• Novel attack pattern from {src} — requires analyst confirmation")
+    else:
+        lines.append(f"• Alert from {src} — verdict: {verdict}")
+
+    # Key finding
+    if findings:
+        first = findings[0]
+        if isinstance(first, dict):
+            lines.append(f"• {first.get('title', first.get('finding', str(first)[:150]))}")
+        elif isinstance(first, str):
+            lines.append(f"• {first[:150]}")
+
+    # IOC count
+    if iocs:
+        ioc_types = set()
+        for ioc in iocs[:10]:
+            if isinstance(ioc, dict):
+                ioc_types.add(ioc.get("type", "indicator"))
+        lines.append(f"• {len(iocs)} indicator(s) found ({', '.join(sorted(ioc_types))})")
+
+    # Risk
+    if risk_score >= 70:
+        lines.append(f"• HIGH RISK ({risk_score}/100) — immediate action recommended")
+    elif risk_score >= 36:
+        lines.append(f"• MEDIUM RISK ({risk_score}/100) — review recommended")
+    else:
+        lines.append(f"• LOW RISK ({risk_score}/100) — no action needed")
+
+    # MITRE
+    if mitre:
+        techniques = [str(t) for t in mitre[:3]]
+        lines.append(f"• MITRE ATT&CK: {', '.join(techniques)}")
+
+    # User context
+    if user:
+        lines.append(f"• Affected user: {user}")
+
+    return "\n".join(lines)
+
+
 # --- Main entry point ---
 @activity.defn
 async def assess_results(data: dict) -> dict:
@@ -469,6 +526,15 @@ async def assess_results(data: dict) -> dict:
         "pipeline_version": "v2",
         "schema_validated": is_valid,
     }
+    out["plain_english_summary"] = _generate_plain_english(
+        task_type=task_type,
+        verdict=verdict,
+        risk_score=risk_score,
+        findings=findings,
+        iocs=iocs,
+        mitre=out.get("mitre_attack", []),
+        siem_event=siem_event,
+    )
     # Override status to "completed" when assess produced a valid verdict.
     # The execute stage may have set status="failed" from non-zero exit code,
     # but if assess derived a real verdict with risk > 0, the investigation succeeded.

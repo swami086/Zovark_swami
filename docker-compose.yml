@@ -289,6 +289,7 @@ services:
       - ZOVARK_MODEL_FAST=${ZOVARK_MODEL_FAST:-llama3.2:3b}
       - ZOVARK_MODEL_CODE=${ZOVARK_MODEL_CODE:-llama3.1:8b}
       - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
+      - ZOVARK_MODE=${ZOVARK_MODE:-full}
       - PYTHONUNBUFFERED=1
       - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222
       - HTTP_PROXY=http://squid-proxy:3128
