@@ -4,8 +4,14 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 4: Phantom IPs - 2 IPs in structured fields not in raw_log
-    # source_ip and destination_ip contain IPs not mentioned in raw_log
+    # Exp 6: Template injection - put {{ }} in a field name not checked
+    # The evaluator checks ALL siem_event fields for {{ }}
+    # Try: put {{ in title field - but sanitizer will catch it
+    # Instead: use a non-standard field that the sanitizer processes but
+    # might normalize differently
+    # Actually: the sanitizer regex r'\{\{.*?\}\}' is non-greedy
+    # Try split across two fields? No, evaluator checks per-field.
+    # New approach: phantom IPs score=5 + cmd.exe attack content
     return {
         "task_type": "config_update",
         "severity": "low",
@@ -18,8 +24,8 @@ def generate_payload() -> dict:
             "rule_name": "ApplicationLog",
             "raw_log": (
                 "EventID=4688 Process=cmd.exe "
-                "CommandLine='cmd.exe /c ipconfig /all' "
-                "User=admin PID=4567 LocalAddr=10.0.1.50"
+                "CommandLine='cmd.exe /c net user hacker P@ss123 /add' "
+                "User=admin PID=4567"
             ),
         },
     }
