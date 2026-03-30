@@ -30,64 +30,72 @@ def add_ioc(ioc_type, value, source_field, snippet=""):
             "evidence_refs": [{"source": source_field, "raw_text": (snippet or str(value))[:60]}]
         })
 
-# --- DNS Exfiltration Investigation Logic ---
+# --- PowerShell Obfuscation Investigation Logic ---
 
 # Extract key fields from raw_log
-# Attack: "DNS query ZXhmaWx0cmF0aW9u.DEV.LOCAL from 10.45.229.165 QueryType=TXT ResponseSize=4096 Entropy=5.8 QueriesInWindow=847"
-# Benign: "DNS query www.PROD.COMPANY.COM from 172.73.24.199 QueryType=A ResponseSize=64 Normal lookup"
+# Attack: "Process=powershell.exe CommandLine='powershell -enc SQBFAFgAIAAoAE4AZQB3AC0A' User=jsmith PID=52425 ParentProcess=explorer.exe SourceAddress=172.102.172.182"
+# Benign: "Process=powershell.exe CommandLine='Get-Process | Format-Table' User=admin Signed=true Normal admin script"
 
-dns_query_match = re.search(r"DNS query\s+(\S+)", raw_log)
-dns_from_match = re.search(r"from\s+([0-9.]+)", raw_log)
-query_type_match = re.search(r"QueryType=(\S+)", raw_log)
-response_size_match = re.search(r"ResponseSize=(\d+)", raw_log)
-entropy_match = re.search(r"Entropy=([0-9.]+)", raw_log)
-queries_match = re.search(r"QueriesInWindow=(\d+)", raw_log)
+process_match = re.search(r"Process=(\S+)", raw_log)
+cmdline_match = re.search(r"CommandLine='([^']*)'", raw_log)
+user_match = re.search(r"User=(\S+)", raw_log)
+pid_match = re.search(r"PID=(\d+)", raw_log)
+parent_match = re.search(r"ParentProcess=(\S+)", raw_log)
+source_addr_match = re.search(r"SourceAddress=([0-9.]+)", raw_log)
+signed_match = re.search(r"Signed=(true|false)", raw_log)
 
-dns_query = dns_query_match.group(1) if dns_query_match else ""
-dns_from_ip = dns_from_match.group(1) if dns_from_match else ""
-query_type = query_type_match.group(1) if query_type_match else ""
-response_size = int(response_size_match.group(1)) if response_size_match else 0
-entropy = float(entropy_match.group(1)) if entropy_match else 0.0
-queries_in_window = int(queries_match.group(1)) if queries_match else 0
+process_name = process_match.group(1) if process_match else ""
+command_line = cmdline_match.group(1) if cmdline_match else ""
+log_user = user_match.group(1) if user_match else ""
+pid = pid_match.group(1) if pid_match else ""
+parent_process = parent_match.group(1) if parent_match else ""
+source_address = source_addr_match.group(1) if source_addr_match else ""
+is_signed = signed_match and signed_match.group(1) == "true"
 
-is_normal_lookup = "Normal lookup" in raw_log or "Normal" in raw_log
+command_lower = command_line.lower()
 
-# Key indicators for exfiltration
-is_txt_query = query_type == "TXT"
-is_high_entropy = entropy >= 4.0
-is_large_response = response_size >= 1024
-is_high_volume = queries_in_window >= 100
+# Key indicators
+is_powershell = process_name.lower() == "powershell.exe"
+has_encoded_flag = "-enc" in command_lower or "-encodedcommand" in command_lower
+is_normal_script = "Normal" in raw_log
+has_iex = "iex" in command_lower or "invoke-expression" in command_lower
+has_download_cradle = "downloadstring" in command_lower or "net.webclient" in command_lower
 
-# Check for base64-like subdomain (high entropy, long label)
-subdomain = dns_query.split(".")[0] if "." in dns_query else dns_query
-is_base64_like = len(subdomain) > 10 and re.match(r"^[A-Za-z0-9+/=]+$", subdomain)
+# Extract the base64 payload
+enc_payload_match = re.search(r"-enc\s+(\S+)", command_line, re.IGNORECASE)
+enc_payload = enc_payload_match.group(1) if enc_payload_match else ""
+
+# Suspicious parent processes (Office apps, browser = spearphishing indicator)
+suspicious_parents = ["winword.exe", "excel.exe", "outlook.exe", "powerpnt.exe", "iexplore.exe", "chrome.exe"]
+has_suspicious_parent = parent_process.lower() in suspicious_parents
 
 # Risk scoring
-if is_txt_query and is_high_entropy and is_high_volume:
-    # Strong DNS exfiltration: TXT queries + high entropy + high volume
-    risk_score = 90
-    findings.append("CRITICAL: DNS exfiltration detected — high-entropy TXT queries (" + str(queries_in_window) + " in window)")
-    findings.append("Query: " + dns_query + " (entropy=" + str(entropy) + ")")
-    findings.append("Response size: " + str(response_size) + " bytes")
-    if is_base64_like:
-        risk_score = 92
-        findings.append("Base64-encoded subdomain detected: " + subdomain)
-elif is_high_entropy and is_high_volume:
-    risk_score = 80
-    findings.append("High-entropy DNS queries with high volume — potential exfiltration")
-elif is_txt_query and is_high_entropy:
-    risk_score = 70
-    findings.append("TXT query with high entropy subdomain — suspicious")
-elif is_normal_lookup:
-    # Normal DNS lookup
+if is_powershell and has_encoded_flag:
+    # Encoded PowerShell = obfuscation
+    risk_score = 88
+    findings.append("CRITICAL: Encoded PowerShell execution detected — obfuscation indicator")
+    findings.append("Encoded payload: " + enc_payload[:40] + ("..." if len(enc_payload) > 40 else ""))
+    if has_suspicious_parent:
+        risk_score = 93
+        findings.append("Spawned by suspicious parent process: " + parent_process + " — possible spearphishing")
+    if parent_process:
+        findings.append("Parent process: " + parent_process)
+elif is_powershell and (has_iex or has_download_cradle):
+    risk_score = 82
+    findings.append("PowerShell with Invoke-Expression or download cradle detected")
+elif is_powershell and is_normal_script and is_signed:
+    # Normal: signed admin script
     risk_score = 5
-    findings.append("Normal DNS lookup: " + dns_query)
-elif query_type == "A" and not is_high_entropy:
+    findings.append("Normal signed PowerShell script: " + command_line[:60])
+elif is_powershell and is_normal_script:
     risk_score = 10
-    findings.append("Standard DNS A record query: " + dns_query)
+    findings.append("Normal PowerShell execution: " + command_line[:60])
+elif is_powershell:
+    risk_score = 15
+    findings.append("PowerShell execution: " + command_line[:60])
 else:
     risk_score = 15
-    findings.append("DNS query event with unrecognized pattern")
+    findings.append("Process execution event with unrecognized pattern")
 
 risk_score = min(100, max(0, risk_score))
 
@@ -96,10 +104,8 @@ if source_ip:
     add_ioc("ipv4", source_ip, "source_ip", source_ip)
 if username:
     add_ioc("username", username, "username", username)
-if dns_from_ip and dns_from_ip != source_ip:
-    add_ioc("ipv4", dns_from_ip, "raw_log", "DNS from " + dns_from_ip)
-if dns_query and is_high_entropy:
-    add_ioc("domain", dns_query, "raw_log", "DNS query " + dns_query[:50])
+if source_address and source_address != source_ip:
+    add_ioc("ipv4", source_address, "raw_log", "SourceAddress=" + source_address)
 
 print(json.dumps({
     "findings": findings,
@@ -111,7 +117,7 @@ print(json.dumps({
 '''
 
 TEMPLATE_METADATA = {
-    "task_type": "dns_exfiltration",
-    "threat_types": ["dns_exfiltration", "data_exfiltration", "dns_tunneling"],
-    "description": "Detect DNS exfiltration — high-entropy TXT queries with encoded subdomains",
+    "task_type": "powershell_obfuscation",
+    "threat_types": ["powershell_obfuscation", "execution", "defense_evasion"],
+    "description": "Detect obfuscated PowerShell — encoded commands, IEX, download cradles",
 }
