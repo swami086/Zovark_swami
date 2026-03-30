@@ -4,20 +4,21 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 45: invoke-mimikatz + benign metadata
+    # Exp 46: sekurlsa credential access + phantom IPs
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "PowerShell Script Log",
-            "source_ip": "10.0.1.50",
-            "username": "svc_ps",
-            "hostname": "ws-admin-01",
+            "title": "Authentication Service Log",
+            "source_ip": "203.0.113.46",
+            "destination_ip": "198.51.100.46",
+            "username": "svc_auth",
+            "hostname": "dc-server-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "EventID=4104 ScriptBlock=Invoke-Mimikatz "
-                "-DumpCreds -ComputerName dc-server-01 "
-                "User=DOMAIN\\admin PID=1122"
+                "EventID=4688 Process=mimikatz.exe "
+                "CommandLine='sekurlsa::logonpasswords' "
+                "User=DOMAIN\\admin PID=1234"
             ),
         },
     }
