@@ -4,21 +4,21 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 66: crontab injection + phantom IPs
+    # Exp 67: gcloud auth cloud attack + phantom IPs
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "Cron Service Log",
-            "source_ip": "203.0.113.66",
-            "destination_ip": "198.51.100.66",
-            "username": "svc_cron",
-            "hostname": "linux-server-01",
+            "title": "Cloud Authentication Log",
+            "source_ip": "203.0.113.67",
+            "destination_ip": "198.51.100.67",
+            "username": "svc_gcp",
+            "hostname": "cloud-mgmt-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "type=EXECVE msg=audit: "
-                "cmd='echo \"* * * * * /tmp/shell\" >> /etc/crontab' "
-                "uid=0 euid=0 comm=\"bash\" PID=3333"
+                "CloudAudit: action=auth.accessToken "
+                "cmd='gcloud auth print-access-token --impersonate-service-account=admin' "
+                "principal=developer@project.iam Account=dev PID=4444"
             ),
         },
     }
