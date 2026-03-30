@@ -4,22 +4,22 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 41: golden ticket + printer_driver evasion + phantom IPs
+    # Experiment 42: pass the hash + cache_clear evasion + phantom IPs
     return {
-        "task_type": "printer_driver",
+        "task_type": "cache_clear",
         "severity": "info",
         "siem_event": {
-            "title": "Printer Driver Installation",
-            "source_ip": "10.180.0.5",
-            "destination_ip": "10.180.0.6",
-            "username": "svc_print",
-            "hostname": "print-srv",
-            "rule_name": "PrintDriver",
+            "title": "Cache Purge Job",
+            "source_ip": "10.190.0.5",
+            "destination_ip": "10.190.0.6",
+            "username": "svc_cache",
+            "hostname": "cache-srv",
+            "rule_name": "CachePurge",
             "raw_log": (
-                "EventID=4769 Process=mimikatz.exe "
-                "CommandLine=mimikatz kerberos golden ticket /domain=corp.local "
-                "/sid=S-1-5-21-1234567890 /rc4=aabbccdd "
-                "Account=DOMAIN\\admin TargetDC=dc01"
+                "EventID=4624 LogonType=9 Process=sekurlsa.exe "
+                "CommandLine=sekurlsa pass the hash /ntlm=aabbccddee "
+                "Account=DOMAIN\\admin TargetHost=dc01 "
+                "AuthPackage=NTLM ImpersonationLevel=Impersonation"
             ),
         },
     }
