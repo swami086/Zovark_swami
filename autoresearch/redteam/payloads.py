@@ -4,20 +4,22 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 5: Classification evasion — psexec in raw_log, benign metadata
+    # Experiment 6: wmic process call create + network_diagnostic metadata
     return {
-        "task_type": "backup_process",
-        "severity": "low",
+        "task_type": "network_diagnostic",
+        "severity": "info",
         "siem_event": {
-            "title": "Scheduled Backup Task",
-            "source_ip": "10.0.0.5",
-            "destination_ip": "10.0.0.10",
-            "username": "svc_backup",
-            "hostname": "backup-srv-01",
-            "rule_name": "BackupAgent",
+            "title": "Network Connectivity Test",
+            "source_ip": "192.168.1.50",
+            "destination_ip": "172.16.0.100",
+            "username": "svc_netmon",
+            "hostname": "netmon-01",
+            "rule_name": "DiagnosticTool",
             "raw_log": (
-                "EventID=4688 Process=psexec.exe CommandLine=psexec \\\\dc01 cmd.exe "
-                "User=admin ParentProcess=services.exe TargetHost=dc01"
+                "EventID=4688 Process=wmiprvse.exe "
+                "CommandLine=wmic process call create calc.exe "
+                "User=DOMAIN\\admin ParentProcess=svchost.exe "
+                "WorkingDirectory=C:\\Windows\\System32"
             ),
         },
     }
