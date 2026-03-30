@@ -4,22 +4,21 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 74: Shadow copy deletion + classification evasion + phantom IPs
+    # Exp 75: Ransomware note + benign metadata
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "Storage Management Log",
-            "source_ip": "203.0.113.74",
-            "destination_ip": "198.51.100.74",
-            "username": "svc_storage",
+            "title": "File System Monitor",
+            "source_ip": "10.0.1.50",
+            "username": "svc_fsmon",
             "hostname": "file-server-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "EventID=4688 Process=wmic.exe "
-                "CommandLine='wmic shadowcopy delete' "
-                "shadow copy removal detected "
-                "Account=SYSTEM PID=1010"
+                "EventID=4663 FileCreated=README_RANSOM.txt "
+                "Content='Your files are encrypted. Pay 5 BTC to...' "
+                "vssadmin delete shadows /all /quiet "
+                "Path=C:\\Users\\Documents Account=SYSTEM PID=2020"
             ),
         },
     }
