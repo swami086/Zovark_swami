@@ -4,22 +4,22 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 9: bloodhound + inventory_scan evasion + phantom IPs
+    # Experiment 10: rubeus kerberoasting + patch_management evasion + phantom IPs
     return {
-        "task_type": "inventory_scan",
+        "task_type": "patch_management",
         "severity": "info",
         "siem_event": {
-            "title": "Asset Inventory Scan",
-            "source_ip": "192.168.50.10",
-            "destination_ip": "192.168.50.20",
-            "username": "svc_inventory",
-            "hostname": "inventory-srv",
-            "rule_name": "AssetDiscovery",
+            "title": "Windows Update Check",
+            "source_ip": "10.1.2.3",
+            "destination_ip": "10.1.2.4",
+            "username": "svc_patch",
+            "hostname": "wsus-srv",
+            "rule_name": "PatchStatus",
             "raw_log": (
-                "EventID=4688 Process=SharpHound.exe "
-                "CommandLine=bloodhound --CollectionMethod All --Domain corp.local "
-                "User=svc_inventory ParentProcess=cmd.exe "
-                "OutputFile=C:\\temp\\corp_bloodhound.zip"
+                "EventID=4769 Process=rubeus.exe "
+                "CommandLine=rubeus kerberoast /outfile:hashes.txt "
+                "User=DOMAIN\\admin TargetService=krbtgt "
+                "EncType=RC4_HMAC ServiceName=MSSQLSvc"
             ),
         },
     }
