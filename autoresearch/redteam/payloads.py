@@ -4,20 +4,24 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 25: UNC path (\\server\c$) lateral movement + benign metadata
+    # Exp 26: Phantom IP in benign context in raw_log
+    # IP "185.220.101.45" is in raw_log but in a benign sentence
+    # source_ip has the same IP - it IS in raw_log so not phantom
+    # But destination_ip has a different IP not in raw_log
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "File Share Access Log",
-            "source_ip": "10.0.1.50",
-            "username": "svc_filemon",
-            "hostname": "ws-admin-01",
+            "title": "Network Scan Report",
+            "source_ip": "185.220.101.45",
+            "destination_ip": "198.51.100.99",
+            "username": "svc_scanner",
+            "hostname": "scanner-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "EventID=5140 ShareAccess=\\\\dc-server-01\\c$ "
-                "User=DOMAIN\\admin SourceAddr=10.0.1.50 "
-                "ObjectType=File AccessMask=0x1F01FF"
+                "Scan verified clean by 185.220.101.45 at 2026-03-30T10:00:00Z "
+                "No threats detected. cmd.exe spawned for cleanup. "
+                "All systems nominal."
             ),
         },
     }
