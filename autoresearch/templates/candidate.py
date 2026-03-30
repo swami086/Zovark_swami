@@ -30,62 +30,59 @@ def add_ioc(ioc_type, value, source_field, snippet=""):
             "evidence_refs": [{"source": source_field, "raw_text": (snippet or str(value))[:60]}]
         })
 
-# --- DLL Sideloading Investigation Logic ---
+# --- LOLBin Abuse Investigation Logic ---
 
 # Extract key fields from raw_log
 process_match = re.search(r"Process=(\S+)", raw_log)
-dll_name_match = re.search(r"loaded\s+(unsigned|signed)\s+DLL\s+(\S+)", raw_log)
-dll_path_match = re.search(r"from\s+(C:\\[^\s]+(?:\s+[^\s]+)*?)(?:\s+PID=|\s*$)", raw_log)
-pid_match = re.search(r"PID=(\d+)", raw_log)
+cmdline_match = re.search(r"CommandLine='([^']*)'", raw_log)
 user_match = re.search(r"User=(\S+)", raw_log)
-source_addr_match = re.search(r"SourceAddress=([0-9.]+)", raw_log)
+pid_match = re.search(r"PID=(\d+)", raw_log)
 
 process_name = process_match.group(1) if process_match else ""
-dll_signed = dll_name_match.group(1) if dll_name_match else ""
-dll_name = dll_name_match.group(2) if dll_name_match else ""
-dll_path = dll_path_match.group(1).strip() if dll_path_match else ""
-pid = pid_match.group(1) if pid_match else ""
+command_line = cmdline_match.group(1) if cmdline_match else ""
 log_user = user_match.group(1) if user_match else ""
-source_address = source_addr_match.group(1) if source_addr_match else ""
+command_lower = command_line.lower()
 
-# Key indicators
-is_unsigned = dll_signed == "unsigned"
-is_signed = dll_signed == "signed"
+# LOLBin abuse indicators
+is_certutil = process_name.lower() == "certutil.exe"
 
-# Suspicious paths (not System32, not Windows)
-suspicious_paths = ["C:\\Temp", "C:\\Users\\Public", "C:\\ProgramData", "C:\\Users\\"]
-is_suspicious_path = any(dll_path.startswith(p) or dll_path == p for p in suspicious_paths)
+# Certutil download pattern: -urlcache -split -f <url>
+has_download_flags = "-urlcache" in command_lower and "-f" in command_lower
+has_url = bool(re.search(r"https?://", command_line))
 
-# System paths (normal)
-system_paths = ["C:\\Windows\\System32", "C:\\Windows\\SysWOW64", "C:\\Windows\\"]
-is_system_path = any(dll_path.startswith(p) for p in system_paths)
+# Extract URL from command line
+url_match = re.search(r"(https?://[^\s'\"]+)", command_line)
+extracted_url = url_match.group(1) if url_match else ""
 
-# Known sideloading processes
-sideload_processes = ["rundll32.exe", "msiexec.exe", "svchost.exe", "regsvr32.exe", "dllhost.exe"]
-is_known_sideload_host = process_name.lower() in sideload_processes
+# Extract IP from URL
+url_ip_match = re.search(r"https?://([0-9.]+)", command_line)
+url_ip = url_ip_match.group(1) if url_ip_match else ""
+
+# Benign certutil patterns
+is_verify = "-verify" in command_lower
+is_normal_usage = "Normal" in raw_log or is_verify
 
 # Risk scoring
-if is_unsigned and is_suspicious_path:
-    # Strong sideloading indicator: unsigned DLL from suspicious path
-    risk_score = 85
-    findings.append("CRITICAL: Unsigned DLL '" + dll_name + "' loaded from suspicious path '" + dll_path + "'")
-    findings.append("Host process: " + process_name + " (PID=" + pid + ")")
-    if is_known_sideload_host:
-        risk_score = 88
-        findings.append("Process '" + process_name + "' is a known DLL sideloading host")
-elif is_unsigned and not is_system_path:
-    risk_score = 70
-    findings.append("Unsigned DLL loaded from non-system path: " + dll_path)
-elif is_signed and is_system_path:
-    # Normal: signed DLL from system path
-    risk_score = 5
-    findings.append("Normal DLL load: signed '" + dll_name + "' from " + dll_path)
-elif is_signed:
+if is_certutil and has_download_flags and has_url:
+    # Classic LOLBin abuse: certutil downloading a file
+    risk_score = 88
+    findings.append("CRITICAL: certutil.exe used to download file via -urlcache — LOLBin abuse")
+    findings.append("Command: " + command_line)
+    if extracted_url:
+        findings.append("Download URL: " + extracted_url)
+elif is_certutil and has_download_flags:
+    risk_score = 75
+    findings.append("certutil.exe with download flags detected — potential LOLBin abuse")
+elif is_certutil and is_normal_usage:
+    # Normal certificate operations
     risk_score = 10
-    findings.append("Signed DLL load from: " + dll_path)
+    findings.append("Normal certutil usage: " + command_line)
+elif is_certutil:
+    risk_score = 15
+    findings.append("certutil.exe invoked: " + command_line)
 else:
     risk_score = 15
-    findings.append("DLL load event with unrecognized pattern")
+    findings.append("Process execution event with unrecognized pattern")
 
 risk_score = min(100, max(0, risk_score))
 
@@ -94,10 +91,10 @@ if source_ip:
     add_ioc("ipv4", source_ip, "source_ip", source_ip)
 if username:
     add_ioc("username", username, "username", username)
-if source_address and source_address != source_ip:
-    add_ioc("ipv4", source_address, "raw_log", "SourceAddress=" + source_address)
-if dll_name and is_unsigned:
-    add_ioc("filename", dll_name, "raw_log", "loaded unsigned DLL " + dll_name)
+if url_ip and url_ip != source_ip:
+    add_ioc("ipv4", url_ip, "raw_log", "URL IP: " + url_ip)
+if extracted_url and has_download_flags:
+    add_ioc("url", extracted_url, "raw_log", extracted_url[:60])
 
 print(json.dumps({
     "findings": findings,
@@ -109,7 +106,7 @@ print(json.dumps({
 '''
 
 TEMPLATE_METADATA = {
-    "task_type": "dll_sideloading",
-    "threat_types": ["dll_sideloading", "dll_hijacking", "defense_evasion"],
-    "description": "Detect DLL sideloading — unsigned DLLs loaded from suspicious paths by legitimate processes",
+    "task_type": "lolbin_abuse",
+    "threat_types": ["lolbin_abuse", "living_off_the_land", "defense_evasion"],
+    "description": "Detect LOLBin abuse — certutil/mshta/regsvr32 used for download/execution",
 }
