@@ -4,21 +4,21 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 62: kubectl container escape + phantom IPs
+    # Exp 63: AWS STS assume-role cloud attack + phantom IPs
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "Container Orchestration Log",
-            "source_ip": "203.0.113.62",
-            "destination_ip": "198.51.100.62",
-            "username": "svc_k8s",
-            "hostname": "k8s-master-01",
+            "title": "Cloud Service Log",
+            "source_ip": "203.0.113.63",
+            "destination_ip": "198.51.100.63",
+            "username": "svc_cloud",
+            "hostname": "cloud-mgmt-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "type=AuditLog verb=exec namespace=kube-system "
-                "cmd='kubectl exec -it etcd-master -- /bin/sh' "
-                "Account=cluster-admin PID=8901"
+                "CloudTrail: eventName=AssumeRole "
+                "cmd='aws sts assume-role --role-arn arn:aws:iam::123456789:role/admin' "
+                "sourceIP=10.0.1.50 Account=dev-account PID=9012"
             ),
         },
     }
