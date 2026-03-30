@@ -38,6 +38,73 @@ def _shannon_entropy(s: str) -> float:
     return -sum((count / length) * math.log2(count / length) for count in freq.values())
 
 
+def smart_truncate(value: str, max_len: int = 10000) -> str:
+    """
+    Intelligent truncation preserving security-relevant content.
+
+    Defense against: pad 10K benign chars, hide payload at position 10,001.
+    Strategy: keep head (3K) + tail (3K) + extract suspicious segments from middle.
+    """
+    if not isinstance(value, str) or len(value) <= max_len:
+        return value
+
+    head_size = 3000
+    tail_size = 3000
+    head = value[:head_size]
+    tail = value[-tail_size:]
+    middle = value[head_size:-tail_size] if len(value) > head_size + tail_size else ""
+
+    suspicious = []
+
+    # Base64 blocks (likely encoded payloads)
+    for m in re.finditer(r'[A-Za-z0-9+/=]{50,}', middle):
+        suspicious.append(m.group()[:500])
+
+    # URL-encoded blocks
+    for m in re.finditer(r'(?:%[0-9A-Fa-f]{2}){10,}', middle):
+        suspicious.append(m.group()[:500])
+
+    # Code injection patterns
+    for m in re.finditer(
+        r'(?:eval|exec|import|system|subprocess|__import__|compile|os\.system|'
+        r'os\.popen|socket|requests|urllib|open\s*\(|pickle|ctypes)\s*[\(\.]',
+        middle, re.IGNORECASE
+    ):
+        start = max(0, m.start() - 100)
+        end = min(len(middle), m.end() + 200)
+        suspicious.append(middle[start:end])
+
+    # Prompt injection patterns
+    for m in re.finditer(
+        r'(?:ignore previous|new instructions|override|disregard|system:|'
+        r'ALWAYS output|act as|forget all|you are now)',
+        middle, re.IGNORECASE
+    ):
+        start = max(0, m.start() - 50)
+        end = min(len(middle), m.end() + 150)
+        suspicious.append(middle[start:end])
+
+    # High-entropy windows (Shannon > 4.5 in 200-char windows)
+    window = 200
+    for i in range(0, min(len(middle), 5000), window):
+        chunk = middle[i:i + window]
+        if len(chunk) > 50:
+            entropy = _shannon_entropy(chunk)
+            if entropy > 4.5:
+                suspicious.append(chunk)
+
+    if suspicious:
+        mid_content = " [EXTRACTED] ".join(suspicious[:5])
+    else:
+        mid_content = "[...TRUNCATED...]"
+
+    result = head + " " + mid_content + " " + tail
+    if len(result) > max_len:
+        result = result[:max_len]
+
+    return result
+
+
 def sanitize_siem_event(event: dict) -> dict:
     if not isinstance(event, dict):
         return event
@@ -48,15 +115,17 @@ def sanitize_siem_event(event: dict) -> dict:
 
     for key, value in event.items():
         if isinstance(value, str):
-            if len(value) > MAX_FIELD_LENGTH:
-                value = value[:MAX_FIELD_LENGTH] + " [TRUNCATED]"
-                logger.warning(f"Truncated oversized SIEM field: {key} ({len(value)} chars)")
-
+            # Check injection patterns on FULL string BEFORE truncation
             for pattern in INJECTION_PATTERNS:
                 if re.search(pattern, value):
                     injection_detected = True
                     value = re.sub(pattern, '[INJECTION_STRIPPED]', value)
                     logger.warning(f"Prompt injection pattern stripped from field: {key}")
+
+            # Smart truncate AFTER injection checks
+            if len(value) > MAX_FIELD_LENGTH:
+                value = smart_truncate(value, MAX_FIELD_LENGTH)
+                logger.warning(f"Smart-truncated oversized SIEM field: {key}")
 
             canonical_key = key.split(".")[-1].lower()
             if canonical_key in ENTROPY_CHECK_FIELDS and len(value) > 50:
