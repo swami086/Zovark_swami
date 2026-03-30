@@ -30,61 +30,51 @@ def add_ioc(ioc_type, value, source_field, snippet=""):
             "evidence_refs": [{"source": source_field, "raw_text": (snippet or str(value))[:60]}]
         })
 
-# --- Process Injection Investigation Logic ---
+# --- WMI Lateral Movement Investigation Logic ---
 
 # Extract key fields from raw_log
-source_proc_match = re.search(r"SourceProcess=(\S+)", raw_log)
-target_proc_match = re.search(r"TargetProcess=(\S+)", raw_log)
-api_match = re.search(r"API=(\S+)", raw_log)
-target_pid_match = re.search(r"TargetPID=(\d+)", raw_log)
+remote_host_match = re.search(r"remote host\s+(\S+)", raw_log)
+cmdline_match = re.search(r"CommandLine='([^']*)'", raw_log)
 user_match = re.search(r"User=(\S+)", raw_log)
 source_addr_match = re.search(r"SourceAddress=([0-9.]+)", raw_log)
 
-source_proc = source_proc_match.group(1) if source_proc_match else ""
-target_proc = target_proc_match.group(1) if target_proc_match else ""
-api_call = api_match.group(1) if api_match else ""
-target_pid = target_pid_match.group(1) if target_pid_match else ""
+remote_host = remote_host_match.group(1) if remote_host_match else ""
+command_line = cmdline_match.group(1) if cmdline_match else ""
 log_user = user_match.group(1) if user_match else ""
 source_address = source_addr_match.group(1) if source_addr_match else ""
 
 # Key indicators
-is_remote_thread = api_call == "CreateRemoteThread"
-is_normal_thread = api_call == "CreateThread"
-is_normal_startup = "Normal service startup" in raw_log or "Normal" in raw_log
+is_remote_process_create = "process create" in raw_log.lower() and "remote host" in raw_log.lower()
+is_local_query = "on localhost" in raw_log.lower() or "localhost" in raw_log.lower()
+is_normal_monitoring = "Normal monitoring" in raw_log or "Normal" in raw_log
+is_wmi_query = "WMI query" in raw_log
 
-# Suspicious source processes (often used for injection)
-suspicious_sources = ["powershell.exe", "cmd.exe", "wscript.exe", "cscript.exe", "mshta.exe"]
-is_suspicious_source = source_proc.lower() in suspicious_sources
-
-# Critical target processes (high-value injection targets)
-critical_targets = ["lsass.exe", "winlogon.exe", "csrss.exe", "services.exe", "svchost.exe", "explorer.exe"]
-is_critical_target = target_proc.lower() in critical_targets
-
-# Normal source process (services.exe starting svchost is normal)
-is_services_to_svchost = source_proc.lower() == "services.exe" and target_proc.lower() == "svchost.exe"
+# Suspicious commands in WMI lateral movement
+suspicious_commands = ["powershell", "cmd /c", "net user", "whoami", "mimikatz", "-enc", "certutil"]
+has_suspicious_cmd = any(sc in command_line.lower() for sc in suspicious_commands) if command_line else False
 
 # Risk scoring
-if is_remote_thread and not is_services_to_svchost:
-    # CreateRemoteThread into another process = injection
+if is_remote_process_create and command_line:
+    # WMI process creation on remote host = lateral movement
     risk_score = 88
-    findings.append("CRITICAL: CreateRemoteThread detected — " + source_proc + " injecting into " + target_proc)
-    findings.append("Target PID: " + target_pid)
-    if is_suspicious_source:
+    findings.append("CRITICAL: WMI remote process creation on " + remote_host + " — lateral movement")
+    findings.append("Command executed: " + command_line)
+    if has_suspicious_cmd:
         risk_score = 92
-        findings.append("Suspicious source process: " + source_proc)
-    if is_critical_target:
-        risk_score = min(risk_score + 3, 100)
-        findings.append("Critical system process targeted: " + target_proc)
-elif is_normal_thread and is_normal_startup:
-    # Normal: CreateThread in service startup
+        findings.append("Suspicious command pattern detected in remote execution")
+elif is_wmi_query and is_local_query and is_normal_monitoring:
+    # Normal: WMI query on localhost for monitoring
     risk_score = 5
-    findings.append("Normal thread creation: " + source_proc + " -> " + target_proc)
-elif is_normal_thread:
+    findings.append("Normal WMI monitoring query on localhost")
+elif is_wmi_query and is_local_query:
     risk_score = 10
-    findings.append("CreateThread detected (non-remote): " + source_proc)
+    findings.append("WMI query on localhost")
+elif is_wmi_query:
+    risk_score = 15
+    findings.append("WMI query event")
 else:
     risk_score = 15
-    findings.append("Thread/process event with unrecognized pattern")
+    findings.append("WMI event with unrecognized pattern")
 
 risk_score = min(100, max(0, risk_score))
 
@@ -95,6 +85,8 @@ if username:
     add_ioc("username", username, "username", username)
 if source_address and source_address != source_ip:
     add_ioc("ipv4", source_address, "raw_log", "SourceAddress=" + source_address)
+if remote_host and is_remote_process_create:
+    add_ioc("hostname", remote_host, "raw_log", "remote host " + remote_host)
 
 print(json.dumps({
     "findings": findings,
@@ -106,7 +98,7 @@ print(json.dumps({
 '''
 
 TEMPLATE_METADATA = {
-    "task_type": "process_injection",
-    "threat_types": ["process_injection", "code_injection", "defense_evasion"],
-    "description": "Detect process injection via CreateRemoteThread into critical system processes",
+    "task_type": "wmi_lateral",
+    "threat_types": ["wmi_lateral_movement", "lateral_movement", "remote_execution"],
+    "description": "Detect WMI-based lateral movement — remote process creation on other hosts",
 }
