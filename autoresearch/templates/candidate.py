@@ -30,59 +30,61 @@ def add_ioc(ioc_type, value, source_field, snippet=""):
             "evidence_refs": [{"source": source_field, "raw_text": (snippet or str(value))[:60]}]
         })
 
-# --- LOLBin Abuse Investigation Logic ---
+# --- Process Injection Investigation Logic ---
 
 # Extract key fields from raw_log
-process_match = re.search(r"Process=(\S+)", raw_log)
-cmdline_match = re.search(r"CommandLine='([^']*)'", raw_log)
+source_proc_match = re.search(r"SourceProcess=(\S+)", raw_log)
+target_proc_match = re.search(r"TargetProcess=(\S+)", raw_log)
+api_match = re.search(r"API=(\S+)", raw_log)
+target_pid_match = re.search(r"TargetPID=(\d+)", raw_log)
 user_match = re.search(r"User=(\S+)", raw_log)
-pid_match = re.search(r"PID=(\d+)", raw_log)
+source_addr_match = re.search(r"SourceAddress=([0-9.]+)", raw_log)
 
-process_name = process_match.group(1) if process_match else ""
-command_line = cmdline_match.group(1) if cmdline_match else ""
+source_proc = source_proc_match.group(1) if source_proc_match else ""
+target_proc = target_proc_match.group(1) if target_proc_match else ""
+api_call = api_match.group(1) if api_match else ""
+target_pid = target_pid_match.group(1) if target_pid_match else ""
 log_user = user_match.group(1) if user_match else ""
-command_lower = command_line.lower()
+source_address = source_addr_match.group(1) if source_addr_match else ""
 
-# LOLBin abuse indicators
-is_certutil = process_name.lower() == "certutil.exe"
+# Key indicators
+is_remote_thread = api_call == "CreateRemoteThread"
+is_normal_thread = api_call == "CreateThread"
+is_normal_startup = "Normal service startup" in raw_log or "Normal" in raw_log
 
-# Certutil download pattern: -urlcache -split -f <url>
-has_download_flags = "-urlcache" in command_lower and "-f" in command_lower
-has_url = bool(re.search(r"https?://", command_line))
+# Suspicious source processes (often used for injection)
+suspicious_sources = ["powershell.exe", "cmd.exe", "wscript.exe", "cscript.exe", "mshta.exe"]
+is_suspicious_source = source_proc.lower() in suspicious_sources
 
-# Extract URL from command line
-url_match = re.search(r"(https?://[^\s'\"]+)", command_line)
-extracted_url = url_match.group(1) if url_match else ""
+# Critical target processes (high-value injection targets)
+critical_targets = ["lsass.exe", "winlogon.exe", "csrss.exe", "services.exe", "svchost.exe", "explorer.exe"]
+is_critical_target = target_proc.lower() in critical_targets
 
-# Extract IP from URL
-url_ip_match = re.search(r"https?://([0-9.]+)", command_line)
-url_ip = url_ip_match.group(1) if url_ip_match else ""
-
-# Benign certutil patterns
-is_verify = "-verify" in command_lower
-is_normal_usage = "Normal" in raw_log or is_verify
+# Normal source process (services.exe starting svchost is normal)
+is_services_to_svchost = source_proc.lower() == "services.exe" and target_proc.lower() == "svchost.exe"
 
 # Risk scoring
-if is_certutil and has_download_flags and has_url:
-    # Classic LOLBin abuse: certutil downloading a file
+if is_remote_thread and not is_services_to_svchost:
+    # CreateRemoteThread into another process = injection
     risk_score = 88
-    findings.append("CRITICAL: certutil.exe used to download file via -urlcache — LOLBin abuse")
-    findings.append("Command: " + command_line)
-    if extracted_url:
-        findings.append("Download URL: " + extracted_url)
-elif is_certutil and has_download_flags:
-    risk_score = 75
-    findings.append("certutil.exe with download flags detected — potential LOLBin abuse")
-elif is_certutil and is_normal_usage:
-    # Normal certificate operations
+    findings.append("CRITICAL: CreateRemoteThread detected — " + source_proc + " injecting into " + target_proc)
+    findings.append("Target PID: " + target_pid)
+    if is_suspicious_source:
+        risk_score = 92
+        findings.append("Suspicious source process: " + source_proc)
+    if is_critical_target:
+        risk_score = min(risk_score + 3, 100)
+        findings.append("Critical system process targeted: " + target_proc)
+elif is_normal_thread and is_normal_startup:
+    # Normal: CreateThread in service startup
+    risk_score = 5
+    findings.append("Normal thread creation: " + source_proc + " -> " + target_proc)
+elif is_normal_thread:
     risk_score = 10
-    findings.append("Normal certutil usage: " + command_line)
-elif is_certutil:
-    risk_score = 15
-    findings.append("certutil.exe invoked: " + command_line)
+    findings.append("CreateThread detected (non-remote): " + source_proc)
 else:
     risk_score = 15
-    findings.append("Process execution event with unrecognized pattern")
+    findings.append("Thread/process event with unrecognized pattern")
 
 risk_score = min(100, max(0, risk_score))
 
@@ -91,10 +93,8 @@ if source_ip:
     add_ioc("ipv4", source_ip, "source_ip", source_ip)
 if username:
     add_ioc("username", username, "username", username)
-if url_ip and url_ip != source_ip:
-    add_ioc("ipv4", url_ip, "raw_log", "URL IP: " + url_ip)
-if extracted_url and has_download_flags:
-    add_ioc("url", extracted_url, "raw_log", extracted_url[:60])
+if source_address and source_address != source_ip:
+    add_ioc("ipv4", source_address, "raw_log", "SourceAddress=" + source_address)
 
 print(json.dumps({
     "findings": findings,
@@ -106,7 +106,7 @@ print(json.dumps({
 '''
 
 TEMPLATE_METADATA = {
-    "task_type": "lolbin_abuse",
-    "threat_types": ["lolbin_abuse", "living_off_the_land", "defense_evasion"],
-    "description": "Detect LOLBin abuse — certutil/mshta/regsvr32 used for download/execution",
+    "task_type": "process_injection",
+    "threat_types": ["process_injection", "code_injection", "defense_evasion"],
+    "description": "Detect process injection via CreateRemoteThread into critical system processes",
 }
