@@ -59,10 +59,12 @@ func mapAlertToTaskType(signature string) string {
 // Temporal workflow. Returns (taskID, error).
 func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source string, input map[string]interface{}) (string, error) {
 	taskID := uuid.New().String()
+	traceID := uuid.New().String()
 
 	// Ensure required input fields
 	input["prompt"] = prompt
 	input["ingest_source"] = source
+	input["trace_id"] = traceID
 
 	severity := "medium"
 	if s, ok := input["severity"].(string); ok && s != "" {
@@ -72,7 +74,7 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	// Insert task inside explicit transaction
 	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid race condition
 	dbCtx, dbCancel := dbContextWithTimeout(ctx)
-	tx, err := dbPool.Begin(dbCtx)
+	tx, err := beginTenantTx(dbCtx, tenantID)
 	if err != nil {
 		dbCancel()
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
@@ -80,8 +82,8 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	defer tx.Rollback(dbCtx) // no-op after commit
 
 	_, err = tx.Exec(dbCtx,
-		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		taskID, tenantID, taskType, input, "pending", time.Now(),
+		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		taskID, tenantID, taskType, input, "pending", time.Now(), traceID,
 	)
 	if err != nil {
 		dbCancel()
@@ -243,6 +245,11 @@ func splunkIngestHandler(c *gin.Context) {
 		return
 	}
 
+	// Set trace ID from input (populated by createIngestTask)
+	if tid, ok := input["trace_id"].(string); ok {
+		c.Header("X-Zovark-Trace-ID", tid)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"task_id": taskID,
 		"status":  "queued",
@@ -367,6 +374,10 @@ func elasticIngestHandler(c *gin.Context) {
 		log.Printf("[INGEST] Elastic ingest failed for tenant %s: %v", tenantID, err)
 		respondInternalError(c, err, "elastic ingest task creation")
 		return
+	}
+
+	if tid, ok := input["trace_id"].(string); ok {
+		c.Header("X-Zovark-Trace-ID", tid)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

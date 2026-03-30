@@ -379,6 +379,30 @@ async def assess_results(data: dict) -> dict:
     recommendations = data.get("recommendations", [])
     task_type = data.get("task_type", "")
 
+    # FAIL-CLOSED: If LLM was down during analyze, force manual review
+    path_taken_early = data.get("path_taken", "")
+    if path_taken_early == "error_llm_down":
+        activity.logger.warning(f"LLM was down for task {task_id} — forcing needs_manual_review")
+        result = AssessOutput(
+            verdict="needs_manual_review",
+            risk_score=0,
+            severity="high",
+            confidence=0.0,
+            false_positive_confidence=0.0,
+            recommendations=["LLM service was unavailable during investigation. Manual analysis required."],
+            memory_summary="LLM unavailable — investigation incomplete",
+        )
+        out = asdict(result)
+        out["iocs"] = []
+        out["findings"] = [{"title": "LLM Unavailable", "details": "Automated investigation could not complete. Manual review required."}]
+        out["mitre_attack"] = []
+        out["investigation_metadata"] = {"pipeline_version": "v2", "llm_available": False}
+        out["plain_english_summary"] = "• LLM service was unavailable — this alert requires manual analyst investigation\n• HIGH PRIORITY — do not ignore"
+        out["status"] = "pending_review"
+        out["needs_human_review"] = True
+        out["review_reason"] = "LLM service was unavailable during investigation"
+        return out
+
     # --- Schema validation of sandbox output ---
     # Validate the data coming from execute stage (findings, iocs, risk_score, recommendations)
     sandbox_output = {

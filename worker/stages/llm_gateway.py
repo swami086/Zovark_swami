@@ -98,7 +98,11 @@ async def llm_call(
         async with httpx.AsyncClient(timeout=timeout_config) as client:
             resp = await client.post(
                 endpoint,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "X-Zovark-Trace-ID": task_id or "",
+                },
                 json=request_body,
             )
             resp.raise_for_status()

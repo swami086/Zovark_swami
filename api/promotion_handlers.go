@@ -178,8 +178,8 @@ func analystFeedbackHandler(c *gin.Context) {
 		return
 	}
 
-	// Begin transaction
-	tx, err := dbPool.Begin(ctx)
+	// Begin transaction with RLS tenant context
+	tx, err := beginTenantTx(ctx, tenantID)
 	if err != nil {
 		respondInternalError(c, err, "begin analyst feedback transaction")
 		return
@@ -225,68 +225,90 @@ func analystFeedbackHandler(c *gin.Context) {
 		return
 	}
 
-	// Promotion logic
+	// Promotion logic — requires 2-person quorum (Mission 2)
 	if req.Promote && generatedCode != nil && *generatedCode != "" {
-		// Generate slug: auto-{task_type}-{first 6 chars of sha256(task_id)}
-		hash := sha256.Sum256([]byte(req.TaskID))
-		hashPrefix := fmt.Sprintf("%x", hash[:3]) // 6 hex chars
-		slug := fmt.Sprintf("auto-%s-%s", taskType, hashPrefix)
-		promotedSlug = &slug
-
-		// Templatize: replace SIEM event data with placeholder
-		templateCode := templatizeSIEMEvent(*generatedCode)
-
-		// Skill name from slug
-		skillName := fmt.Sprintf("Auto: %s (%s)", strings.ReplaceAll(taskType, "_", " "), hashPrefix)
-
-		// Task types array: just the source task_type
-		taskTypes := fmt.Sprintf("{%s}", taskType)
-
-		// Check if a skill with this slug already exists for the tenant
-		var existingSkill bool
-		_ = tx.QueryRow(ctx,
-			"SELECT EXISTS(SELECT 1 FROM agent_skills WHERE skill_slug = $1 AND tenant_id = $2)",
-			slug, tenantID,
-		).Scan(&existingSkill)
-
-		if existingSkill {
-			// Update the existing skill
-			_, err = tx.Exec(ctx, `
-				UPDATE agent_skills
-				SET code_template = $1, promoted_at = NOW(), promoted_by = $2,
-				    promotion_status = 'active', is_active = true, source_task_id = $3::uuid
-				WHERE skill_slug = $4 AND tenant_id = $5
-			`, templateCode, analystEmail, req.TaskID, slug, tenantID)
-		} else {
-			// Insert new skill
-			skillID := uuid.New().String()
-			_, err = tx.Exec(ctx, `
-				INSERT INTO agent_skills
-					(id, tenant_id, skill_name, skill_slug, threat_types,
-					 code_template, is_active, auto_promoted, source_task_id,
-					 promoted_at, promoted_by, promotion_status,
-					 severity_default, investigation_methodology, detection_patterns,
-					 example_prompt, mitre_tactics, mitre_techniques,
-					 version, is_community, created_at)
-				VALUES ($1, $2, $3, $4, $5::text[],
-				        $6, true, true, $7::uuid,
-				        NOW(), $8, 'active',
-				        'high', 'auto-promoted from Path C investigation', 'LLM-generated',
-				        '', '{}', '{}',
-				        1, false, NOW())
-			`, skillID, tenantID, skillName, slug, taskTypes,
-				templateCode, req.TaskID, analystEmail)
-		}
-		if err != nil {
-			respondInternalError(c, err, "promote template to agent_skills")
+		// Record this user's promotion approval
+		_, insertErr := tx.Exec(ctx, `
+			INSERT INTO template_promotion_approvals (feedback_id, approved_by, tenant_id)
+			VALUES ($1, $2::uuid, $3::uuid)
+			ON CONFLICT (feedback_id, approved_by) DO NOTHING
+		`, feedbackID, userID, tenantID)
+		if insertErr != nil {
+			respondInternalError(c, insertErr, "record promotion approval")
 			return
 		}
 
-		// Update the feedback row with the promoted slug
-		_, _ = tx.Exec(ctx,
-			"UPDATE analyst_feedback SET promoted_slug = $1 WHERE id = $2",
-			slug, feedbackID,
-		)
+		// Count distinct approvals for this feedback
+		var approvalCount int
+		_ = tx.QueryRow(ctx,
+			"SELECT COUNT(DISTINCT approved_by) FROM template_promotion_approvals WHERE feedback_id = $1 AND tenant_id = $2",
+			feedbackID, tenantID,
+		).Scan(&approvalCount)
+
+		// Check if this user already approved (the ON CONFLICT means count didn't change)
+		var thisUserAlreadyApproved bool
+		_ = tx.QueryRow(ctx,
+			`SELECT COUNT(*) > 1 FROM template_promotion_approvals
+			 WHERE feedback_id = $1 AND approved_by = $2::uuid`,
+			feedbackID, userID,
+		).Scan(&thisUserAlreadyApproved)
+
+		if approvalCount >= 2 {
+			// Quorum met — proceed with promotion
+			hash := sha256.Sum256([]byte(req.TaskID))
+			hashPrefix := fmt.Sprintf("%x", hash[:3])
+			slug := fmt.Sprintf("auto-%s-%s", taskType, hashPrefix)
+			promotedSlug = &slug
+
+			templateCode := templatizeSIEMEvent(*generatedCode)
+			skillName := fmt.Sprintf("Auto: %s (%s)", strings.ReplaceAll(taskType, "_", " "), hashPrefix)
+			taskTypes := fmt.Sprintf("{%s}", taskType)
+
+			var existingSkill bool
+			_ = tx.QueryRow(ctx,
+				"SELECT EXISTS(SELECT 1 FROM agent_skills WHERE skill_slug = $1 AND tenant_id = $2)",
+				slug, tenantID,
+			).Scan(&existingSkill)
+
+			if existingSkill {
+				_, err = tx.Exec(ctx, `
+					UPDATE agent_skills
+					SET code_template = $1, promoted_at = NOW(), promoted_by = $2,
+					    promotion_status = 'active', is_active = true, source_task_id = $3::uuid
+					WHERE skill_slug = $4 AND tenant_id = $5
+				`, templateCode, analystEmail, req.TaskID, slug, tenantID)
+			} else {
+				skillID := uuid.New().String()
+				_, err = tx.Exec(ctx, `
+					INSERT INTO agent_skills
+						(id, tenant_id, skill_name, skill_slug, threat_types,
+						 code_template, is_active, auto_promoted, source_task_id,
+						 promoted_at, promoted_by, promotion_status,
+						 severity_default, investigation_methodology, detection_patterns,
+						 example_prompt, mitre_tactics, mitre_techniques,
+						 version, is_community, created_at)
+					VALUES ($1, $2, $3, $4, $5::text[],
+					        $6, true, true, $7::uuid,
+					        NOW(), $8, 'active',
+					        'high', 'auto-promoted from Path C investigation', 'LLM-generated',
+					        '', '{}', '{}',
+					        1, false, NOW())
+				`, skillID, tenantID, skillName, slug, taskTypes,
+					templateCode, req.TaskID, analystEmail)
+			}
+			if err != nil {
+				respondInternalError(c, err, "promote template to agent_skills")
+				return
+			}
+
+			_, _ = tx.Exec(ctx,
+				"UPDATE analyst_feedback SET promoted_slug = $1, promotion_approved_by = $2::uuid, promotion_approved_at = NOW() WHERE id = $3",
+				slug, userID, feedbackID,
+			)
+		} else {
+			// Quorum not met — return 202 after commit
+			// (we still need to commit the feedback + approval records)
+		}
 	}
 
 	// Audit event
@@ -310,6 +332,26 @@ func analystFeedbackHandler(c *gin.Context) {
 	if promotedSlug != nil {
 		response["promoted_slug"] = *promotedSlug
 		response["promoted"] = true
+	}
+
+	// If promote was requested but quorum not met, return 202
+	if req.Promote && generatedCode != nil && *generatedCode != "" && promotedSlug == nil {
+		// Count approvals post-commit for response
+		var currentApprovals int
+		_ = dbPool.QueryRow(ctx,
+			"SELECT COUNT(DISTINCT approved_by) FROM template_promotion_approvals WHERE feedback_id = $1 AND tenant_id = $2",
+			feedbackID, tenantID,
+		).Scan(&currentApprovals)
+
+		c.JSON(http.StatusAccepted, gin.H{
+			"id":              feedbackID,
+			"task_id":         req.TaskID,
+			"analyst_verdict": req.AnalystVerdict,
+			"status":          "pending_second_approval",
+			"approvals":       currentApprovals,
+			"required":        2,
+		})
+		return
 	}
 
 	c.JSON(http.StatusCreated, response)
@@ -532,6 +574,170 @@ func dashboardStatsHandler(c *gin.Context) {
 		"true_positives":        truePositives,
 		"suspicious":            suspicious,
 		"benign_from_attack":    benignFromAttack,
+	})
+}
+
+// approvePromotionHandler allows a second analyst to approve a pending template promotion.
+// POST /api/v1/promotion-approve
+func approvePromotionHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	tenantID := c.MustGet("tenant_id").(string)
+	userID := c.GetString("user_id")
+
+	if dbPool == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database unavailable"})
+		return
+	}
+
+	var req struct {
+		FeedbackID string `json:"feedback_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify feedback exists and belongs to tenant, and has promote=true
+	var taskID, taskType string
+	var generatedCode *string
+	err := dbPool.QueryRow(ctx, `
+		SELECT af.task_id, at.task_type, at.generated_code
+		FROM analyst_feedback af
+		JOIN agent_tasks at ON at.id = af.task_id::uuid
+		WHERE af.id = $1 AND af.tenant_id = $2 AND af.promote = true
+	`, req.FeedbackID, tenantID).Scan(&taskID, &taskType, &generatedCode)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "feedback not found or promotion not requested"})
+		return
+	}
+
+	// Check if already promoted
+	var alreadyPromoted bool
+	_ = dbPool.QueryRow(ctx,
+		"SELECT promotion_approved_at IS NOT NULL FROM analyst_feedback WHERE id = $1",
+		req.FeedbackID,
+	).Scan(&alreadyPromoted)
+	if alreadyPromoted {
+		c.JSON(http.StatusConflict, gin.H{"error": "template already promoted"})
+		return
+	}
+
+	// Check if this user already approved
+	var alreadyApproved bool
+	_ = dbPool.QueryRow(ctx,
+		"SELECT EXISTS(SELECT 1 FROM template_promotion_approvals WHERE feedback_id = $1 AND approved_by = $2::uuid)",
+		req.FeedbackID, userID,
+	).Scan(&alreadyApproved)
+	if alreadyApproved {
+		c.JSON(http.StatusConflict, gin.H{"error": "You have already approved this promotion"})
+		return
+	}
+
+	// Begin transaction with RLS tenant context
+	tx, err := beginTenantTx(ctx, tenantID)
+	if err != nil {
+		respondInternalError(c, err, "begin promotion approval transaction")
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	// Insert approval
+	_, err = tx.Exec(ctx, `
+		INSERT INTO template_promotion_approvals (feedback_id, approved_by, tenant_id)
+		VALUES ($1, $2::uuid, $3::uuid)
+	`, req.FeedbackID, userID, tenantID)
+	if err != nil {
+		respondInternalError(c, err, "insert promotion approval")
+		return
+	}
+
+	// Count approvals
+	var approvalCount int
+	_ = tx.QueryRow(ctx,
+		"SELECT COUNT(DISTINCT approved_by) FROM template_promotion_approvals WHERE feedback_id = $1 AND tenant_id = $2",
+		req.FeedbackID, tenantID,
+	).Scan(&approvalCount)
+
+	if approvalCount >= 2 && generatedCode != nil && *generatedCode != "" {
+		// Quorum met — promote
+		var analystEmail string
+		_ = dbPool.QueryRow(ctx, "SELECT email FROM users WHERE id = $1 AND tenant_id = $2", userID, tenantID).Scan(&analystEmail)
+		if analystEmail == "" {
+			analystEmail = userID
+		}
+
+		hash := sha256.Sum256([]byte(taskID))
+		hashPrefix := fmt.Sprintf("%x", hash[:3])
+		slug := fmt.Sprintf("auto-%s-%s", taskType, hashPrefix)
+		templateCode := templatizeSIEMEvent(*generatedCode)
+		skillName := fmt.Sprintf("Auto: %s (%s)", strings.ReplaceAll(taskType, "_", " "), hashPrefix)
+		taskTypes := fmt.Sprintf("{%s}", taskType)
+
+		var existingSkill bool
+		_ = tx.QueryRow(ctx,
+			"SELECT EXISTS(SELECT 1 FROM agent_skills WHERE skill_slug = $1 AND tenant_id = $2)",
+			slug, tenantID,
+		).Scan(&existingSkill)
+
+		if existingSkill {
+			_, err = tx.Exec(ctx, `
+				UPDATE agent_skills
+				SET code_template = $1, promoted_at = NOW(), promoted_by = $2,
+				    promotion_status = 'active', is_active = true, source_task_id = $3::uuid
+				WHERE skill_slug = $4 AND tenant_id = $5
+			`, templateCode, analystEmail, taskID, slug, tenantID)
+		} else {
+			skillID := uuid.New().String()
+			_, err = tx.Exec(ctx, `
+				INSERT INTO agent_skills
+					(id, tenant_id, skill_name, skill_slug, threat_types,
+					 code_template, is_active, auto_promoted, source_task_id,
+					 promoted_at, promoted_by, promotion_status,
+					 severity_default, investigation_methodology, detection_patterns,
+					 example_prompt, mitre_tactics, mitre_techniques,
+					 version, is_community, created_at)
+				VALUES ($1, $2, $3, $4, $5::text[],
+				        $6, true, true, $7::uuid,
+				        NOW(), $8, 'active',
+				        'high', 'auto-promoted from Path C investigation', 'LLM-generated',
+				        '', '{}', '{}',
+				        1, false, NOW())
+			`, skillID, tenantID, skillName, slug, taskTypes,
+				templateCode, taskID, analystEmail)
+		}
+		if err != nil {
+			respondInternalError(c, err, "promote template to agent_skills")
+			return
+		}
+
+		_, _ = tx.Exec(ctx,
+			"UPDATE analyst_feedback SET promoted_slug = $1, promotion_approved_by = $2::uuid, promotion_approved_at = NOW() WHERE id = $3",
+			slug, userID, req.FeedbackID,
+		)
+
+		if err := tx.Commit(ctx); err != nil {
+			respondInternalError(c, err, "commit promotion approval")
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"status":        "promoted",
+			"promoted_slug": slug,
+			"approvals":     approvalCount,
+			"required":      2,
+		})
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		respondInternalError(c, err, "commit promotion approval")
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"status":    "pending_second_approval",
+		"approvals": approvalCount,
+		"required":  2,
 	})
 }
 

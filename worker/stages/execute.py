@@ -34,6 +34,7 @@ except Exception:
     _POLICY_VERSION = "hardcoded-fallback"
 
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
+DOCKER_HOST = os.environ.get("DOCKER_HOST", "")  # tcp://docker-socket-proxy:2375
 
 # --- AST Prefilter (inlined from sandbox/ast_prefilter.py concepts) ---
 # Legacy YAML-driven blocklists (kept for sandbox_policy.yaml compatibility)
@@ -297,7 +298,7 @@ async def execute_investigation(data: dict) -> dict:
     if code_source == "llm":
         code = _wrap_code_safely(code)
 
-    activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}")
+    activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}, DOCKER_HOST={DOCKER_HOST or 'local-socket'}")
 
     # Step 2: Execute
     if FAST_FILL:

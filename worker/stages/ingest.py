@@ -158,12 +158,13 @@ async def fetch_task(task_id: str) -> dict:
     conn = _get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT id, tenant_id, task_type, input, status FROM agent_tasks WHERE id = %s", (task_id,))
+            cur.execute("SELECT id, tenant_id, task_type, input, status, trace_id FROM agent_tasks WHERE id = %s", (task_id,))
             row = cur.fetchone()
             if not row:
                 raise ValueError(f"Task {task_id} not found")
             row['id'] = str(row['id'])
             row['tenant_id'] = str(row['tenant_id'])
+            row['trace_id'] = str(row['trace_id']) if row.get('trace_id') else ""
             return dict(row)
     finally:
         conn.close()

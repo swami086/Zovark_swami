@@ -46,7 +46,11 @@ def _update_task_status(conn, task_id: str, status: str, output: dict,
 
     needs_review = False
     review_reason = None
-    if status != "completed":
+    # Check if assess stage explicitly flagged for review (e.g., LLM down)
+    if isinstance(output, dict) and output.get("needs_human_review"):
+        needs_review = True
+        review_reason = output.get("review_reason", "Flagged for manual review")
+    elif status != "completed":
         needs_review = True
         review_reason = error_message or "Investigation failed"
     elif risk_score < human_review_threshold:
@@ -125,17 +129,18 @@ def _create_investigation(conn, tenant_id: str, task_id: str, verdict: str,
 # --- Audit event ---
 def _insert_audit_event(conn, tenant_id: str, event_type: str,
                         resource_type: str, resource_id: str,
-                        metadata: dict = None):
+                        metadata: dict = None, trace_id: str = ""):
     """Insert audit_events row. Non-fatal on failure."""
     try:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO audit_events
-                (tenant_id, event_type, actor_type, resource_type, resource_id, metadata)
-                VALUES (%s, %s, 'worker', %s, %s, %s)
+                (tenant_id, event_type, actor_type, resource_type, resource_id, metadata, trace_id)
+                VALUES (%s, %s, 'worker', %s, %s, %s, %s)
             """, (
                 tenant_id, event_type, resource_type,
                 resource_id, json.dumps(metadata or {}),
+                trace_id or None,
             ))
     except Exception as e:
         print(f"Audit event insert failed (non-fatal): {e}")
@@ -185,18 +190,28 @@ async def store_investigation(data: dict) -> dict:
     siem_event = data.get("siem_event", {})
     path_taken = data.get("path_taken", "")
     generated_code = data.get("generated_code", data.get("code", ""))
+    trace_id = data.get("trace_id", "")
 
     severity = _severity_from_risk(risk_score)
     investigation_id = None
 
     conn = _get_db()
     try:
+        # Set RLS tenant context for this transaction
+        # Use string format (not parameterized) because SET LOCAL doesn't
+        # support $1 params through PgBouncer transaction pooling.
+        # tenant_id is a UUID from the workflow, not user input.
+        if tenant_id:
+            with conn.cursor() as cur:
+                cur.execute(f"SET LOCAL app.current_tenant = '{tenant_id}'")
+
         # 0. Audit: investigation_started
         if tenant_id:
             _insert_audit_event(
                 conn, tenant_id, "investigation_started",
                 "agent_task", task_id,
                 {"task_type": task_type, "severity": severity, "model": model_name},
+                trace_id=trace_id,
             )
 
         # 1. Update task status
@@ -248,7 +263,23 @@ async def store_investigation(data: dict) -> dict:
                     "investigation_id": investigation_id,
                     "ioc_count": len(iocs), "finding_count": len(findings),
                 },
+                trace_id=trace_id,
             )
+
+        # NOTIFY for SSE real-time updates (Mission 9)
+        if status == "completed" and tenant_id:
+            try:
+                with conn.cursor() as cur:
+                    notify_payload = json.dumps({
+                        "task_id": task_id,
+                        "tenant_id": tenant_id,
+                        "verdict": verdict,
+                        "risk_score": risk_score,
+                        "task_type": task_type,
+                    })
+                    cur.execute("NOTIFY task_completed, %s", (notify_payload,))
+            except Exception as notify_err:
+                print(f"NOTIFY failed (non-fatal): {notify_err}")
 
         conn.commit()
     except Exception as e:

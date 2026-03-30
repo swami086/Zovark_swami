@@ -64,6 +64,8 @@ export default function PromotionQueue() {
     return expandedSections[itemId]?.has(section) || false;
   };
 
+  const [promotionStatus, setPromotionStatus] = useState<Record<string, { approvals: number; required: number }>>({});
+
   const handleAction = async (taskId: string, action: string) => {
     setSubmittingIds(prev => new Set(prev).add(taskId));
     try {
@@ -76,15 +78,24 @@ export default function PromotionQueue() {
 
       const fb = feedbackMap[action] || { analyst_verdict: action };
 
-      await submitAnalystFeedback({
+      const result = await submitAnalystFeedback({
         task_id: taskId,
         analyst_verdict: fb.analyst_verdict,
         analyst_notes: notes[taskId] || undefined,
         promote: fb.promote,
       });
 
-      setItems(prev => prev.filter(i => i.task_id !== taskId));
-      setConfirmAction(null);
+      // Handle 2-person quorum: if pending_second_approval, show status instead of removing
+      if (result?.status === 'pending_second_approval') {
+        setPromotionStatus(prev => ({
+          ...prev,
+          [taskId]: { approvals: result.approvals || 1, required: result.required || 2 },
+        }));
+        setConfirmAction(null);
+      } else {
+        setItems(prev => prev.filter(i => i.task_id !== taskId));
+        setConfirmAction(null);
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to submit feedback');
     } finally {
@@ -334,7 +345,7 @@ export default function PromotionQueue() {
                     borderTop: '1px solid var(--border-default)',
                   }}
                 >
-                  <div>
+                  <div className="flex items-center gap-3">
                     <input
                       type="text"
                       placeholder="Analyst notes (optional)..."
@@ -347,6 +358,11 @@ export default function PromotionQueue() {
                         color: 'var(--text-secondary)',
                       }}
                     />
+                    {promotionStatus[item.task_id] && (
+                      <span className="badge badge-executing text-xs">
+                        Approval {promotionStatus[item.task_id].approvals}/{promotionStatus[item.task_id].required} — awaiting second analyst
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -373,12 +389,12 @@ export default function PromotionQueue() {
                       <span>Confirm</span>
                     </button>
                     <button
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !!promotionStatus[item.task_id]}
                       onClick={() => setConfirmAction({ taskId: item.task_id, action: 'confirm_promote' })}
                       className="btn btn-primary btn-sm"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Confirm & Promote</span>
+                      <span>{promotionStatus[item.task_id] ? `Awaiting 2nd (${promotionStatus[item.task_id].approvals}/2)` : 'Confirm & Promote'}</span>
                     </button>
                   </div>
                 </div>

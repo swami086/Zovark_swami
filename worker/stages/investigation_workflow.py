@@ -92,6 +92,9 @@ class InvestigationWorkflowV2:
             start_to_close_timeout=timedelta(seconds=60),
         )
 
+        # Extract trace_id from task row (set by Go API at INSERT)
+        trace_id = full_task.get("trace_id", "")
+
         # Stage 5: STORE — persist everything (no LLM)
         # assessed values (verdict, risk_score, recommendations) must take
         # precedence over raw executed values — spread assessed LAST
@@ -109,6 +112,7 @@ class InvestigationWorkflowV2:
                 "tokens_out": analyzed.get("tokens_out", 0),
                 "path_taken": path_taken,
                 "generated_code": analyzed.get("code", ""),
+                "trace_id": trace_id,
             },
             start_to_close_timeout=timedelta(seconds=30),
         )

@@ -159,6 +159,9 @@ func main() {
 	api.Use(tenantRateLimitMiddleware())
 	api.Use(auditMiddleware())
 	{
+		// SSE global stream (Mission 9) — also accepts ?token= for EventSource
+		api.GET("/tasks/stream", streamAllTaskUpdates)
+
 		// Anyone authenticated
 		api.GET("/tasks", listTasksHandler)
 		api.GET("/tasks/:id", getTaskHandler)
@@ -202,6 +205,12 @@ func main() {
 
 		// Audit export (admin only)
 		api.GET("/audit/export", requireRole("admin"), auditExportHandler)
+
+		// Diagnostic export — Flight Data Recorder (Mission 6)
+		api.GET("/admin/diagnostics/export", requireRole("admin"), diagnosticExportHandler)
+
+		// Compliance Evidence Engine (Mission 7)
+		api.POST("/compliance/report/:framework", requireRole("admin", "analyst"), complianceReportHandler)
 
 		// API key management (admin only)
 		api.POST("/api-keys", requireRole("admin"), createAPIKeyHandler)
@@ -313,9 +322,10 @@ func main() {
 		api.GET("/cipher-audit/servers", cipherAuditServersHandler)
 		api.POST("/cipher-audit/analyze", requireRole("admin", "analyst"), cipherAuditAnalyzeHandler)
 
-		// Template Promotion Flywheel (Sprint 2D)
+		// Template Promotion Flywheel (Sprint 2D) + Quorum (Mission 2)
 		api.GET("/promotion-queue", promotionQueueHandler)
 		api.POST("/analyst-feedback", requireRole("admin", "analyst"), analystFeedbackHandler)
+		api.POST("/promotion-approve", requireRole("admin", "analyst"), approvePromotionHandler)
 		api.GET("/auto-templates", autoTemplatesHandler)
 		api.DELETE("/auto-templates/:slug", requireRole("admin"), disableAutoTemplateHandler)
 		api.GET("/dashboard-stats", dashboardStatsHandler)

@@ -543,5 +543,18 @@ async def analyze_alert(data) -> dict:
             generation_ms=0,
         ))
 
-    # Path C: LLM fallback
-    return asdict(await _analyze_llm(ingest))
+    # Path C: LLM fallback — with fail-closed error handling
+    try:
+        return asdict(await _analyze_llm(ingest))
+    except (RuntimeError, httpx.TimeoutException, httpx.ConnectError, Exception) as e:
+        activity.logger.error(f"LLM unavailable for task {ingest.task_id}: {e}")
+        # FAIL-CLOSED: Do NOT classify. Do NOT route to benign. Queue for human review.
+        from stages.circuit_breaker import update_state
+        update_state(999)  # Force RED state on LLM failure
+        return asdict(AnalyzeOutput(
+            code="# LLM UNAVAILABLE - investigation requires manual review\nimport json\nprint(json.dumps({\"findings\": [{\"title\": \"LLM service unavailable\", \"details\": \"Investigation could not be completed automatically\"}], \"iocs\": [], \"risk_score\": 0, \"recommendations\": [\"Manual analysis required - LLM was unavailable\"]}))",
+            source="error",
+            path_taken="error_llm_down",
+            preflight_passed=True,
+            generation_ms=0,
+        ))
