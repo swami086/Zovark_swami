@@ -5,6 +5,7 @@ Defends against prompt injection via attacker-controlled log fields.
 import re
 import math
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +139,42 @@ def _scan_field_tail(value: str) -> bool:
     return False
 
 
+# Cyrillic→Latin homoglyph map (visual lookalikes used to bypass regex)
+_HOMOGLYPH_MAP = str.maketrans({
+    '\u0430': 'a',  # Cyrillic а → Latin a
+    '\u0435': 'e',  # Cyrillic е → Latin e
+    '\u043e': 'o',  # Cyrillic о → Latin o
+    '\u0440': 'p',  # Cyrillic р → Latin p
+    '\u0441': 'c',  # Cyrillic с → Latin c
+    '\u0443': 'y',  # Cyrillic у → Latin y
+    '\u0445': 'x',  # Cyrillic х → Latin x
+    '\u0410': 'A',  # Cyrillic А → Latin A
+    '\u0412': 'B',  # Cyrillic В → Latin B
+    '\u0415': 'E',  # Cyrillic Е → Latin E
+    '\u041a': 'K',  # Cyrillic К → Latin K
+    '\u041c': 'M',  # Cyrillic М → Latin M
+    '\u041d': 'H',  # Cyrillic Н → Latin H
+    '\u041e': 'O',  # Cyrillic О → Latin O
+    '\u0420': 'P',  # Cyrillic Р → Latin P
+    '\u0421': 'C',  # Cyrillic С → Latin C
+    '\u0422': 'T',  # Cyrillic Т → Latin T
+    '\u0425': 'X',  # Cyrillic Х → Latin X
+})
+
+
+def _normalize_for_scanning(text: str) -> str:
+    """Normalize Unicode to catch homoglyph and zero-width character attacks."""
+    # Remove zero-width characters
+    text = text.replace('\u200b', '').replace('\u200c', '').replace('\u200d', '').replace('\ufeff', '')
+    # Remove right-to-left override
+    text = text.replace('\u202e', '').replace('\u202d', '')
+    # NFKC normalization
+    text = unicodedata.normalize('NFKC', text)
+    # Cyrillic homoglyph → Latin ASCII
+    text = text.translate(_HOMOGLYPH_MAP)
+    return text
+
+
 def sanitize_siem_event(event: dict) -> dict:
     if not isinstance(event, dict):
         return event
@@ -148,11 +185,14 @@ def sanitize_siem_event(event: dict) -> dict:
 
     for key, value in event.items():
         if isinstance(value, str):
-            # Check injection patterns on FULL string BEFORE truncation
+            # Normalize Unicode BEFORE pattern matching to catch homoglyphs
+            scan_value = _normalize_for_scanning(value)
+
+            # Check injection patterns on normalized value BEFORE truncation
             for pattern in INJECTION_PATTERNS:
-                if re.search(pattern, value):
+                if re.search(pattern, scan_value):
                     injection_detected = True
-                    value = re.sub(pattern, '[INJECTION_STRIPPED]', value)
+                    value = re.sub(pattern, '[INJECTION_STRIPPED]', scan_value)
                     logger.warning(f"Prompt injection pattern stripped from field: {key}")
 
             # Smart truncate AFTER injection checks

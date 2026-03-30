@@ -57,6 +57,7 @@ def _has_attack_indicators(task_type: str, rule_name: str, title: str) -> bool:
 # HIGH-CONFIDENCE attack content patterns in raw_log (Red team patch)
 # These indicate real attacks regardless of what the metadata says
 RAW_LOG_ATTACK_PATTERNS = [
+    # --- Original 20 patterns ---
     r'(?i)mimikatz|sekurlsa|lsadump|kerberos::',
     r'(?i)certutil\s+(-urlcache|-split|-f\s+http)',
     r'(?i)bitsadmin.*transfer.*http',
@@ -77,6 +78,44 @@ RAW_LOG_ATTACK_PATTERNS = [
     r'(?i)\\\\[^\\]+\\(c|admin|ipc)\$',
     r'(?i)CreateRemoteThread|NtMapViewOfSection',
     r'(?i)lsass\.exe|ntds\.dit|sam\s+dump',
+    # --- Red team v2: LOLBins and additional techniques ---
+    r'(?i)msiexec\s+.*(/q|/i\s+http)',
+    r'(?i)installutil\s+.*(/logfile|payload)',
+    r'(?i)regasm\s+(/U\s+|.*\.dll)',
+    r'(?i)regsvcs\s+.*\.dll',
+    r'(?i)cmstp\s+(/s|/ns)',
+    r'(?i)msbuild\.?e?x?e?\s+.*\.(csproj|xml)',
+    r'(?i)forfiles\s+.*(/c|/p\s+)',
+    r'(?i)System\.Reflection\.Assembly.*Load',
+    r'(?i)Net\.WebClient.*Download(String|File)',
+    r'(?i)DownloadString\s*\(\s*["\']http',
+    # Cloud / container attacks
+    r'(?i)aws\s+sts\s+assume-role',
+    r'(?i)gcloud\s+auth\s+print-access-token',
+    r'(?i)kubectl\s+exec\s+.*(-it|--\s+/bin)',
+    r'(?i)docker\s+run\s+--privileged',
+    # Linux attacks
+    r'(?i)curl\s+http.*\|\s*(ba)?sh',
+    r'(?i)wget\s+http.*\|\s*(ba)?sh',
+    r'(?i)LD_PRELOAD\s*=',
+    r'(?i)crontab\s+(-e|-l|.*\*\s+\*\s+\*)',
+    r'(?i)\>>\s*/etc/crontab',
+    # Additional Windows techniques
+    r'(?i)cobalt\s*strike|beacon\s+interval',
+    r'(?i)meterpreter|reverse.?shell',
+    r'(?i)cmd\.exe.*/c\s+(whoami|net\s+|dir\s+|type\s+)',
+    r'(?i)dcsync|DRS(GetNC|Replicat)',
+    r'(?i)golden.?ticket|krbtgt.*0x17',
+    r'(?i)kerberoast|TGS.*0x17',
+    r'(?i)pass.the.(hash|ticket)',
+    r'(?i)\.exe.*\\\\.*\\(c|admin|ipc)\$',
+    r'(?i)shadow.*copy|vssadmin',
+    r'(?i)ransom|encrypt.*files|\.locked\b',
+    r'(?i)union\s+select|or\s+1\s*=\s*1|sql.?inject',
+    r'(?i)<script|javascript:|onerror\s*=|xss',
+    r'(?i)\.\./\.\.|path.?traversal|/etc/passwd',
+    r'(?i)webshell|\.php.*upload|c99|r57',
+    r'(?i)office.*macro|vba.*shell|wmi.*subscription',
 ]
 
 
