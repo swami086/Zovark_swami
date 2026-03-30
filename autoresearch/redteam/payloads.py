@@ -4,7 +4,7 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 1: cmd.exe in raw_log with fully benign metadata
+    # Exp 2: powershell -enc in raw_log with benign metadata
     return {
         "task_type": "config_update",
         "severity": "low",
@@ -15,8 +15,9 @@ def generate_payload() -> dict:
             "hostname": "ws-admin-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "EventID=4688 Process=cmd.exe ParentProcess=explorer.exe "
-                "CommandLine='cmd.exe /c whoami' User=admin PID=1234"
+                "EventID=4688 Process=powershell.exe "
+                "CommandLine='powershell -enc JABjAG0AZA' "
+                "User=admin PID=2345"
             ),
         },
     }
