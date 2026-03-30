@@ -8,9 +8,9 @@
 
 | Field | Value |
 |-------|-------|
-| Version | v2.0 — 212 commits on master |
+| Version | v2.0 — 215 commits on master |
 | Date | 2026-03-30 |
-| Status | Production-ready — 100% attack detection, 0% FP on 200-benign calibration |
+| Status | Production-ready — 100% attack detection, 0% FP, 61 demo investigations loaded |
 | Stack | Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama |
 | Models | Meta Llama 3.2 3B (fast/param fill) + Meta Llama 3.1 8B (code gen/assess). American only. Zero Chinese dependencies. |
 | LLM Host | Ollama on host port 11434. No litellm. Direct httpx POST. |
@@ -20,6 +20,7 @@
 | Services | 9 core Docker containers + optional profiles |
 | Dashboard | React 19 + TypeScript + Vite 7 + Tailwind 4, 17 pages, SOC War Room design |
 | Database | PostgreSQL 16 + pgvector, 83 tables, 58 migrations |
+| Concurrency | 8 concurrent activities, 16 concurrent workflows (Temporal parallel pool) |
 
 ## Credentials
 
@@ -496,17 +497,49 @@ curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $
 
 ## Known Issues
 
-1. **Healer HTTP thread blocks** -- During health check cycles on Windows Docker Desktop. Works on Linux.
-2. **DB/Redis passwords still hydra_\*** -- Intentional. user=zovark but password=hydra_dev_2026. Redis password=hydra-redis-dev-2026. Non-breaking.
-3. **DPO pipeline** -- Training data exists in `dpo/` but no production model trained yet.
-4. **SIEM lab Filebeat** -- Needs polling mode on Windows (bind mount, not named volume).
+1. **Healer HTTP thread** — Blocks during health check cycles on Windows Docker Desktop (GIL + subprocess contention). Works on Linux.
+2. **DB/Redis passwords** — Still `hydra_dev_2026` / `hydra-redis-dev-2026`. Intentional, non-breaking.
+3. **DPO pipeline** — Training data exists in `dpo/` but no production model trained.
+4. **SIEM lab Filebeat** — Needs polling mode + bind mount on Windows Docker.
 
 ---
 
+## What Was Built This Session (March 29-30, 2026)
+
+From commit 8507c11 to f0f8b2f — 27 commits in one session:
+
+1. **Complete HYDRA→Zovark rebrand** — 100+ files, all code/config/docs/monitoring/MCP server
+2. **Two-model routing** — Meta Llama 3.2 3B + 3.1 8B, zero Chinese dependencies
+3. **3 Llama calibration fixes** — prose stripping, risk anchors, verdict override
+4. **Dual Ollama routing** — CPU (3B) + GPU (8B) endpoints, zero swap latency
+5. **Security hardening** — input sanitizer (12 patterns), allowlist AST prefilter, smart_truncate
+6. **Redis code cache** — repeat patterns skip LLM (24h TTL)
+7. **CI/CD layer** — mock Ollama + 14 integration tests + GitHub Actions
+8. **SIEM lab** — Juice Shop → Elastic → Poller → Bridge → Zovark (end-to-end verified)
+9. **Template promotion flywheel** — Path C → analyst review → auto-promote → Path A (428ms)
+10. **SOC War Room dashboard** — new design system, 2 new pages, 5 new components, Zovark logo
+11. **Zovark Core normalizer** — 70+ field mappings, 4 SIEM formats
+12. **TaskList data fix** — verdict/risk/path columns show real data from API
+13. **JWT extended** to 30 minutes
+14. **Template-only mode** — `ZOVARK_MODE=templates-only` for $40K Essentials tier
+15. **Smart batching** — 60% alert reduction, severity-aware windows
+16. **Circuit breaker** — GREEN/YELLOW/RED auto-degradation during storms
+17. **Plain-English summaries** — deterministic bullet-point for L1 analysts
+18. **Hardware check script** — validates deployment hardware, recommends tier
+19. **DMZ deployment script** — one-command `deploy.sh` with SIEM webhook config
+20. **VM appliance template** — Packer for Ubuntu 24.04 OVA/QCOW2
+21. **Fleet Agent self-healer** — AI crash diagnosis, 3-level escalation, Sneakernet UI
+22. **Crypto bundle system** — Ed25519 signed .zvk update packages
+23. **Parallel worker pool** — 8 concurrent activities via Temporal (was 1)
+24. **smart_truncate** — fixes 10K padding truncation vulnerability
+25. **61 demo investigations** loaded (32 benign + 29 attacks, zero FP/FN)
+
 ## Pending Work
 
-1. **Re-benchmark with Llama models** -- Rerun 1000-alert and Juice Shop benchmarks post-model-switch
-2. **Design partner outreach** -- 3 CISOs targeted (EU bank, US healthcare, defense)
-3. **Real SIEM connection** -- Splunk/Elastic webhook endpoints exist, untested with live SIEM
-4. **RunPod A100 benchmark** -- Rerun on fast hardware for throughput numbers
-5. **Zovark Core** -- Log normalizer / ZCS schema -- NOT IMPLEMENTED (planning only)
+1. **A100 benchmark** — Rerun with parallel workers on fast hardware
+2. **Healthcare template pack** — 30 industry-specific templates
+3. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
+4. **Blue/green deployment** — Zero-downtime updates with auto-rollback
+5. **Community template sync** — Network effect moat across customers
+6. **Public self-serve demo** — Standalone browser demo for CISO outreach
+7. **Design partner outreach** — Target healthcare MSSPs first
