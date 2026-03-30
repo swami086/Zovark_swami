@@ -4,20 +4,20 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 49: pass the hash + benign metadata
+    # Exp 50: meterpreter + benign metadata
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "Authentication Log",
+            "title": "Process Execution Log",
             "source_ip": "10.0.1.50",
-            "username": "svc_auth",
+            "username": "svc_procmon",
             "hostname": "ws-admin-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "EventID=4624 LogonType=9 pass the hash detected "
-                "NTLM=aad3b435b51404eeaad3b435b51404ee "
-                "Account=DOMAIN\\admin SourceAddr=10.0.1.50 PID=4567"
+                "EventID=4688 Process=metsvc.exe "
+                "CommandLine='meterpreter reverse_tcp LHOST=10.0.1.100 LPORT=4444' "
+                "Account=DOMAIN\\admin PID=5678"
             ),
         },
     }
