@@ -4,22 +4,22 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 77: SQL injection + XSS compound in single log + phantom IPs
+    # Exp 78: Path traversal + cmd.exe in different SIEM format + phantom IPs
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "WAF Event Log",
-            "source_ip": "203.0.113.77",
-            "destination_ip": "198.51.100.77",
-            "username": "svc_waf",
-            "hostname": "waf-01",
+            "title": "Firewall Event",
+            "source_ip": "203.0.113.78",
+            "destination_ip": "198.51.100.78",
+            "username": "svc_fw",
+            "hostname": "fw-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "GET /search?q=1 UNION SELECT username,password FROM users "
-                "<script>alert(document.cookie)</script> "
-                "Host=webapp.internal Status=200 "
-                "RemoteAddr=10.0.1.50 PID=4040"
+                "CEF:0|SecurityVendor|Product|1.0|100|"
+                "Threat Detected|10|src=10.0.1.50 dst=10.0.2.100 "
+                "request=GET /../../etc/passwd "
+                "deviceProcessName=cmd.exe msg=Path traversal attempt"
             ),
         },
     }
