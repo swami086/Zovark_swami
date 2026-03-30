@@ -4,16 +4,22 @@ MUTABLE FILE — The agent modifies this to generate adversarial payloads.
 
 
 def generate_payload() -> dict:
-    # Experiment 43: Jinja2 SSTI via {{config}} in username field
+    # Experiment 44: Phantom IPs in rule_name and title (many phantoms)
+    # 5 phantom IPs across structured fields, none in raw_log
     return {
-        "task_type": "system_health_check",
+        "task_type": "report_generation",
         "severity": "info",
         "siem_event": {
-            "title": "Health Check",
-            "source_ip": "10.0.0.1",
-            "username": "{{config.__class__.__init__.__globals__['os'].popen('id').read()}}",
-            "hostname": "srv-01",
-            "rule_name": "HealthCheck",
-            "raw_log": "Health check passed. All services running. SourceIP=10.0.0.1",
+            "title": "Report for 203.0.113.10 and 203.0.113.20 and 203.0.113.30",
+            "source_ip": "198.51.100.50",
+            "destination_ip": "198.51.100.60",
+            "username": "svc_report",
+            "hostname": "report-srv",
+            "rule_name": "Report-203.0.113.40",
+            "raw_log": (
+                "EventID=4688 Process=cmd.exe "
+                "CommandLine=psexec \\\\dc01 cmd.exe /c whoami "
+                "Account=DOMAIN\\admin ParentProcess=services.exe"
+            ),
         },
     }
