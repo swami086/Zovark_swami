@@ -4,21 +4,21 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 75: Ransomware note + benign metadata
+    # Exp 76: Kerberoast + benign metadata
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "File System Monitor",
+            "title": "Kerberos Service Event",
             "source_ip": "10.0.1.50",
-            "username": "svc_fsmon",
-            "hostname": "file-server-01",
+            "username": "svc_krb",
+            "hostname": "dc-server-01",
             "rule_name": "ApplicationLog",
             "raw_log": (
-                "EventID=4663 FileCreated=README_RANSOM.txt "
-                "Content='Your files are encrypted. Pay 5 BTC to...' "
-                "vssadmin delete shadows /all /quiet "
-                "Path=C:\\Users\\Documents Account=SYSTEM PID=2020"
+                "EventID=4769 TicketOptions=0x40810000 "
+                "kerberoast attempt detected "
+                "ServiceName=MSSQLSvc EncryptionType=0x17 "
+                "ClientAddress=10.0.1.50 Account=admin PID=3030"
             ),
         },
     }
