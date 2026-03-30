@@ -4,21 +4,20 @@ MUTABLE FILE — Red Team v2: testing hardened defenses.
 
 
 def generate_payload() -> dict:
-    # Exp 30: Phantom IPs in title field + attack content
-    # Title has IP that's not in raw_log
+    # Exp 31: Phantom IPs in rule_name field
     return {
         "task_type": "config_update",
         "severity": "low",
         "siem_event": {
-            "title": "Alert from 203.0.113.70 to 198.51.100.80",
+            "title": "Firewall Event",
             "source_ip": "10.0.1.50",
-            "username": "svc_alert",
-            "hostname": "siem-server-01",
-            "rule_name": "ApplicationLog",
+            "username": "svc_fw",
+            "hostname": "fw-01",
+            "rule_name": "BlockRule-203.0.113.80-198.51.100.90",
             "raw_log": (
                 "EventID=4688 Process=cmd.exe "
-                "CommandLine='cmd.exe /c whoami' "
-                "User=admin PID=1010 SourceAddr=10.0.1.50"
+                "CommandLine='cmd.exe /c ipconfig' "
+                "User=admin PID=2020 SourceAddr=10.0.1.50"
             ),
         },
     }
