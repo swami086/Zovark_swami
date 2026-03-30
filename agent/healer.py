@@ -35,6 +35,7 @@ import urllib.error
 from collections import deque
 from datetime import datetime, timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from pathlib import Path
 
 # ── Configuration ──────────────────────────────────────────────────────
@@ -314,7 +315,7 @@ def health_check(svc: ServiceState) -> tuple[bool, str]:
         elif svc.svc_type == "redis":
             return check_redis(svc.container_name)
         elif svc.svc_type == "temporal":
-            return check_temporal(svc.container_name)
+            return check_container_running(svc.container_name)
         elif svc.svc_type == "ollama":
             return check_http(f"{LLM_HOST}/api/tags")
         elif svc.svc_type == "worker":
@@ -578,6 +579,17 @@ def generate_daily_report():
 
 # ── Main Health Check Loop ────────────────────────────────────────────
 
+def _check_with_timeout(svc, timeout=15):
+    """Run health_check in a thread with hard timeout."""
+    result = [False, "check timed out"]
+    def target():
+        result[0], result[1] = health_check(svc)
+    t = threading.Thread(target=target, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    return result[0], result[1]
+
+
 def run_health_checks():
     """Execute health checks for all discovered services."""
     with lock:
@@ -585,7 +597,7 @@ def run_health_checks():
 
     for svc in svc_snapshot:
         now_str = datetime.now(timezone.utc).isoformat()
-        ok, detail = health_check(svc)
+        ok, detail = _check_with_timeout(svc, timeout=15)
 
         with lock:
             svc.last_check = now_str
@@ -1129,9 +1141,13 @@ class StatusHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "not found"}, 404)
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
 def start_api_server():
     """Start the status API server in a background thread."""
-    server = HTTPServer(("0.0.0.0", API_PORT), StatusHandler)
+    server = ThreadedHTTPServer(("0.0.0.0", API_PORT), StatusHandler)
     log.info("Status API + Sneakernet UI listening on http://0.0.0.0:%d", API_PORT)
     server.serve_forever()
 
@@ -1150,9 +1166,10 @@ def main():
     # Ensure log directory exists
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Start API server in background
+    # Start API server in background — must bind before health checks start
     api_thread = threading.Thread(target=start_api_server, daemon=True)
     api_thread.start()
+    time.sleep(2)  # Let API thread bind port before health checks block
 
     emit_event("INFO", "healer", "Fleet Agent started",
                f"interval={CHECK_INTERVAL}s, llm={LLM_MODEL}")
