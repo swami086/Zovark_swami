@@ -30,45 +30,62 @@ def add_ioc(ioc_type, value, source_field, snippet=""):
             "evidence_refs": [{"source": source_field, "raw_text": (snippet or str(value))[:60]}]
         })
 
-# --- DCSync Investigation Logic ---
+# --- DLL Sideloading Investigation Logic ---
 
 # Extract key fields from raw_log
-event_id_match = re.search(r"EventID=(\d+)", raw_log)
-properties_match = re.search(r"Properties=(\S+)", raw_log)
-subject_user_match = re.search(r"SubjectUserName=(\S+)", raw_log)
-subject_domain_match = re.search(r"SubjectDomainName=(\S+)", raw_log)
+process_match = re.search(r"Process=(\S+)", raw_log)
+dll_name_match = re.search(r"loaded\s+(unsigned|signed)\s+DLL\s+(\S+)", raw_log)
+dll_path_match = re.search(r"from\s+(C:\\[^\s]+(?:\s+[^\s]+)*?)(?:\s+PID=|\s*$)", raw_log)
+pid_match = re.search(r"PID=(\d+)", raw_log)
+user_match = re.search(r"User=(\S+)", raw_log)
 source_addr_match = re.search(r"SourceAddress=([0-9.]+)", raw_log)
 
-event_id = event_id_match.group(1) if event_id_match else ""
-properties = properties_match.group(1) if properties_match else ""
-subject_user = subject_user_match.group(1) if subject_user_match else ""
-subject_domain = subject_domain_match.group(1) if subject_domain_match else ""
+process_name = process_match.group(1) if process_match else ""
+dll_signed = dll_name_match.group(1) if dll_name_match else ""
+dll_name = dll_name_match.group(2) if dll_name_match else ""
+dll_path = dll_path_match.group(1).strip() if dll_path_match else ""
+pid = pid_match.group(1) if pid_match else ""
+log_user = user_match.group(1) if user_match else ""
 source_address = source_addr_match.group(1) if source_addr_match else ""
 
 # Key indicators
-is_replication_event = event_id == "4662"
-has_replication_properties = "Replicating-Directory-Changes" in properties
-is_machine_account = subject_user.endswith("$")
-is_normal_replication = "Normal replication" in raw_log
+is_unsigned = dll_signed == "unsigned"
+is_signed = dll_signed == "signed"
+
+# Suspicious paths (not System32, not Windows)
+suspicious_paths = ["C:\\Temp", "C:\\Users\\Public", "C:\\ProgramData", "C:\\Users\\"]
+is_suspicious_path = any(dll_path.startswith(p) or dll_path == p for p in suspicious_paths)
+
+# System paths (normal)
+system_paths = ["C:\\Windows\\System32", "C:\\Windows\\SysWOW64", "C:\\Windows\\"]
+is_system_path = any(dll_path.startswith(p) for p in system_paths)
+
+# Known sideloading processes
+sideload_processes = ["rundll32.exe", "msiexec.exe", "svchost.exe", "regsvr32.exe", "dllhost.exe"]
+is_known_sideload_host = process_name.lower() in sideload_processes
 
 # Risk scoring
-if is_replication_event and has_replication_properties and not is_machine_account:
-    # DCSync attack: replication request from non-DC (user account, not machine account)
-    risk_score = 92
-    findings.append("CRITICAL: Directory replication request from non-machine account '" + subject_user + "' — DCSync attack indicator")
-    findings.append("Domain: " + subject_domain)
-    findings.append("Properties: " + properties + " — used by mimikatz/impacket for credential theft")
-elif is_replication_event and is_machine_account:
-    # Normal: machine account (DC) doing replication
-    risk_score = 10
-    findings.append("Normal AD replication from domain controller account: " + subject_user)
-elif is_normal_replication:
-    # Explicitly marked as normal
+if is_unsigned and is_suspicious_path:
+    # Strong sideloading indicator: unsigned DLL from suspicious path
+    risk_score = 85
+    findings.append("CRITICAL: Unsigned DLL '" + dll_name + "' loaded from suspicious path '" + dll_path + "'")
+    findings.append("Host process: " + process_name + " (PID=" + pid + ")")
+    if is_known_sideload_host:
+        risk_score = 88
+        findings.append("Process '" + process_name + "' is a known DLL sideloading host")
+elif is_unsigned and not is_system_path:
+    risk_score = 70
+    findings.append("Unsigned DLL loaded from non-system path: " + dll_path)
+elif is_signed and is_system_path:
+    # Normal: signed DLL from system path
     risk_score = 5
-    findings.append("Normal replication cycle detected")
+    findings.append("Normal DLL load: signed '" + dll_name + "' from " + dll_path)
+elif is_signed:
+    risk_score = 10
+    findings.append("Signed DLL load from: " + dll_path)
 else:
-    risk_score = 20
-    findings.append("Directory access event with unrecognized pattern")
+    risk_score = 15
+    findings.append("DLL load event with unrecognized pattern")
 
 risk_score = min(100, max(0, risk_score))
 
@@ -79,8 +96,8 @@ if username:
     add_ioc("username", username, "username", username)
 if source_address and source_address != source_ip:
     add_ioc("ipv4", source_address, "raw_log", "SourceAddress=" + source_address)
-if subject_user and not is_machine_account and has_replication_properties:
-    add_ioc("username", subject_user, "raw_log", "SubjectUserName=" + subject_user)
+if dll_name and is_unsigned:
+    add_ioc("filename", dll_name, "raw_log", "loaded unsigned DLL " + dll_name)
 
 print(json.dumps({
     "findings": findings,
@@ -92,7 +109,7 @@ print(json.dumps({
 '''
 
 TEMPLATE_METADATA = {
-    "task_type": "dcsync",
-    "threat_types": ["dcsync", "credential_dumping", "ad_replication_abuse"],
-    "description": "Detect DCSync attacks — directory replication requests from non-DC accounts",
+    "task_type": "dll_sideloading",
+    "threat_types": ["dll_sideloading", "dll_hijacking", "defense_evasion"],
+    "description": "Detect DLL sideloading — unsigned DLLs loaded from suspicious paths by legitimate processes",
 }
