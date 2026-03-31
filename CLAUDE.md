@@ -652,6 +652,35 @@ Lab-only autonomous experimentation loops. Nothing enters production without hum
 
 ---
 
+## Observability
+
+- **OpenTelemetry tracing**: Signoz backend (self-hosted, ClickHouse-backed)
+- **Start**: `docker compose --profile tracing up -d`
+- **Signoz UI**: http://localhost:3301
+- **Disable**: `OTEL_ENABLED=false` (pipeline works without tracing)
+- **Traces show**: per-stage latency, per-tool execution, LLM call timing, governance decisions
+- **Streaming Waterfall**: real-time tool progress via PostgreSQL NOTIFY → SSE → React component
+
+## Code Graph RAG
+
+Semantic codebase knowledge graph for Claude Code.
+
+```bash
+# Install
+npm install -g @er77/code-graph-rag-mcp
+
+# Register with Claude Code
+claude mcp add-json code-graph-rag '{"command":"npx","args":["@er77/code-graph-rag-mcp","C:/Users/vinay/Desktop/HYDRA/hydra-mvp"],"env":{"MCP_TIMEOUT":"80000"}}'
+
+# Index codebase (run in Claude Code)
+# Use batch_index tool, continue until 100%
+
+# Query
+# Ask natural language questions about the codebase
+```
+
+---
+
 ## Known Issues
 
 1. **Healer HTTP thread** — Blocks during health check cycles on Windows Docker Desktop (GIL + subprocess contention). Async fix applied but Windows GIL issue persists. Works on Linux.
