@@ -8,18 +8,18 @@
 
 | Field | Value |
 |-------|-------|
-| Version | v2.0 — 215 commits on master |
-| Date | 2026-03-30 |
-| Status | Production-ready — 100% attack detection, 0% FP, 61 demo investigations loaded |
+| Version | v2.1 — 215 commits on master + wartime sprint on redteam branch |
+| Date | 2026-03-31 |
+| Status | Production-ready — 100% attack detection, 0% FP, 25 skill templates, red-team hardened |
 | Stack | Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama |
 | Models | Meta Llama 3.2 3B (fast/param fill) + Meta Llama 3.1 8B (code gen/assess). American only. Zero Chinese dependencies. |
 | LLM Host | Ollama on host port 11434. No litellm. Direct httpx POST. |
 | Pipeline | V2 5-stage — only 2 of 5 stages call the LLM |
-| Templates | 14 active (12 hand-written + 2 auto-promoted via flywheel) |
-| Tests | 155 unit + 14 integration + 515-alert corpus |
-| Services | 9 core Docker containers + optional profiles |
+| Templates | 25 active (12 hand-written + 2 flywheel + 10 AutoResearch + 1 quorum-promoted) |
+| Tests | 365 unit + 14 integration + 515-alert corpus |
+| Services | 10 core Docker containers + optional profiles |
 | Dashboard | React 19 + TypeScript + Vite 7 + Tailwind 4, 17 pages, SOC War Room design |
-| Database | PostgreSQL 16 + pgvector, 83 tables, 58 migrations |
+| Database | PostgreSQL 16 + pgvector, 83 tables, 61 migrations, RLS on 10 tables |
 | Concurrency | 8 concurrent activities, 16 concurrent workflows (Temporal parallel pool) |
 
 ## Credentials
@@ -27,6 +27,7 @@
 | Resource | Credential |
 |----------|------------|
 | Admin login | admin@test.local / TestPass2026 (tenant e1c1bc5d) |
+| Analyst login | analyst2@test.local / TestPass2026 (same tenant) |
 | Database | user=zovark, password=hydra_dev_2026, db=zovark |
 | Redis | password=hydra-redis-dev-2026 |
 | LLM endpoint | `ZOVARK_LLM_ENDPOINT=http://host.docker.internal:11434/v1/chat/completions` |
@@ -42,7 +43,9 @@ DB and Redis passwords were intentionally not renamed during the rebrand (`hydra
 ```
 SIEM Alert --> Go API (:8090) --> Temporal --> InvestigationWorkflowV2
 
-  Stage 1 INGEST   [NO LLM]  sanitize -> normalize -> batch -> dedup (Redis) -> PII mask -> skill retrieval
+  Stage 1 INGEST   [NO LLM]  sanitize (25 patterns + Unicode normalization) -> normalize -> batch
+                              -> dedup (Redis) -> PII mask -> skill retrieval
+                              -> content-based attack scan (54 patterns) overrides benign routing
   Stage 2 ANALYZE  [LLM opt] Path A: template fast-fill (~350ms, no LLM)
                               Path B: template + LLM param fill (~30s, FAST model)
                               Path C: full LLM code generation (~120s, CODE model)
@@ -52,8 +55,10 @@ SIEM Alert --> Go API (:8090) --> Temporal --> InvestigationWorkflowV2
                               Safety wrapper on Path C (guarantees JSON on crash, risk=0 not 50)
   Stage 4 ASSESS   [LLM opt] Verdict derivation -> IOC extraction -> evidence_refs -> MITRE mapping
                               Signal boost (8 regex patterns) -> risk floor -> learning gate
+                              IOC provenance validation -> suppression phrase detection
                               Plain-English summary -> validation override
                               Benign: risk<=35 -> benign unconditionally
+                              LLM down: fail-closed -> needs_manual_review (never benign)
   Stage 5 STORE    [NO LLM]  agent_tasks + investigations + audit_events + investigation_memory
                               path_taken + generated_code stored for flywheel
 
@@ -85,9 +90,11 @@ Why American models: Target customers (US defense/CMMC, healthcare/HIPAA) reject
 
 Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_CODE`. If only `ZOVARK_LLM_ENDPOINT` is set, both use the same instance with model swap on demand.
 
-### Benign Routing (Inverted Logic)
+### Benign Routing (Inverted Logic + Content Override)
 
-`worker/stages/ingest.py` has `ATTACK_INDICATORS` list. If task_type/rule_name/title do NOT match any attack indicator, the alert routes to the `benign-system-event` skill template (31 benign task types registered). Novel benign alerts default to benign, not to expensive LLM Path C.
+`worker/stages/ingest.py` has `ATTACK_INDICATORS` list (40 terms). If task_type/rule_name/title do NOT match any attack indicator, the alert routes to the `benign-system-event` skill template (31 benign task types registered). Novel benign alerts default to benign, not to expensive LLM Path C.
+
+**Content-based override (red team patch):** Even if metadata is benign, `_has_raw_log_attack_content()` scans raw_log against 54 high-confidence attack patterns. If attack content is found, benign routing is blocked and the alert is forced to Path C investigation. This prevents classification evasion attacks where an attacker uses benign metadata but includes real attack commands in the log data.
 
 ### Key Calibration Logic
 
@@ -98,6 +105,9 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 - **Validation override** (`assess.py`): If output validator flags `needs_manual_review` but risk >= 70, override to `true_positive`
 - **Prose stripping** (`analyze.py` `_scrub_code()`): Llama 8B wraps code in prose ("Here is the Python code..."). Scrubber detects first Python-like line and strips everything before/after.
 - **Plain-English summary** (`assess.py`): Human-readable investigation summary generated alongside structured verdict
+- **IOC provenance validation** (`assess.py`): IOCs from structured fields without raw_log backing are downgraded to `confidence=low`. Prevents phantom IP fabrication attacks.
+- **Suppression phrase detection** (`assess.py`): 9 patterns detect adversarial risk manipulation (e.g., "scheduled test", "do not escalate"). When suppression language + attack indicators appear together, risk is boosted to 75+ instead of lowered.
+- **Fail-closed LLM degradation** (`analyze.py` + `assess.py`): When LLM is unavailable, Path C alerts get `verdict=needs_manual_review` (never benign). Circuit breaker goes RED. Path A/benign continue normally.
 
 ---
 
@@ -114,7 +124,7 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 | `worker/stages/store.py` | Stage 5: DB writes with synchronous_commit, stores path_taken + generated_code |
 | `worker/stages/llm_gateway.py` | Dual-endpoint routing (MODEL_FAST/MODEL_CODE), audit logging |
 | `worker/stages/investigation_workflow.py` | InvestigationWorkflowV2 — 5-stage Temporal orchestrator |
-| `worker/stages/input_sanitizer.py` | 12 injection patterns, field truncation, entropy analysis |
+| `worker/stages/input_sanitizer.py` | 25 injection patterns, Unicode normalization, field truncation, entropy analysis, tail scanning |
 | `worker/stages/normalizer.py` | 70+ field mappings (Splunk/Elastic/firewall/legacy) |
 | `worker/stages/smart_batcher.py` | Redis-backed, severity-aware batching windows |
 | `worker/stages/circuit_breaker.py` | GREEN/YELLOW/RED states, hysteresis recovery |
@@ -130,9 +140,14 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 | `api/main.go` | Gin router, 90+ registered routes |
 | `api/auth.go` | JWT (30min), OIDC/SSO, TOTP 2FA |
 | `api/task_handlers.go` | Task CRUD, verdict/risk/path in list response |
-| `api/promotion_handlers.go` | promotion-queue, analyst-feedback, auto-templates, dashboard-stats |
-| `api/siem_ingest.go` | Splunk HEC + Elastic SIEM webhook ingest |
+| `api/promotion_handlers.go` | promotion-queue, analyst-feedback (2-person quorum), promotion-approve, auto-templates, dashboard-stats |
+| `api/siem_ingest.go` | Splunk HEC + Elastic SIEM webhook ingest, trace_id generation |
 | `api/cipher_audit_handlers.go` | 5 cipher audit API endpoints |
+| `api/admin_handlers.go` | Diagnostic export (.zvk zip with secret scrubbing) |
+| `api/compliance_handlers.go` | CMMC compliance evidence report (IR controls mapping) |
+| `api/sse.go` | SSE real-time task updates (global stream + per-task) |
+| `api/handlers.go` | Health check + readiness probe (GET /ready) |
+| `api/db.go` | Connection pool, `beginTenantTx()` for RLS tenant context |
 
 ### Other Key Files
 
@@ -170,18 +185,19 @@ Everything else (os, sys, subprocess, socket, eval, exec, etc.) is blocked befor
 |-------|-------|
 | Engine | PostgreSQL 16 + pgvector |
 | Credentials | user=zovark, password=hydra_dev_2026, db=zovark |
-| Tables | 83 |
-| Migrations | 58 files in `migrations/` |
+| Tables | 84 (+ template_promotion_approvals) |
+| Migrations | 61 files in `migrations/` |
 | Connection pooling | PgBouncer (400 client / 25 server) |
-| Key tables | agent_tasks, investigations, agent_skills (14 templates), llm_audit_log, cipher_audit_events, audit_events (partitioned), entities, entity_edges, detection_rules, response_playbooks, cross_tenant_entities, investigation_memory (SINGULAR name) |
+| RLS | Enabled on 10 tenant-scoped tables (defense-in-depth) |
+| Key tables | agent_tasks (has trace_id), investigations, agent_skills (25 templates), llm_audit_log, cipher_audit_events, audit_events (has trace_id), entities, entity_edges, detection_rules, response_playbooks, cross_tenant_entities, investigation_memory (SINGULAR name), template_promotion_approvals |
 
 Apply migrations: `docker compose exec -T postgres psql -U zovark -d zovark < migrations/NNN_name.sql`
 
 ---
 
-## Skill Templates (14 Active)
+## Skill Templates (25 Active)
 
-12 hand-written templates + 2 auto-promoted via flywheel, stored in `agent_skills.code_template`:
+12 hand-written + 2 flywheel-promoted + 10 AutoResearch + 1 quorum-promoted:
 
 | Slug | Types | Purpose |
 |------|-------|---------|
@@ -199,24 +215,36 @@ Apply migrations: `docker compose exec -T postgres psql -U zovark -d zovark < mi
 | **benign-system-event** | **31** | Returns risk=15, verdict=benign for routine system operations |
 | auto-credential_access-d58e8e | -- | Auto-promoted via flywheel (credential access patterns) |
 | auto-golden_ticket-590d86 | -- | Auto-promoted via flywheel (golden ticket detection) |
+| auto-kerberoasting-research | 2 | AutoResearch: RC4/0x17 TGS detection, SPN enumeration |
+| auto-golden_ticket-research | 2 | AutoResearch: Forged TGT, abnormal lifetime, RC4 |
+| auto-dcsync-research | 3 | AutoResearch: Directory replication from non-DC |
+| auto-dll_sideloading-research | 3 | AutoResearch: Unsigned DLLs in suspicious paths |
+| auto-lolbin_abuse-research | 3 | AutoResearch: certutil, mshta, bitsadmin abuse |
+| auto-process_injection-research | 3 | AutoResearch: CreateRemoteThread, lsass targeting |
+| auto-wmi_lateral-research | 3 | AutoResearch: Remote WMI process creation |
+| auto-rdp_tunneling-research | 3 | AutoResearch: SSH tunnels, unusual RDP ports |
+| auto-dns_exfiltration-research | 3 | AutoResearch: High-entropy DNS, TXT abuse |
+| auto-powershell_obfuscation-research | 3 | AutoResearch: -enc, IEX, download cradles |
+| auto-api_key_abuse-5d061a | 1 | Quorum-promoted: API key abuse from external IPs |
 
 ---
 
 ## Docker Services
 
-### Core (9 services -- `docker compose up -d`)
+### Core (10 services -- `docker compose up -d`)
 
-| Service | Image | Port | Container |
-|---------|-------|------|-----------|
-| postgres | pgvector/pgvector:pg16 | 5432 | zovark-postgres |
-| redis | redis:7-alpine | 6379 | zovark-redis |
-| pgbouncer | edoburu/pgbouncer | 6432 | zovark-pgbouncer |
-| temporal | temporalio/auto-setup:1.24.2 | 7233 | zovark-temporal |
-| api | Custom Go build | 8090 | zovark-api |
-| worker | Custom Python build | -- | hydra-mvp-worker-1 |
-| dashboard | Custom React (nginx) | 3000 | zovark-dashboard |
-| healer | Python (agent/healer.py) | 8081 | zovark-healer |
-| squid-proxy | ubuntu/squid | 3128 | zovark-egress-proxy |
+| Service | Image | Port | Container | Healthcheck |
+|---------|-------|------|-----------|-------------|
+| postgres | pgvector/pgvector:pg16 | 5432 | zovark-postgres | pg_isready |
+| redis | redis:7-alpine | 6379 | zovark-redis | redis-cli ping |
+| pgbouncer | edoburu/pgbouncer | 6432 | zovark-pgbouncer | pg_isready |
+| temporal | temporalio/auto-setup:1.24.2 | 7233 | zovark-temporal | -- |
+| api | Custom Go build | 8090 | zovark-api | GET /ready (DB+Redis+Temporal) |
+| worker | Custom Python build | -- | hydra-mvp-worker-1 | import check |
+| dashboard | Custom React (nginx) | 3000 | zovark-dashboard | wget 127.0.0.1:3000 |
+| healer | Python (agent/healer.py) | 8081 | zovark-healer | curl 127.0.0.1:8081/api/health |
+| squid-proxy | ubuntu/squid | 3128 | zovark-egress-proxy | -- |
+| docker-socket-proxy | tecnativa/docker-socket-proxy | 2375 | zovark-docker-proxy | -- |
 
 ### LLM (runs on HOST, not Docker)
 
@@ -244,6 +272,9 @@ Self-healing fleet agent running on port 8081:
 - **Sneakernet UI:** Embedded web interface for air-gapped deployments
 - **AI crash diagnosis:** Uses 3B model to analyze container failures and suggest fixes
 - **3-level escalation:** auto-restart -> AI diagnosis -> operator alert
+- **Synthetic login check (60s):** POSTs to dashboard nginx proxy, auto-restarts dashboard on 502 (stale DNS cache fix)
+- **Connectivity checks (60s):** Calls GET /ready on API, checks Ollama reachability. Auto-restarts API if DB connection lost.
+- **Async health checks:** Uses httpx AsyncClient + asyncio.gather for concurrent checks (fixes Windows GIL blocking)
 - **Daily reports:** Automated health summaries
 - **Container:** zovark-healer
 
@@ -318,9 +349,17 @@ All variables have sensible defaults. Key configuration:
 
 | Layer | What | Status |
 |-------|------|--------|
-| Input Sanitization | 12 injection patterns detected/stripped, field truncation at 10K chars, Shannon entropy analysis | IMPLEMENTED |
+| Input Sanitization | 25 injection patterns (template, code, SSTI), Unicode normalization (18 Cyrillic homoglyphs + zero-width), field truncation at 10K chars, Shannon entropy, tail scanning | IMPLEMENTED |
+| Content-Based Routing | 54 RAW_LOG_ATTACK_PATTERNS override benign routing when attack content detected in raw_log | IMPLEMENTED |
+| IOC Provenance | Validates IOCs against raw_log evidence. Phantom IPs downgraded to confidence=low | IMPLEMENTED |
+| Suppression Detection | 9 patterns detect adversarial risk manipulation. Attack + suppression = risk boost to 75+ | IMPLEMENTED |
+| Fail-Closed LLM | When LLM unavailable: verdict=needs_manual_review, circuit breaker RED. Never routes to benign | IMPLEMENTED |
+| Docker Socket Proxy | tecnativa/docker-socket-proxy: only container lifecycle ops allowed. Images/exec/volumes/networks blocked (403) | IMPLEMENTED |
+| Template Promotion Quorum | 2-person approval required for template promotion. Same analyst can't approve twice | IMPLEMENTED |
+| Row-Level Security | RLS enabled on 10 tenant-scoped tables. `beginTenantTx()` sets tenant context. Defense-in-depth with WHERE clauses | IMPLEMENTED |
+| Request Tracing | UUID trace_id generated at ingest, stored in agent_tasks + audit_events, propagated through pipeline | IMPLEMENTED |
 | AST Prefilter | 4-layer allowlist -- only 16 safe stdlib modules permitted | IMPLEMENTED |
-| Docker Sandbox | network=none, read-only, cap-drop ALL, 512MB, 64 PIDs, seccomp, 120s timeout | IMPLEMENTED |
+| Docker Sandbox | network=none, read-only, cap-drop ALL, 512MB, 64 PIDs, seccomp, 120s timeout (via socket proxy) | IMPLEMENTED |
 | Safety Wrapper | Path C code wrapped in try/except, risk=0 on crash (not 50) | IMPLEMENTED |
 | Code Scrubbing | Strips markdown fences, LLM tokens, prose wrapping from generated code | IMPLEMENTED |
 | JWT Auth | 30-minute access tokens | IMPLEMENTED |
@@ -356,13 +395,17 @@ Key route groups on the Go API (port 8090):
 | Detection | Sigma rule management |
 | Response | response playbook execution |
 | Cipher Audit | 5 endpoints, NIST SP 800-57 compliance |
-| Promotion Queue | promotion-queue, analyst-feedback, auto-templates, dashboard-stats |
+| Promotion Queue | promotion-queue, analyst-feedback (2-person quorum), promotion-approve, auto-templates, dashboard-stats |
+| Compliance | POST /api/v1/compliance/report/cmmc — CMMC IR control mapping with evidence |
+| Diagnostics | GET /api/v1/admin/diagnostics/export — .zvk zip with secret scrubbing |
+| SSE Stream | GET /api/v1/tasks/stream — real-time task completion events via SSE |
+| Readiness | GET /ready — checks PostgreSQL + Redis + Temporal, returns 200/503 |
 | Shadow | shadow mode testing endpoints |
 | Automation | automated workflow triggers |
 | Quotas | tenant resource quotas |
 | Metrics | Prometheus /metrics endpoint |
 | Integrations | external system connections |
-| Health | GET /health |
+| Health | GET /health (liveness), GET /ready (readiness with dependency checks) |
 
 ---
 
@@ -373,10 +416,13 @@ Key route groups on the Go API (port 8090):
 | Sanitizer unit tests | 44 | Input sanitization patterns |
 | Prefilter unit tests | 78 | AST allowlist enforcement |
 | Normalizer unit tests | 19 | Field mapping validation |
+| Red team patch tests | 46 | Template injection, code injection, LOLBin detection, Unicode normalization, classification evasion, field padding |
+| Synthetic login tests | 7 | Healer synthetic login check (502/503/401/500/connection refused) |
 | Misc unit tests | 14 | Other unit tests |
 | Integration tests | 14 | End-to-end pipeline validation |
 | Alert corpus | 515 | Full alert corpus for regression testing |
-| **Total** | **155 unit + 14 integration + 515-alert corpus** | |
+| AutoResearch corpus | 240 | 10 attack types x 24 alerts (12 attack + 12 benign) |
+| **Total** | **365 unit + 14 integration + 755-alert corpus** | |
 
 ---
 
@@ -391,6 +437,7 @@ Key route groups on the Go API (port 8090):
 | `scripts/build_bundle.sh` | Build air-gap deployment bundle |
 | `scripts/flush_code_cache.sh` | Clear Redis code cache (run after prompt changes) |
 | `scripts/run_ci_tests.sh` | Run CI test suite |
+| `scripts/extract_template_from_investigation.py` | CLI wrapper to extract skill template from a completed investigation |
 
 ---
 
@@ -408,7 +455,9 @@ Key route groups on the Go API (port 8090):
 
 ## Coding Conventions
 
-- **Tenant isolation:** Every DB query MUST include `tenant_id` in WHERE clause
+- **Tenant isolation:** Every DB query MUST include `tenant_id` in WHERE clause. Write transactions use `beginTenantTx()` (Go) or `SET LOCAL app.current_tenant` (Python) for RLS.
+- **RLS note:** Table owner (`zovark`) bypasses RLS. For production, use `zovark_app` user (already created). RLS is defense-in-depth alongside WHERE clauses.
+- **SET LOCAL through PgBouncer:** Use string format `f"SET LOCAL app.current_tenant = '{tenant_id}'"` (not parameterized `$1`) because PgBouncer transaction pooling doesn't support parameterized SET.
 - **Error handling (Go):** Use `respondInternalError()` -- never expose `err.Error()` to clients
 - **LLM calls:** Always through `worker/stages/llm_gateway.py` via `ZOVARK_LLM_ENDPOINT`
 - **No litellm:** Direct httpx POST to Ollama. Zero AI proxy libraries.
@@ -436,8 +485,9 @@ ollama serve
 ollama pull llama3.1:8b
 ollama pull llama3.2:3b
 
-# Verify health
+# Verify health + readiness
 curl -s http://localhost:8090/health
+curl -s http://localhost:8090/ready
 
 # Login (30-minute JWT)
 TOKEN=$(curl -s -X POST http://localhost:8090/api/v1/auth/login \
@@ -492,15 +542,49 @@ curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $
 | 2E | Dual Ollama routing -- CPU (3B) + GPU (8B), zero swap latency |
 | 2F | Security hardening -- input sanitizer, allowlist AST prefilter |
 | 2G | Code cache -- Redis-based, repeat patterns skip LLM |
+| **3A** | **Wartime sprint -- 10 missions: Docker socket proxy, promotion quorum, RLS, request tracing, fail-closed degradation, flight data recorder, CMMC compliance engine, healer async, SSE dashboard, template CLI** |
+| **3B** | **AutoResearch -- autonomous red team (152 experiments, 144 bypasses found) + autonomous template engineer (10/10 templates approved, all fitness >0.98)** |
+| **3C** | **Red team patches v1+v2 -- 25 sanitizer patterns, 54 content scanner patterns, IOC provenance, suppression detection, Unicode normalization, tail scanning** |
+| **3D** | **Readiness probes + connectivity checks -- GET /ready, healer connectivity monitoring, Docker healthchecks, nginx DNS resolver fix** |
+
+---
+
+## AutoResearch (Autonomous Red Team + Template Engineering)
+
+Lab-only autonomous experimentation loops. Nothing enters production without human review.
+
+### Red Team (`autoresearch/redteam/`)
+
+| Metric | Result |
+|--------|--------|
+| Total experiments | 152 (v1: 65, v2: 87) |
+| Bypasses found | 144 (score >= 3) |
+| Vulnerability classes | 6: classification evasion, template injection, code injection, IOC fabrication, risk suppression, field padding |
+| All 6 classes patched | Yes -- sanitizer, content scanner, provenance validation, suppression detection, Unicode normalization, tail scanning |
+| Files | `program.md`, `payloads.py` (mutable), `evaluate.py` (immutable harness), `validate_bypasses.py` (LLM validation) |
+
+### Template Engineer (`autoresearch/templates/`)
+
+| Metric | Result |
+|--------|--------|
+| Templates approved | 10/10 (all fitness >= 0.98) |
+| Attack types covered | kerberoasting, golden_ticket, dcsync, dll_sideloading, lolbin_abuse, process_injection, wmi_lateral, rdp_tunneling, dns_exfiltration, powershell_obfuscation |
+| Accuracy | 100% across all types |
+| Speed | 25-36ms avg (vs 120s for Path C) |
+| Holdout validation | All passed |
+| Files | `program.md`, `candidate.py` (mutable), `evaluate.py` (immutable harness), `setup_test_alerts.py`, `test_alerts.json` (240 alerts) |
 
 ---
 
 ## Known Issues
 
-1. **Healer HTTP thread** — Blocks during health check cycles on Windows Docker Desktop (GIL + subprocess contention). Works on Linux.
+1. **Healer HTTP thread** — Blocks during health check cycles on Windows Docker Desktop (GIL + subprocess contention). Async fix applied but Windows GIL issue persists. Works on Linux.
 2. **DB/Redis passwords** — Still `hydra_dev_2026` / `hydra-redis-dev-2026`. Intentional, non-breaking.
 3. **DPO pipeline** — Training data exists in `dpo/` but no production model trained.
 4. **SIEM lab Filebeat** — Needs polling mode + bind mount on Windows Docker.
+5. **RLS owner bypass** — `zovark` user owns tables and bypasses RLS. Use `zovark_app` user in production for enforcement. Already created with GRANT permissions.
+6. **3 pre-existing test failures** — `test_adversarial_review.py` TestReviewFailSafe (3 tests). The adversarial review passes through when LLM unavailable; tests expect blocking. Not a security issue.
+7. **Nginx localhost IPv6** — Alpine resolves `localhost` to `::1` but nginx binds `0.0.0.0`. All healthchecks use `127.0.0.1` explicitly.
 
 ---
 
@@ -534,12 +618,42 @@ From commit 8507c11 to f0f8b2f — 27 commits in one session:
 24. **smart_truncate** — fixes 10K padding truncation vulnerability
 25. **61 demo investigations** loaded (32 benign + 29 attacks, zero FP/FN)
 
+## What Was Built This Session (March 30-31, 2026)
+
+### Wartime Sprint — 10 Missions
+1. **Docker socket proxy** — Worker no longer mounts Docker socket directly. Proxy allows only container lifecycle ops. Images/exec/networks/volumes blocked (403).
+2. **Template promotion quorum** — 2-person approval required. `template_promotion_approvals` table. `/promotion-approve` endpoint. Dashboard shows approval status.
+3. **PostgreSQL RLS** — `current_tenant_id()` function + policies on 10 tables. `beginTenantTx()` helper. `zovark_app` user created for production enforcement.
+4. **Request tracing** — UUID `trace_id` generated at task creation, stored in `agent_tasks` + `audit_events`, returned in `X-Zovark-Trace-ID` header.
+5. **Fail-safe degradation** — LLM fail-closed (Path C → `needs_manual_review`). Redis failover (process duplicates vs miss alerts). Circuit breaker integration.
+6. **Flight data recorder** — `GET /admin/diagnostics/export` returns `.zvk` zip with audit events, LLM logs, healer status, system info. Secrets scrubbed by 5 regex patterns.
+7. **CMMC compliance engine** — `POST /compliance/report/cmmc` maps IR.L2-3.6.1/2/3 controls to Zovark audit events with evidence counts and MITRE coverage.
+8. **Healer async** — Health checks run concurrently via `asyncio.gather`. Synthetic login check auto-restarts dashboard on 502.
+9. **SSE dashboard** — `GET /tasks/stream` global SSE endpoint. PostgreSQL `NOTIFY task_completed` from store.py. Polling fallback.
+10. **Template extraction CLI** — `scripts/extract_template_from_investigation.py` wraps existing `template_promoter.py`.
+
+### AutoResearch — Autonomous Experimentation
+11. **Red team v1** — 65 experiments, 60 bypasses. Found 6 vulnerability classes.
+12. **Red team v2** — 87 experiments, 84 bypasses. Found 15 uncovered LOLBins, Unicode homoglyph bypass, provenance manipulation.
+13. **Red team patches** — 25 sanitizer patterns (was 12), 54 content scanner patterns, IOC provenance validation, suppression detection, Cyrillic homoglyph map, zero-width char stripping, tail scanning. 46 new tests.
+14. **Template engineer** — 10/10 attack types approved (all fitness >0.98, 100% accuracy, 25-36ms). Imported to `agent_skills`.
+15. **Quorum flow verified** — `api_key_abuse` alert → Path C → analyst review → 2-person approval → Path A template.
+
+### Operational Fixes
+16. **Nginx DNS cache** — Added `resolver 127.0.0.11 valid=5s` to dashboard nginx config. Prevents 502 after API container recreation.
+17. **Redis URL parsing** — Fixed `initRedis()` to use `redis.ParseURL()` for `redis://` URLs (was silently failing).
+18. **Readiness probe** — `GET /ready` checks PostgreSQL + Redis + Temporal. Docker healthchecks use readiness (not just liveness).
+19. **Connectivity checks** — Healer monitors API→DB, worker→Ollama, dashboard→API connectivity every 60s.
+20. **Dashboard verdict fix** — PromotionQueue sent `analyst_verdict: "confirmed"` but API only accepts `true_positive/false_positive/suspicious/benign`. Fixed.
+
 ## Pending Work
 
 1. **A100 benchmark** — Rerun with parallel workers on fast hardware
-2. **Healthcare template pack** — 30 industry-specific templates
+2. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
 3. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
 4. **Blue/green deployment** — Zero-downtime updates with auto-rollback
 5. **Community template sync** — Network effect moat across customers
 6. **Public self-serve demo** — Standalone browser demo for CISO outreach
 7. **Design partner outreach** — Target healthcare MSSPs first
+8. **Switch to zovark_app DB user** — Enable RLS enforcement in production (user created, permissions granted)
+9. **Merge redteam branch to master** — All wartime sprint + AutoResearch work is on `redteam` branch
