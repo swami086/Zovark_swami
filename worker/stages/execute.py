@@ -276,14 +276,11 @@ def _execute_v3_tools(data: dict) -> dict:
 
     plan = data.get("plan", [])
     siem_event = data.get("siem_event", {})
-    tenant_id = data.get("tenant_id", "")
     history_context = data.get("history_context", {"investigations": []})
     institutional_knowledge = data.get("institutional_knowledge", {})
 
     if not plan:
-        return asdict(ExecuteOutput(
-            stderr="No tool plan provided", exit_code=1, status="failed",
-        ))
+        raise ValueError("No tool plan provided")
 
     start_time = time.time()
     result = execute_plan(
@@ -292,6 +289,9 @@ def _execute_v3_tools(data: dict) -> dict:
         institutional_knowledge=institutional_knowledge,
     )
     execution_ms = int((time.time() - start_time) * 1000)
+
+    if not isinstance(result, dict) or "risk_score" not in result:
+        raise ValueError(f"Tool runner returned invalid result: {type(result)}")
 
     return asdict(ExecuteOutput(
         stdout=json.dumps(result, default=str),
@@ -303,58 +303,39 @@ def _execute_v3_tools(data: dict) -> dict:
         risk_score=result.get("risk_score", 0),
         recommendations=[],
         execution_ms=execution_ms,
+        execution_mode="tools",
+        path_d_fallback=False,
+        path_d_reason="",
     ))
 
 
-# --- Main entry point ---
-@activity.defn
-async def execute_investigation(data: dict) -> dict:
-    """
-    Stage 3: Execute investigation code (v2 sandbox) or tool plan (v3 in-process).
-    NO LLM calls. Security: AST prefilter + Docker sandbox (v2) or deterministic tools (v3).
-
-    Input: {"code": str, "task_type": str} (v2) or {"plan": list, "siem_event": dict} (v3)
-    Returns: dict (serializable ExecuteOutput fields)
-    """
-    # V3 tool-calling mode
-    execution_mode = data.get("execution_mode", EXECUTION_MODE)
-    if execution_mode == "tools" and data.get("plan"):
-        return _execute_v3_tools(data)
-
-    # === V2 SANDBOX MODE (legacy, behind feature flag) ===
+def _execute_v2_sandbox(data: dict) -> dict:
+    """V2 sandbox execution: AST prefilter + Docker sandbox."""
     code = data.get("code", "")
-    task_type = data.get("task_type", "")
 
     if not code:
-        return asdict(ExecuteOutput(
-            stderr="No code provided", exit_code=1, status="failed"
-        ))
+        raise ValueError("No code provided for v2 sandbox")
 
-    # Step 1: AST prefilter (no LLM, <1ms)
+    # AST prefilter
     is_safe, reason = _ast_check(code)
     if not is_safe:
-        return asdict(ExecuteOutput(
-            stderr=f"AST prefilter blocked: {reason}", exit_code=1, status="failed"
-        ))
+        raise ValueError(f"AST prefilter blocked: {reason}")
 
-    # Step 1.5: Safety wrapper ONLY for LLM-generated code (Path C)
-    # Template code (Path A/B) already produces valid JSON — wrapping breaks it
+    # Safety wrapper for LLM-generated code (Path C)
     code_source = data.get("source", "")
     if code_source == "llm":
         code = _wrap_code_safely(code)
 
     activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}, DOCKER_HOST={DOCKER_HOST or 'local-socket'}")
 
-    # Step 2: Execute
     if FAST_FILL:
         raw = _run_fast_fill(code)
     else:
         raw = _run_in_sandbox(code)
 
-    # Step 3: Parse results
     parsed = _parse_stdout(raw.get("stdout", ""))
 
-    result = ExecuteOutput(
+    return asdict(ExecuteOutput(
         stdout=raw.get("stdout", ""),
         stderr=raw.get("stderr", ""),
         exit_code=raw.get("exit_code", -1),
@@ -364,6 +345,73 @@ async def execute_investigation(data: dict) -> dict:
         risk_score=parsed.get("risk_score", 0),
         recommendations=parsed.get("recommendations", []),
         execution_ms=raw.get("execution_ms", 0),
-    )
+        execution_mode="sandbox",
+        path_d_fallback=False,
+        path_d_reason="",
+    ))
 
-    return asdict(result)
+
+# --- Main entry point ---
+@activity.defn
+async def execute_investigation(data: dict) -> dict:
+    """
+    Stage 3: Execute investigation code (v2 sandbox) or tool plan (v3 in-process).
+
+    Paths:
+      tools   → v3 in-process tool runner (default)
+      sandbox → v2 Docker sandbox (global feature flag)
+      Path D  → per-investigation fallback from v3 to v2 on failure
+
+    Input: {"code": str, "task_type": str} (v2) or {"plan": list, "siem_event": dict} (v3)
+    Returns: dict (serializable ExecuteOutput fields)
+    """
+    execution_mode = data.get("execution_mode", EXECUTION_MODE)
+
+    # Global v2 sandbox mode
+    if execution_mode == "sandbox":
+        try:
+            return _execute_v2_sandbox(data)
+        except Exception as e:
+            return asdict(ExecuteOutput(
+                stderr=str(e)[:500], exit_code=1, status="failed",
+                execution_mode="sandbox",
+            ))
+
+    # V3 tool-calling mode with Path D fallback
+    if data.get("plan"):
+        try:
+            return _execute_v3_tools(data)
+        except Exception as e:
+            activity.logger.warning(
+                f"v3 tool runner failed, falling back to v2 sandbox (Path D): {e}"
+            )
+            # Path D: fall back to v2 sandbox for THIS investigation
+            try:
+                v2_result = _execute_v2_sandbox(data)
+                # Tag as Path D fallback
+                v2_result["execution_mode"] = "sandbox_fallback"
+                v2_result["path_d_fallback"] = True
+                v2_result["path_d_reason"] = str(e)[:200]
+                return v2_result
+            except Exception as e2:
+                activity.logger.error(f"Path D v2 fallback also failed: {e2}")
+                return asdict(ExecuteOutput(
+                    stderr=f"v3: {str(e)[:200]}; v2: {str(e2)[:200]}",
+                    exit_code=1,
+                    status="failed",
+                    findings=[{"title": "Investigation failed", "severity": "critical",
+                               "description": f"Both v3 tool runner and v2 sandbox failed"}],
+                    risk_score=0,
+                    execution_mode="failed",
+                    path_d_fallback=True,
+                    path_d_reason=f"v3: {str(e)[:100]}; v2: {str(e2)[:100]}",
+                ))
+
+    # Fallthrough: v2 sandbox for code-based execution (existing workflows)
+    try:
+        return _execute_v2_sandbox(data)
+    except Exception as e:
+        return asdict(ExecuteOutput(
+            stderr=str(e)[:500], exit_code=1, status="failed",
+            execution_mode="sandbox",
+        ))

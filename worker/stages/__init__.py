@@ -62,6 +62,10 @@ class ExecuteOutput:
     recommendations: List[str] = field(default_factory=list)
     execution_ms: int = 0
     retries_used: int = 0
+    # v3 fields
+    execution_mode: str = "sandbox"  # "sandbox", "tools", "sandbox_fallback", "failed"
+    path_d_fallback: bool = False
+    path_d_reason: str = ""
 
 
 @dataclass
