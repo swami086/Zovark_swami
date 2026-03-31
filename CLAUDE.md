@@ -661,22 +661,18 @@ Lab-only autonomous experimentation loops. Nothing enters production without hum
 - **Traces show**: per-stage latency, per-tool execution, LLM call timing, governance decisions
 - **Streaming Waterfall**: real-time tool progress via PostgreSQL NOTIFY → SSE → React component
 
-## Code Graph RAG
+## MCP Servers for Development
 
-Semantic codebase knowledge graph for Claude Code.
+### Signoz MCP (observability queries)
+Clone: `git clone https://github.com/DrDroidLab/signoz-mcp-server.git` then `cd signoz-mcp-server && uv sync && uv pip install -e .`
+Register: `claude mcp add-json signoz '{"command":"uv","args":["run","python","-m","signoz_mcp_server.mcp_server","-t","stdio"],"env":{"SIGNOZ_HOST":"http://localhost:3301","SIGNOZ_API_KEY":"dummy","SIGNOZ_SSL_VERIFY":"false"},"cwd":"/path/to/signoz-mcp-server"}'`
+Requires: Signoz tracing stack running (`docker compose --profile tracing up -d`)
+Signoz login: admin@zovark.local / TestPass2026
 
-```bash
-# Install
-npm install -g @er77/code-graph-rag-mcp
-
-# Register with Claude Code
-claude mcp add-json code-graph-rag '{"command":"npx","args":["@er77/code-graph-rag-mcp","C:/Users/vinay/Desktop/HYDRA/hydra-mvp"],"env":{"MCP_TIMEOUT":"80000"}}'
-
-# Index codebase (run in Claude Code)
-# Use batch_index tool, continue until 100%
-
-# Query
-# Ask natural language questions about the codebase
+### Code Graph RAG MCP (codebase knowledge graph)
+Register: `claude mcp add-json code-graph-rag '{"command":"npx","args":["-y","@er77/code-graph-rag-mcp","/path/to/hydra-mvp"],"env":{"MCP_TIMEOUT":"80000"}}'`
+Index: Use `batch_index` tool in Claude Code after first setup, continue until 100%
+Query: Ask natural language questions about the codebase
 ```
 
 ---
