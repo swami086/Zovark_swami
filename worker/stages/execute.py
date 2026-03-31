@@ -267,16 +267,61 @@ def _run_fast_fill(code: str) -> Dict:
         }
 
 
+EXECUTION_MODE = os.environ.get("ZOVARK_EXECUTION_MODE", "tools")  # "tools" (v3) or "sandbox" (v2)
+
+
+def _execute_v3_tools(data: dict) -> dict:
+    """V3 tool-calling execution: run tool plan in-process (no Docker sandbox)."""
+    from tools.runner import execute_plan
+
+    plan = data.get("plan", [])
+    siem_event = data.get("siem_event", {})
+    tenant_id = data.get("tenant_id", "")
+    history_context = data.get("history_context", {"investigations": []})
+    institutional_knowledge = data.get("institutional_knowledge", {})
+
+    if not plan:
+        return asdict(ExecuteOutput(
+            stderr="No tool plan provided", exit_code=1, status="failed",
+        ))
+
+    start_time = time.time()
+    result = execute_plan(
+        plan, siem_event,
+        history_context=history_context,
+        institutional_knowledge=institutional_knowledge,
+    )
+    execution_ms = int((time.time() - start_time) * 1000)
+
+    return asdict(ExecuteOutput(
+        stdout=json.dumps(result, default=str),
+        stderr="\n".join(result.get("errors", [])),
+        exit_code=0 if not result.get("errors") else 1,
+        status="completed",
+        iocs=result.get("iocs", []),
+        findings=[{"title": f, "severity": "high"} if isinstance(f, str) else f for f in result.get("findings", [])],
+        risk_score=result.get("risk_score", 0),
+        recommendations=[],
+        execution_ms=execution_ms,
+    ))
+
+
 # --- Main entry point ---
 @activity.defn
 async def execute_investigation(data: dict) -> dict:
     """
-    Stage 3: Execute investigation code in sandbox.
-    NO LLM calls. Security: AST prefilter + Docker sandbox.
+    Stage 3: Execute investigation code (v2 sandbox) or tool plan (v3 in-process).
+    NO LLM calls. Security: AST prefilter + Docker sandbox (v2) or deterministic tools (v3).
 
-    Input: {"code": str, "task_type": str}
+    Input: {"code": str, "task_type": str} (v2) or {"plan": list, "siem_event": dict} (v3)
     Returns: dict (serializable ExecuteOutput fields)
     """
+    # V3 tool-calling mode
+    execution_mode = data.get("execution_mode", EXECUTION_MODE)
+    if execution_mode == "tools" and data.get("plan"):
+        return _execute_v3_tools(data)
+
+    # === V2 SANDBOX MODE (legacy, behind feature flag) ===
     code = data.get("code", "")
     task_type = data.get("task_type", "")
 

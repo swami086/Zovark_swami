@@ -489,6 +489,254 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
 
 
 # ============================================================
+# V3 TOOL-CALLING PATH
+# ============================================================
+
+EXECUTION_MODE = os.getenv("ZOVARK_EXECUTION_MODE", "tools")  # "tools" (v3) or "sandbox" (v2)
+
+# Tool-calling system prompt (used when no saved plan exists)
+_TOOL_CALLING_SYSTEM = (
+    "You are Zovark's investigation planner. Given a SIEM alert, select the tools needed to investigate it.\n\n"
+    "{catalog_text}\n\n"
+    "{institutional_context}\n\n"
+    "Output ONLY valid JSON:\n"
+    '{"steps": [{"tool": "tool_name", "args": {"arg": "value"}}]}\n\n'
+    "Variable references:\n"
+    "- $raw_log = the alert's raw log text\n"
+    "- $siem_event = the full SIEM event dict\n"
+    "- $siem_event.field_name = a specific field\n"
+    "- $stepN = output of step N (1-indexed)\n"
+    "- $stepN.field = specific field from step N\n\n"
+    "Rules:\n"
+    "- Select 3-8 tools\n"
+    "- Always start with extraction tools for IOCs\n"
+    "- Always include a scoring or detection tool\n"
+    "- Always end with correlate_with_history and map_mitre\n"
+    "- Output ONLY JSON. No prose, no markdown."
+)
+
+
+def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
+    """Load institutional knowledge for entities in the siem_event."""
+    knowledge = {}
+    try:
+        entities = []
+        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
+            val = siem_event.get(field_name)
+            if val:
+                entities.append(val)
+        if not entities:
+            return knowledge
+
+        conn = _get_db()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT entity_value, description, expected_behavior, hours_active, analyst_notes "
+                    "FROM institutional_knowledge WHERE tenant_id = %s AND entity_value = ANY(%s)",
+                    (tenant_id, entities)
+                )
+                for row in cur.fetchall():
+                    knowledge[row["entity_value"]] = {
+                        "description": row.get("description", ""),
+                        "expected_behavior": row.get("expected_behavior", ""),
+                        "hours_active": row.get("hours_active", ""),
+                        "analyst_notes": row.get("analyst_notes", ""),
+                    }
+        finally:
+            conn.close()
+    except Exception as e:
+        activity.logger.warning(f"Failed to load institutional knowledge: {e}")
+    return knowledge
+
+
+def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
+    """Load recent investigations with overlapping IOCs for correlation."""
+    context = {"investigations": []}
+    try:
+        entities = []
+        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
+            val = siem_event.get(field_name)
+            if val:
+                entities.append(val)
+        if not entities:
+            return context
+
+        conn = _get_db()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(f"SET LOCAL app.current_tenant = '{tenant_id}'")
+                # Find recent tasks with overlapping IOCs (last 24h)
+                cur.execute(
+                    "SELECT task_type, (output->>'risk_score')::int as risk_score, "
+                    "output->>'verdict' as verdict, input->'siem_event'->>'source_ip' as source_ip, "
+                    "created_at::text as timestamp "
+                    "FROM agent_tasks "
+                    "WHERE tenant_id = %s AND status = 'completed' "
+                    "AND created_at > NOW() - INTERVAL '24 hours' "
+                    "AND (input->'siem_event'->>'source_ip' = ANY(%s) "
+                    "     OR input->'siem_event'->>'username' = ANY(%s)) "
+                    "ORDER BY created_at DESC LIMIT 20",
+                    (tenant_id, entities, entities)
+                )
+                for row in cur.fetchall():
+                    context["investigations"].append(dict(row))
+                conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        activity.logger.warning(f"Failed to load correlation context: {e}")
+    return context
+
+
+def _parse_tool_plan(llm_response: str) -> list:
+    """Parse LLM's JSON response into a validated tool plan."""
+    from tools.catalog import TOOL_CATALOG
+
+    # Strip markdown fences
+    content = llm_response.strip()
+    if content.startswith("```"):
+        content = re.sub(r'^```\w*\n?', '', content)
+        content = re.sub(r'\n?```$', '', content)
+
+    parsed = json.loads(content)
+    steps = parsed.get("steps", parsed if isinstance(parsed, list) else [])
+
+    validated = []
+    for step in steps:
+        if "condition" in step:
+            # Conditional step — validate both branches
+            validated.append(step)
+        elif "tool" in step:
+            tool_name = step["tool"]
+            if tool_name in TOOL_CATALOG:
+                validated.append(step)
+            else:
+                activity.logger.warning(f"Unknown tool in LLM plan: {tool_name}, skipping")
+    return validated
+
+
+async def _analyze_v3_tools(ingest: IngestOutput) -> AnalyzeOutput:
+    """V3 tool-calling analysis: load saved plan or ask LLM to select tools."""
+    t0 = time.time()
+
+    # Check for saved investigation plan in skill
+    if ingest.skill_id:
+        try:
+            conn = _get_db()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(
+                        "SELECT investigation_plan FROM agent_skills WHERE (id::text = %s OR skill_slug = %s) AND investigation_plan IS NOT NULL",
+                        (ingest.skill_id, ingest.skill_id)
+                    )
+                    row = cur.fetchone()
+                    if row and row["investigation_plan"]:
+                        plan = row["investigation_plan"]
+                        if isinstance(plan, str):
+                            plan = json.loads(plan)
+                        if isinstance(plan, dict) and "plan" in plan:
+                            plan = plan["plan"]
+                        generation_ms = int((time.time() - t0) * 1000)
+                        return AnalyzeOutput(
+                            plan=plan, source="saved_plan", path_taken="A",
+                            skill_id=ingest.skill_id, execution_mode="tools",
+                            generation_ms=generation_ms,
+                        )
+            finally:
+                conn.close()
+        except Exception as e:
+            activity.logger.warning(f"Failed to load saved plan for {ingest.skill_id}: {e}")
+
+    # Check investigation_plans.json for built-in plans
+    try:
+        plans_path = os.path.join(os.path.dirname(__file__), "..", "tools", "investigation_plans.json")
+        with open(plans_path) as f:
+            all_plans = json.load(f)
+        # Match by task_type (try exact match, then fuzzy, then benign fallback)
+        task_type = ingest.task_type.lower().replace("-", "_")
+        plan_data = all_plans.get(task_type) or all_plans.get(ingest.task_type)
+        # If task_type not found, check if this is a benign-routed alert
+        # Ingest sets skill_id to UUID, so check skill_methodology or task_type patterns
+        if not plan_data:
+            is_benign = (
+                "benign" in (ingest.skill_methodology or "").lower()
+                or task_type in ("password_change", "windows_update", "health_check",
+                    "cert_renewal", "backup_job", "log_rotation", "scheduled_task",
+                    "software_update", "user_login", "service_restart", "ntp_sync",
+                    "dhcp_lease", "gpo_refresh", "dns_cache_flush", "av_update",
+                    "system_reboot", "account_lockout_reset", "patch_install",
+                    "maintenance_window", "config_change", "benign_system_event")
+                or (ingest.skill_template and "risk_score" in str(ingest.skill_template)
+                    and "benign" in str(ingest.skill_template).lower())
+            )
+            if is_benign:
+                plan_data = all_plans.get("benign_system_event")
+        if plan_data:
+            generation_ms = int((time.time() - t0) * 1000)
+            return AnalyzeOutput(
+                plan=plan_data["plan"], source="saved_plan", path_taken="A",
+                execution_mode="tools", generation_ms=generation_ms,
+            )
+    except Exception as e:
+        activity.logger.warning(f"Failed to load investigation_plans.json: {e}")
+
+    # Template-only mode: no LLM fallback
+    if ZOVARK_MODE == "templates-only":
+        return AnalyzeOutput(
+            plan=[], source="none", path_taken="error_no_plan",
+            execution_mode="tools", generation_ms=0,
+        )
+
+    # No saved plan — ask LLM to select tools (Path C)
+    try:
+        from tools.catalog import get_catalog_text
+        catalog_text = get_catalog_text()
+        inst_knowledge = _load_institutional_knowledge(ingest.tenant_id, ingest.siem_event)
+        inst_context = ""
+        if inst_knowledge:
+            inst_context = "Institutional knowledge for entities in this alert:\n"
+            for entity, info in inst_knowledge.items():
+                inst_context += f"- {entity}: {info.get('description', '')} (expected: {info.get('expected_behavior', '')})\n"
+        else:
+            inst_context = "No institutional knowledge available for these entities."
+
+        prompt = _TOOL_CALLING_SYSTEM.format(
+            catalog_text=catalog_text,
+            institutional_context=inst_context,
+        )
+
+        result = await llm_call(
+            prompt=json.dumps(ingest.siem_event),
+            system_prompt=prompt,
+            model_config=TIER_FILL,  # 3B model — tool selection is simpler than code gen
+            task_id=ingest.task_id,
+            stage="analyze",
+            task_type=ingest.task_type,
+            tenant_id=ingest.tenant_id,
+            timeout=30.0,
+            response_format={"type": "json_object"},
+        )
+
+        plan = _parse_tool_plan(result["content"])
+        generation_ms = int((time.time() - t0) * 1000)
+        return AnalyzeOutput(
+            plan=plan, source="llm_tool_call", path_taken="C",
+            execution_mode="tools",
+            tokens_in=result["tokens_in"], tokens_out=result["tokens_out"],
+            generation_ms=generation_ms,
+        )
+    except Exception as e:
+        activity.logger.error(f"V3 LLM tool selection failed: {e}")
+        from stages.circuit_breaker import update_state
+        update_state(999)
+        return AnalyzeOutput(
+            plan=[], source="error", path_taken="error_llm_down",
+            execution_mode="tools", generation_ms=0,
+        )
+
+
+# ============================================================
 # ENTRY POINT
 # ============================================================
 
@@ -519,6 +767,12 @@ async def analyze_alert(data) -> dict:
         ingest = data
 
     from dataclasses import asdict
+
+    # V3 tool-calling mode — routes to plan-based execution
+    if EXECUTION_MODE == "tools":
+        return asdict(await _analyze_v3_tools(ingest))
+
+    # === V2 SANDBOX MODE (legacy, behind feature flag) ===
 
     # Path A: stress test mode
     if FAST_FILL:

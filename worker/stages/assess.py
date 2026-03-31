@@ -31,9 +31,10 @@ ASSESS_SUMMARY_TIMEOUT = float(os.getenv("ZOVARK_ASSESS_TIMEOUT", "45"))
 
 
 # --- Verdict derivation ---
-def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
+def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int, execution_mode: str = "sandbox") -> str:
     # Error state: safety wrapper produced risk=0 with a single error finding
-    if risk_score == 0 and finding_count <= 1:
+    # Only applies to sandbox mode — v3 tool mode can legitimately produce risk=0 for benign alerts
+    if execution_mode == "sandbox" and risk_score == 0 and finding_count <= 1:
         return "error"
     # Benign: unconditional at low risk
     if risk_score <= 35:
@@ -559,7 +560,8 @@ async def assess_results(data: dict) -> dict:
     if verdict_override == "error":
         verdict = "error"
     else:
-        verdict = _derive_verdict(risk_score, len(confirmed_iocs), len(findings))
+        execution_mode = data.get("execution_mode", "sandbox")
+        verdict = _derive_verdict(risk_score, len(confirmed_iocs), len(findings), execution_mode=execution_mode)
     severity = _severity_from_risk(risk_score)
     fp_conf = _fp_confidence(risk_score, len(iocs))
 
