@@ -136,6 +136,7 @@ func main() {
 
 	// Public routes
 	router.GET("/health", healthCheckHandler)
+	router.GET("/ready", readinessHandler)
 
 	// Public auth routes (rate limited)
 	auth := router.Group("/api/v1/auth")

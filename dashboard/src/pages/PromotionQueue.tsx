@@ -70,10 +70,10 @@ export default function PromotionQueue() {
     setSubmittingIds(prev => new Set(prev).add(taskId));
     try {
       const feedbackMap: Record<string, { analyst_verdict: string; promote?: boolean }> = {
-        'confirm_promote': { analyst_verdict: 'confirmed', promote: true },
-        'confirm': { analyst_verdict: 'confirmed', promote: false },
-        'override': { analyst_verdict: 'overridden', promote: false },
-        'reject': { analyst_verdict: 'rejected', promote: false },
+        'confirm_promote': { analyst_verdict: 'true_positive', promote: true },
+        'confirm': { analyst_verdict: 'true_positive', promote: false },
+        'override': { analyst_verdict: 'suspicious', promote: false },
+        'reject': { analyst_verdict: 'false_positive', promote: false },
       };
 
       const fb = feedbackMap[action] || { analyst_verdict: action };

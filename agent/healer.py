@@ -62,6 +62,12 @@ WORKER_STUCK_THRESHOLD = 600  # 10 minutes in seconds
 DISK_WARN_PCT = 90
 DISK_CRITICAL_PCT = 95
 MAX_RESTART_ATTEMPTS = 3
+SYNTHETIC_LOGIN_INTERVAL = 60  # seconds between synthetic login checks
+SYNTHETIC_LOGIN_URL = os.environ.get(
+    "SYNTHETIC_LOGIN_URL", "http://zovark-dashboard:3000/api/v1/auth/login"
+)
+SYNTHETIC_LOGIN_EMAIL = os.environ.get("SYNTHETIC_LOGIN_EMAIL", "admin@test.local")
+SYNTHETIC_LOGIN_PASSWORD = os.environ.get("SYNTHETIC_LOGIN_PASSWORD", "TestPass2026")
 
 # ── Logging ────────────────────────────────────────────────────────────
 
@@ -545,6 +551,147 @@ def ai_diagnose(service_name: str, container_name: str, reason: str):
         }
         with lock:
             diagnoses.append(diagnosis)
+
+
+# ── Synthetic Transaction Health Check ─────────────────────────────────
+
+def check_synthetic_login() -> dict:
+    """
+    End-to-end synthetic login through the dashboard's nginx proxy.
+    Catches stale DNS cache after API container recreation (502 errors).
+    Returns {"ok": bool, "status_code": int, "detail": str, "auto_fixed": bool}.
+    """
+    result = {"ok": False, "status_code": 0, "detail": "", "auto_fixed": False}
+    payload = json.dumps({
+        "email": SYNTHETIC_LOGIN_EMAIL,
+        "password": SYNTHETIC_LOGIN_PASSWORD,
+    }).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(
+            SYNTHETIC_LOGIN_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            result["status_code"] = resp.status
+            if resp.status < 400 and "token" in body:
+                result["ok"] = True
+                result["detail"] = "Login OK"
+            else:
+                result["detail"] = f"HTTP {resp.status} but no token in response"
+    except urllib.error.HTTPError as e:
+        result["status_code"] = e.code
+        result["detail"] = f"HTTP {e.code}: {e.reason}"
+    except urllib.error.URLError as e:
+        result["detail"] = f"Connection failed: {e.reason}"
+    except Exception as e:
+        result["detail"] = f"{type(e).__name__}: {str(e)[:200]}"
+
+    # Auto-fix: if 502 or connection refused, restart dashboard for DNS refresh
+    if not result["ok"] and result["status_code"] in (502, 503, 0):
+        emit_event(
+            "WARN", "synthetic_login",
+            f"Synthetic login failed (HTTP {result['status_code']}), "
+            f"restarting dashboard for DNS refresh",
+            result["detail"],
+        )
+        try:
+            subprocess.run(
+                ["docker", "restart", "zovark-dashboard"],
+                capture_output=True, text=True, timeout=30,
+            )
+            result["auto_fixed"] = True
+            emit_event("INFO", "synthetic_login",
+                       "Dashboard restarted for DNS refresh")
+        except Exception as e:
+            emit_event("ERROR", "synthetic_login",
+                       f"Dashboard restart failed: {e}")
+    elif not result["ok"]:
+        # Non-proxy issue (e.g., 401 bad credentials, 500 API error)
+        emit_event("WARN", "synthetic_login",
+                   f"Synthetic login failed: {result['detail']}")
+
+    return result
+
+
+# ── Connectivity Health Checks ─────────────────────────────────────────
+
+CONNECTIVITY_CHECK_INTERVAL = 60  # seconds
+
+def check_connectivity() -> dict:
+    """
+    End-to-end connectivity checks across service boundaries.
+    Tests that services can actually reach their dependencies, not just that
+    processes are running.
+    """
+    results = {}
+
+    # 1. API → DB+Redis+Temporal (via /ready endpoint)
+    api_ready = {"ok": False, "detail": ""}
+    try:
+        req = urllib.request.Request("http://zovark-api:8090/ready", method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            if resp.status == 200:
+                api_ready = {"ok": True, "detail": "all dependencies healthy"}
+            else:
+                # 503 — find which dependency is down
+                checks = body.get("checks", {})
+                failed = [k for k, v in checks.items() if not v.get("ready")]
+                api_ready = {"ok": False, "detail": f"dependencies down: {', '.join(failed)}"}
+    except urllib.error.HTTPError as e:
+        if e.code == 503:
+            try:
+                body = json.loads(e.read().decode("utf-8"))
+                checks = body.get("checks", {})
+                failed = [k for k, v in checks.items() if not v.get("ready")]
+                api_ready = {"ok": False, "detail": f"dependencies down: {', '.join(failed)}"}
+            except Exception:
+                api_ready = {"ok": False, "detail": f"HTTP {e.code}"}
+        else:
+            api_ready = {"ok": False, "detail": f"HTTP {e.code}"}
+    except Exception as e:
+        api_ready = {"ok": False, "detail": str(e)[:200]}
+
+    results["api_readiness"] = api_ready
+    if not api_ready["ok"]:
+        emit_event("WARN", "connectivity", f"API not ready: {api_ready['detail']}")
+        # If API can't reach DB, restarting API might help (reconnect pool)
+        if "postgresql" in api_ready.get("detail", ""):
+            emit_event("WARN", "connectivity",
+                       "API lost DB connection, restarting API")
+            try:
+                subprocess.run(["docker", "restart", "zovark-api"],
+                               capture_output=True, text=True, timeout=30)
+            except Exception as e:
+                emit_event("ERROR", "connectivity", f"API restart failed: {e}")
+
+    # 2. Worker → Ollama (LLM availability)
+    ollama_ok = {"ok": False, "detail": ""}
+    try:
+        req = urllib.request.Request(f"{LLM_HOST}/api/tags", method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            if resp.status == 200:
+                body = json.loads(resp.read().decode("utf-8"))
+                models = [m.get("name", "?") for m in body.get("models", [])]
+                ollama_ok = {"ok": True, "detail": f"models: {', '.join(models[:3])}"}
+            else:
+                ollama_ok = {"ok": False, "detail": f"HTTP {resp.status}"}
+    except Exception as e:
+        ollama_ok = {"ok": False, "detail": str(e)[:200]}
+
+    results["worker_to_ollama"] = ollama_ok
+    if not ollama_ok["ok"]:
+        emit_event("WARN", "connectivity",
+                   f"Ollama unreachable from healer: {ollama_ok['detail']}")
+
+    # 3. Dashboard → API (synthetic login — already handled by check_synthetic_login)
+    # Skip here to avoid duplicate restarts; check_synthetic_login runs on its own timer.
+
+    return results
 
 
 # ── Disk Pressure Monitoring ──────────────────────────────────────────
@@ -1270,6 +1417,8 @@ def main():
     last_discovery = time.time()
     last_daily_report = 0
     last_disk_check = 0
+    last_synthetic_login = 0
+    last_connectivity_check = 0
     cycle = 0
 
     while True:
@@ -1282,6 +1431,16 @@ def main():
 
         # Run health checks
         run_health_checks()
+
+        # Connectivity checks every 60 seconds (API→DB, Worker→Ollama)
+        if time.time() - last_connectivity_check > CONNECTIVITY_CHECK_INTERVAL:
+            check_connectivity()
+            last_connectivity_check = time.time()
+
+        # Synthetic login check every 60 seconds (Dashboard→API)
+        if time.time() - last_synthetic_login > SYNTHETIC_LOGIN_INTERVAL:
+            check_synthetic_login()
+            last_synthetic_login = time.time()
 
         # Disk pressure check every 5 minutes
         if time.time() - last_disk_check > 300:

@@ -246,6 +246,12 @@ services:
     container_name: zovark-api
     ports:
       - "8090:8090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=3", "http://127.0.0.1:8090/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     environment:
       - PORT=8090
       - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
@@ -311,10 +317,11 @@ services:
       docker-socket-proxy:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import temporalio; print('ok')"]
+      test: ["CMD", "python", "-c", "import temporalio, psycopg2, redis; print('ok')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
     deploy:
       resources:
         limits:
@@ -331,6 +338,11 @@ services:
     container_name: zovark-dashboard
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=3", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     depends_on:
       - api
     deploy:

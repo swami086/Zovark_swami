@@ -44,23 +44,34 @@ func localRateCheck(key string, limit int, dur time.Duration) bool {
 var redisClient *redis.Client
 
 func initRedis() {
-	addr := getEnvOrDefault("REDIS_URL", "redis:6379")
-	// Strip redis:// prefix if present
-	if len(addr) > 8 && addr[:8] == "redis://" {
-		addr = addr[8:]
-	}
+	rawURL := getEnvOrDefault("REDIS_URL", "redis:6379")
 	password := getEnvOrDefault("REDIS_PASSWORD", "")
 
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:         addr,
-		Password:     password,
-		DB:           0,
-		PoolSize:     20,
-		MinIdleConns: 5,
-		DialTimeout:  2 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-	})
+	// Try parsing as a full redis:// URL first (handles redis://:password@host:port/db)
+	if opts, err := redis.ParseURL(rawURL); err == nil {
+		opts.PoolSize = 20
+		opts.MinIdleConns = 5
+		opts.DialTimeout = 2 * time.Second
+		opts.ReadTimeout = 3 * time.Second
+		opts.WriteTimeout = 3 * time.Second
+		redisClient = redis.NewClient(opts)
+	} else {
+		// Fallback: treat as host:port
+		addr := rawURL
+		if len(addr) > 8 && addr[:8] == "redis://" {
+			addr = addr[8:]
+		}
+		redisClient = redis.NewClient(&redis.Options{
+			Addr:         addr,
+			Password:     password,
+			DB:           0,
+			PoolSize:     20,
+			MinIdleConns: 5,
+			DialTimeout:  2 * time.Second,
+			ReadTimeout:  3 * time.Second,
+			WriteTimeout: 3 * time.Second,
+		})
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
