@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| Version | v3.0 — deterministic tool-calling architecture on redteam branch |
+| Version | v3.0.0 — deterministic tool-calling architecture (tagged on master) |
 | Date | 2026-03-31 |
 | Status | Production-ready — 34 investigation tools, 24 plans, governance layer, red-team hardened |
 | Stack | Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama |
@@ -764,4 +764,4 @@ From commit 8507c11 to f0f8b2f — 27 commits in one session:
 8. **Public self-serve demo** — Standalone browser demo for CISO outreach
 9. **Design partner outreach** — Target healthcare MSSPs first
 10. **Switch to zovark_app DB user** — Enable RLS enforcement in production (user created, permissions granted)
-11. **Merge redteam branch to master** — All wartime sprint + AutoResearch + v3 work is on `redteam` branch
+11. **v3.0.0 merged to master** — Tagged and released
