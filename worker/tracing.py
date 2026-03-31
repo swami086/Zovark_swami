@@ -2,7 +2,7 @@
 OpenTelemetry tracing for Zovark worker.
 
 Provides distributed tracing for the investigation pipeline.
-Exports traces to Jaeger (OTLP HTTP) for visualization.
+Exports traces via OTLP HTTP to Signoz (self-hosted, ClickHouse-backed).
 
 Usage:
     from tracing import tracer, trace_enabled
@@ -12,14 +12,14 @@ Usage:
             span.set_attribute("key", "value")
             ...
 
-All tracing is optional — if OTEL_ENABLED=false or Jaeger is unreachable,
+All tracing is optional — if OTEL_ENABLED=false or the collector is unreachable,
 the pipeline works identically. Tracing never blocks or fails investigations.
 """
 import os
 from contextlib import contextmanager
 
 OTEL_ENABLED = os.environ.get("OTEL_ENABLED", "true").lower() == "true"
-OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://zovark-jaeger:4318")
+OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://zovark-signoz-collector:4318")
 
 # Sentinel for disabled tracing
 trace_enabled = False
