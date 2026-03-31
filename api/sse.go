@@ -162,10 +162,11 @@ func streamAllTaskUpdates(c *gin.Context) {
 	_, err = conn.Exec(c.Request.Context(), "LISTEN task_completed")
 	if err != nil {
 		log.Printf("SSE: LISTEN failed, falling back to polling: %v", err)
-		// Fall back to polling
 		streamAllTasksPolling(c, tenantID)
 		return
 	}
+	// LISTEN for investigation events (NOTIFY sent by events.py — waterfall streaming)
+	_, _ = conn.Exec(c.Request.Context(), "LISTEN investigation_events")
 
 	ctx := c.Request.Context()
 	// Send a keepalive every 15s to prevent proxy timeouts
@@ -194,7 +195,15 @@ func streamAllTaskUpdates(c *gin.Context) {
 					continue
 				}
 				data, _ := json.Marshal(payload)
-				c.Writer.WriteString("event: task_completed\n")
+				// Use event_type from payload if present (waterfall events), else task_completed
+				eventType := "task_completed"
+				if et, ok := payload["event_type"].(string); ok && et != "" {
+					eventType = et
+				}
+				c.Writer.WriteString(fmt.Sprintf("event: %s\n", eventType))
+				if traceID, ok := payload["trace_id"].(string); ok && traceID != "" {
+					c.Writer.WriteString(fmt.Sprintf("id: %s\n", traceID))
+				}
 				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(data)))
 				c.Writer.Flush()
 			}

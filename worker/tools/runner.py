@@ -149,7 +149,8 @@ def _evaluate_condition(condition: str, step_results: dict, siem_event: dict,
 
 def execute_plan(plan: list, siem_event: dict,
                  history_context: dict = None, institutional_knowledge: dict = None,
-                 total_timeout: float = 30.0, per_tool_timeout: float = 5.0) -> dict:
+                 total_timeout: float = 30.0, per_tool_timeout: float = 5.0,
+                 task_id: str = "", tenant_id: str = "", trace_id: str = "") -> dict:
     """Execute an investigation plan — list of tool steps — against a SIEM event.
 
     Returns:
@@ -206,6 +207,14 @@ def execute_plan(plan: list, siem_event: dict,
             history_context, institutional_knowledge
         )
 
+        # Emit tool_started event
+        if task_id:
+            try:
+                from events import emit_event
+                emit_event(task_id, tenant_id, trace_id, "tool_started", {"tool": tool_name, "step": i})
+            except Exception:
+                pass
+
         # Execute with per-tool timeout and optional tracing
         try:
             # Start trace span for this tool
@@ -234,6 +243,18 @@ def execute_plan(plan: list, siem_event: dict,
                     if isinstance(result, list):
                         _span.set_attribute("tool.result_count", len(result))
                     _span.end()
+                except Exception:
+                    pass
+
+            # Emit tool_completed event
+            if task_id:
+                try:
+                    from events import emit_event, tool_summary
+                    emit_event(task_id, tenant_id, trace_id, "tool_completed", {
+                        "tool": tool_name, "step": i,
+                        "duration_ms": int(tool_elapsed * 1000),
+                        "summary": tool_summary(tool_name, result, int(tool_elapsed * 1000)),
+                    })
                 except Exception:
                     pass
 

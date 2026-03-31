@@ -635,6 +635,26 @@ async def assess_results(data: dict) -> dict:
         mitre=out.get("mitre_attack", []),
         siem_event=siem_event,
     )
+
+    # Emit real-time events for dashboard waterfall
+    trace_id = data.get("trace_id", "")
+    try:
+        from events import emit_event
+        # IOC discovery events
+        for ioc in iocs[:10]:  # cap at 10 to avoid flooding
+            ioc_val = ioc.get("value", "") if isinstance(ioc, dict) else str(ioc)
+            ioc_type = ioc.get("type", "unknown") if isinstance(ioc, dict) else "unknown"
+            if ioc_val:
+                emit_event(task_id, tenant_id, trace_id, "ioc_discovered", {"ioc_type": ioc_type, "value": ioc_val})
+        # MITRE mapping events
+        for technique in out.get("mitre_attack", [])[:5]:
+            tid = technique.get("technique_id", technique) if isinstance(technique, dict) else str(technique)
+            tname = technique.get("name", tid) if isinstance(technique, dict) else tid
+            emit_event(task_id, tenant_id, trace_id, "mitre_mapped", {"technique_id": tid, "name": tname})
+        # Verdict event
+        emit_event(task_id, tenant_id, trace_id, "verdict_ready", {"verdict": verdict, "risk_score": risk_score})
+    except Exception:
+        pass
     # Override status to "completed" when assess produced a valid verdict.
     # The execute stage may have set status="failed" from non-zero exit code,
     # but if assess derived a real verdict with risk > 0, the investigation succeeded.

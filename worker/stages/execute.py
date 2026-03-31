@@ -371,11 +371,15 @@ def _execute_v3_tools(data: dict) -> dict:
     if not plan:
         raise ValueError("No tool plan provided")
 
+    task_id_val = data.get("task_id", "")
+    trace_id_val = data.get("trace_id", "")
+
     start_time = time.time()
     result = execute_plan(
         plan, siem_event,
         history_context=history_context,
         institutional_knowledge=institutional_knowledge,
+        task_id=task_id_val, tenant_id=tenant_id, trace_id=trace_id_val,
     )
     execution_ms = int((time.time() - start_time) * 1000)
 
