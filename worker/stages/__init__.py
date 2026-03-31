@@ -34,16 +34,19 @@ class IngestOutput:
 
 @dataclass
 class AnalyzeOutput:
-    """Stage 2 output — generated investigation code."""
+    """Stage 2 output — generated investigation code (v2) or tool plan (v3)."""
     code: str = ""
-    source: Literal["template", "llm", "stub", "fast_fill"] = "llm"
-    path_taken: Literal["A", "B", "C", "benign", "unknown"] = "unknown"
+    source: Literal["template", "llm", "stub", "fast_fill", "saved_plan", "llm_tool_call", "none", "error"] = "llm"
+    path_taken: Literal["A", "B", "C", "benign", "unknown", "error_llm_down", "error_no_plan"] = "unknown"
     skill_id: Optional[str] = None
     preflight_passed: bool = True
     preflight_fixes: List[str] = field(default_factory=list)
     tokens_in: int = 0
     tokens_out: int = 0
     generation_ms: int = 0
+    # v3 tool-calling fields
+    plan: List[Dict] = field(default_factory=list)
+    execution_mode: str = "sandbox"  # "sandbox" (v2) or "tools" (v3)
 
 
 @dataclass
@@ -59,6 +62,10 @@ class ExecuteOutput:
     recommendations: List[str] = field(default_factory=list)
     execution_ms: int = 0
     retries_used: int = 0
+    # v3 fields
+    execution_mode: str = "sandbox"  # "sandbox", "tools", "sandbox_fallback", "failed"
+    path_d_fallback: bool = False
+    path_d_reason: str = ""
 
 
 @dataclass

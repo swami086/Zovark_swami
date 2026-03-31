@@ -5,6 +5,7 @@ Defends against prompt injection via attacker-controlled log fields.
 import re
 import math
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,25 @@ INJECTION_PATTERNS = [
     r'(?i)act\s+as\s+(a|an)\s+',
     r'(?i)new\s+instructions?\s*:',
     r'(?i)override\s+(previous|prior|all)',
+    # --- Red team patches (Sprint 3) ---
+    # Template injection — Jinja2/Mustache double curly braces
+    r'\{\{.*?\}\}',
+    # Jinja2 block tags
+    r'\{%.*?%\}',
+    # Code injection variants missed by original patterns
+    r'(?i)open\s*\(',
+    r'(?i)import\s+sys\b',
+    r'(?i)import\s+shutil\b',
+    r'(?i)import\s+pathlib\b',
+    r'(?i)import\s+glob\b',
+    r'(?i)import\s+pickle\b',
+    r'(?i)import\s+shelve\b',
+    r'(?i)from\s+builtins\s+import',
+    # Jinja2/SSTI exploitation
+    r'(?i)__globals__',
+    r'(?i)__subclasses__',
+    r'(?i)__builtins__',
+    r'(?i)config\s*\.\s*__class__',
 ]
 
 MAX_FIELD_LENGTH = 10_000
@@ -105,6 +125,56 @@ def smart_truncate(value: str, max_len: int = 10000) -> str:
     return result
 
 
+def _scan_field_tail(value: str) -> bool:
+    """
+    Check the tail of long fields for hidden content.
+    Attackers pad benign data then append injection near the truncation boundary.
+    """
+    if len(value) < 1000:
+        return False
+    tail = value[-200:]
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, tail):
+            return True
+    return False
+
+
+# Cyrillic→Latin homoglyph map (visual lookalikes used to bypass regex)
+_HOMOGLYPH_MAP = str.maketrans({
+    '\u0430': 'a',  # Cyrillic а → Latin a
+    '\u0435': 'e',  # Cyrillic е → Latin e
+    '\u043e': 'o',  # Cyrillic о → Latin o
+    '\u0440': 'p',  # Cyrillic р → Latin p
+    '\u0441': 'c',  # Cyrillic с → Latin c
+    '\u0443': 'y',  # Cyrillic у → Latin y
+    '\u0445': 'x',  # Cyrillic х → Latin x
+    '\u0410': 'A',  # Cyrillic А → Latin A
+    '\u0412': 'B',  # Cyrillic В → Latin B
+    '\u0415': 'E',  # Cyrillic Е → Latin E
+    '\u041a': 'K',  # Cyrillic К → Latin K
+    '\u041c': 'M',  # Cyrillic М → Latin M
+    '\u041d': 'H',  # Cyrillic Н → Latin H
+    '\u041e': 'O',  # Cyrillic О → Latin O
+    '\u0420': 'P',  # Cyrillic Р → Latin P
+    '\u0421': 'C',  # Cyrillic С → Latin C
+    '\u0422': 'T',  # Cyrillic Т → Latin T
+    '\u0425': 'X',  # Cyrillic Х → Latin X
+})
+
+
+def _normalize_for_scanning(text: str) -> str:
+    """Normalize Unicode to catch homoglyph and zero-width character attacks."""
+    # Remove zero-width characters
+    text = text.replace('\u200b', '').replace('\u200c', '').replace('\u200d', '').replace('\ufeff', '')
+    # Remove right-to-left override
+    text = text.replace('\u202e', '').replace('\u202d', '')
+    # NFKC normalization
+    text = unicodedata.normalize('NFKC', text)
+    # Cyrillic homoglyph → Latin ASCII
+    text = text.translate(_HOMOGLYPH_MAP)
+    return text
+
+
 def sanitize_siem_event(event: dict) -> dict:
     if not isinstance(event, dict):
         return event
@@ -115,17 +185,26 @@ def sanitize_siem_event(event: dict) -> dict:
 
     for key, value in event.items():
         if isinstance(value, str):
-            # Check injection patterns on FULL string BEFORE truncation
+            # Normalize Unicode BEFORE pattern matching to catch homoglyphs
+            scan_value = _normalize_for_scanning(value)
+
+            # Check injection patterns on normalized value BEFORE truncation
             for pattern in INJECTION_PATTERNS:
-                if re.search(pattern, value):
+                if re.search(pattern, scan_value):
                     injection_detected = True
-                    value = re.sub(pattern, '[INJECTION_STRIPPED]', value)
+                    value = re.sub(pattern, '[INJECTION_STRIPPED]', scan_value)
                     logger.warning(f"Prompt injection pattern stripped from field: {key}")
 
             # Smart truncate AFTER injection checks
             if len(value) > MAX_FIELD_LENGTH:
                 value = smart_truncate(value, MAX_FIELD_LENGTH)
                 logger.warning(f"Smart-truncated oversized SIEM field: {key}")
+
+            # Tail scan for padding attacks (benign padding + attack at end)
+            if _scan_field_tail(value):
+                injection_detected = True
+                value = re.sub(r'.{200}$', '[INJECTION_STRIPPED_TAIL]', value)
+                logger.warning(f"Injection pattern detected in tail of field: {key}")
 
             canonical_key = key.split(".")[-1].lower()
             if canonical_key in ENTROPY_CHECK_FIELDS and len(value) > 50:

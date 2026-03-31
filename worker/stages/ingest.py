@@ -54,6 +54,81 @@ def _has_attack_indicators(task_type: str, rule_name: str, title: str) -> bool:
     return any(indicator in combined for indicator in ATTACK_INDICATORS)
 
 
+# HIGH-CONFIDENCE attack content patterns in raw_log (Red team patch)
+# These indicate real attacks regardless of what the metadata says
+RAW_LOG_ATTACK_PATTERNS = [
+    # --- Original 20 patterns ---
+    r'(?i)mimikatz|sekurlsa|lsadump|kerberos::',
+    r'(?i)certutil\s+(-urlcache|-split|-f\s+http)',
+    r'(?i)bitsadmin.*transfer.*http',
+    r'(?i)mshta\s+http',
+    r'(?i)rundll32.*javascript',
+    r'(?i)wscript.*\.(js|vbs)\b',
+    r'(?i)powershell.*(-enc\b|-encodedcommand)',
+    r'(?i)invoke-(mimikatz|expression|webrequest)',
+    r'(?i)net\s+(user|localgroup)\s+.*(/add|/delete)',
+    r'(?i)schtasks.*/create.*(/sc|/tn|/tr)',
+    r'(?i)reg\s+add.*\\\\run\b',
+    r'(?i)vssadmin.*delete\s+shadows',
+    r'(?i)wmic.*process\s+call\s+create',
+    r'(?i)psexec|paexec',
+    r'(?i)impacket|secretsdump|ntlmrelayx',
+    r'(?i)bloodhound|sharphound',
+    r'(?i)rubeus\s+(asreproast|kerberoast|hash)',
+    r'(?i)\\\\[^\\]+\\(c|admin|ipc)\$',
+    r'(?i)CreateRemoteThread|NtMapViewOfSection',
+    r'(?i)lsass\.exe|ntds\.dit|sam\s+dump',
+    # --- Red team v2: LOLBins and additional techniques ---
+    r'(?i)msiexec\s+.*(/q|/i\s+http)',
+    r'(?i)installutil\s+.*(/logfile|payload)',
+    r'(?i)regasm\s+(/U\s+|.*\.dll)',
+    r'(?i)regsvcs\s+.*\.dll',
+    r'(?i)cmstp\s+(/s|/ns)',
+    r'(?i)msbuild\.?e?x?e?\s+.*\.(csproj|xml)',
+    r'(?i)forfiles\s+.*(/c|/p\s+)',
+    r'(?i)System\.Reflection\.Assembly.*Load',
+    r'(?i)Net\.WebClient.*Download(String|File)',
+    r'(?i)DownloadString\s*\(\s*["\']http',
+    # Cloud / container attacks
+    r'(?i)aws\s+sts\s+assume-role',
+    r'(?i)gcloud\s+auth\s+print-access-token',
+    r'(?i)kubectl\s+exec\s+.*(-it|--\s+/bin)',
+    r'(?i)docker\s+run\s+--privileged',
+    # Linux attacks
+    r'(?i)curl\s+http.*\|\s*(ba)?sh',
+    r'(?i)wget\s+http.*\|\s*(ba)?sh',
+    r'(?i)LD_PRELOAD\s*=',
+    r'(?i)crontab\s+(-e|-l|.*\*\s+\*\s+\*)',
+    r'(?i)\>>\s*/etc/crontab',
+    # Additional Windows techniques
+    r'(?i)cobalt\s*strike|beacon\s+interval',
+    r'(?i)meterpreter|reverse.?shell',
+    r'(?i)cmd\.exe.*/c\s+(whoami|net\s+|dir\s+|type\s+)',
+    r'(?i)dcsync|DRS(GetNC|Replicat)',
+    r'(?i)golden.?ticket|krbtgt.*0x17',
+    r'(?i)kerberoast|TGS.*0x17',
+    r'(?i)pass.the.(hash|ticket)',
+    r'(?i)\.exe.*\\\\.*\\(c|admin|ipc)\$',
+    r'(?i)shadow.*copy|vssadmin',
+    r'(?i)ransom|encrypt.*files|\.locked\b',
+    r'(?i)union\s+select|or\s+1\s*=\s*1|sql.?inject',
+    r'(?i)<script|javascript:|onerror\s*=|xss',
+    r'(?i)\.\./\.\.|path.?traversal|/etc/passwd',
+    r'(?i)webshell|\.php.*upload|c99|r57',
+    r'(?i)office.*macro|vba.*shell|wmi.*subscription',
+]
+
+
+def _has_raw_log_attack_content(raw_log: str) -> bool:
+    """Check if raw_log contains high-confidence attack indicators."""
+    if not raw_log or len(raw_log) < 10:
+        return False
+    for pattern in RAW_LOG_ATTACK_PATTERNS:
+        if re.search(pattern, raw_log):
+            return True
+    return False
+
+
 # --- Dedup (inlined from dedup/stage1_exact.py) ---
 TIMESTAMP_PATTERNS = [
     r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?',
@@ -158,12 +233,13 @@ async def fetch_task(task_id: str) -> dict:
     conn = _get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT id, tenant_id, task_type, input, status FROM agent_tasks WHERE id = %s", (task_id,))
+            cur.execute("SELECT id, tenant_id, task_type, input, status, trace_id FROM agent_tasks WHERE id = %s", (task_id,))
             row = cur.fetchone()
             if not row:
                 raise ValueError(f"Task {task_id} not found")
             row['id'] = str(row['id'])
             row['tenant_id'] = str(row['tenant_id'])
+            row['trace_id'] = str(row['trace_id']) if row.get('trace_id') else ""
             return dict(row)
     finally:
         conn.close()
@@ -178,6 +254,15 @@ async def ingest_alert(task_data: dict) -> dict:
 
     Returns dict (serializable IngestOutput fields).
     """
+    # OTEL span
+    try:
+        from tracing import get_tracer
+        _span = get_tracer().start_span("stage.ingest")
+        _span.set_attribute("zovark.task_id", task_data.get("task_id", ""))
+        _span.set_attribute("zovark.task_type", task_data.get("task_type", ""))
+    except Exception:
+        _span = None
+
     task_id = task_data.get("task_id", "")
     tenant_id = task_data.get("tenant_id", "")
     task_type = task_data.get("task_type", "")
@@ -259,13 +344,35 @@ async def ingest_alert(task_data: dict) -> dict:
         try:
             skill = _retrieve_skill(task_type, prompt, conn)
             if skill:
-                result.skill_id = str(skill.get("id", ""))
-                result.skill_template = skill.get("code_template")
-                result.skill_params = skill.get("parameters", [])
-                result.skill_methodology = skill.get("investigation_methodology", "")
+                # Red team patch: content-based override
+                # If skill routes to benign but raw_log has attack content, block benign routing
+                skill_slug = skill.get("skill_slug", "")
+                if skill_slug == "benign-system-event":
+                    raw_log = siem_event.get("raw_log", "")
+                    if _has_raw_log_attack_content(raw_log):
+                        activity.logger.warning(
+                            f"Classification override: benign metadata but attack content "
+                            f"in raw_log for task {task_id}. Forcing investigation."
+                        )
+                        skill = None  # Clear benign skill — force Path C investigation
+
+                if skill:
+                    result.skill_id = str(skill.get("id", ""))
+                    result.skill_template = skill.get("code_template")
+                    result.skill_params = skill.get("parameters", [])
+                    result.skill_methodology = skill.get("investigation_methodology", "")
         finally:
             conn.close()
     except Exception as e:
         print(f"Skill retrieval failed (non-fatal): {e}")
+
+    # End OTEL span
+    if _span:
+        try:
+            _span.set_attribute("result.is_duplicate", result.is_duplicate)
+            _span.set_attribute("result.skill_id", result.skill_id or "")
+            _span.end()
+        except Exception:
+            pass
 
     return asdict(result)

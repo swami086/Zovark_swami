@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -130,3 +131,122 @@ func taskSSEHandler(c *gin.Context) {
 		}
 	}
 }
+
+// streamAllTaskUpdates provides a global SSE stream for all task completions.
+// GET /api/v1/tasks/stream
+// Supports token as query param since EventSource doesn't support headers.
+func streamAllTaskUpdates(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(string)
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	// Send connected event
+	c.Writer.WriteString("event: connected\n")
+	c.Writer.WriteString(fmt.Sprintf("data: {\"message\":\"SSE stream connected\",\"tenant\":\"%s\"}\n\n", tenantID[:8]))
+	c.Writer.Flush()
+
+	// Try to use PostgreSQL LISTEN/NOTIFY
+	conn, err := dbPool.Acquire(c.Request.Context())
+	if err != nil {
+		log.Printf("SSE: failed to acquire DB connection: %v", err)
+		c.Writer.WriteString(fmt.Sprintf("event: error\ndata: {\"error\":\"db connection failed\"}\n\n"))
+		c.Writer.Flush()
+		return
+	}
+	defer conn.Release()
+
+	// LISTEN for task completions (NOTIFY sent by store.py)
+	_, err = conn.Exec(c.Request.Context(), "LISTEN task_completed")
+	if err != nil {
+		log.Printf("SSE: LISTEN failed, falling back to polling: %v", err)
+		// Fall back to polling
+		streamAllTasksPolling(c, tenantID)
+		return
+	}
+
+	ctx := c.Request.Context()
+	// Send a keepalive every 15s to prevent proxy timeouts
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			c.Writer.WriteString(": keepalive\n\n")
+			c.Writer.Flush()
+		default:
+			// Wait for notification with 5s timeout
+			notification, err := conn.Conn().WaitForNotification(context.Background())
+			if err != nil {
+				continue
+			}
+
+			// Parse the notification payload
+			var payload map[string]interface{}
+			if json.Unmarshal([]byte(notification.Payload), &payload) == nil {
+				// Filter by tenant_id
+				if payloadTenant, ok := payload["tenant_id"].(string); ok && payloadTenant != tenantID {
+					continue
+				}
+				data, _ := json.Marshal(payload)
+				c.Writer.WriteString("event: task_completed\n")
+				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(data)))
+				c.Writer.Flush()
+			}
+		}
+	}
+}
+
+// streamAllTasksPolling is a fallback that polls for recently completed tasks.
+func streamAllTasksPolling(c *gin.Context, tenantID string) {
+	ctx := c.Request.Context()
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	lastCheck := time.Now()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			rows, err := dbPool.Query(ctx, `
+				SELECT id, task_type, status, (output->>'verdict')::text, (output->>'risk_score')::int
+				FROM agent_tasks
+				WHERE tenant_id = $1 AND completed_at > $2
+				ORDER BY completed_at DESC LIMIT 10
+			`, tenantID, lastCheck)
+			if err != nil {
+				continue
+			}
+
+			for rows.Next() {
+				var id, taskType, status string
+				var verdict *string
+				var riskScore *int
+				if err := rows.Scan(&id, &taskType, &status, &verdict, &riskScore); err != nil {
+					continue
+				}
+				evt := map[string]interface{}{
+					"task_id":    id,
+					"task_type":  taskType,
+					"status":     status,
+					"verdict":    verdict,
+					"risk_score": riskScore,
+				}
+				data, _ := json.Marshal(evt)
+				c.Writer.WriteString("event: task_completed\n")
+				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(data)))
+				c.Writer.Flush()
+			}
+			rows.Close()
+			lastCheck = time.Now()
+		}
+	}
+}
+

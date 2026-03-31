@@ -22,6 +22,7 @@ Features:
 Author: Zovark Fleet Agent v1.0
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -37,6 +38,12 @@ from datetime import datetime, timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from pathlib import Path
+
+try:
+    import httpx
+    HAS_HTTPX = True
+except ImportError:
+    HAS_HTTPX = False
 
 # ── Configuration ──────────────────────────────────────────────────────
 
@@ -55,6 +62,12 @@ WORKER_STUCK_THRESHOLD = 600  # 10 minutes in seconds
 DISK_WARN_PCT = 90
 DISK_CRITICAL_PCT = 95
 MAX_RESTART_ATTEMPTS = 3
+SYNTHETIC_LOGIN_INTERVAL = 60  # seconds between synthetic login checks
+SYNTHETIC_LOGIN_URL = os.environ.get(
+    "SYNTHETIC_LOGIN_URL", "http://zovark-dashboard:3000/api/v1/auth/login"
+)
+SYNTHETIC_LOGIN_EMAIL = os.environ.get("SYNTHETIC_LOGIN_EMAIL", "admin@test.local")
+SYNTHETIC_LOGIN_PASSWORD = os.environ.get("SYNTHETIC_LOGIN_PASSWORD", "TestPass2026")
 
 # ── Logging ────────────────────────────────────────────────────────────
 
@@ -218,7 +231,9 @@ def init_services():
 # ── Health Check Implementations ───────────────────────────────────────
 
 def check_http(url: str, timeout: int = 5) -> tuple[bool, str]:
-    """HTTP GET health check. Returns (ok, detail)."""
+    """HTTP GET health check. Uses async httpx if available, falls back to urllib."""
+    if HAS_HTTPX:
+        return _check_http_sync_via_httpx(url, timeout)
     try:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -227,6 +242,40 @@ def check_http(url: str, timeout: int = 5) -> tuple[bool, str]:
             return False, f"HTTP {resp.status}"
     except urllib.error.HTTPError as e:
         return False, f"HTTP {e.code}: {e.reason}"
+    except Exception as e:
+        return False, str(e)[:200]
+
+
+def _check_http_sync_via_httpx(url: str, timeout: int = 5) -> tuple[bool, str]:
+    """Non-blocking HTTP check using httpx (no GIL contention with subprocess)."""
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            resp = client.get(url)
+            if resp.status_code < 400:
+                return True, f"HTTP {resp.status_code}"
+            return False, f"HTTP {resp.status_code}"
+    except httpx.ConnectError as e:
+        return False, f"Connection refused: {str(e)[:150]}"
+    except httpx.TimeoutException:
+        return False, f"Timeout after {timeout}s"
+    except Exception as e:
+        return False, str(e)[:200]
+
+
+async def check_http_async(url: str, timeout: int = 5) -> tuple[bool, str]:
+    """Fully async HTTP health check."""
+    if not HAS_HTTPX:
+        return await asyncio.to_thread(check_http, url, timeout)
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.get(url)
+            if resp.status_code < 400:
+                return True, f"HTTP {resp.status_code}"
+            return False, f"HTTP {resp.status_code}"
+    except httpx.ConnectError as e:
+        return False, f"Connection refused: {str(e)[:150]}"
+    except httpx.TimeoutException:
+        return False, f"Timeout after {timeout}s"
     except Exception as e:
         return False, str(e)[:200]
 
@@ -504,6 +553,147 @@ def ai_diagnose(service_name: str, container_name: str, reason: str):
             diagnoses.append(diagnosis)
 
 
+# ── Synthetic Transaction Health Check ─────────────────────────────────
+
+def check_synthetic_login() -> dict:
+    """
+    End-to-end synthetic login through the dashboard's nginx proxy.
+    Catches stale DNS cache after API container recreation (502 errors).
+    Returns {"ok": bool, "status_code": int, "detail": str, "auto_fixed": bool}.
+    """
+    result = {"ok": False, "status_code": 0, "detail": "", "auto_fixed": False}
+    payload = json.dumps({
+        "email": SYNTHETIC_LOGIN_EMAIL,
+        "password": SYNTHETIC_LOGIN_PASSWORD,
+    }).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(
+            SYNTHETIC_LOGIN_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            result["status_code"] = resp.status
+            if resp.status < 400 and "token" in body:
+                result["ok"] = True
+                result["detail"] = "Login OK"
+            else:
+                result["detail"] = f"HTTP {resp.status} but no token in response"
+    except urllib.error.HTTPError as e:
+        result["status_code"] = e.code
+        result["detail"] = f"HTTP {e.code}: {e.reason}"
+    except urllib.error.URLError as e:
+        result["detail"] = f"Connection failed: {e.reason}"
+    except Exception as e:
+        result["detail"] = f"{type(e).__name__}: {str(e)[:200]}"
+
+    # Auto-fix: if 502 or connection refused, restart dashboard for DNS refresh
+    if not result["ok"] and result["status_code"] in (502, 503, 0):
+        emit_event(
+            "WARN", "synthetic_login",
+            f"Synthetic login failed (HTTP {result['status_code']}), "
+            f"restarting dashboard for DNS refresh",
+            result["detail"],
+        )
+        try:
+            subprocess.run(
+                ["docker", "restart", "zovark-dashboard"],
+                capture_output=True, text=True, timeout=30,
+            )
+            result["auto_fixed"] = True
+            emit_event("INFO", "synthetic_login",
+                       "Dashboard restarted for DNS refresh")
+        except Exception as e:
+            emit_event("ERROR", "synthetic_login",
+                       f"Dashboard restart failed: {e}")
+    elif not result["ok"]:
+        # Non-proxy issue (e.g., 401 bad credentials, 500 API error)
+        emit_event("WARN", "synthetic_login",
+                   f"Synthetic login failed: {result['detail']}")
+
+    return result
+
+
+# ── Connectivity Health Checks ─────────────────────────────────────────
+
+CONNECTIVITY_CHECK_INTERVAL = 60  # seconds
+
+def check_connectivity() -> dict:
+    """
+    End-to-end connectivity checks across service boundaries.
+    Tests that services can actually reach their dependencies, not just that
+    processes are running.
+    """
+    results = {}
+
+    # 1. API → DB+Redis+Temporal (via /ready endpoint)
+    api_ready = {"ok": False, "detail": ""}
+    try:
+        req = urllib.request.Request("http://zovark-api:8090/ready", method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            if resp.status == 200:
+                api_ready = {"ok": True, "detail": "all dependencies healthy"}
+            else:
+                # 503 — find which dependency is down
+                checks = body.get("checks", {})
+                failed = [k for k, v in checks.items() if not v.get("ready")]
+                api_ready = {"ok": False, "detail": f"dependencies down: {', '.join(failed)}"}
+    except urllib.error.HTTPError as e:
+        if e.code == 503:
+            try:
+                body = json.loads(e.read().decode("utf-8"))
+                checks = body.get("checks", {})
+                failed = [k for k, v in checks.items() if not v.get("ready")]
+                api_ready = {"ok": False, "detail": f"dependencies down: {', '.join(failed)}"}
+            except Exception:
+                api_ready = {"ok": False, "detail": f"HTTP {e.code}"}
+        else:
+            api_ready = {"ok": False, "detail": f"HTTP {e.code}"}
+    except Exception as e:
+        api_ready = {"ok": False, "detail": str(e)[:200]}
+
+    results["api_readiness"] = api_ready
+    if not api_ready["ok"]:
+        emit_event("WARN", "connectivity", f"API not ready: {api_ready['detail']}")
+        # If API can't reach DB, restarting API might help (reconnect pool)
+        if "postgresql" in api_ready.get("detail", ""):
+            emit_event("WARN", "connectivity",
+                       "API lost DB connection, restarting API")
+            try:
+                subprocess.run(["docker", "restart", "zovark-api"],
+                               capture_output=True, text=True, timeout=30)
+            except Exception as e:
+                emit_event("ERROR", "connectivity", f"API restart failed: {e}")
+
+    # 2. Worker → Ollama (LLM availability)
+    ollama_ok = {"ok": False, "detail": ""}
+    try:
+        req = urllib.request.Request(f"{LLM_HOST}/api/tags", method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            if resp.status == 200:
+                body = json.loads(resp.read().decode("utf-8"))
+                models = [m.get("name", "?") for m in body.get("models", [])]
+                ollama_ok = {"ok": True, "detail": f"models: {', '.join(models[:3])}"}
+            else:
+                ollama_ok = {"ok": False, "detail": f"HTTP {resp.status}"}
+    except Exception as e:
+        ollama_ok = {"ok": False, "detail": str(e)[:200]}
+
+    results["worker_to_ollama"] = ollama_ok
+    if not ollama_ok["ok"]:
+        emit_event("WARN", "connectivity",
+                   f"Ollama unreachable from healer: {ollama_ok['detail']}")
+
+    # 3. Dashboard → API (synthetic login — already handled by check_synthetic_login)
+    # Skip here to avoid duplicate restarts; check_synthetic_login runs on its own timer.
+
+    return results
+
+
 # ── Disk Pressure Monitoring ──────────────────────────────────────────
 
 def check_disk_pressure():
@@ -590,8 +780,56 @@ def _check_with_timeout(svc, timeout=15):
     return result[0], result[1]
 
 
+async def run_health_checks_async():
+    """Execute health checks concurrently using asyncio."""
+    with lock:
+        svc_snapshot = list(services.values())
+
+    async def check_one(svc):
+        now_str = datetime.now(timezone.utc).isoformat()
+        # Run the existing health_check in a thread to avoid blocking
+        ok, detail = await asyncio.to_thread(_check_with_timeout, svc, 15)
+
+        with lock:
+            svc.last_check = now_str
+            if ok:
+                if svc.status != "healthy":
+                    emit_event("INFO", svc.name, f"Service recovered: {detail}")
+                svc.status = "healthy"
+                svc.last_healthy = now_str
+                svc.consecutive_failures = 0
+                svc.escalation_level = 0
+            else:
+                svc.consecutive_failures += 1
+                svc.last_error = detail
+
+                if svc.consecutive_failures >= 3:
+                    svc.status = "down"
+                    if svc.escalation_level < MAX_RESTART_ATTEMPTS:
+                        restart_container(svc, reason=detail)
+                elif svc.consecutive_failures >= 1:
+                    svc.status = "degraded"
+                    emit_event("WARN", svc.name, f"Degraded: {detail}")
+
+        # Worker stuck detection
+        if svc.svc_type == "worker" and ok:
+            check_worker_stuck(svc)
+
+    # Run all health checks concurrently
+    await asyncio.gather(*[check_one(svc) for svc in svc_snapshot])
+
+
 def run_health_checks():
-    """Execute health checks for all discovered services."""
+    """Execute health checks — async if possible, sync fallback."""
+    try:
+        asyncio.run(run_health_checks_async())
+    except Exception as e:
+        log.error("Async health checks failed, running sync fallback: %s", e)
+        _run_health_checks_sync()
+
+
+def _run_health_checks_sync():
+    """Sync fallback for health checks."""
     with lock:
         svc_snapshot = list(services.values())
 
@@ -620,7 +858,6 @@ def run_health_checks():
                     svc.status = "degraded"
                     emit_event("WARN", svc.name, f"Degraded: {detail}")
 
-        # Worker stuck detection
         if svc.svc_type == "worker" and ok:
             check_worker_stuck(svc)
 
@@ -1180,6 +1417,8 @@ def main():
     last_discovery = time.time()
     last_daily_report = 0
     last_disk_check = 0
+    last_synthetic_login = 0
+    last_connectivity_check = 0
     cycle = 0
 
     while True:
@@ -1192,6 +1431,16 @@ def main():
 
         # Run health checks
         run_health_checks()
+
+        # Connectivity checks every 60 seconds (API→DB, Worker→Ollama)
+        if time.time() - last_connectivity_check > CONNECTIVITY_CHECK_INTERVAL:
+            check_connectivity()
+            last_connectivity_check = time.time()
+
+        # Synthetic login check every 60 seconds (Dashboard→API)
+        if time.time() - last_synthetic_login > SYNTHETIC_LOGIN_INTERVAL:
+            check_synthetic_login()
+            last_synthetic_login = time.time()
 
         # Disk pressure check every 5 minutes
         if time.time() - last_disk_check > 300:

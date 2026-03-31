@@ -811,15 +811,17 @@ export const submitAnalystFeedback = async (feedback: {
     analyst_risk_score?: number;
     analyst_notes?: string;
     promote?: boolean;
-}): Promise<{ status: string, promoted_slug?: string }> => {
+}): Promise<{ status: string; promoted_slug?: string; approvals?: number; required?: number }> => {
     const response = await fetchWithRefresh(`${API_BASE_URL}/analyst-feedback`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(feedback),
     });
     if (response.status === 401 || response.status === 403) throw new Error("Unauthorized");
-    if (!response.ok) throw new Error('Failed to submit analyst feedback');
-    return response.json();
+    if (response.status === 409) throw new Error('You have already approved this promotion');
+    // 202 = pending second approval (quorum not yet met)
+    if (response.status === 202 || response.ok) return response.json();
+    throw new Error('Failed to submit analyst feedback');
 };
 
 export const fetchAutoTemplates = async (): Promise<{ items: AutoTemplate[] }> => {

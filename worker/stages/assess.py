@@ -31,9 +31,10 @@ ASSESS_SUMMARY_TIMEOUT = float(os.getenv("ZOVARK_ASSESS_TIMEOUT", "45"))
 
 
 # --- Verdict derivation ---
-def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
+def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int, execution_mode: str = "sandbox") -> str:
     # Error state: safety wrapper produced risk=0 with a single error finding
-    if risk_score == 0 and finding_count <= 1:
+    # Only applies to sandbox mode — v3 tool mode can legitimately produce risk=0 for benign alerts
+    if execution_mode == "sandbox" and risk_score == 0 and finding_count <= 1:
         return "error"
     # Benign: unconditional at low risk
     if risk_score <= 35:
@@ -370,6 +371,16 @@ async def assess_results(data: dict) -> dict:
     Input: ExecuteOutput fields + task metadata
     Returns: dict (serializable AssessOutput fields)
     """
+    # OTEL span
+    try:
+        from tracing import get_tracer
+        _span = get_tracer().start_span("stage.assess")
+        _span.set_attribute("zovark.task_id", data.get("task_id", ""))
+        _span.set_attribute("zovark.task_type", data.get("task_type", ""))
+        _span.set_attribute("zovark.execution_mode", data.get("execution_mode", ""))
+    except Exception:
+        _span = None
+
     task_id = data.get("task_id", "")
     tenant_id = data.get("tenant_id", "")
     stdout = data.get("stdout", "")
@@ -378,6 +389,30 @@ async def assess_results(data: dict) -> dict:
     risk_score = data.get("risk_score", 0)
     recommendations = data.get("recommendations", [])
     task_type = data.get("task_type", "")
+
+    # FAIL-CLOSED: If LLM was down during analyze, force manual review
+    path_taken_early = data.get("path_taken", "")
+    if path_taken_early == "error_llm_down":
+        activity.logger.warning(f"LLM was down for task {task_id} — forcing needs_manual_review")
+        result = AssessOutput(
+            verdict="needs_manual_review",
+            risk_score=0,
+            severity="high",
+            confidence=0.0,
+            false_positive_confidence=0.0,
+            recommendations=["LLM service was unavailable during investigation. Manual analysis required."],
+            memory_summary="LLM unavailable — investigation incomplete",
+        )
+        out = asdict(result)
+        out["iocs"] = []
+        out["findings"] = [{"title": "LLM Unavailable", "details": "Automated investigation could not complete. Manual review required."}]
+        out["mitre_attack"] = []
+        out["investigation_metadata"] = {"pipeline_version": "v2", "llm_available": False}
+        out["plain_english_summary"] = "• LLM service was unavailable — this alert requires manual analyst investigation\n• HIGH PRIORITY — do not ignore"
+        out["status"] = "pending_review"
+        out["needs_human_review"] = True
+        out["review_reason"] = "LLM service was unavailable during investigation"
+        return out
 
     # --- Schema validation of sandbox output ---
     # Validate the data coming from execute stage (findings, iocs, risk_score, recommendations)
@@ -452,15 +487,71 @@ async def assess_results(data: dict) -> dict:
             iocs.append(new_ioc)
             existing_by_value[val] = new_ioc
 
+    # --- IOC provenance validation (Red team patch: prevents phantom IP fabrication) ---
+    if raw_log:
+        for ioc in iocs:
+            if not isinstance(ioc, dict):
+                continue
+            value = str(ioc.get("value", ""))
+            if not value:
+                continue
+            # Check if IOC value appears in raw_log
+            if ioc.get("type") in ("ipv4", "ip", "ip_address"):
+                value_in_raw = bool(re.search(re.escape(value), raw_log))
+            else:
+                value_in_raw = value.lower() in raw_log.lower()
+
+            if value_in_raw:
+                ioc.setdefault("confidence", "high")
+            else:
+                # IOC only in structured fields — downgrade
+                has_struct_source = any(
+                    ref.get("source", "").startswith(("siem_event.", "source_ip", "destination_ip", "title", "rule_name"))
+                    for ref in ioc.get("evidence_refs", [])
+                )
+                if has_struct_source:
+                    ioc["confidence"] = "low"
+                    ioc["provenance_warning"] = (
+                        f"IOC '{value}' in structured field only, not confirmed in raw_log"
+                    )
+
+    # Count only confirmed IOCs for risk/verdict decisions
+    confirmed_iocs = [i for i in iocs if isinstance(i, dict) and i.get("confidence") != "low"]
+
+    # --- Suppression phrase detection (Red team patch: adversarial risk manipulation) ---
+    SUPPRESSION_PATTERNS = [
+        r'(?i)scheduled\s+(penetration\s+)?test',
+        r'(?i)authorized\s+(security\s+)?scan',
+        r'(?i)do\s+not\s+escalate',
+        r'(?i)false\s+positive\s+(confirmed|verified)',
+        r'(?i)(compliance|audit)\s+(drill|exercise)',
+        r'(?i)test\s+alert\s*[-—:]\s*(ignore|disregard)',
+        r'(?i)simulation\s+exercise',
+        r'(?i)approved\s+activity',
+    ]
+    has_suppression = any(re.search(p, combined_signal) for p in SUPPRESSION_PATTERNS)
+    if has_suppression and (attack_boost > 0 or risk_score >= 50):
+        # Attack indicators + suppression language = adversarial manipulation
+        risk_score = max(risk_score, 75)
+        findings.append({
+            "title": "Adversarial Risk Suppression Detected",
+            "details": (
+                "Alert contains both attack indicators and suppression language. "
+                "Legitimate security tests are documented in change management, "
+                "not embedded in alert data."
+            ),
+            "severity": "high",
+        })
+
     # --- Findings synthesis: generate findings from IOCs when sandbox produced none ---
-    if iocs and not findings and risk_score >= 50:
-        for ioc in iocs[:10]:
+    if confirmed_iocs and not findings and risk_score >= 50:
+        for ioc in confirmed_iocs[:10]:
             findings.append({
                 "title": f"Detected {ioc.get('type', 'unknown')}: {ioc.get('value', '')}",
                 "severity": "high" if risk_score >= 70 else "medium",
                 "synthesized": True,
             })
-        activity.logger.info(f"Synthesized {len(findings)} findings from IOCs")
+        activity.logger.info(f"Synthesized {len(findings)} findings from confirmed IOCs")
 
     # Template attack risk floor: if the alert matched a known attack template
     # (Path A) but the LLM under-scored it, ensure risk >= 70.
@@ -479,7 +570,8 @@ async def assess_results(data: dict) -> dict:
     if verdict_override == "error":
         verdict = "error"
     else:
-        verdict = _derive_verdict(risk_score, len(iocs), len(findings))
+        execution_mode = data.get("execution_mode", "sandbox")
+        verdict = _derive_verdict(risk_score, len(confirmed_iocs), len(findings), execution_mode=execution_mode)
     severity = _severity_from_risk(risk_score)
     fp_conf = _fp_confidence(risk_score, len(iocs))
 
@@ -540,4 +632,15 @@ async def assess_results(data: dict) -> dict:
     # but if assess derived a real verdict with risk > 0, the investigation succeeded.
     if verdict in ("true_positive", "suspicious", "benign", "needs_analyst_review") and risk_score > 0:
         out["status"] = "completed"
+
+    # End OTEL span
+    if _span:
+        try:
+            _span.set_attribute("result.verdict", verdict)
+            _span.set_attribute("result.risk_score", risk_score)
+            _span.set_attribute("result.ioc_count", len(iocs))
+            _span.end()
+        except Exception:
+            pass
+
     return out

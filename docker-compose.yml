@@ -246,6 +246,12 @@ services:
     container_name: zovark-api
     ports:
       - "8090:8090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=3", "http://127.0.0.1:8090/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     environment:
       - PORT=8090
       - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
@@ -290,15 +296,18 @@ services:
       - ZOVARK_MODEL_CODE=${ZOVARK_MODEL_CODE:-llama3.1:8b}
       - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
       - ZOVARK_MODE=${ZOVARK_MODE:-full}
+      - ZOVARK_EXECUTION_MODE=${ZOVARK_EXECUTION_MODE:-tools}
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://zovark-signoz-collector:4318}
       - ZOVARK_MAX_CONCURRENT_ACTIVITIES=${ZOVARK_MAX_CONCURRENT_ACTIVITIES:-8}
       - ZOVARK_MAX_CONCURRENT_WORKFLOWS=${ZOVARK_MAX_CONCURRENT_WORKFLOWS:-16}
       - PYTHONUNBUFFERED=1
       - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
       - HTTP_PROXY=http://squid-proxy:3128
       - HTTPS_PROXY=http://squid-proxy:3128
-      - NO_PROXY=postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,zovark-api,pgbouncer,host.docker.internal,api
+      - NO_PROXY=postgres,redis,temporal,minio,nats,jaeger,embedding-server,localhost,zovark-api,pgbouncer,host.docker.internal,api,docker-socket-proxy,zovark-signoz-collector,zovark-clickhouse
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox:/app/sandbox:ro
       - ./data/bootstrap:/app/bootstrap_data:ro
       - ./dpo:/app/dpo:ro
@@ -308,11 +317,14 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import temporalio; print('ok')"]
+      test: ["CMD", "python", "-c", "import temporalio, psycopg2, redis; print('ok')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
     deploy:
       resources:
         limits:
@@ -329,6 +341,11 @@ services:
     container_name: zovark-dashboard
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=3", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     depends_on:
       - api
     deploy:
@@ -499,6 +516,45 @@ services:
     networks:
       - zovark-internal
 
+  # ─── DOCKER SOCKET PROXY (Mission 1: Socket Security) ──
+  # Allowlists only container lifecycle ops the worker needs.
+  # Blocks images, exec, networks, volumes, swarm, secrets, etc.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: zovark-docker-proxy
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CONTAINERS: 1
+      POST: 1
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+      SWARM: 0
+      NODES: 0
+      SERVICES: 0
+      TASKS: 0
+      SECRETS: 0
+      CONFIGS: 0
+      PLUGINS: 0
+      INFO: 0
+      EVENTS: 0
+      AUTH: 0
+      BUILD: 0
+      COMMIT: 0
+      DISTRIBUTION: 0
+      SYSTEM: 0
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+    networks:
+      - zovark-internal
+
   # ─── EGRESS PROXY ──────────────────────────────────────
   squid-proxy:
     image: ubuntu/squid:latest
@@ -632,6 +688,73 @@ services:
     networks:
       - zovark-internal
 
+# ─── TRACING — Signoz (opt-in: docker compose --profile tracing up -d) ──
+# Signoz UI at http://localhost:3301 — service maps, trace search, latency dashboards
+# Self-hosted, ClickHouse-backed, air-gap safe (zero cloud telemetry)
+
+  zovark-clickhouse:
+    image: clickhouse/clickhouse-server:24.1-alpine
+    profiles: ["tracing"]
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./config/signoz/clickhouse-cluster.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+    networks:
+      - zovark-internal
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # Schema migration (run once): docker run --rm --network hydra-mvp_zovark-internal signoz/signoz-schema-migrator:0.111.16 --dsn "tcp://zovark-clickhouse:9000" sync
+
+  zovark-signoz-collector:
+    image: signoz/signoz-otel-collector:0.111.16
+    profiles: ["tracing"]
+    command: ["--config=/etc/otel/config.yaml", "--copy-path=/var/tmp/collector-config.yaml"]
+    depends_on:
+      - zovark-clickhouse
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP (worker sends traces here)
+    volumes:
+      - ./config/signoz/otel-collector-config.yaml:/etc/otel/config.yaml:ro
+    networks:
+      - zovark-internal
+    restart: unless-stopped
+
+  zovark-signoz-query:
+    image: signoz/query-service:0.64.0
+    profiles: ["tracing"]
+    depends_on:
+      - zovark-clickhouse
+      - zovark-signoz-collector
+    environment:
+      - ClickHouseUrl=tcp://zovark-clickhouse:9000
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - SIGNOZ_LOCAL_DB_PATH=/var/lib/signoz/signoz.db
+    volumes:
+      - signoz-query-data:/var/lib/signoz
+    networks:
+      zovark-internal:
+        aliases:
+          - signoz-query-service
+    restart: unless-stopped
+
+  zovark-signoz-frontend:
+    image: signoz/frontend:0.64.0
+    profiles: ["tracing"]
+    depends_on:
+      - zovark-signoz-query
+    ports:
+      - "3301:3301"   # Signoz UI (3301 to avoid conflict with dashboard on 3000)
+    environment:
+      - FRONTEND_API_ENDPOINT=http://zovark-signoz-query:8080
+    networks:
+      - zovark-internal
+    restart: unless-stopped
+
 # ─── NETWORKS ──────────────────────────────────────────
 networks:
   zovark-internal:
@@ -649,4 +772,6 @@ volumes:
   caddy_config:
   es-data:
   healer-logs:
+  clickhouse-data:
+  signoz-query-data:
   # nginx-logs: replaced with bind mount ./siem-lab/logs

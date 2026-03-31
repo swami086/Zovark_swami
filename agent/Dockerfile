@@ -8,9 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+RUN pip install --no-cache-dir httpx
 COPY healer.py .
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:8081/api/health || exit 1
+    CMD curl -f http://127.0.0.1:8081/api/health || exit 1
 
 CMD ["python3", "-u", "healer.py"]

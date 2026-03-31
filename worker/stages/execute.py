@@ -34,6 +34,7 @@ except Exception:
     _POLICY_VERSION = "hardcoded-fallback"
 
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
+DOCKER_HOST = os.environ.get("DOCKER_HOST", "")  # tcp://docker-socket-proxy:2375
 
 # --- AST Prefilter (inlined from sandbox/ast_prefilter.py concepts) ---
 # Legacy YAML-driven blocklists (kept for sandbox_policy.yaml compatibility)
@@ -266,49 +267,156 @@ def _run_fast_fill(code: str) -> Dict:
         }
 
 
-# --- Main entry point ---
-@activity.defn
-async def execute_investigation(data: dict) -> dict:
-    """
-    Stage 3: Execute investigation code in sandbox.
-    NO LLM calls. Security: AST prefilter + Docker sandbox.
+EXECUTION_MODE = os.environ.get("ZOVARK_EXECUTION_MODE", "tools")  # "tools" (v3) or "sandbox" (v2)
 
-    Input: {"code": str, "task_type": str}
-    Returns: dict (serializable ExecuteOutput fields)
-    """
+
+def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
+    """Load recent investigations with overlapping IOCs for correlation."""
+    context = {"investigations": []}
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
+        entities = []
+        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
+            val = siem_event.get(field_name)
+            if val:
+                entities.append(val)
+        if not entities:
+            return context
+        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT task_type, (output->>'risk_score')::int as risk_score, "
+                    "output->>'verdict' as verdict, input->'siem_event'->>'source_ip' as source_ip, "
+                    "created_at::text as timestamp "
+                    "FROM agent_tasks "
+                    "WHERE tenant_id = %s AND status = 'completed' "
+                    "AND created_at > NOW() - INTERVAL '24 hours' "
+                    "AND (input->'siem_event'->>'source_ip' = ANY(%s) "
+                    "     OR input->'siem_event'->>'username' = ANY(%s)) "
+                    "ORDER BY created_at DESC LIMIT 20",
+                    (tenant_id, entities, entities)
+                )
+                rows = cur.fetchall()
+                for row in rows:
+                    context["investigations"].append(dict(row))
+                conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        activity.logger.warning(f"Failed to load correlation context: {e}")
+    return context
+
+
+def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
+    """Load institutional knowledge for entities in the siem_event."""
+    knowledge = {}
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
+        entities = []
+        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
+            val = siem_event.get(field_name)
+            if val:
+                entities.append(val)
+        if not entities:
+            return knowledge
+        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT entity_value, description, expected_behavior, hours_active, analyst_notes "
+                    "FROM institutional_knowledge WHERE tenant_id = %s AND entity_value = ANY(%s)",
+                    (tenant_id, entities)
+                )
+                for row in cur.fetchall():
+                    knowledge[row["entity_value"]] = {
+                        "description": row.get("description", ""),
+                        "expected_behavior": row.get("expected_behavior", ""),
+                        "hours_active": row.get("hours_active", ""),
+                        "analyst_notes": row.get("analyst_notes", ""),
+                    }
+        finally:
+            conn.close()
+    except Exception as e:
+        activity.logger.warning(f"Failed to load institutional knowledge: {e}")
+    if knowledge:
+        activity.logger.info(f"Institutional knowledge: found {len(knowledge)} known entities")
+    return knowledge
+
+
+def _execute_v3_tools(data: dict) -> dict:
+    """V3 tool-calling execution: run tool plan in-process (no Docker sandbox)."""
+    from tools.runner import execute_plan
+
+    plan = data.get("plan", [])
+    siem_event = data.get("siem_event", {})
+    tenant_id = data.get("tenant_id", "")
+
+    # Load correlation context and institutional knowledge from DB
+    history_context = _load_correlation_context(tenant_id, siem_event) if tenant_id else {"investigations": []}
+    institutional_knowledge = _load_institutional_knowledge(tenant_id, siem_event) if tenant_id else {}
+
+    if not plan:
+        raise ValueError("No tool plan provided")
+
+    start_time = time.time()
+    result = execute_plan(
+        plan, siem_event,
+        history_context=history_context,
+        institutional_knowledge=institutional_knowledge,
+    )
+    execution_ms = int((time.time() - start_time) * 1000)
+
+    if not isinstance(result, dict) or "risk_score" not in result:
+        raise ValueError(f"Tool runner returned invalid result: {type(result)}")
+
+    return asdict(ExecuteOutput(
+        stdout=json.dumps(result, default=str),
+        stderr="\n".join(result.get("errors", [])),
+        exit_code=0 if not result.get("errors") else 1,
+        status="completed",
+        iocs=result.get("iocs", []),
+        findings=[{"title": f, "severity": "high"} if isinstance(f, str) else f for f in result.get("findings", [])],
+        risk_score=result.get("risk_score", 0),
+        recommendations=[],
+        execution_ms=execution_ms,
+        execution_mode="tools",
+        path_d_fallback=False,
+        path_d_reason="",
+    ))
+
+
+def _execute_v2_sandbox(data: dict) -> dict:
+    """V2 sandbox execution: AST prefilter + Docker sandbox."""
     code = data.get("code", "")
-    task_type = data.get("task_type", "")
 
     if not code:
-        return asdict(ExecuteOutput(
-            stderr="No code provided", exit_code=1, status="failed"
-        ))
+        raise ValueError("No code provided for v2 sandbox")
 
-    # Step 1: AST prefilter (no LLM, <1ms)
+    # AST prefilter
     is_safe, reason = _ast_check(code)
     if not is_safe:
-        return asdict(ExecuteOutput(
-            stderr=f"AST prefilter blocked: {reason}", exit_code=1, status="failed"
-        ))
+        raise ValueError(f"AST prefilter blocked: {reason}")
 
-    # Step 1.5: Safety wrapper ONLY for LLM-generated code (Path C)
-    # Template code (Path A/B) already produces valid JSON — wrapping breaks it
+    # Safety wrapper for LLM-generated code (Path C)
     code_source = data.get("source", "")
     if code_source == "llm":
         code = _wrap_code_safely(code)
 
-    activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}")
+    activity.logger.info(f"Sandbox policy: {_POLICY_VERSION}, DOCKER_HOST={DOCKER_HOST or 'local-socket'}")
 
-    # Step 2: Execute
     if FAST_FILL:
         raw = _run_fast_fill(code)
     else:
         raw = _run_in_sandbox(code)
 
-    # Step 3: Parse results
     parsed = _parse_stdout(raw.get("stdout", ""))
 
-    result = ExecuteOutput(
+    return asdict(ExecuteOutput(
         stdout=raw.get("stdout", ""),
         stderr=raw.get("stderr", ""),
         exit_code=raw.get("exit_code", -1),
@@ -318,6 +426,83 @@ async def execute_investigation(data: dict) -> dict:
         risk_score=parsed.get("risk_score", 0),
         recommendations=parsed.get("recommendations", []),
         execution_ms=raw.get("execution_ms", 0),
-    )
+        execution_mode="sandbox",
+        path_d_fallback=False,
+        path_d_reason="",
+    ))
 
-    return asdict(result)
+
+# --- Main entry point ---
+@activity.defn
+async def execute_investigation(data: dict) -> dict:
+    """
+    Stage 3: Execute investigation code (v2 sandbox) or tool plan (v3 in-process).
+
+    Paths:
+      tools   → v3 in-process tool runner (default)
+      sandbox → v2 Docker sandbox (global feature flag)
+      Path D  → per-investigation fallback from v3 to v2 on failure
+
+    Input: {"code": str, "task_type": str} (v2) or {"plan": list, "siem_event": dict} (v3)
+    Returns: dict (serializable ExecuteOutput fields)
+    """
+    execution_mode = data.get("execution_mode", EXECUTION_MODE)
+
+    # Global v2 sandbox mode
+    if execution_mode == "sandbox":
+        try:
+            return _execute_v2_sandbox(data)
+        except Exception as e:
+            return asdict(ExecuteOutput(
+                stderr=str(e)[:500], exit_code=1, status="failed",
+                execution_mode="sandbox",
+            ))
+
+    # V3 tool-calling mode with Path D fallback
+    if data.get("plan"):
+        try:
+            return _execute_v3_tools(data)
+        except Exception as e:
+            activity.logger.warning(
+                f"v3 tool runner failed, falling back to v2 sandbox (Path D): {e}"
+            )
+            # Record Path D event in OTEL trace
+            try:
+                from tracing import get_tracer
+                _pd_span = get_tracer().start_span("path_d.fallback")
+                _pd_span.set_attribute("path_d.reason", str(e)[:200])
+                _pd_span.set_attribute("path_d.task_type", data.get("task_type", ""))
+                _pd_span.record_exception(e)
+                _pd_span.end()
+            except Exception:
+                pass
+            # Path D: fall back to v2 sandbox for THIS investigation
+            try:
+                v2_result = _execute_v2_sandbox(data)
+                # Tag as Path D fallback
+                v2_result["execution_mode"] = "sandbox_fallback"
+                v2_result["path_d_fallback"] = True
+                v2_result["path_d_reason"] = str(e)[:200]
+                return v2_result
+            except Exception as e2:
+                activity.logger.error(f"Path D v2 fallback also failed: {e2}")
+                return asdict(ExecuteOutput(
+                    stderr=f"v3: {str(e)[:200]}; v2: {str(e2)[:200]}",
+                    exit_code=1,
+                    status="failed",
+                    findings=[{"title": "Investigation failed", "severity": "critical",
+                               "description": f"Both v3 tool runner and v2 sandbox failed"}],
+                    risk_score=0,
+                    execution_mode="failed",
+                    path_d_fallback=True,
+                    path_d_reason=f"v3: {str(e)[:100]}; v2: {str(e2)[:100]}",
+                ))
+
+    # Fallthrough: v2 sandbox for code-based execution (existing workflows)
+    try:
+        return _execute_v2_sandbox(data)
+    except Exception as e:
+        return asdict(ExecuteOutput(
+            stderr=str(e)[:500], exit_code=1, status="failed",
+            execution_mode="sandbox",
+        ))

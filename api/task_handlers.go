@@ -120,8 +120,10 @@ func createTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. Generate task ID
+	// 2. Generate task ID and trace ID
 	taskID := uuid.New().String()
+	traceID := uuid.New().String()
+	c.Header("X-Zovark-Trace-ID", traceID)
 
 	// Insert new fingerprint record (investigation_id will be updated later)
 	rawSample, _ := json.Marshal(req.Input)
@@ -139,7 +141,7 @@ func createTaskHandler(c *gin.Context) {
 	dbCtx, dbCancel := dbContextWithTimeout(c.Request.Context())
 	defer dbCancel()
 
-	tx, err := dbPool.Begin(dbCtx)
+	tx, err := beginTenantTx(dbCtx, tenantID)
 	if err != nil {
 		respondInternalError(c, err, "begin task transaction")
 		return
@@ -147,8 +149,8 @@ func createTaskHandler(c *gin.Context) {
 	defer tx.Rollback(dbCtx) // no-op after commit
 
 	_, err = tx.Exec(dbCtx,
-		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		taskID, tenantID, req.TaskType, req.Input, "pending", time.Now(),
+		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		taskID, tenantID, req.TaskType, req.Input, "pending", time.Now(), traceID,
 	)
 	if err != nil {
 		if isLockTimeout(err) {
@@ -196,6 +198,7 @@ func createTaskHandler(c *gin.Context) {
 		"task_id":     taskID,
 		"workflow_id": we.GetID(),
 		"status":      "pending",
+		"trace_id":    traceID,
 	})
 }
 

@@ -1,0 +1,29 @@
+<clickhouse>
+    <remote_servers>
+        <cluster>
+            <shard>
+                <replica>
+                    <host>zovark-clickhouse</host>
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </cluster>
+    </remote_servers>
+    <keeper_server>
+        <tcp_port>9181</tcp_port>
+        <server_id>1</server_id>
+        <raft_configuration>
+            <server>
+                <id>1</id>
+                <hostname>zovark-clickhouse</hostname>
+                <port>9234</port>
+            </server>
+        </raft_configuration>
+    </keeper_server>
+    <zookeeper>
+        <node>
+            <host>zovark-clickhouse</host>
+            <port>9181</port>
+        </node>
+    </zookeeper>
+</clickhouse>
