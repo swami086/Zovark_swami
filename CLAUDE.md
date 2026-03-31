@@ -245,7 +245,7 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 
 | File | Purpose |
 |------|---------|
-| `agent/healer.py` | Fleet agent: self-healer + Sneakernet UI + AI crash diagnosis |
+| `agent/healer.py` | Fleet agent v1.1: self-healer + Sneakernet UI + AI crash diagnosis + Signoz checks |
 | `dpo/prompts_v2.py` | Full prompt library: system, task, tools, RAG, retry, scoring anchors (~900 LOC) |
 
 ---
@@ -348,6 +348,7 @@ Apply migrations: `docker compose exec -T postgres psql -U zovark -d zovark < mi
 
 | Profile | Services |
 |---------|----------|
+| tracing | Signoz (ClickHouse, OTEL collector, query service, frontend) |
 | siem-lab | Elasticsearch, Kibana, Filebeat, Juice-Shop, nginx-proxy |
 | monitoring | Prometheus, Grafana, postgres-exporter, redis-exporter |
 | debug | temporal-ui |
@@ -357,15 +358,17 @@ Apply migrations: `docker compose exec -T postgres psql -U zovark -d zovark < mi
 
 ---
 
-## Fleet Agent (agent/healer.py)
+## Fleet Agent (agent/healer.py) — v1.1
 
 Self-healing fleet agent running on port 8081:
 
+- **Config:** Reads `ZOVARK_` prefixed env vars (aligned with `worker/settings.py`). Fallback to old names for backwards compat. No pydantic dependency (standalone container).
 - **Sneakernet UI:** Embedded web interface for air-gapped deployments
 - **AI crash diagnosis:** Uses 3B model to analyze container failures and suggest fixes
 - **3-level escalation:** auto-restart -> AI diagnosis -> operator alert
 - **Synthetic login check (60s):** POSTs to dashboard nginx proxy, auto-restarts dashboard on 502 (stale DNS cache fix)
-- **Connectivity checks (60s):** Calls GET /ready on API, checks Ollama reachability. Auto-restarts API if DB connection lost.
+- **Connectivity checks (60s):** Calls GET /ready on API (port 8090), checks Ollama reachability. Auto-restarts API if DB connection lost.
+- **Signoz health checks (OTEL-gated):** When `ZOVARK_OTEL_ENABLED=true`, checks ClickHouse (TCP 9000), OTEL collector (TCP 4318), Signoz query (`/api/v1/health`), Signoz frontend (`:3301`). When false, containers discovered but checks skipped.
 - **Async health checks:** Uses httpx AsyncClient + asyncio.gather for concurrent checks (fixes Windows GIL blocking)
 - **Daily reports:** Automated health summaries
 - **Container:** zovark-healer
@@ -533,6 +536,7 @@ Key route groups on the Go API (port 8090):
 | `scripts/flush_code_cache.sh` | Clear Redis code cache (run after prompt changes) |
 | `scripts/run_ci_tests.sh` | Run CI test suite |
 | `scripts/extract_template_from_investigation.py` | CLI wrapper to extract skill template from a completed investigation |
+| `autoresearch/seed_alerts.sh` | Seed 10 diverse alerts (8 attack + 2 benign), wait for completion, print results |
 
 ---
 
@@ -642,6 +646,7 @@ curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $
 | **3C** | **Red team patches v1+v2 -- 25 sanitizer patterns, 54 content scanner patterns, IOC provenance, suppression detection, Unicode normalization, tail scanning** |
 | **3D** | **Readiness probes + connectivity checks -- GET /ready, healer connectivity monitoring, Docker healthchecks, nginx DNS resolver fix** |
 | **3E** | **v3.1-hardening -- Pydantic Settings (SecretStr, .env), LLM output validation (schemas.py), singleton LLM client (Semaphore(2)), streaming waterfall (events.py → SSE → React), Signoz observability (ClickHouse-backed), Code Graph RAG MCP** |
+| **3F** | **Healer v1.1 -- ZOVARK_ env prefix alignment, Signoz health checks (OTEL-gated), check_tcp(), LLM_HOST configurable, seed_alerts.sh** |
 
 ---
 
@@ -829,14 +834,35 @@ From commit 8507c11 to f0f8b2f — 27 commits in one session:
 12. **config/signoz/frontend-nginx.conf** — Fixed nginx proxy: `location = /api` (exact) → `location /api` (prefix). Signup/login now work.
 13. **Signoz credentials** — admin@zovark.local / TestPass2026
 
+## What Was Built — v3.1 Healer + AutoResearch Prep (March 31, 2026)
+
+### Healer v1.1
+1. **ZOVARK_ env prefix alignment** — Healer reads `ZOVARK_DB_USER`, `ZOVARK_DB_PASSWORD`, `ZOVARK_REDIS_PASSWORD`, `ZOVARK_LLM_BASE_URL`, `ZOVARK_LLM_FAST_MODEL`, `ZOVARK_OTEL_ENABLED` (falls back to old names). docker-compose.yml updated to pass these.
+2. **Signoz health checks** — 4 new checks gated on `OTEL_ENABLED`: ClickHouse TCP 9000, OTEL Collector TCP 4318, Signoz Query HTTP `/api/v1/health`, Signoz Frontend HTTP `:3301`. When OTEL disabled, containers discovered but checks return OK immediately.
+3. **check_tcp()** — New TCP connect health check function for native protocol ports.
+4. **LLM_HOST configurable** — Was hardcoded `http://host.docker.internal:11434`, now reads `ZOVARK_LLM_BASE_URL` env var.
+5. **No Jaeger refs** — Confirmed none existed in healer (already removed in prior commit 81a29ab).
+6. **API port verified** — Confirmed healer checks API on port 8090 (correct).
+
+### AutoResearch Prep
+7. **autoresearch/seed_alerts.sh** — Seeds 10 diverse investigations (8 attack types + 2 benign), waits 5 minutes, prints results from DB. Handles MinGW path conversion (`MSYS_NO_PATHCONV=1`) and Windows Defender AV evasion for LOLBin payloads.
+8. **Stale data cleanup procedure** — FK-safe deletion order: `template_promotion_approvals` → `analyst_feedback` → `entity_edges` → `entities` → `investigation_memory` → `audit_events` → `agent_tasks`. Must also terminate stale Temporal workflows and flush Redis.
+9. **10/10 seed investigations verified** — All completed with correct verdicts: 8 attacks (true_positive, risk 70-100), 2 benign (benign, risk 0).
+
+### Operational Notes
+- **Before clearing data for benchmarks:** Must terminate all open Temporal workflows first, or stale workflows will block the worker. Use: `tctl --address zovark-temporal:7233 workflow listall --op` then terminate each.
+- **agent_tasks schema:** Results are in `output` JSONB column (not `result`). Access via `output->>'verdict'`, `output->>'risk_score'`.
+- **MinGW/Git Bash on Windows:** Set `MSYS_NO_PATHCONV=1` in scripts that pass URLs or Windows-style paths to curl. Windows Defender may block curl payloads containing `certutil.exe -urlcache` patterns.
+
 ## Pending Work
 
-1. **Merge v3.1-hardening to master** — All hardening work is on v3.1-hardening branch
-2. **A100 benchmark** — Rerun with parallel workers on fast hardware
-3. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
-4. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
-5. **Blue/green deployment** — Zero-downtime updates with auto-rollback
-6. **Community template sync** — Network effect moat across customers
-7. **Public self-serve demo** — Standalone browser demo for CISO outreach
-8. **Design partner outreach** — Target healthcare MSSPs first
-9. **Switch to zovark_app DB user** — Enable RLS enforcement in production
+1. **Overnight AutoResearch** — Assess prompt optimization, tool selection prompt optimization, tool hardening, nightly red team. Directories created (`autoresearch/assess_prompt/`, `tool_selection_prompt/`, `tool_hardening/`, `redteam_nightly/`). Use `seed_alerts.sh` to generate fresh investigations first.
+2. **Merge v3.1-hardening to master** — All hardening work is on v3.1-hardening branch
+3. **A100 benchmark** — Rerun with parallel workers on fast hardware
+4. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
+5. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
+6. **Blue/green deployment** — Zero-downtime updates with auto-rollback
+7. **Community template sync** — Network effect moat across customers
+8. **Public self-serve demo** — Standalone browser demo for CISO outreach
+9. **Design partner outreach** — Target healthcare MSSPs first
+10. **Switch to zovark_app DB user** — Enable RLS enforcement in production
