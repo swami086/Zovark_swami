@@ -46,14 +46,17 @@ except ImportError:
     HAS_HTTPX = False
 
 # ── Configuration ──────────────────────────────────────────────────────
+# Aligned with worker/settings.py ZOVARK_ env prefix.
+# Healer runs in its own container (no pydantic), so reads env vars directly.
 
 CHECK_INTERVAL = int(os.environ.get("HEALER_CHECK_INTERVAL", "30"))
-REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "hydra-redis-dev-2026")
-POSTGRES_USER = os.environ.get("POSTGRES_USER", "zovark")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "hydra_dev_2026")
-POSTGRES_DB = os.environ.get("POSTGRES_DB", "zovark")
-LLM_MODEL = os.environ.get("ZOVARK_MODEL_FAST", "llama3.2:3b")
-LLM_HOST = "http://host.docker.internal:11434"
+REDIS_PASSWORD = os.environ.get("ZOVARK_REDIS_PASSWORD", os.environ.get("REDIS_PASSWORD", "hydra-redis-dev-2026"))
+POSTGRES_USER = os.environ.get("ZOVARK_DB_USER", os.environ.get("POSTGRES_USER", "zovark"))
+POSTGRES_PASSWORD = os.environ.get("ZOVARK_DB_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "hydra_dev_2026"))
+POSTGRES_DB = os.environ.get("ZOVARK_DB_NAME", os.environ.get("POSTGRES_DB", "zovark"))
+LLM_MODEL = os.environ.get("ZOVARK_LLM_FAST_MODEL", os.environ.get("ZOVARK_MODEL_FAST", "llama3.2:3b"))
+LLM_HOST = os.environ.get("ZOVARK_LLM_BASE_URL", "http://host.docker.internal:11434")
+OTEL_ENABLED = os.environ.get("ZOVARK_OTEL_ENABLED", os.environ.get("OTEL_ENABLED", "false")).lower() in ("true", "1", "yes")
 LOG_DIR = Path("/var/log/zovark")
 API_PORT = 8081
 MAX_EVENTS = 500
@@ -149,6 +152,11 @@ SERVICE_TYPE_MAP = {
     "zovark-pgbouncer": "pgbouncer",
     "zovark-egress-proxy": "squid",
     "zovark-healer": "self",
+    # Signoz tracing stack (optional, --profile tracing)
+    "hydra-mvp-zovark-clickhouse-1": "signoz_clickhouse",
+    "hydra-mvp-zovark-signoz-collector-1": "signoz_collector",
+    "hydra-mvp-zovark-signoz-query-1": "signoz_query",
+    "hydra-mvp-zovark-signoz-frontend-1": "signoz_frontend",
 }
 
 WORKER_PATTERN = re.compile(r"hydra-mvp[-_]worker[-_]\d+")
@@ -352,6 +360,18 @@ def check_container_running(container_name: str) -> tuple[bool, str]:
         return False, str(e)[:200]
 
 
+def check_tcp(host: str, port: int, timeout: int = 5) -> tuple[bool, str]:
+    """TCP connect health check (e.g. ClickHouse native port)."""
+    import socket
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True, f"TCP {host}:{port} open"
+    except socket.timeout:
+        return False, f"TCP {host}:{port} timeout after {timeout}s"
+    except OSError as e:
+        return False, f"TCP {host}:{port} refused: {e}"
+
+
 def health_check(svc: ServiceState) -> tuple[bool, str]:
     """Route health check to the appropriate implementation."""
     try:
@@ -371,6 +391,24 @@ def health_check(svc: ServiceState) -> tuple[bool, str]:
             return check_container_running(svc.container_name)
         elif svc.svc_type == "pgbouncer":
             return check_container_running(svc.container_name)
+        # Signoz tracing stack (only meaningful when OTEL is enabled)
+        elif svc.svc_type == "signoz_collector":
+            if not OTEL_ENABLED:
+                return True, "OTEL disabled, skipping"
+            # OTLP HTTP receiver — TCP check on port 4318 (GET returns 405 which is fine)
+            return check_tcp("zovark-signoz-collector", 4318)
+        elif svc.svc_type == "signoz_clickhouse":
+            if not OTEL_ENABLED:
+                return True, "OTEL disabled, skipping"
+            return check_tcp("zovark-clickhouse", 9000)
+        elif svc.svc_type == "signoz_query":
+            if not OTEL_ENABLED:
+                return True, "OTEL disabled, skipping"
+            return check_http("http://zovark-signoz-query:8080/api/v1/health")
+        elif svc.svc_type == "signoz_frontend":
+            if not OTEL_ENABLED:
+                return True, "OTEL disabled, skipping"
+            return check_http("http://zovark-signoz-frontend:3301/")
         else:
             return check_container_running(svc.container_name)
     except Exception as e:
@@ -1394,9 +1432,10 @@ def start_api_server():
 def main():
     """Entry point — service discovery, health checks, auto-heal."""
     log.info("=" * 60)
-    log.info("  ZOVARK FLEET AGENT — Self-Healing Daemon v1.0")
+    log.info("  ZOVARK FLEET AGENT — Self-Healing Daemon v1.1")
     log.info("  Check interval: %ds", CHECK_INTERVAL)
     log.info("  LLM endpoint: %s (model: %s)", LLM_HOST, LLM_MODEL)
+    log.info("  OTEL/Signoz checks: %s", "enabled" if OTEL_ENABLED else "disabled")
     log.info("  Status UI: http://0.0.0.0:%d", API_PORT)
     log.info("=" * 60)
 

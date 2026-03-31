@@ -598,11 +598,14 @@ services:
       - healer-logs:/var/log/zovark
     environment:
       - HEALER_CHECK_INTERVAL=30
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-hydra-redis-dev-2026}
-      - POSTGRES_USER=${POSTGRES_USER:-zovark}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-hydra_dev_2026}
-      - POSTGRES_DB=${POSTGRES_DB:-zovark}
-      - ZOVARK_MODEL_FAST=${ZOVARK_MODEL_FAST:-llama3.2:3b}
+      # Aligned with worker/settings.py ZOVARK_ prefix
+      - ZOVARK_DB_USER=${POSTGRES_USER:-zovark}
+      - ZOVARK_DB_PASSWORD=${POSTGRES_PASSWORD:-hydra_dev_2026}
+      - ZOVARK_DB_NAME=${POSTGRES_DB:-zovark}
+      - ZOVARK_REDIS_PASSWORD=${REDIS_PASSWORD:-hydra-redis-dev-2026}
+      - ZOVARK_LLM_FAST_MODEL=${ZOVARK_MODEL_FAST:-llama3.2:3b}
+      - ZOVARK_LLM_BASE_URL=${ZOVARK_LLM_BASE_URL:-http://host.docker.internal:11434}
+      - ZOVARK_OTEL_ENABLED=${OTEL_ENABLED:-false}
     ports:
       - "8081:8081"
     extra_hosts:
