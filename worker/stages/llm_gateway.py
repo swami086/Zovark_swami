@@ -97,32 +97,20 @@ async def llm_call(
     tokens_out = 0
     content = ""
 
-    # Start OTEL span for LLM call
-    try:
-        from tracing import get_tracer
-        _llm_span = get_tracer().start_span("llm.call")
-        _llm_span.set_attribute("llm.model", model_name)
-        _llm_span.set_attribute("llm.stage", stage)
-        _llm_span.set_attribute("llm.task_type", task_type)
-        _llm_span.set_attribute("llm.endpoint", endpoint)
-    except Exception:
-        _llm_span = None
+    # OTEL span is created inside llm_client.llm_request()
+    _llm_span = None  # kept for compatibility with error handlers below
 
     try:
-        # Use explicit timeout config matching original httpx usage
-        timeout_config = httpx.Timeout(timeout, connect=10.0)
-        async with httpx.AsyncClient(timeout=timeout_config) as client:
-            resp = await client.post(
-                endpoint,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                    "X-Zovark-Trace-ID": task_id or "",
-                },
-                json=request_body,
-            )
-            resp.raise_for_status()
-            result = resp.json()
+        # Use singleton LLM client with semaphore concurrency control
+        from llm_client import llm_request
+        result = await llm_request(
+            model=model_name,
+            messages=request_body["messages"],
+            temperature=request_body.get("temperature", 0.1),
+            max_tokens=request_body.get("max_tokens", 4096),
+            stage=stage,
+            response_format=request_body.get("response_format"),
+        )
 
         usage = result.get("usage", {})
         tokens_in = usage.get("prompt_tokens", 0)
