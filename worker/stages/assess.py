@@ -641,6 +641,28 @@ async def assess_results(data: dict) -> dict:
     if verdict in ("true_positive", "suspicious", "benign", "needs_analyst_review") and risk_score > 0:
         out["status"] = "completed"
 
+    # Pydantic verdict validation (graceful — never crashes the investigation)
+    try:
+        from schemas import VerdictOutput
+        from pydantic import ValidationError
+        # Map severity for validation (assess uses "informational", schema uses "info")
+        sev_map = {"informational": "info", "critical": "critical", "high": "high", "medium": "medium", "low": "low", "info": "info"}
+        # Only validate the core verdicts (needs_analyst_review/needs_manual_review bypass validation)
+        if verdict in ("true_positive", "suspicious", "benign", "inconclusive", "error"):
+            verdict_for_validation = {
+                "verdict": verdict,
+                "risk_score": risk_score,
+                "severity": sev_map.get(severity, "medium"),
+                "summary": out.get("plain_english_summary", "") or summary or "Investigation complete",
+                "mitre_techniques": [t.get("technique_id", t) if isinstance(t, dict) else str(t) for t in out.get("mitre_attack", [])],
+            }
+            validated = VerdictOutput.model_validate(verdict_for_validation)
+            # Apply cleaned MITRE techniques back (invalid IDs silently dropped)
+            out["mitre_attack_validated"] = validated.mitre_techniques
+    except (ImportError, Exception) as e:
+        if not isinstance(e, ImportError):
+            activity.logger.warning(f"Verdict validation issue (non-fatal): {e}")
+
     # End OTEL span
     if _span:
         try:
