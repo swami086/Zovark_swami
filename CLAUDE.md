@@ -1,4 +1,4 @@
-# Zovark v3.0 — Autonomous AI SOC Agent
+# Zovark v3.1 — Autonomous AI SOC Agent
 
 > Air-gapped SOC investigation platform for regulated enterprises (GDPR/HIPAA/CMMC).
 > Receives SIEM alerts, runs deterministic tool-based investigations, delivers structured verdicts.
@@ -8,21 +8,23 @@
 
 | Field | Value |
 |-------|-------|
-| Version | v3.0.0 — deterministic tool-calling architecture (tagged on master) |
+| Version | v3.0.0 tagged on master + v3.1-hardening branch (Pydantic, LLM validation, streaming, Signoz) |
 | Date | 2026-03-31 |
-| Status | Production-ready — 34 investigation tools, 24 plans, governance layer, red-team hardened |
+| Status | Production-ready — 34 tools, 24 plans, 100% detection, Pydantic-validated, Signoz-traced |
 | Stack | Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama |
-| Models | Meta Llama 3.2 3B (fast/param fill) + Meta Llama 3.1 8B (code gen/assess). American only. Zero Chinese dependencies. |
-| LLM Host | Ollama on host port 11434. No litellm. Direct httpx POST. |
+| Models | Meta Llama 3.2 3B (tool selection) + Meta Llama 3.1 8B (assess/synthesis). American only. |
+| LLM Host | Ollama on host port 11434. No litellm. Singleton httpx client with Semaphore(2). |
 | Pipeline | V3 6-stage — deterministic tools + governance layer (v2 sandbox behind feature flag) |
 | Tools | 34 investigation tools (7 categories) + 24 saved investigation plans |
 | Templates | 25 active (12 hand-written + 2 flywheel + 10 AutoResearch + 1 quorum-promoted) |
-| Tests | 510 unit + 14 integration + 515-alert corpus |
-| Services | 10 core Docker containers + optional profiles |
+| Tests | 535 unit + 14 integration + 515-alert corpus |
+| Services | 10 core Docker containers + optional profiles (tracing, monitoring, siem-lab, etc.) |
 | Dashboard | React 19 + TypeScript + Vite 7 + Tailwind 4, 17 pages, SOC War Room design |
 | Database | PostgreSQL 16 + pgvector, 86 tables, 62 migrations, RLS on 10 tables |
-| Concurrency | 8 concurrent activities, 16 concurrent workflows (Temporal parallel pool) |
+| Concurrency | 8 concurrent activities, 16 concurrent workflows, Semaphore(2) on LLM calls |
 | Feature Flag | `ZOVARK_EXECUTION_MODE=tools` (v3, default) or `sandbox` (v2 legacy) |
+| Observability | OpenTelemetry → Signoz (self-hosted ClickHouse). `docker compose --profile tracing up -d` |
+| Config | Pydantic Settings (`worker/settings.py`), SecretStr credentials, .env support |
 
 ## Credentials
 
@@ -188,6 +190,20 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 | `worker/tools/runner.py` | Tool runner — executes plans with variable resolution, conditional branching, timeouts |
 | `worker/tools/investigation_plans.json` | 24 saved investigation plans for all attack types |
 | `worker/stages/govern.py` | Stage 4.5: Governance — autonomy slider (observe/assist/autonomous) |
+
+### v3.1 Hardening (Python)
+
+| File | Purpose |
+|------|---------|
+| `worker/settings.py` | Pydantic Settings — centralized config, SecretStr credentials, .env support, ZOVARK_ env prefix |
+| `worker/schemas.py` | LLM output validation — VerdictOutput, IOCItem, ToolSelectionOutput with safe fallbacks |
+| `worker/llm_client.py` | Singleton httpx.AsyncClient, asyncio.Semaphore(2), OTEL spans per LLM call |
+| `worker/events.py` | PostgreSQL NOTIFY event emitter — fire-and-forget streaming waterfall events |
+| `worker/tracing.py` | OpenTelemetry init — graceful degradation if Signoz unreachable |
+| `config/signoz/otel-collector-config.yaml` | OTLP receivers → ClickHouse exporters for traces/metrics/logs |
+| `config/signoz/clickhouse-cluster.xml` | Single-node ClickHouse with built-in Keeper for Signoz |
+| `config/signoz/frontend-nginx.conf` | Nginx proxy — prefix match for /api/* to query service |
+| `dashboard/src/components/LiveInvestigationFeed.tsx` | Real-time SSE event feed — tool progress, IOC discovery, verdict reveal |
 
 ### Worker Pipeline (Python)
 
@@ -449,6 +465,9 @@ All variables have sensible defaults. Key configuration:
 | Error Handling | `respondInternalError()` -- never expose Go errors to clients | IMPLEMENTED |
 | Circuit Breaker | GREEN/YELLOW/RED states prevent cascading LLM failures | IMPLEMENTED |
 | Learning Gate | Path C results flagged needs_analyst_review for human feedback | IMPLEMENTED |
+| Pydantic LLM Validation | VerdictOutput (verdict enum, risk 0-100, MITRE regex), IOCItem (hash lengths, CVE format), ToolSelectionOutput (catalog check). Invalid → safe fallback. | IMPLEMENTED |
+| Centralized Secrets | Pydantic Settings + SecretStr. No hardcoded passwords in pipeline stages. .env in .gitignore. | IMPLEMENTED |
+| LLM Concurrency Control | Singleton httpx.AsyncClient + asyncio.Semaphore(2). Prevents GPU choke from 8 parallel activities. | IMPLEMENTED |
 
 ---
 
@@ -622,6 +641,7 @@ curl -s http://localhost:8090/api/v1/tasks/<TASK_ID> -H "Authorization: Bearer $
 | **3B** | **AutoResearch -- autonomous red team (152 experiments, 144 bypasses found) + autonomous template engineer (10/10 templates approved, all fitness >0.98)** |
 | **3C** | **Red team patches v1+v2 -- 25 sanitizer patterns, 54 content scanner patterns, IOC provenance, suppression detection, Unicode normalization, tail scanning** |
 | **3D** | **Readiness probes + connectivity checks -- GET /ready, healer connectivity monitoring, Docker healthchecks, nginx DNS resolver fix** |
+| **3E** | **v3.1-hardening -- Pydantic Settings (SecretStr, .env), LLM output validation (schemas.py), singleton LLM client (Semaphore(2)), streaming waterfall (events.py → SSE → React), Signoz observability (ClickHouse-backed), Code Graph RAG MCP** |
 
 ---
 
@@ -654,11 +674,14 @@ Lab-only autonomous experimentation loops. Nothing enters production without hum
 
 ## Observability
 
-- **OpenTelemetry tracing**: Signoz backend (self-hosted, ClickHouse-backed)
+- **OpenTelemetry tracing**: Signoz backend (self-hosted, ClickHouse-backed, air-gap safe)
 - **Start**: `docker compose --profile tracing up -d`
-- **Signoz UI**: http://localhost:3301
+- **Signoz UI**: http://localhost:3301 — login: admin@zovark.local / TestPass2026
 - **Disable**: `OTEL_ENABLED=false` (pipeline works without tracing)
 - **Traces show**: per-stage latency, per-tool execution, LLM call timing, governance decisions
+- **Config files**: `config/signoz/` (ClickHouse cluster, OTEL collector, frontend nginx)
+- **First-time setup**: Run schema migrator once after ClickHouse starts:
+  `docker run --rm --network hydra-mvp_zovark-internal signoz/signoz-schema-migrator:0.111.16 --dsn "tcp://zovark-clickhouse:9000" sync`
 - **Streaming Waterfall**: real-time tool progress via PostgreSQL NOTIFY → SSE → React component
 
 ## MCP Servers for Development
@@ -777,16 +800,43 @@ From commit 8507c11 to f0f8b2f — 27 commits in one session:
 17. **docs/V3_MIGRATION_REPORT.md** — full migration report with architecture comparison
 18. **CLAUDE.md updated** — v3 architecture, tool catalog, governance, feature flag
 
+## What Was Built — v3.1-hardening Sprint (March 31, 2026)
+
+### Phase 1: Merge + Tag
+1. **v3.0.0 tagged on master** — redteam branch merged, release tag created
+
+### Phase 2: Pydantic Settings
+2. **worker/settings.py** — ZovarkSettings with ZOVARK_ env prefix, SecretStr for db_password/redis_password, database_url/redis_url properties, .env file support
+3. **All 7 pipeline stages updated** — ingest, analyze, execute, assess, govern, store, llm_gateway read from settings instead of hardcoded defaults
+
+### Phase 3: LLM Output Validation
+4. **worker/schemas.py** — VerdictOutput (verdict enum, risk 0-100, MITRE regex filter), IOCItem (hash length validation, CVE format), ToolSelectionOutput (catalog check). Invalid data → safe fallback, never crash.
+5. **17 new tests** — valid/invalid verdicts, risk range, MITRE filtering, hash validation, CVE format, tool selection
+
+### Phase 4: LLM Client Singleton
+6. **worker/llm_client.py** — Singleton httpx.AsyncClient, asyncio.Semaphore(2) max concurrent LLM calls, OTEL span per request, 120s read timeout. Path A bypasses semaphore entirely.
+
+### Phase 5: Streaming Investigation Waterfall
+7. **worker/events.py** — PostgreSQL NOTIFY on `investigation_events` channel. Events: tool_started, tool_completed, ioc_discovered, mitre_mapped, verdict_ready. Human-readable tool summaries. Fire-and-forget.
+8. **api/sse.go** — Added LISTEN investigation_events alongside task_completed. Events forwarded with event type and trace_id.
+9. **LiveInvestigationFeed.tsx** — React SSE consumer with monospace timeline, tool indentation, IOC highlighting, colored verdict reveal.
+
+### Phase 6: Code Graph RAG + Signoz MCP
+10. **Code Graph RAG MCP** — registered for codebase knowledge graph queries
+11. **Signoz MCP** — DrDroidLab server registered for trace/metric queries from Claude Code
+
+### Phase 7: Signoz Fix
+12. **config/signoz/frontend-nginx.conf** — Fixed nginx proxy: `location = /api` (exact) → `location /api` (prefix). Signup/login now work.
+13. **Signoz credentials** — admin@zovark.local / TestPass2026
+
 ## Pending Work
 
-1. **V3 benchmark** — Run 515-alert corpus through v3 pipeline, compare with v2
-2. **Populate investigation_plan column** — UPSERT plans into agent_skills.investigation_plan
-3. **A100 benchmark** — Rerun with parallel workers on fast hardware
-4. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
-5. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
-6. **Blue/green deployment** — Zero-downtime updates with auto-rollback
-7. **Community template sync** — Network effect moat across customers
-8. **Public self-serve demo** — Standalone browser demo for CISO outreach
-9. **Design partner outreach** — Target healthcare MSSPs first
-10. **Switch to zovark_app DB user** — Enable RLS enforcement in production (user created, permissions granted)
-11. **v3.0.0 merged to master** — Tagged and released
+1. **Merge v3.1-hardening to master** — All hardening work is on v3.1-hardening branch
+2. **A100 benchmark** — Rerun with parallel workers on fast hardware
+3. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
+4. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
+5. **Blue/green deployment** — Zero-downtime updates with auto-rollback
+6. **Community template sync** — Network effect moat across customers
+7. **Public self-serve demo** — Standalone browser demo for CISO outreach
+8. **Design partner outreach** — Target healthcare MSSPs first
+9. **Switch to zovark_app DB user** — Enable RLS enforcement in production
