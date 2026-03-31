@@ -738,6 +738,8 @@ services:
       - "3301:3301"   # Signoz UI (3301 to avoid conflict with dashboard on 3000)
     environment:
       - FRONTEND_API_ENDPOINT=http://zovark-signoz-query:8080
+    volumes:
+      - ./config/signoz/frontend-nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - zovark-internal
     restart: unless-stopped
