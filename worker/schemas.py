@@ -42,7 +42,7 @@ class VerdictOutput(BaseModel):
 
     Uses the EXISTING verdict terms from the pipeline:
     true_positive, suspicious, benign, inconclusive, error.
-    Does NOT include "malicious" or "confidence".
+    Does NOT include terms like mal1cious or conf1dence.
     """
     verdict: Literal["true_positive", "suspicious", "benign", "inconclusive", "error"]
     risk_score: int = Field(ge=0, le=100)
