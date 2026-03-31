@@ -119,7 +119,14 @@ def correlate_with_history(ioc_values: list, lookback_hours: int, history_contex
 
     # Find investigations that share IOCs
     related = []
-    ioc_set = set(str(v) for v in ioc_values)
+    # Handle both plain string IOCs and IOC dicts with "value" key
+    ioc_set = set()
+    for v in ioc_values:
+        if isinstance(v, dict):
+            ioc_set.add(str(v.get("value", "")))
+        else:
+            ioc_set.add(str(v))
+    ioc_set.discard("")
 
     for inv in investigations:
         # Check source_ip, dest_ip, username, and any IOC fields

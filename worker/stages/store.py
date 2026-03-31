@@ -228,6 +228,14 @@ async def store_investigation(data: dict) -> dict:
             "mitre_attack": data.get("mitre_attack", []),
             "investigation_metadata": data.get("investigation_metadata", {}),
             "plain_english_summary": data.get("plain_english_summary", ""),
+            # v3 fields
+            "execution_mode": data.get("execution_mode", ""),
+            "path_d_fallback": data.get("path_d_fallback", False),
+            "path_d_reason": data.get("path_d_reason", ""),
+            "needs_human_review": data.get("needs_human_review"),
+            "review_reason": data.get("review_reason", ""),
+            "autonomy_level": data.get("autonomy_level", ""),
+            "tools_executed": data.get("tools_executed", 0),
         }
         _update_task_status(
             conn, task_id, status, output,
