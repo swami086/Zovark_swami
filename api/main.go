@@ -330,6 +330,10 @@ func main() {
 		api.GET("/auto-templates", autoTemplatesHandler)
 		api.DELETE("/auto-templates/:slug", requireRole("admin"), disableAutoTemplateHandler)
 		api.GET("/dashboard-stats", dashboardStatsHandler)
+
+		// Governance configuration (admin only)
+		api.GET("/governance/config", requireRole("admin"), getGovernanceConfigHandler)
+		api.PUT("/governance/config", requireRole("admin"), updateGovernanceConfigHandler)
 	}
 
 	// Start server

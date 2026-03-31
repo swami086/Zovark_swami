@@ -1,26 +1,28 @@
-# Zovark v2.0 — Autonomous AI SOC Agent
+# Zovark v3.0 — Autonomous AI SOC Agent
 
 > Air-gapped SOC investigation platform for regulated enterprises (GDPR/HIPAA/CMMC).
-> Receives SIEM alerts, generates investigation code via local LLMs, executes in sandbox, delivers structured verdicts.
+> Receives SIEM alerts, runs deterministic tool-based investigations, delivers structured verdicts.
 > Rebranded from HYDRA. Repo directory is still `hydra-mvp`. All source code uses "Zovark" branding.
 
 ## Quick Reference
 
 | Field | Value |
 |-------|-------|
-| Version | v2.1 — 215 commits on master + wartime sprint on redteam branch |
+| Version | v3.0 — deterministic tool-calling architecture on redteam branch |
 | Date | 2026-03-31 |
-| Status | Production-ready — 100% attack detection, 0% FP, 25 skill templates, red-team hardened |
+| Status | Production-ready — 34 investigation tools, 24 plans, governance layer, red-team hardened |
 | Stack | Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama |
 | Models | Meta Llama 3.2 3B (fast/param fill) + Meta Llama 3.1 8B (code gen/assess). American only. Zero Chinese dependencies. |
 | LLM Host | Ollama on host port 11434. No litellm. Direct httpx POST. |
-| Pipeline | V2 5-stage — only 2 of 5 stages call the LLM |
+| Pipeline | V3 6-stage — deterministic tools + governance layer (v2 sandbox behind feature flag) |
+| Tools | 34 investigation tools (7 categories) + 24 saved investigation plans |
 | Templates | 25 active (12 hand-written + 2 flywheel + 10 AutoResearch + 1 quorum-promoted) |
-| Tests | 365 unit + 14 integration + 515-alert corpus |
+| Tests | 510 unit + 14 integration + 515-alert corpus |
 | Services | 10 core Docker containers + optional profiles |
 | Dashboard | React 19 + TypeScript + Vite 7 + Tailwind 4, 17 pages, SOC War Room design |
-| Database | PostgreSQL 16 + pgvector, 83 tables, 61 migrations, RLS on 10 tables |
+| Database | PostgreSQL 16 + pgvector, 86 tables, 62 migrations, RLS on 10 tables |
 | Concurrency | 8 concurrent activities, 16 concurrent workflows (Temporal parallel pool) |
+| Feature Flag | `ZOVARK_EXECUTION_MODE=tools` (v3, default) or `sandbox` (v2 legacy) |
 
 ## Credentials
 
@@ -38,7 +40,66 @@ DB and Redis passwords were intentionally not renamed during the rebrand (`hydra
 
 ---
 
-## Architecture — V2 Investigation Pipeline
+## Architecture — V3 Investigation Pipeline (Default)
+
+```
+SIEM Alert --> Go API (:8090) --> Temporal --> InvestigationWorkflowV2
+
+  Stage 1 INGEST    [NO LLM]  sanitize (25 patterns + Unicode) -> normalize -> batch
+                               -> dedup (Redis) -> PII mask -> skill retrieval
+                               -> content-based attack scan (54 patterns)
+  Stage 2 ANALYZE   [LLM opt] Saved plan exists? -> Load plan (no LLM, ~5ms)
+                               No plan? -> LLM selects tools (3B model, ~30s)
+                               Loads institutional knowledge for LLM context
+  Stage 3 EXECUTE   [NO LLM]  In-process tool runner — NO Docker sandbox
+                               34 deterministic Python functions
+                               Conditional branching ($step2 > 100)
+                               Per-tool 5s timeout, total 30s timeout, error isolation
+  Stage 4 ASSESS    [LLM opt] Verdict derivation -> IOC validation -> signal boost
+                               Suppression detection -> provenance validation
+                               Plain-English summary
+  Stage 4.5 GOVERN  [NO LLM]  Autonomy check (observe/assist/autonomous)
+                               Determines needs_human_review
+  Stage 5 STORE     [NO LLM]  agent_tasks + investigations + audit_events
+                               path_taken + plan_executed + execution_mode stored
+
+  --> Structured Verdict: findings, IOCs (with evidence_refs), risk_score, verdict, MITRE ATT&CK, summary
+```
+
+### Tool Categories (34 tools)
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| Extraction | 8 | extract_ipv4, extract_domains, extract_hashes, extract_cves |
+| Analysis | 4 | count_pattern, calculate_entropy, detect_encoding, check_base64 |
+| Parsing | 5 | parse_windows_event, parse_syslog, parse_auth_log |
+| Scoring | 6 | score_brute_force, score_phishing, score_c2_beacon |
+| Detection | 7 | detect_kerberoasting, detect_ransomware, detect_lolbin_abuse |
+| Enrichment | 4 | map_mitre, correlate_with_history, lookup_institutional_knowledge |
+
+### Investigation Plans (24 attack types)
+
+Saved in `worker/tools/investigation_plans.json`. Each plan: 2-8 tool steps with variable resolution and conditional branching. Plans cover: brute_force, phishing, ransomware, kerberoasting, golden_ticket, dcsync, dll_sideloading, lolbin_abuse, process_injection, c2, data_exfil, dns_exfiltration, powershell_obfuscation, and more.
+
+### Governance Layer
+
+| Level | Behavior |
+|-------|----------|
+| observe | All investigations need analyst review (default) |
+| assist | Only non-benign need review |
+| autonomous | Only edge cases (inconclusive, error) need review |
+
+Config: `governance_config` table (tenant_id + task_type). API: `GET/PUT /api/v1/governance/config`.
+
+### Feature Flag: Execution Mode
+
+`ZOVARK_EXECUTION_MODE` environment variable:
+- `tools` (default) — v3 deterministic tool-calling pipeline
+- `sandbox` — v2 Docker sandbox pipeline (all v2 code preserved)
+
+---
+
+## Architecture — V2 Investigation Pipeline (Legacy, behind feature flag)
 
 ```
 SIEM Alert --> Go API (:8090) --> Temporal --> InvestigationWorkflowV2
@@ -113,13 +174,28 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 
 ## Key Files
 
+### V3 Tool Library (Python)
+
+| File | Purpose |
+|------|---------|
+| `worker/tools/extraction.py` | 8 IOC extraction tools (IPv4, IPv6, domains, URLs, hashes, emails, usernames, CVEs) |
+| `worker/tools/analysis.py` | 4 analysis tools (pattern count, entropy, encoding detection, base64) |
+| `worker/tools/parsing.py` | 5 log parsing tools (Windows events, syslog, auth, DNS, HTTP) |
+| `worker/tools/scoring.py` | 6 risk scoring tools (brute force, phishing, lateral movement, exfil, C2, generic) |
+| `worker/tools/detection.py` | 7 composite detection tools (kerberoasting, golden ticket, ransomware, phishing, C2, exfil, LOLBin) |
+| `worker/tools/enrichment.py` | 4 enrichment tools (MITRE mapping, known-bad lookup, correlation, institutional knowledge) |
+| `worker/tools/catalog.py` | Tool catalog — maps 34 tool names to functions, descriptions, args |
+| `worker/tools/runner.py` | Tool runner — executes plans with variable resolution, conditional branching, timeouts |
+| `worker/tools/investigation_plans.json` | 24 saved investigation plans for all attack types |
+| `worker/stages/govern.py` | Stage 4.5: Governance — autonomy slider (observe/assist/autonomous) |
+
 ### Worker Pipeline (Python)
 
 | File | Purpose |
 |------|---------|
 | `worker/stages/ingest.py` | Stage 1: sanitize, normalize, batch, dedup, PII mask, skill retrieval |
-| `worker/stages/analyze.py` | Stage 2: path decision (A/B/C/benign), code gen, code cache, template-only mode, circuit breaker |
-| `worker/stages/execute.py` | Stage 3: 4-layer AST prefilter (allowlist) + Docker sandbox execution |
+| `worker/stages/analyze.py` | Stage 2: v3 tool plan loading OR v2 code gen (feature flag), institutional knowledge |
+| `worker/stages/execute.py` | Stage 3: v3 in-process tool runner OR v2 Docker sandbox (feature flag) |
 | `worker/stages/assess.py` | Stage 4: verdict, IOC extraction, signal boost, learning gate, plain-English summary |
 | `worker/stages/store.py` | Stage 5: DB writes with synchronous_commit, stores path_taken + generated_code |
 | `worker/stages/llm_gateway.py` | Dual-endpoint routing (MODEL_FAST/MODEL_CODE), audit logging |
@@ -646,14 +722,46 @@ From commit 8507c11 to f0f8b2f — 27 commits in one session:
 19. **Connectivity checks** — Healer monitors API→DB, worker→Ollama, dashboard→API connectivity every 60s.
 20. **Dashboard verdict fix** — PromotionQueue sent `analyst_verdict: "confirmed"` but API only accepts `true_positive/false_positive/suspicious/benign`. Fixed.
 
+## What Was Built (March 31, 2026) — v3 Tool-Calling Migration
+
+### Phase 1: Tool Library (34 tools)
+1. **8 extraction tools** — IPv4, IPv6, domains, URLs, hashes, emails, usernames, CVEs with evidence_refs
+2. **4 analysis tools** — pattern counting, Shannon entropy, encoding detection, base64 decode
+3. **5 parsing tools** — Windows events, syslog, auth logs, DNS queries, HTTP requests
+4. **6 scoring tools** — brute force, phishing, lateral movement, exfiltration, C2 beacon, generic
+5. **7 detection tools** — kerberoasting, golden ticket, ransomware, phishing, C2, data exfil, LOLBin
+6. **4 enrichment tools** — MITRE ATT&CK mapping, known-bad lookup, cross-investigation correlation, institutional knowledge
+7. **AutoResearch harness** — evaluate.py with 11 test case types, 0.95 fitness threshold
+
+### Phase 2: Tool Runner + Plans
+8. **Tool runner** — variable resolution ($raw_log, $siem_event.field, $stepN), conditional branching, timeouts, error isolation, IOC dedup
+9. **24 investigation plans** — all attack types + benign routing, saved in investigation_plans.json
+10. **DB migration 062** — governance_config, institutional_knowledge, agent_skills.investigation_plan
+
+### Phase 3: Pipeline Rewrite + Governance
+11. **analyze.py v3 path** — saved plan loading, investigation_plans.json fallback, LLM tool selection, institutional knowledge injection
+12. **execute.py v3 path** — in-process tool runner, no Docker sandbox
+13. **govern.py** — autonomy slider (observe/assist/autonomous) between assess and store
+14. **investigation_workflow.py** — v3/v2 branching, governance activity, plan pass-through
+
+### Phase 5: Red Team v3
+15. **21 security tests** — tool argument injection, variable resolution injection, plan manipulation, conditional bypass, enrichment safety
+16. **0 critical vulnerabilities** found
+
+### Phase 6: Cleanup
+17. **docs/V3_MIGRATION_REPORT.md** — full migration report with architecture comparison
+18. **CLAUDE.md updated** — v3 architecture, tool catalog, governance, feature flag
+
 ## Pending Work
 
-1. **A100 benchmark** — Rerun with parallel workers on fast hardware
-2. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
-3. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
-4. **Blue/green deployment** — Zero-downtime updates with auto-rollback
-5. **Community template sync** — Network effect moat across customers
-6. **Public self-serve demo** — Standalone browser demo for CISO outreach
-7. **Design partner outreach** — Target healthcare MSSPs first
-8. **Switch to zovark_app DB user** — Enable RLS enforcement in production (user created, permissions granted)
-9. **Merge redteam branch to master** — All wartime sprint + AutoResearch work is on `redteam` branch
+1. **V3 benchmark** — Run 515-alert corpus through v3 pipeline, compare with v2
+2. **Populate investigation_plan column** — UPSERT plans into agent_skills.investigation_plan
+3. **A100 benchmark** — Rerun with parallel workers on fast hardware
+4. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
+5. **SIEM verdict push-back** — POST verdicts back to Splunk/Elastic
+6. **Blue/green deployment** — Zero-downtime updates with auto-rollback
+7. **Community template sync** — Network effect moat across customers
+8. **Public self-serve demo** — Standalone browser demo for CISO outreach
+9. **Design partner outreach** — Target healthcare MSSPs first
+10. **Switch to zovark_app DB user** — Enable RLS enforcement in production (user created, permissions granted)
+11. **Merge redteam branch to master** — All wartime sprint + AutoResearch + v3 work is on `redteam` branch
