@@ -371,6 +371,16 @@ async def assess_results(data: dict) -> dict:
     Input: ExecuteOutput fields + task metadata
     Returns: dict (serializable AssessOutput fields)
     """
+    # OTEL span
+    try:
+        from tracing import get_tracer
+        _span = get_tracer().start_span("stage.assess")
+        _span.set_attribute("zovark.task_id", data.get("task_id", ""))
+        _span.set_attribute("zovark.task_type", data.get("task_type", ""))
+        _span.set_attribute("zovark.execution_mode", data.get("execution_mode", ""))
+    except Exception:
+        _span = None
+
     task_id = data.get("task_id", "")
     tenant_id = data.get("tenant_id", "")
     stdout = data.get("stdout", "")
@@ -622,4 +632,15 @@ async def assess_results(data: dict) -> dict:
     # but if assess derived a real verdict with risk > 0, the investigation succeeded.
     if verdict in ("true_positive", "suspicious", "benign", "needs_analyst_review") and risk_score > 0:
         out["status"] = "completed"
+
+    # End OTEL span
+    if _span:
+        try:
+            _span.set_attribute("result.verdict", verdict)
+            _span.set_attribute("result.risk_score", risk_score)
+            _span.set_attribute("result.ioc_count", len(iocs))
+            _span.end()
+        except Exception:
+            pass
+
     return out

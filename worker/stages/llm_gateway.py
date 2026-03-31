@@ -92,6 +92,17 @@ async def llm_call(
     tokens_out = 0
     content = ""
 
+    # Start OTEL span for LLM call
+    try:
+        from tracing import get_tracer
+        _llm_span = get_tracer().start_span("llm.call")
+        _llm_span.set_attribute("llm.model", model_name)
+        _llm_span.set_attribute("llm.stage", stage)
+        _llm_span.set_attribute("llm.task_type", task_type)
+        _llm_span.set_attribute("llm.endpoint", endpoint)
+    except Exception:
+        _llm_span = None
+
     try:
         # Use explicit timeout config matching original httpx usage
         timeout_config = httpx.Timeout(timeout, connect=10.0)
@@ -112,13 +123,38 @@ async def llm_call(
         tokens_in = usage.get("prompt_tokens", 0)
         tokens_out = usage.get("completion_tokens", 0)
         content = result["choices"][0]["message"]["content"].strip()
+
+        if _llm_span:
+            try:
+                _llm_span.set_attribute("llm.tokens_in", tokens_in)
+                _llm_span.set_attribute("llm.tokens_out", tokens_out)
+                _llm_span.set_attribute("llm.latency_ms", int((time.time() - t0) * 1000))
+                _llm_span.set_attribute("llm.success", True)
+                _llm_span.end()
+            except Exception:
+                pass
+
     except httpx.TimeoutException as e:
         status = "error"
         error_message = f"LLM timeout after {int(time.time() - t0)}s (limit={timeout}s) endpoint={endpoint}"
+        if _llm_span:
+            try:
+                _llm_span.set_attribute("llm.success", False)
+                _llm_span.record_exception(e)
+                _llm_span.end()
+            except Exception:
+                pass
         raise RuntimeError(error_message) from e
     except Exception as e:
         status = "error"
         error_message = f"{type(e).__name__}: {e}"[:500]
+        if _llm_span:
+            try:
+                _llm_span.set_attribute("llm.success", False)
+                _llm_span.record_exception(e)
+                _llm_span.end()
+            except Exception:
+                pass
         raise
     finally:
         latency_ms = int((time.time() - t0) * 1000)

@@ -105,6 +105,13 @@ async def main():
     # Start health/readiness HTTP server (non-blocking, daemon thread)
     start_health_server(worker_id=WORKER_ID)
 
+    # Initialize OpenTelemetry tracing (non-blocking, graceful degradation)
+    try:
+        from tracing import init_tracing
+        init_tracing()
+    except Exception as e:
+        logger.warn("Tracing initialization failed (non-fatal)", error=str(e))
+
     # Initialize prompt registry at startup
     init_prompts()
 

@@ -53,6 +53,14 @@ async def apply_governance(data: dict) -> dict:
     Input: assess output dict + tenant_id + task_type
     Returns: same dict with needs_human_review and review_reason added
     """
+    # OTEL span
+    try:
+        from tracing import get_tracer
+        _span = get_tracer().start_span("stage.govern")
+        _span.set_attribute("zovark.task_type", data.get("task_type", ""))
+    except Exception:
+        _span = None
+
     tenant_id = data.get("tenant_id", "")
     task_type = data.get("task_type", "")
     verdict = data.get("verdict", "inconclusive")
@@ -83,4 +91,13 @@ async def apply_governance(data: dict) -> dict:
         data["review_reason"] = f"Unknown autonomy level '{autonomy}', defaulting to observe"
 
     data["autonomy_level"] = autonomy
+
+    if _span:
+        try:
+            _span.set_attribute("governance.autonomy_level", autonomy)
+            _span.set_attribute("governance.needs_review", data.get("needs_human_review", True))
+            _span.end()
+        except Exception:
+            pass
+
     return data

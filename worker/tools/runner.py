@@ -206,14 +206,36 @@ def execute_plan(plan: list, siem_event: dict,
             history_context, institutional_knowledge
         )
 
-        # Execute with per-tool timeout (simple wall-clock check)
+        # Execute with per-tool timeout and optional tracing
         try:
+            # Start trace span for this tool
+            try:
+                from tracing import get_tracer
+                _span = get_tracer().start_span(f"tool.{tool_name}")
+                _span.set_attribute("tool.name", tool_name)
+                _span.set_attribute("tool.step", i)
+            except Exception:
+                _span = None
+
             tool_start = time.monotonic()
             result = tool_entry["function"](**resolved_args)
             tool_elapsed = time.monotonic() - tool_start
 
             if tool_elapsed > per_tool_timeout:
                 errors.append(f"Step {i}: {tool_name} took {tool_elapsed:.1f}s (limit {per_tool_timeout}s)")
+
+            # Record tool result in span
+            if _span:
+                try:
+                    _span.set_attribute("tool.duration_ms", int(tool_elapsed * 1000))
+                    _span.set_attribute("tool.success", True)
+                    if isinstance(result, dict) and "risk_score" in result:
+                        _span.set_attribute("tool.risk_score", result["risk_score"])
+                    if isinstance(result, list):
+                        _span.set_attribute("tool.result_count", len(result))
+                    _span.end()
+                except Exception:
+                    pass
 
             step_results[i + 1] = result
             tool_names_executed.append(tool_name)
@@ -232,6 +254,13 @@ def execute_plan(plan: list, siem_event: dict,
                 all_iocs.extend(result)
 
         except Exception as e:
+            if _span:
+                try:
+                    _span.set_attribute("tool.success", False)
+                    _span.record_exception(e)
+                    _span.end()
+                except Exception:
+                    pass
             errors.append(f"Step {i}: {tool_name} error: {str(e)[:200]}")
             step_results[i + 1] = None
             continue

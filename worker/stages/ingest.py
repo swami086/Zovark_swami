@@ -254,6 +254,15 @@ async def ingest_alert(task_data: dict) -> dict:
 
     Returns dict (serializable IngestOutput fields).
     """
+    # OTEL span
+    try:
+        from tracing import get_tracer
+        _span = get_tracer().start_span("stage.ingest")
+        _span.set_attribute("zovark.task_id", task_data.get("task_id", ""))
+        _span.set_attribute("zovark.task_type", task_data.get("task_type", ""))
+    except Exception:
+        _span = None
+
     task_id = task_data.get("task_id", "")
     tenant_id = task_data.get("tenant_id", "")
     task_type = task_data.get("task_type", "")
@@ -356,5 +365,14 @@ async def ingest_alert(task_data: dict) -> dict:
             conn.close()
     except Exception as e:
         print(f"Skill retrieval failed (non-fatal): {e}")
+
+    # End OTEL span
+    if _span:
+        try:
+            _span.set_attribute("result.is_duplicate", result.is_duplicate)
+            _span.set_attribute("result.skill_id", result.skill_id or "")
+            _span.end()
+        except Exception:
+            pass
 
     return asdict(result)

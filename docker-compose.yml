@@ -297,6 +297,8 @@ services:
       - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
       - ZOVARK_MODE=${ZOVARK_MODE:-full}
       - ZOVARK_EXECUTION_MODE=${ZOVARK_EXECUTION_MODE:-tools}
+      - OTEL_ENABLED=${OTEL_ENABLED:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://zovark-jaeger:4318}
       - ZOVARK_MAX_CONCURRENT_ACTIVITIES=${ZOVARK_MAX_CONCURRENT_ACTIVITIES:-8}
       - ZOVARK_MAX_CONCURRENT_WORKFLOWS=${ZOVARK_MAX_CONCURRENT_WORKFLOWS:-16}
       - PYTHONUNBUFFERED=1
@@ -687,6 +689,20 @@ services:
       - zovark-internal
 
 # ─── NETWORKS ──────────────────────────────────────────
+# ─── TRACING (opt-in: docker compose --profile tracing up -d) ──
+  zovark-jaeger:
+    image: jaegertracing/all-in-one:1.54
+    profiles: ["tracing"]
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC receiver
+      - "4318:4318"    # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - zovark-internal
+    restart: unless-stopped
+
 networks:
   zovark-internal:
     driver: bridge
@@ -703,4 +719,5 @@ volumes:
   caddy_config:
   es-data:
   healer-logs:
+  jaeger-data:
   # nginx-logs: replaced with bind mount ./siem-lab/logs

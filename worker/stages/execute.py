@@ -466,6 +466,16 @@ async def execute_investigation(data: dict) -> dict:
             activity.logger.warning(
                 f"v3 tool runner failed, falling back to v2 sandbox (Path D): {e}"
             )
+            # Record Path D event in OTEL trace
+            try:
+                from tracing import get_tracer
+                _pd_span = get_tracer().start_span("path_d.fallback")
+                _pd_span.set_attribute("path_d.reason", str(e)[:200])
+                _pd_span.set_attribute("path_d.task_type", data.get("task_type", ""))
+                _pd_span.record_exception(e)
+                _pd_span.end()
+            except Exception:
+                pass
             # Path D: fall back to v2 sandbox for THIS investigation
             try:
                 v2_result = _execute_v2_sandbox(data)

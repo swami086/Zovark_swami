@@ -1,15 +1,15 @@
 """
-Investigation Workflow V2 — 5-stage pipeline.
-
-~40 lines vs 1300 in legacy. Runs alongside _legacy_workflows.py.
+Investigation Workflow V2/V3 — 6-stage pipeline with OpenTelemetry tracing.
 
 Stages:
   1. INGEST  (30s)  — dedup, PII mask, skill retrieval
-  2. ANALYZE (5min) — template/LLM/stub code generation
-  3. EXECUTE (2min) — Docker sandbox execution
+  2. ANALYZE (5min) — plan loading or LLM tool selection
+  3. EXECUTE (2min) — tool runner (v3) or Docker sandbox (v2)
   4. ASSESS  (1min) — verdict, summary, FP analysis
+  4.5 GOVERN (10s)  — autonomy check
   5. STORE   (30s)  — DB writes, memory, patterns
 """
+import time
 from datetime import timedelta
 from temporalio import workflow
 
@@ -20,11 +20,12 @@ with workflow.unsafe.imports_passed_through():
     from stages.assess import assess_results
     from stages.govern import apply_governance
     from stages.store import store_investigation
+    from tracing import get_tracer
 
 
 @workflow.defn
 class InvestigationWorkflowV2:
-    """5-stage investigation pipeline. No hidden LLM calls."""
+    """6-stage investigation pipeline with tracing."""
 
     @workflow.run
     async def run(self, task_data: dict) -> dict:
