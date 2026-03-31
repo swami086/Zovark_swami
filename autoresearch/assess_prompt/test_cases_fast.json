@@ -1,0 +1,878 @@
+[
+  {
+    "tool_outputs": {
+      "findings": [],
+      "iocs": [],
+      "risk_score": 10,
+      "verdict": "benign",
+      "tools_executed": 7,
+      "tool_names": [
+        "parse_auth_log",
+        "extract_ipv4",
+        "extract_usernames",
+        "count_pattern",
+        "score_brute_force",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {
+          "action": "failure",
+          "username": "root",
+          "source_ip": "198.51.100.77",
+          "port": "44221",
+          "method": "password"
+        },
+        "2": [],
+        "3": [],
+        "4": 3,
+        "5": 10,
+        "6": {
+          "related_investigations": [],
+          "kill_chain_stage": "unknown",
+          "escalation_recommended": false,
+          "correlation_count": 0
+        },
+        "7": [
+          {
+            "name": "Brute Force",
+            "tactic": "Credential Access",
+            "technique_id": "T1110"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "SSH brute force: 847 failed attempts from 198.51.100.77",
+    "expected_verdict": "true_positive",
+    "expected_risk": 70
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "RC4 encryption (0x17) detected",
+        "TGS ticket request (EventID 4769) for service: MSSQLSvc/db01.corp.local:1433",
+        "Non-krbtgt service SPN targeted"
+      ],
+      "iocs": [
+        {
+          "type": "username",
+          "value": "svc_backup"
+        },
+        {
+          "type": "ipv4",
+          "value": "10.0.0.55"
+        },
+        {
+          "type": "service_name",
+          "value": "MSSQLSvc/db01.corp.local:1433"
+        }
+      ],
+      "risk_score": 70,
+      "verdict": "true_positive",
+      "tools_executed": 7,
+      "tool_names": [
+        "parse_windows_event",
+        "extract_usernames",
+        "extract_ipv4",
+        "detect_kerberoasting",
+        "count_pattern",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {
+          "EventID": "4769",
+          "TicketEncryptionType": "0x17",
+          "ServiceName": "MSSQLSvc/db01.corp.local:1433",
+          "TargetUserName": "svc_backup",
+          "ClientAddress": "10.0.0.55"
+        },
+        "2": [
+          {
+            "type": "username",
+            "value": "svc_backup"
+          }
+        ],
+        "3": [
+          {
+            "type": "ipv4",
+            "value": "10.0.0.55"
+          }
+        ],
+        "4": {
+          "findings": [
+            "RC4 encryption (0x17) detected",
+            "TGS ticket request (EventID 4769)"
+          ],
+          "iocs": [
+            {
+              "type": "username",
+              "value": "svc_backup"
+            },
+            {
+              "type": "ipv4",
+              "value": "10.0.0.55"
+            },
+            {
+              "type": "service_name",
+              "value": "MSSQLSvc/db01.corp.local:1433"
+            }
+          ],
+          "risk_score": 70
+        },
+        "5": 5,
+        "6": {
+          "related_investigations": [],
+          "kill_chain_stage": "unknown",
+          "escalation_recommended": false,
+          "correlation_count": 0
+        },
+        "7": [
+          {
+            "name": "Kerberoasting",
+            "tactic": "Credential Access",
+            "technique_id": "T1558.003"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Kerberoasting: 15 RC4 TGS requests for MSSQLSvc SPN",
+    "expected_verdict": "true_positive",
+    "expected_risk": 100
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "Urgency/social engineering language detected: urgent",
+        "Credential harvesting indicators detected",
+        "Suspicious domain: micr0soft-verify.com",
+        "Email with embedded URLs detected"
+      ],
+      "iocs": [
+        {
+          "type": "url",
+          "value": "https://micr0soft-verify.com/reset?token=abc123"
+        },
+        {
+          "type": "domain",
+          "value": "micr0soft-verify.com"
+        },
+        {
+          "type": "email",
+          "value": "security-update@micr0soft-verify.com"
+        },
+        {
+          "type": "email",
+          "value": "john.doe@company.com"
+        }
+      ],
+      "risk_score": 70,
+      "verdict": "true_positive",
+      "tools_executed": 8,
+      "tool_names": [
+        "extract_urls",
+        "extract_domains",
+        "extract_emails",
+        "detect_phishing",
+        "score_phishing",
+        "lookup_known_bad",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": [
+          {
+            "type": "url",
+            "value": "https://micr0soft-verify.com/reset?token=abc123"
+          }
+        ],
+        "2": [
+          {
+            "type": "domain",
+            "value": "micr0soft-verify.com"
+          }
+        ],
+        "3": [
+          {
+            "type": "email",
+            "value": "security-update@micr0soft-verify.com"
+          },
+          {
+            "type": "email",
+            "value": "john.doe@company.com"
+          }
+        ],
+        "4": {
+          "findings": [
+            "Urgency/social engineering language detected"
+          ],
+          "iocs": [
+            {
+              "type": "url",
+              "value": "https://micr0soft-verify.com/reset?token=abc123"
+            },
+            {
+              "type": "domain",
+              "value": "micr0soft-verify.com"
+            }
+          ],
+          "risk_score": 70
+        },
+        "5": 70,
+        "6": {
+          "is_known_bad": false
+        },
+        "7": {
+          "correlation_count": 0
+        },
+        "8": [
+          {
+            "technique_id": "T1566"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Phishing email with typosquat domain and credential harvest URL",
+    "expected_verdict": "true_positive",
+    "expected_risk": 100
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "Shadow copy deletion via WMI",
+        "Ransomware file extension detected: .encrypted"
+      ],
+      "iocs": [
+        {
+          "type": "ipv4",
+          "value": "10.0.0.42"
+        }
+      ],
+      "risk_score": 60,
+      "verdict": "suspicious",
+      "tools_executed": 8,
+      "tool_names": [
+        "parse_windows_event",
+        "extract_ipv4",
+        "extract_hashes",
+        "detect_ransomware",
+        "count_pattern",
+        "lookup_known_bad",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {},
+        "2": [],
+        "3": [],
+        "4": {
+          "findings": [
+            "Shadow copy deletion via WMI",
+            "Ransomware file extension detected: .encrypted"
+          ],
+          "iocs": [
+            {
+              "type": "ipv4",
+              "value": "10.0.0.42"
+            }
+          ],
+          "risk_score": 60
+        },
+        "5": 7,
+        "6": {
+          "is_known_bad": false
+        },
+        "7": {
+          "correlation_count": 0
+        },
+        "8": [
+          {
+            "technique_id": "T1486"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Ransomware: vssadmin delete shadows, 1847 files encrypted",
+    "expected_verdict": "true_positive",
+    "expected_risk": 100
+  },
+  {
+    "tool_outputs": {
+      "findings": [],
+      "iocs": [
+        {
+          "type": "ipv4",
+          "value": "185.220.101.45"
+        },
+        {
+          "type": "domain",
+          "value": "x7kf9.evil-domain.com"
+        },
+        {
+          "type": "ipv4",
+          "value": "10.0.0.42"
+        }
+      ],
+      "risk_score": 50,
+      "verdict": "suspicious",
+      "tools_executed": 8,
+      "tool_names": [
+        "extract_ipv4",
+        "extract_domains",
+        "calculate_entropy",
+        "detect_c2",
+        "score_c2_beacon",
+        "lookup_known_bad",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": [
+          {
+            "type": "ipv4",
+            "value": "185.220.101.45"
+          }
+        ],
+        "2": [
+          {
+            "type": "domain",
+            "value": "x7kf9.evil-domain.com"
+          }
+        ],
+        "3": 0.0,
+        "4": {
+          "findings": [],
+          "iocs": [
+            {
+              "type": "ipv4",
+              "value": "185.220.101.45"
+            },
+            {
+              "type": "domain",
+              "value": "x7kf9.evil-domain.com"
+            }
+          ],
+          "risk_score": 5
+        },
+        "5": 50,
+        "6": {
+          "is_known_bad": false
+        },
+        "7": {
+          "correlation_count": 0
+        },
+        "8": [
+          {
+            "technique_id": "T1071"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "C2 beaconing: 60s intervals to 185.220.101.45 with DGA domain",
+    "expected_verdict": "true_positive",
+    "expected_risk": 100
+  },
+  {
+    "tool_outputs": {
+      "findings": [],
+      "iocs": [
+        {
+          "type": "username",
+          "value": "admin_svc"
+        }
+      ],
+      "risk_score": 15,
+      "verdict": "benign",
+      "tools_executed": 7,
+      "tool_names": [
+        "parse_windows_event",
+        "extract_ipv4",
+        "extract_usernames",
+        "count_pattern",
+        "score_lateral_movement",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {
+          "EventID": "7045",
+          "SubjectUserName": "admin_svc",
+          "TargetServerName": "DC01",
+          "ProcessName": "PsExec.exe",
+          "ServiceName": "PSEXESVC"
+        },
+        "2": [],
+        "3": [
+          {
+            "type": "username",
+            "value": "admin_svc"
+          }
+        ],
+        "4": 2,
+        "5": 15,
+        "6": {
+          "correlation_count": 0
+        },
+        "7": [
+          {
+            "technique_id": "T1021"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Lateral movement: PsExec service installed on DC01 from WS055",
+    "expected_verdict": "true_positive",
+    "expected_risk": 70
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "Large data transfer: 2.3GB",
+        "Activity during off-hours"
+      ],
+      "iocs": [
+        {
+          "type": "domain",
+          "value": "drive.google.com"
+        },
+        {
+          "type": "url",
+          "value": "https://drive.google.com/upload"
+        },
+        {
+          "type": "ipv4",
+          "value": "10.0.0.42"
+        }
+      ],
+      "risk_score": 45,
+      "verdict": "suspicious",
+      "tools_executed": 8,
+      "tool_names": [
+        "extract_ipv4",
+        "extract_domains",
+        "extract_urls",
+        "detect_encoding",
+        "detect_data_exfil",
+        "score_exfiltration",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": [],
+        "2": [
+          {
+            "type": "domain",
+            "value": "drive.google.com"
+          }
+        ],
+        "3": [
+          {
+            "type": "url",
+            "value": "https://drive.google.com/upload"
+          }
+        ],
+        "4": {
+          "has_base64": false
+        },
+        "5": {
+          "findings": [
+            "Large data transfer: 2.3GB"
+          ],
+          "iocs": [
+            {
+              "type": "ipv4",
+              "value": "10.0.0.42"
+            }
+          ],
+          "risk_score": 45
+        },
+        "6": 30,
+        "7": {
+          "correlation_count": 0
+        },
+        "8": [
+          {
+            "technique_id": "T1041"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Data exfiltration: 2.3GB uploaded to Google Drive at 2:30 AM",
+    "expected_verdict": "true_positive",
+    "expected_risk": 100
+  },
+  {
+    "tool_outputs": {
+      "findings": [],
+      "iocs": [
+        {
+          "type": "ipv4",
+          "value": "10.0.0.42"
+        }
+      ],
+      "risk_score": 50,
+      "verdict": "suspicious",
+      "tools_executed": 8,
+      "tool_names": [
+        "parse_windows_event",
+        "extract_ipv4",
+        "extract_urls",
+        "detect_lolbin_abuse",
+        "count_pattern",
+        "score_generic",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {
+          "Processtree": "explorer"
+        },
+        "2": [],
+        "3": [],
+        "4": {
+          "findings": [],
+          "iocs": [
+            {
+              "type": "ipv4",
+              "value": "10.0.0.42"
+            }
+          ],
+          "risk_score": 5
+        },
+        "5": 4,
+        "6": 50,
+        "7": {
+          "correlation_count": 0
+        },
+        "8": [
+          {
+            "technique_id": "T1218"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "LOLBin abuse: certutil downloading from 203.0.113.50, mshta remote HTA",
+    "expected_verdict": "true_positive",
+    "expected_risk": 95
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "Multiple failed logins from single source"
+      ],
+      "iocs": [
+        {
+          "type": "ipv4",
+          "value": "192.168.1.50"
+        },
+        {
+          "type": "username",
+          "value": "admin"
+        }
+      ],
+      "risk_score": 45,
+      "verdict": "suspicious",
+      "tools_executed": 7,
+      "tool_names": [
+        "parse_auth_log",
+        "extract_ipv4",
+        "extract_usernames",
+        "count_pattern",
+        "score_brute_force",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {
+          "action": "failure",
+          "username": "admin",
+          "source_ip": "192.168.1.50"
+        },
+        "2": [
+          {
+            "type": "ipv4",
+            "value": "192.168.1.50"
+          }
+        ],
+        "3": [
+          {
+            "type": "username",
+            "value": "admin"
+          }
+        ],
+        "4": 12,
+        "5": 45,
+        "6": {
+          "correlation_count": 0
+        },
+        "7": [
+          {
+            "technique_id": "T1110"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Borderline brute force: 12 failed attempts from 192.168.1.50",
+    "expected_verdict": "suspicious",
+    "expected_risk": 45
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "Unusual login time",
+        "New geolocation"
+      ],
+      "iocs": [
+        {
+          "type": "ipv4",
+          "value": "203.0.113.10"
+        },
+        {
+          "type": "username",
+          "value": "jsmith"
+        }
+      ],
+      "risk_score": 55,
+      "verdict": "suspicious",
+      "tools_executed": 7,
+      "tool_names": [
+        "parse_auth_log",
+        "extract_ipv4",
+        "extract_usernames",
+        "count_pattern",
+        "score_generic",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {
+          "action": "success",
+          "username": "jsmith",
+          "source_ip": "203.0.113.10"
+        },
+        "2": [
+          {
+            "type": "ipv4",
+            "value": "203.0.113.10"
+          }
+        ],
+        "3": [
+          {
+            "type": "username",
+            "value": "jsmith"
+          }
+        ],
+        "4": 2,
+        "5": 55,
+        "6": {
+          "correlation_count": 1
+        },
+        "7": [
+          {
+            "technique_id": "T1078"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Anomalous login: jsmith from new geolocation at 3 AM",
+    "expected_verdict": "suspicious",
+    "expected_risk": 55
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "Unauthorized IAM policy attachment"
+      ],
+      "iocs": [
+        {
+          "type": "ipv4",
+          "value": "10.0.0.70"
+        },
+        {
+          "type": "username",
+          "value": "compromised_iam"
+        }
+      ],
+      "risk_score": 60,
+      "verdict": "suspicious",
+      "tools_executed": 8,
+      "tool_names": [
+        "extract_ipv4",
+        "extract_usernames",
+        "extract_emails",
+        "count_pattern",
+        "score_generic",
+        "lookup_known_bad",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": [
+          {
+            "type": "ipv4",
+            "value": "10.0.0.70"
+          }
+        ],
+        "2": [
+          {
+            "type": "username",
+            "value": "compromised_iam"
+          }
+        ],
+        "3": [],
+        "4": 6,
+        "5": 60,
+        "6": {
+          "is_known_bad": false
+        },
+        "7": {
+          "correlation_count": 0
+        },
+        "8": [
+          {
+            "technique_id": "T1078.004"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Cloud infrastructure attack: unauthorized IAM admin policy attached",
+    "expected_verdict": "true_positive",
+    "expected_risk": 80
+  },
+  {
+    "tool_outputs": {
+      "findings": [],
+      "iocs": [],
+      "risk_score": 0,
+      "verdict": "benign",
+      "tools_executed": 2,
+      "tool_names": [
+        "extract_ipv4",
+        "score_generic"
+      ],
+      "tool_results": {
+        "1": [],
+        "2": 0
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Routine password change completed successfully",
+    "expected_verdict": "benign",
+    "expected_risk": 0
+  },
+  {
+    "tool_outputs": {
+      "findings": [],
+      "iocs": [],
+      "risk_score": 0,
+      "verdict": "benign",
+      "tools_executed": 2,
+      "tool_names": [
+        "extract_ipv4",
+        "score_generic"
+      ],
+      "tool_results": {
+        "1": [],
+        "2": 0
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Windows Update service entered running state during maintenance",
+    "expected_verdict": "benign",
+    "expected_risk": 0
+  },
+  {
+    "tool_outputs": {
+      "findings": [
+        "DCSync replication from non-DC host"
+      ],
+      "iocs": [
+        {
+          "type": "ipv4",
+          "value": "10.0.0.40"
+        },
+        {
+          "type": "username",
+          "value": "backup_svc"
+        }
+      ],
+      "risk_score": 80,
+      "verdict": "true_positive",
+      "tools_executed": 7,
+      "tool_names": [
+        "parse_windows_event",
+        "extract_ipv4",
+        "extract_usernames",
+        "count_pattern",
+        "score_generic",
+        "correlate_with_history",
+        "map_mitre"
+      ],
+      "tool_results": {
+        "1": {
+          "EventID": "4662",
+          "ObjectType": "DS-Replication-Get-Changes",
+          "SourceIP": "10.0.0.40"
+        },
+        "2": [
+          {
+            "type": "ipv4",
+            "value": "10.0.0.40"
+          }
+        ],
+        "3": [
+          {
+            "type": "username",
+            "value": "backup_svc"
+          }
+        ],
+        "4": 4,
+        "5": 80,
+        "6": {
+          "correlation_count": 0
+        },
+        "7": [
+          {
+            "technique_id": "T1003.006"
+          }
+        ]
+      },
+      "errors": []
+    },
+    "siem_event_summary": "DCSync attack: directory replication from non-domain-controller",
+    "expected_verdict": "true_positive",
+    "expected_risk": 95
+  },
+  {
+    "tool_outputs": {
+      "findings": [],
+      "iocs": [],
+      "risk_score": 20,
+      "verdict": "benign",
+      "tools_executed": 2,
+      "tool_names": [
+        "extract_ipv4",
+        "score_generic"
+      ],
+      "tool_results": {
+        "1": [],
+        "2": 20
+      },
+      "errors": []
+    },
+    "siem_event_summary": "Scheduled task: disk cleanup ran at expected time",
+    "expected_verdict": "benign",
+    "expected_risk": 20
+  }
+]
