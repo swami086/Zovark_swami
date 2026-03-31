@@ -11,8 +11,13 @@ from typing import Optional
 import httpx
 
 ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
-ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
+try:
+    from settings import settings as _settings
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
+    DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+except ImportError:
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "sk-zovark-dev-2026")
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
 
 # Two-model routing: American models only (Meta Llama)
 # FAST: small model for simple param extraction (Path B)

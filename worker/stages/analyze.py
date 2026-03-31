@@ -41,8 +41,13 @@ from stages.code_cache import get_alert_signature, get_cached_code, set_cached_c
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 ZOVARK_MODE = os.getenv("ZOVARK_MODE", "full")  # "full" or "templates-only"
 ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
-ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
+try:
+    from settings import settings as _settings
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
+    DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+except ImportError:
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "sk-zovark-dev-2026")
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
 
 # Model tier defaults — American models only (Meta Llama)
 TIER_GENERATE = {"model": MODEL_CODE, "max_tokens": 4096, "temperature": 0.3}   # Path C: code gen
@@ -50,7 +55,11 @@ TIER_FILL = {"model": MODEL_FAST, "max_tokens": 1024, "temperature": 0.1}       
 
 # Redis client for code cache (mirrors ingest.py pattern)
 import redis as _redis
-_redis_url = os.environ.get("REDIS_URL", "redis://:hydra-redis-dev-2026@redis:6379/0")
+try:
+    from settings import settings as _settings_redis
+    _redis_url = os.environ.get("REDIS_URL", _settings_redis.redis_url)
+except ImportError:
+    _redis_url = os.environ.get("REDIS_URL", "redis://:hydra-redis-dev-2026@redis:6379/0")
 _redis_client = _redis.from_url(_redis_url, decode_responses=True)
 
 # Mock requests shim prepended to all generated code

@@ -23,8 +23,13 @@ from stages.normalizer import normalize_siem_event
 from stages.smart_batcher import get_batcher
 
 # --- Config ---
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
-REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+try:
+    from settings import settings as _settings
+    DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+    REDIS_URL = os.environ.get("REDIS_URL", _settings.redis_url)
+except ImportError:
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
+    REDIS_URL = os.environ.get("REDIS_URL", "redis://:hydra-redis-dev-2026@redis:6379/0")
 DEDUP_ENABLED = os.environ.get("DEDUP_ENABLED", "true").lower() == "true"
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 

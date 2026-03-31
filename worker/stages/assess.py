@@ -26,7 +26,11 @@ from stages.mitre_mapping import get_mitre_techniques
 
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
-ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+try:
+    from settings import settings as _settings
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
+except ImportError:
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "sk-zovark-dev-2026")
 ASSESS_SUMMARY_TIMEOUT = float(os.getenv("ZOVARK_ASSESS_TIMEOUT", "45"))
 
 
@@ -278,7 +282,11 @@ def _fp_confidence(risk_score: int, ioc_count: int) -> float:
 
 
 # --- Validation failure logging ---
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
+try:
+    from settings import settings as _settings_db
+    DATABASE_URL = os.environ.get("DATABASE_URL", _settings_db.database_url)
+except ImportError:
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
 
 
 def _log_validation_failure(task_id: str, tenant_id: str, task_type: str, error_msg: str):

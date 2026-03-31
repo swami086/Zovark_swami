@@ -18,8 +18,13 @@ the pipeline works identically. Tracing never blocks or fails investigations.
 import os
 from contextlib import contextmanager
 
-OTEL_ENABLED = os.environ.get("OTEL_ENABLED", "true").lower() == "true"
-OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://zovark-signoz-collector:4318")
+try:
+    from settings import settings
+    OTEL_ENABLED = settings.otel_enabled
+    OTEL_ENDPOINT = settings.otel_endpoint
+except Exception:
+    OTEL_ENABLED = os.environ.get("OTEL_ENABLED", "true").lower() == "true"
+    OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://zovark-signoz-collector:4318")
 
 # Sentinel for disabled tracing
 trace_enabled = False

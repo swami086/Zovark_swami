@@ -15,7 +15,11 @@ import psycopg2
 from temporalio import activity
 from stages import StoreOutput
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
+try:
+    from settings import settings as _settings
+    DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+except ImportError:
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 
 

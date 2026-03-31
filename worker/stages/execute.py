@@ -276,7 +276,11 @@ def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor
-        DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
+        try:
+            from settings import settings as _settings
+            DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+        except ImportError:
+            DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
         entities = []
         for field_name in ("source_ip", "username", "hostname", "dest_ip"):
             val = siem_event.get(field_name)
@@ -316,7 +320,11 @@ def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor
-        DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
+        try:
+            from settings import settings as _settings
+            DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+        except ImportError:
+            DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
         entities = []
         for field_name in ("source_ip", "username", "hostname", "dest_ip"):
             val = siem_event.get(field_name)
