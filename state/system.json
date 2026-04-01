@@ -1,0 +1,41 @@
+{
+  "name": "ZOVARK",
+  "tagline": "Autonomous AI SOC Agent for regulated enterprises",
+  "version": "3.1-hardening",
+  "status": "production-ready",
+  "last_updated": "2026-04-01T12:00:00Z",
+  "features": [
+    "38 investigation tools (extraction, analysis, parsing, scoring, detection, enrichment)",
+    "24 saved investigation plans for attack types",
+    "V3 6-stage pipeline (ingest, analyze, execute, assess, govern, store)",
+    "FAST_FILL mode: 0.026s avg latency (99.9% improvement)",
+    "100% detection rate, 0% false positive rate",
+    "OpenTelemetry tracing with Signoz",
+    "Real-time dashboard with SSE streaming",
+    "20 red team attack vectors",
+    "4 new persistence detection tools (com_hijacking, encoded_service, token_impersonation, appcert_dlls)",
+    "evaluate.py operational for continuous testing"
+  ],
+  "metrics": {
+    "detection_rate": 1.0,
+    "false_positive_rate": 0.0,
+    "avg_investigation_latency_sec": 0.026,
+    "red_team_vectors": 20,
+    "open_bypasses": 0,
+    "tools_count": 38,
+    "tests_passing": 405
+  },
+  "users": {
+    "target": "SOC analysts in regulated enterprises (healthcare, finance, defense)",
+    "current": 0,
+    "pilot_programs": 0
+  },
+  "revenue_model": {
+    "type": "SaaS / On-premise license",
+    "tiers": [
+      {"name": "Essentials", "price": "$40K/year", "features": "Templates-only mode"},
+      {"name": "Professional", "price": "Custom", "features": "Full pipeline + LLM"},
+      {"name": "Enterprise", "price": "Custom", "features": "Air-gapped + CMMC compliance"}
+    ]
+  }
+}

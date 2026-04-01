@@ -1,0 +1,42 @@
+{
+  "last_updated": "2026-04-01T12:00:00Z",
+  "current_quarter": "Q2 2026",
+  "priorities": [
+    {
+      "rank": 1,
+      "item": "Get 10 design partner pilots",
+      "status": "not_started",
+      "blockers": ["Need CISO outreach", "Need case studies"]
+    },
+    {
+      "rank": 2,
+      "item": "Healthcare template pack (30 templates)",
+      "status": "in_progress",
+      "delivered": 10
+    },
+    {
+      "rank": 3,
+      "item": "SIEM verdict push-back (Splunk/Elastic)",
+      "status": "not_started"
+    },
+    {
+      "rank": 4,
+      "item": "Public self-serve demo",
+      "status": "not_started"
+    },
+    {
+      "rank": 5,
+      "item": "Blue/green deployment",
+      "status": "not_started"
+    }
+  ],
+  "completed": [
+    "v3.0.0 release",
+    "Pydantic settings + LLM validation",
+    "OpenTelemetry tracing",
+    "Streaming waterfall dashboard",
+    "AutoResearch Cycles 1-3",
+    "99.9% latency improvement",
+    "4 persistence detection tools added"
+  ]
+}

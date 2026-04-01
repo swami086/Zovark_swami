@@ -1,0 +1,28 @@
+{
+  "last_updated": "2026-04-01T12:00:00Z",
+  "stack": {
+    "api": "Go (Gin) - 90+ routes",
+    "worker": "Python 3.11 + Temporal.io",
+    "frontend": "React 19 + TypeScript + Vite 7 + Tailwind 4",
+    "database": "PostgreSQL 16 + pgvector",
+    "cache": "Redis",
+    "queue": "Temporal.io",
+    "llm": "Ollama (llama3.1:8b + llama3.2:3b)",
+    "observability": "Signoz (ClickHouse backend)"
+  },
+  "pipeline": {
+    "stage_1_ingest": "Sanitize, normalize, dedup, PII mask, skill retrieval",
+    "stage_2_analyze": "Load saved plan OR LLM tool selection",
+    "stage_3_execute": "In-process tool runner (no Docker sandbox)",
+    "stage_4_assess": "Verdict derivation, IOC validation, signal boost",
+    "stage_4_5_govern": "Autonomy check (observe/assist/autonomous)",
+    "stage_5_store": "Persist results, audit events"
+  },
+  "key_files": {
+    "worker/tools/catalog.py": "38-tool catalog",
+    "worker/tools/investigation_plans.json": "24 attack type plans",
+    "worker/stages/analyze.py": "Tool selection logic",
+    "worker/stages/assess.py": "Verdict derivation",
+    "autoresearch/redteam_nightly/evaluate.py": "Continuous testing harness"
+  }
+}

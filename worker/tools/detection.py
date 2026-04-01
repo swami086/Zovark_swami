@@ -576,8 +576,14 @@ def detect_encoded_service(siem_event: dict) -> dict:
             findings.append("PowerShell download/cradle detected")
             risk += 25
     
-    if findings:
-        risk = max(risk, 80)  # Minimum for encoded service
+    # Only flag as malicious if there's actual encoded/obfuscated content
+    malicious_indicators = ['Encoded command', 'download/cradle', 'hidden window']
+    has_malicious = any(mi in ' '.join(findings) for mi in malicious_indicators)
+    
+    if has_malicious:
+        risk = max(risk, 80)
+    elif findings and risk < 10:
+        risk = 5  # Benign service creation
     
     return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
 
@@ -615,8 +621,14 @@ def detect_token_impersonation(siem_event: dict) -> dict:
         findings.append("Script execution following impersonation")
         risk += 20
     
-    if findings:
-        risk = max(risk, 85)  # Minimum for token impersonation
+    # Only flag if /savecred is used (the actual credential theft vector)
+    has_savecred = '/savecred' in raw_lower
+    has_encoded = '-enc' in raw_lower or '-encodedcommand' in raw_lower
+    
+    if has_savecred or has_encoded:
+        risk = max(risk, 85)
+    elif findings and risk < 20:
+        risk = 10  # Benign runas usage
     
     return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
 
@@ -649,7 +661,13 @@ def detect_appcert_dlls(siem_event: dict) -> dict:
         findings.append("AppCert DLL from user-writable location")
         risk += 25
     
-    if findings:
-        risk = max(risk, 85)  # Minimum for AppCert persistence
+    # Only flag if there's actual DLL registration in AppCert path
+    has_dll_registration = 'custom dll' in ' '.join(findings).lower()
+    has_user_location = 'user-writable' in ' '.join(findings).lower()
+    
+    if has_dll_registration or has_user_location:
+        risk = max(risk, 85)
+    elif findings and risk < 20:
+        risk = 10  # Benign mention
     
     return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
