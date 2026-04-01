@@ -1,0 +1,27 @@
+{
+  "cycle": 2,
+  "spans_last_6h": {},
+  "errors_last_6h": {
+    "meta": [
+      {
+        "name": "name",
+        "type": "LowCardinality(String)"
+      },
+      {
+        "name": "errors",
+        "type": "UInt64"
+      }
+    ],
+    "data": [],
+    "rows": 0,
+    "rows_before_limit_at_least": 0,
+    "statistics": {
+      "elapsed": 0.005324965,
+      "rows_read": 33,
+      "bytes_read": 10
+    }
+  },
+  "tools_last_6h": {},
+  "llm_trend": {},
+  "path_distribution": {}
+}

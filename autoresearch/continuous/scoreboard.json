@@ -1,44 +1,45 @@
 {
-  "cycle": 1,
-  "last_updated": "2026-04-01T09:30:00Z",
+  "cycle": 2,
+  "last_updated": "2026-04-01T10:00:00Z",
   "tracks": {
     "red_team": {
-      "total_vectors": 10,
+      "total_vectors": 20,
       "bypasses": 0,
-      "cycles_run": 1
+      "cycles_run": 2
     },
     "template_growth": {
       "templates_added": 0,
-      "cycles_run": 1
+      "cycles_run": 2
     },
     "tool_hardening": {
       "tools_hardened": 0,
       "edge_cases_added": 0,
-      "cycles_run": 1
+      "cycles_run": 2
     },
     "benchmark": {
       "detection_rate": 100,
       "fp_rate": 0,
-      "cycles_run": 1
+      "cycles_run": 2
     },
     "test_suite": {
       "tests_added": 0,
       "coverage_pct": 0,
-      "cycles_run": 1
+      "cycles_run": 2
     },
     "latency_optimization": {
       "stage_assess_before": 24.3,
       "stage_assess_after": 0.026,
-      "improvement_pct": 99.9
+      "improvement_pct": 99.9,
+      "verified_working": true
     }
   },
   "telemetry_summary": {
-    "investigations_24h": 12,
+    "investigations_6h": 3,
+    "completed": 3,
+    "errors": 0,
     "detection_rate": "100%",
     "fp_rate": "0%",
-    "top_issue": "stage.assess latency (24.3s p95) - FIXED",
-    "path_distribution": {
-      "tools": 12
-    }
+    "avg_duration_sec": 0.0,
+    "top_issue": "None - system healthy"
   }
 }
