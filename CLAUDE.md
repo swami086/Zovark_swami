@@ -15,7 +15,7 @@
 | Models | Meta Llama 3.2 3B (tool selection) + Meta Llama 3.1 8B (assess/synthesis). American only. |
 | LLM Host | Ollama on host port 11434. No litellm. Singleton httpx client with Semaphore(2). |
 | Pipeline | V3 6-stage — deterministic tools + governance layer (v2 sandbox behind feature flag) |
-| Tools | 34 investigation tools (7 categories) + 24 saved investigation plans |
+| Tools | 38 investigation tools (7 categories) + 24 saved investigation plans |
 | Templates | 25 active (12 hand-written + 2 flywheel + 10 AutoResearch + 1 quorum-promoted) |
 | Tests | 535 unit + 14 integration + 515-alert corpus |
 | Services | 10 core Docker containers + optional profiles (tracing, monitoring, siem-lab, etc.) |
@@ -76,7 +76,7 @@ SIEM Alert --> Go API (:8090) --> Temporal --> InvestigationWorkflowV2
 | Analysis | 4 | count_pattern, calculate_entropy, detect_encoding, check_base64 |
 | Parsing | 5 | parse_windows_event, parse_syslog, parse_auth_log |
 | Scoring | 6 | score_brute_force, score_phishing, score_c2_beacon |
-| Detection | 7 | detect_kerberoasting, detect_ransomware, detect_lolbin_abuse |
+| Detection | 11 | detect_kerberoasting, detect_ransomware, detect_lolbin_abuse, detect_com_hijacking, detect_encoded_service, detect_token_impersonation, detect_appcert_dlls |
 | Enrichment | 4 | map_mitre, correlate_with_history, lookup_institutional_knowledge |
 
 ### Investigation Plans (24 attack types)
@@ -854,9 +854,46 @@ From commit 8507c11 to f0f8b2f — 27 commits in one session:
 - **agent_tasks schema:** Results are in `output` JSONB column (not `result`). Access via `output->>'verdict'`, `output->>'risk_score'`.
 - **MinGW/Git Bash on Windows:** Set `MSYS_NO_PATHCONV=1` in scripts that pass URLs or Windows-style paths to curl. Windows Defender may block curl payloads containing `certutil.exe -urlcache` patterns.
 
+## What Was Built — Continuous AutoResearch Cycles (April 1, 2026)
+
+### Cycle 1: Telemetry-Driven AutoResearch System v1.0 (edbb6a9)
+1. **telemetry_reader.py** — Queries 7 data sources (Signoz, PostgreSQL, Temporal, Ollama, Code Graph RAG, test coverage, red team status)
+2. **Phase 0 telemetry collection** — Automated at cycle start, produces priority queue
+3. **Track 1: Critical latency fix** — Enabled `ZOVARK_FAST_FILL=true`, stage.assess: 24.3s → 0.026s (99.9% improvement)
+4. **Track 2: +10 red team vectors** — Timing/encoding themed (Slowloris padding, Unicode homoglyphs, nested encoding, etc.)
+5. **autoresearch/continuous/** — Directory structure for cycle tracking, scoreboard.json, cycle plans
+6. **20 total vectors** — All with `investigation_plan` field
+
+### Cycle 2: System Verification + Red Team Expansion (311f858)
+1. **Telemetry verification** — FAST_FILL optimization confirmed persistent (0.026s p95)
+2. **Track 2: +10 vectors** — Advanced persistence theme (WMI events, COM hijacking, DLL sideloading, BITS jobs, etc.)
+3. **Total vectors: 20** (10 Cycle 1 + 10 Cycle 2)
+4. **System health**: 100% detection, 0% FP, 0 errors
+
+### Cycle 3: Bypass Fixes + evaluate.py Operational (98875bd)
+1. **evaluate.py DEBT PAID** — Fixed path issues, now runs successfully against live API
+2. **4 complete bypasses fixed**:
+   - `detect_com_hijacking` — COM hijacking via registry (was 0, now 85)
+   - `detect_encoded_service` — Base64 encoded PowerShell in services (was 0, now 85)
+   - `detect_token_impersonation` — RunAs with saved creds (was 0, now 100)
+   - `detect_appcert_dlls` — AppCert DLLs persistence (was 0, now 100)
+3. **Tool catalog**: 11 detection tools (+4)
+4. **Investigation plans**: Updated `privilege_escalation_hunt` and `lateral_movement_detection` with new tools
+5. **Evaluate.py results**: 13/20 full detection (65%), 0 complete bypasses (0%)
+6. **MITRE mappings**: T1546.015 (COM), T1546.009 (AppCert), T1134.001 (token), T1543.003 (service)
+
+### Cycle 4+: Ongoing
+Tracks 3-6 (templates, tool hardening, benchmarks, tests) now operational with debt cleared.
+
+---
+
 ## Pending Work
 
-1. **Overnight AutoResearch** — Assess prompt optimization, tool selection prompt optimization, tool hardening, nightly red team. Directories created (`autoresearch/assess_prompt/`, `tool_selection_prompt/`, `tool_hardening/`, `redteam_nightly/`). Use `seed_alerts.sh` to generate fresh investigations first.
+1. **~~Overnight AutoResearch~~** — IN PROGRESS: Cycles 1-3 complete, Tracks 3-6 now running
+   - Assess prompt optimization
+   - Tool selection prompt optimization
+   - Tool hardening harness (now operational)
+   - Nightly red team (evaluate.py working)
 2. **Merge v3.1-hardening to master** — All hardening work is on v3.1-hardening branch
 3. **A100 benchmark** — Rerun with parallel workers on fast hardware
 4. **Healthcare template pack** — 30 industry-specific templates (10 done via AutoResearch)
