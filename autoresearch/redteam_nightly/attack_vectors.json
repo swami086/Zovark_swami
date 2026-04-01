@@ -398,6 +398,7 @@
   {
     "name": "DGA domain with high entropy",
     "category": "ioc_fabrication",
+    "investigation_plan": "c2_communication_hunt",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",
@@ -434,6 +435,7 @@
   {
     "name": "Ransomware note injection",
     "category": "risk_manipulation",
+    "investigation_plan": "ransomware_triage",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",
@@ -452,6 +454,7 @@
   {
     "name": "LOLBin abuse with certutil",
     "category": "code_injection",
+    "investigation_plan": "lolbin_abuse",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",
@@ -470,6 +473,7 @@
   {
     "name": "Data exfiltration with cloud storage",
     "category": "ioc_fabrication",
+    "investigation_plan": "data_exfiltration_detection",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",
@@ -488,6 +492,7 @@
   {
     "name": "Kerberoasting with weak encryption",
     "category": "logic_bypass",
+    "investigation_plan": "kerberoasting",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "svc_sql",
@@ -506,6 +511,7 @@
   {
     "name": "Golden Ticket forged TGT",
     "category": "logic_bypass",
+    "investigation_plan": "golden_ticket",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",
@@ -524,6 +530,7 @@
   {
     "name": "Phishing with urgency and credential form",
     "category": "risk_manipulation",
+    "investigation_plan": "phishing_investigation",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",
@@ -542,6 +549,7 @@
   {
     "name": "C2 beacon with regular intervals",
     "category": "ioc_fabrication",
+    "investigation_plan": "c2_communication_hunt",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",
@@ -560,6 +568,7 @@
   {
     "name": "Lateral movement via PSExec",
     "category": "code_injection",
+    "investigation_plan": "lateral_movement_detection",
     "siem_event": {
       "source_ip": "10.0.0.1",
       "username": "admin",

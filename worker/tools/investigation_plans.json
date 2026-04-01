@@ -22,7 +22,13 @@
             {"tool": "extract_domains", "args": {"text": "$raw_log"}},
             {"tool": "extract_emails", "args": {"text": "$raw_log"}},
             {"tool": "detect_phishing", "args": {"siem_event": "$siem_event"}},
-            {"tool": "score_phishing", "args": {"url_count": "$step1.count", "suspicious_domains": "$step2.count", "has_credential_form": false, "has_urgency_language": false}},
+            {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)urgent|immediate|verify.*account|suspend|expire|click\\s+here|act\\s+now"}},
+            {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)login|password|credential|verify|secure.*login"}},
+            {
+                "condition": "$step6 > 0",
+                "if_true": {"tool": "score_phishing", "args": {"url_count": "$step1.count", "suspicious_domains": "$step2.count", "has_credential_form": true, "has_urgency_language": true}},
+                "if_false": {"tool": "score_phishing", "args": {"url_count": "$step1.count", "suspicious_domains": "$step2.count", "has_credential_form": false, "has_urgency_language": false}}
+            },
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 168, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1566", "T1566.001", "T1566.002"]}}
@@ -86,7 +92,11 @@
             {"tool": "extract_ipv4", "args": {"text": "$raw_log"}},
             {"tool": "extract_usernames", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)psexec|wmi|winrm|admin\\$|ipc\\$|c\\$|pass.the.hash|ntlm|lateral|remote"}},
-            {"tool": "score_lateral_movement", "args": {"method": "unknown", "is_admin_share": false, "is_remote_exec": false, "uses_pass_the_hash": false}},
+            {
+                "condition": "$step4 > 0",
+                "if_true": {"tool": "score_lateral_movement", "args": {"method": "psexec", "is_admin_share": true, "is_remote_exec": true, "uses_pass_the_hash": true}},
+                "if_false": {"tool": "score_lateral_movement", "args": {"method": "unknown", "is_admin_share": false, "is_remote_exec": false, "uses_pass_the_hash": false}}
+            },
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1021", "T1021.002", "T1021.006", "T1550.002"]}}
         ]
