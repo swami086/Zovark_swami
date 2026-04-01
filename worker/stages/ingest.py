@@ -13,10 +13,24 @@ import time
 from typing import Optional
 from dataclasses import asdict
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
+    RealDictCursor = None
 
-from temporalio import activity
+try:
+    from temporalio import activity
+except ImportError:
+    class _MockActivity:
+        def defn(self, func):
+            return func
+        @property
+        def logger(self):
+            import logging
+            return logging.getLogger("mock_activity")
+    activity = _MockActivity()
 from stages import IngestOutput
 from stages.input_sanitizer import sanitize_siem_event
 from stages.normalizer import normalize_siem_event
