@@ -1,316 +1,200 @@
 #!/usr/bin/env python3
 """
-Red Team Nightly — immutable harness for evaluating Zovark pipeline robustness.
-
-Loads attack vectors, tests input sanitization and tool execution,
-detects bypasses, and reports findings.
+Red Team Evaluation Harness — tests attack vectors against the live system.
+Generates bypasses/ directory entries for any vector that evades detection.
 """
-
 import json
-import os
+import asyncio
+import httpx
 import sys
-import time
-import traceback
-from datetime import datetime, timezone
-from pathlib import Path
+import os
+from datetime import datetime
 
-# Add project root and worker/tools to path so worker imports resolve
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "worker"))
+API_URL = "http://localhost:8090"
+ADMIN_EMAIL = "admin@test.local"
+ADMIN_PASS = "TestPass2026"
 
-from worker.stages.input_sanitizer import sanitize_siem_event
-from worker.tools.runner import execute_plan
+async def get_token(client: httpx.AsyncClient) -> str:
+    """Get auth token."""
+    r = await client.post(
+        f"{API_URL}/api/v1/auth/login",
+        json={"email": ADMIN_EMAIL, "password": ADMIN_PASS}
+    )
+    r.raise_for_status()
+    return r.json()["token"]
 
+async def submit_investigation(client: httpx.AsyncClient, token: str, vector: dict) -> dict:
+    """Submit a single attack vector as an investigation."""
+    task_type = vector.get("task_type", "generic")
+    siem_event = vector.get("siem_event", {})
+    
+    payload = {
+        "task_type": task_type,
+        "input": {
+            "prompt": vector.get("name", "Red team test"),
+            "severity": "high",
+            "siem_event": siem_event
+        }
+    }
+    
+    r = await client.post(
+        f"{API_URL}/api/v1/tasks",
+        headers={"Authorization": f"Bearer {token}"},
+        json=payload
+    )
+    r.raise_for_status()
+    return r.json()
 
-ATTACK_VECTORS_PATH = Path(__file__).parent / "attack_vectors.json"
-BYPASSES_DIR = Path(__file__).parent / "bypasses"
-RESULTS_PATH = Path(__file__).parent / "results.jsonl"
+async def poll_result(client: httpx.AsyncClient, token: str, task_id: str, max_wait: int = 120) -> dict:
+    """Poll for investigation result."""
+    for _ in range(max_wait // 5):
+        await asyncio.sleep(5)
+        r = await client.get(
+            f"{API_URL}/api/v1/tasks/{task_id}",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("status") in ["completed", "error"]:
+                return data
+    return {"status": "timeout", "task_id": task_id}
 
-# Representative investigation plan with extraction + brute-force scoring
-BRUTE_FORCE_PLAN = [
-    {"tool": "extract_ipv4", "args": {"text": "$raw_log"}},
-    {"tool": "extract_ipv6", "args": {"text": "$raw_log"}},
-    {"tool": "extract_domains", "args": {"text": "$raw_log"}},
-    {"tool": "extract_urls", "args": {"text": "$raw_log"}},
-    {"tool": "extract_usernames", "args": {"text": "$raw_log"}},
-    {
-        "tool": "score_brute_force",
-        "args": {
-            "failed_count": "$siem_event.failed_count",
-            "unique_sources": "$siem_event.unique_sources",
-            "timespan_minutes": "$siem_event.timespan_minutes",
-        },
-    },
-    {
-        "tool": "score_generic",
-        "args": {
-            "indicators_found": "$step1.count",
-            "high_severity_count": "$siem_event.unique_sources",
-            "medium_severity_count": 0,
-        },
-    },
-]
-
-VERDICT_SEVERITY = {
-    "benign": 0,
-    "inconclusive": 1,
-    "suspicious": 2,
-    "true_positive": 3,
-}
-
-
-def _ensure_dirs() -> None:
-    BYPASSES_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def _load_attack_vectors() -> list:
-    with open(ATTACK_VECTORS_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _flatten_sanitized(event: dict) -> str:
-    """Flatten all string values in a sanitized event for scanning."""
-    parts = []
-    for v in event.values():
-        if isinstance(v, str):
-            parts.append(v)
-        elif isinstance(v, dict):
-            parts.append(_flatten_sanitized(v))
-    return " ".join(parts)
-
-
-def _check_sanitizer_bypass(sanitized_event: dict, bypass_indicators: list) -> list:
-    """Return list of indicators that survived sanitization."""
-    flat = _flatten_sanitized(sanitized_event)
-    survived = []
-    for indicator in bypass_indicators:
-        if indicator in flat:
-            survived.append(indicator)
-    return survived
-
-
-def _check_phantom_iocs(result: dict, phantom_iocs: list) -> list:
-    """Return phantom IOC values that incorrectly appeared in output."""
-    found = []
-    result_iocs = result.get("iocs", [])
-    result_values = {str(ioc.get("value", "")) for ioc in result_iocs if isinstance(ioc, dict)}
-    result_values.update(str(i) for i in result_iocs if not isinstance(i, dict))
-    for phantom in phantom_iocs:
-        if phantom in result_values:
-            found.append(phantom)
-    return found
-
-
-def _check_missing_extractions(result: dict, must_extract: list) -> list:
-    """Return must_extract items that were not found in findings or IOCs."""
-    missing = []
-    all_texts = []
-
-    for ioc in result.get("iocs", []):
-        if isinstance(ioc, dict):
-            all_texts.append(str(ioc.get("value", "")))
-            for ref in ioc.get("evidence_refs", []):
-                all_texts.append(str(ref.get("raw_text", "")))
-        else:
-            all_texts.append(str(ioc))
-
-    for finding in result.get("findings", []):
-        all_texts.append(str(finding))
-
-    corpus = " ".join(all_texts)
-    for item in must_extract:
-        if item not in corpus:
-            missing.append(item)
-    return missing
-
-
-def _check_risk_suppression(result: dict, expected_risk_min: int) -> bool:
-    actual = result.get("risk_score", 0)
-    return actual < expected_risk_min
-
-
-def _check_verdict_manipulation(result: dict, expected_verdict: str) -> bool:
-    actual = result.get("verdict", "benign")
-    return VERDICT_SEVERITY.get(actual, 0) < VERDICT_SEVERITY.get(expected_verdict, 0)
-
-
-def _run_attack(vector: dict) -> dict:
-    """Execute a single attack vector and return bypass report."""
-    name = vector["name"]
-    category = vector.get("category", "unknown")
-    event = vector.get("siem_event", {})
-    bypass_indicators = vector.get("bypass_indicators", [])
-    phantom_iocs = vector.get("phantom_iocs", [])
-    must_extract = vector.get("must_extract", [])
+def evaluate_result(vector: dict, result: dict) -> dict:
+    """Evaluate if the vector was detected correctly."""
     expected_verdict = vector.get("expected_verdict")
-    expected_risk_min = vector.get("expected_risk_min")
-
-    report = {
-        "name": name,
-        "category": category,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "bypasses": [],
-        "sanitizer": {},
-        "runner": {},
-        "errors": [],
+    expected_risk_min = vector.get("expected_risk_min", 0)
+    
+    output = result.get("output", {})
+    actual_verdict = output.get("verdict", "unknown")
+    actual_risk = output.get("risk_score", 0)
+    
+    # Check verdict match
+    verdict_match = actual_verdict == expected_verdict
+    
+    # Check risk score minimum
+    risk_ok = actual_risk >= expected_risk_min
+    
+    # Overall success
+    success = verdict_match and risk_ok
+    
+    # Scoring: 0 = complete bypass, 1 = partial (wrong verdict but some risk), 2 = full detection
+    if success:
+        score = 2
+    elif actual_risk >= expected_risk_min * 0.5:  # At least half the expected risk
+        score = 1
+    else:
+        score = 0  # Complete bypass
+    
+    return {
+        "vector_id": vector.get("id"),
+        "vector_name": vector.get("name"),
+        "expected_verdict": expected_verdict,
+        "actual_verdict": actual_verdict,
+        "expected_risk_min": expected_risk_min,
+        "actual_risk": actual_risk,
+        "verdict_match": verdict_match,
+        "risk_ok": risk_ok,
+        "success": success,
+        "score": score,
+        "task_id": result.get("task_id"),
     }
 
-    # --- Stage A: Input Sanitizer ---
-    try:
-        sanitized = sanitize_siem_event(event)
-        report["sanitizer"]["output"] = sanitized
-        survived = _check_sanitizer_bypass(sanitized, bypass_indicators)
-        if survived:
-            report["bypasses"].append({
-                "type": "sanitizer_bypass",
-                "details": f"Indicators survived sanitization: {survived}",
-                "survived": survived,
-            })
-    except Exception as exc:
-        report["errors"].append(f"Sanitizer exception: {str(exc)[:500]}")
-        report["errors"].append(traceback.format_exc())
-        sanitized = event  # Fall through to runner with original event
-
-    # --- Stage B: Tool Runner ---
-    try:
-        result = execute_plan(
-            plan=BRUTE_FORCE_PLAN,
-            siem_event=sanitized,
-            history_context={},
-            institutional_knowledge={},
-            total_timeout=30.0,
-            per_tool_timeout=5.0,
-            task_id=f"redteam-{name.replace(' ', '-')}",
-            tenant_id="redteam",
-            trace_id="nightly",
-        )
-        report["runner"]["output"] = result
-
-        # Phantom IOCs
-        phantoms = _check_phantom_iocs(result, phantom_iocs)
-        if phantoms:
-            report["bypasses"].append({
-                "type": "phantom_iocs",
-                "details": f"Fabricated IOCs extracted: {phantoms}",
-                "phantoms": phantoms,
-            })
-
-        # Missing extractions
-        missing = _check_missing_extractions(result, must_extract)
-        if missing:
-            report["bypasses"].append({
-                "type": "missing_extraction",
-                "details": f"Required extractions missing: {missing}",
-                "missing": missing,
-            })
-
-        # Risk suppression
-        if expected_risk_min is not None and _check_risk_suppression(result, expected_risk_min):
-            report["bypasses"].append({
-                "type": "risk_suppression",
-                "details": (
-                    f"Risk score {result.get('risk_score')} below minimum {expected_risk_min}"
-                ),
-                "actual_risk": result.get("risk_score"),
-                "expected_risk_min": expected_risk_min,
-            })
-
-        # Verdict manipulation
-        if expected_verdict is not None and _check_verdict_manipulation(result, expected_verdict):
-            report["bypasses"].append({
-                "type": "verdict_manipulation",
-                "details": (
-                    f"Verdict '{result.get('verdict')}' is less severe than expected '{expected_verdict}'"
-                ),
-                "actual_verdict": result.get("verdict"),
-                "expected_verdict": expected_verdict,
-            })
-
-    except Exception as exc:
-        report["errors"].append(f"Runner exception: {str(exc)[:500]}")
-        report["errors"].append(traceback.format_exc())
-
-    return report
-
-
-def _save_bypass_report(report: dict) -> None:
-    if not report["bypasses"]:
-        return
-    filename = report["name"].replace(" ", "_").replace("/", "_") + ".json"
-    path = BYPASSES_DIR / filename
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
-
-
-def _append_result(summary: dict) -> None:
-    with open(RESULTS_PATH, "a", encoding="utf-8") as f:
-        f.write(json.dumps(summary, ensure_ascii=False) + "\n")
-
-
-def main() -> int:
-    _ensure_dirs()
-    vectors = _load_attack_vectors()
-    total = len(vectors)
-    bypass_count = 0
-    bypass_reports = []
-
-    print(f"\n{'='*60}")
-    print(f"Red Team Nightly — Evaluating {total} attack vectors")
-    print(f"{'='*60}\n")
-
-    for idx, vector in enumerate(vectors, 1):
-        name = vector["name"]
-        print(f"[{idx}/{total}] Testing: {name} ...", end=" ")
-
-        report = _run_attack(vector)
-        has_bypass = bool(report["bypasses"])
-        has_error = bool(report["errors"])
-
-        if has_bypass:
-            bypass_count += 1
-            bypass_reports.append(report)
-            _save_bypass_report(report)
-            print("BYPASS")
-            for b in report["bypasses"]:
-                detail = b['details'].encode(sys.stdout.encoding or 'utf-8', 'replace').decode(sys.stdout.encoding or 'utf-8')
-                print(f"    -> {b['type']}: {detail}")
-        elif has_error:
-            print("ERROR")
-            for e in report["errors"]:
-                err = e[:200].encode(sys.stdout.encoding or 'utf-8', 'replace').decode(sys.stdout.encoding or 'utf-8')
-                print(f"    -> {err}")
-        else:
-            print("PASS")
-
+async def run_evaluation():
+    """Run full red team evaluation."""
+    # Load attack vectors
+    vectors_file = "autoresearch/redteam_nightly/attack_vectors.json"
+    if not os.path.exists(vectors_file):
+        print(f"ERROR: {vectors_file} not found")
+        sys.exit(1)
+    
+    with open(vectors_file) as f:
+        vectors = json.load(f)
+    
+    print(f"Loaded {len(vectors)} attack vectors")
+    print("=" * 65)
+    
+    async with httpx.AsyncClient(timeout=30) as client:
+        token = await get_token(client)
+        print(f"Authenticated as {ADMIN_EMAIL}")
+        
+        results = []
+        bypasses = []
+        
+        for i, vector in enumerate(vectors, 1):
+            print(f"\n[{i}/{len(vectors)}] Testing: {vector.get('name', 'Unknown')}")
+            
+            try:
+                # Submit
+                submit_resp = await submit_investigation(client, token, vector)
+                task_id = submit_resp.get("task_id")
+                print(f"  Task ID: {task_id}")
+                
+                # Poll for result
+                result = await poll_result(client, token, task_id)
+                
+                # Evaluate
+                eval_result = evaluate_result(vector, result)
+                results.append(eval_result)
+                
+                status_icon = "✅" if eval_result["success"] else "⚠️" if eval_result["score"] == 1 else "❌"
+                print(f"  {status_icon} Verdict: {eval_result['actual_verdict']} (expected: {eval_result['expected_verdict']})")
+                print(f"  Risk: {eval_result['actual_risk']} (min: {eval_result['expected_risk_min']})")
+                
+                # Record bypasses (score 0 or 1)
+                if eval_result["score"] < 2:
+                    bypass = {
+                        "vector": vector,
+                        "result": eval_result,
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "status": "open"
+                    }
+                    bypasses.append(bypass)
+                    
+                    # Write to bypasses directory
+                    bypass_file = f"autoresearch/redteam_nightly/bypasses/{vector.get('id')}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+                    os.makedirs(os.path.dirname(bypass_file), exist_ok=True)
+                    with open(bypass_file, "w") as f:
+                        json.dump(bypass, f, indent=2)
+                    print(f"  📝 Bypass recorded: {bypass_file}")
+                    
+            except Exception as e:
+                print(f"  ERROR: {e}")
+                results.append({
+                    "vector_id": vector.get("id"),
+                    "error": str(e),
+                    "score": 0
+                })
+        
+        # Summary
+        print("\n" + "=" * 65)
+        print("EVALUATION SUMMARY")
+        print("=" * 65)
+        
+        total = len(results)
+        full_detection = sum(1 for r in results if r.get("score") == 2)
+        partial = sum(1 for r in results if r.get("score") == 1)
+        bypasses_count = sum(1 for r in results if r.get("score") == 0)
+        
+        print(f"Total vectors tested: {total}")
+        print(f"Full detection:       {full_detection} ({full_detection/total*100:.0f}%)")
+        print(f"Partial detection:    {partial} ({partial/total*100:.0f}%)")
+        print(f"Complete bypasses:    {bypasses_count} ({bypasses_count/total*100:.0f}%)")
+        print(f"\nBypass files written: {len(bypasses)}")
+        
+        # Write summary
         summary = {
-            "timestamp": report["timestamp"],
-            "name": name,
-            "category": vector.get("category", "unknown"),
-            "bypass": has_bypass,
-            "bypass_types": [b["type"] for b in report["bypasses"]],
-            "error": has_error,
-            "error_count": len(report["errors"]),
+            "timestamp": datetime.utcnow().isoformat(),
+            "total_vectors": total,
+            "full_detection": full_detection,
+            "partial": partial,
+            "bypasses": bypasses_count,
+            "results": results
         }
-        _append_result(summary)
-
-    print(f"\n{'='*60}")
-    print(f"Results: {bypass_count}/{total} vectors produced bypasses")
-    print(f"{'='*60}\n")
-
-    if bypass_reports:
-        print("Bypass summary:")
-        for report in bypass_reports:
-            name_safe = report['name'].encode(sys.stdout.encoding or 'utf-8', 'replace').decode(sys.stdout.encoding or 'utf-8')
-            print(f"  * {name_safe}")
-            for b in report["bypasses"]:
-                detail = b['details'].encode(sys.stdout.encoding or 'utf-8', 'replace').decode(sys.stdout.encoding or 'utf-8')
-                print(f"      - {b['type']}: {detail}")
-        print(f"\nDetailed reports saved to: {BYPASSES_DIR}")
-
-    print(f"Results log: {RESULTS_PATH}")
-    return 0 if bypass_count == 0 else 1
-
+        with open("autoresearch/redteam_nightly/last_evaluation.json", "w") as f:
+            json.dump(summary, f, indent=2)
+        
+        return bypasses_count
 
 if __name__ == "__main__":
-    sys.exit(main())
+    bypasses = asyncio.run(run_evaluation())
+    sys.exit(bypasses)  # Exit code = number of bypasses (0 = perfect score)

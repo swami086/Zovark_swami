@@ -4,6 +4,20 @@ import math
 
 def score_brute_force(failed_count: int, unique_sources: int, timespan_minutes: int) -> int:
     """Risk score for brute force attacks. 0-100."""
+    # Coerce inputs safely; non-numeric inputs are suspicious and get a safe fallback
+    try:
+        failed_count = int(failed_count)
+    except (ValueError, TypeError):
+        failed_count = 0
+    try:
+        unique_sources = int(unique_sources)
+    except (ValueError, TypeError):
+        unique_sources = 0
+    try:
+        timespan_minutes = int(timespan_minutes)
+    except (ValueError, TypeError):
+        timespan_minutes = 0
+
     if failed_count <= 0:
         return 5
 

@@ -1,0 +1,94 @@
+{
+  "cycle": 1,
+  "timestamp": "2026-04-01T09:15:00Z",
+  "sources": {
+    "signoz": {
+      "status": "ok",
+      "slow_spans": [
+        {"name": "stage.assess", "p95_seconds": 24.31, "calls": 2},
+        {"name": "llm.call", "p95_seconds": 24.25, "calls": 2},
+        {"name": "stage.ingest", "p95_seconds": 0.07, "calls": 2},
+        {"name": "stage.govern", "p95_seconds": 0.007, "calls": 2},
+        {"name": "tool.extract_domains", "p95_seconds": 0.0016, "calls": 1},
+        {"name": "tool.lookup_known_bad", "p95_seconds": 0.0007, "calls": 1},
+        {"name": "tool.extract_ipv4", "p95_seconds": 0.0006, "calls": 2}
+      ],
+      "error_rates": [],
+      "tool_errors": [],
+      "path_distribution": [{"path": "tools", "count": 12}]
+    },
+    "postgres": {
+      "status": "ok",
+      "total_investigations_24h": 12,
+      "verdict_distribution": {
+        "true_positive": 9,
+        "benign": 2,
+        "suspicious": 0
+      },
+      "detection_rate": "100%",
+      "fp_rate": "0%",
+      "task_type_breakdown": [
+        {"task_type": "c2_communication_hunt", "total": 2, "tp": 2, "avg_risk": 100.0},
+        {"task_type": "brute_force", "total": 2, "tp": 2, "avg_risk": 70.0},
+        {"task_type": "kerberoasting", "total": 1, "tp": 1, "avg_risk": 100.0},
+        {"task_type": "lateral_movement_detection", "total": 1, "tp": 1, "avg_risk": 70.0},
+        {"task_type": "lolbin_abuse", "total": 1, "tp": 1, "avg_risk": 95.0},
+        {"task_type": "phishing_investigation", "total": 1, "tp": 1, "avg_risk": 100.0},
+        {"task_type": "ransomware_triage", "total": 1, "tp": 1, "avg_risk": 100.0},
+        {"task_type": "data_exfiltration_detection", "total": 1, "tp": 1, "avg_risk": 100.0}
+      ],
+      "escalation_failures": [],
+      "template_coverage_gaps": []
+    },
+    "temporal": {
+      "status": "ok",
+      "failed_workflow_count": 0,
+      "running_workflow_count": 0
+    },
+    "ollama": {
+      "status": "unavailable",
+      "note": "Ollama not accessible from container context - expected on this host"
+    },
+    "red_team": {
+      "status": "ok",
+      "total_vectors": 0,
+      "open_bypasses": 0
+    }
+  },
+  "issues": [
+    {
+      "severity": "HIGH",
+      "source": "signoz",
+      "category": "latency",
+      "detail": "Span 'stage.assess' p95=24.3s — investigate and optimize",
+      "span_name": "stage.assess",
+      "p95_seconds": 24.31
+    },
+    {
+      "severity": "HIGH",
+      "source": "signoz",
+      "category": "latency",
+      "detail": "Span 'llm.call' p95=24.2s — LLM calls taking 24+ seconds",
+      "span_name": "llm.call",
+      "p95_seconds": 24.25
+    }
+  ],
+  "priority_queue": [
+    {
+      "severity": "HIGH",
+      "source": "signoz",
+      "category": "latency",
+      "detail": "Span 'stage.assess' p95=24.3s — investigate and optimize",
+      "span_name": "stage.assess",
+      "p95_seconds": 24.31
+    },
+    {
+      "severity": "HIGH",
+      "source": "signoz",
+      "category": "latency",
+      "detail": "Span 'llm.call' p95=24.2s — LLM calls taking 24+ seconds",
+      "span_name": "llm.call",
+      "p95_seconds": 24.25
+    }
+  ]
+}

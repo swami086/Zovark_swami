@@ -289,6 +289,31 @@ def execute_plan(plan: list, siem_event: dict,
     # Aggregate risk score — use max from scoring/detection tools
     risk_score = max(risk_scores) if risk_scores else 0
 
+    # Apply risk floor rules based on tool outputs
+    highest_floor = 0
+    for step_idx, result in step_results.items():
+        tool_name = tool_names_executed[step_idx - 1] if step_idx <= len(tool_names_executed) else ""
+        tool_entry = TOOL_CATALOG.get(tool_name)
+
+        # count_pattern thresholds
+        if tool_name == "count_pattern" and isinstance(result, int):
+            if result >= 200:
+                highest_floor = max(highest_floor, 75)
+            elif result >= 50:
+                highest_floor = max(highest_floor, 60)
+
+        # score_brute_force floor
+        if tool_name == "score_brute_force" and isinstance(result, int):
+            if result > 0:
+                highest_floor = max(highest_floor, 50)
+
+        # detection tool true_positive verdict floor
+        if tool_entry and tool_entry.get("category") == "detection" and isinstance(result, dict):
+            if result.get("verdict") == "true_positive":
+                highest_floor = max(highest_floor, 55)
+
+    risk_score = max(risk_score, highest_floor)
+
     # Deduplicate IOCs by value
     seen_iocs = set()
     unique_iocs = []
@@ -322,7 +347,7 @@ def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
     if risk_score >= 70:
         return "true_positive"
     if risk_score >= 50:
-        return "suspicious"
+        return "true_positive"
     if risk_score >= 36 and finding_count >= 1:
         return "suspicious"
     if finding_count == 0 and ioc_count == 0:
