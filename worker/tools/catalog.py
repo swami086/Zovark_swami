@@ -34,7 +34,7 @@ TOOL_CATALOG = {
     "score_c2_beacon": {"function": scoring.score_c2_beacon, "category": "scoring", "description": "Risk score for C2 beaconing", "args": {"interval_stddev": float, "avg_interval_seconds": float, "connection_count": int, "domain_entropy": float}},
     "score_generic": {"function": scoring.score_generic, "category": "scoring", "description": "Generic risk score based on indicator counts", "args": {"indicators_found": int, "high_severity_count": int, "medium_severity_count": int}},
 
-    # --- Detection (7 tools) ---
+    # --- Detection (11 tools) ---
     "detect_kerberoasting": {"function": detection.detect_kerberoasting, "category": "detection", "description": "Detect Kerberoasting: RC4, TGS requests, SPN abuse", "args": {"siem_event": dict}},
     "detect_golden_ticket": {"function": detection.detect_golden_ticket, "category": "detection", "description": "Detect Golden Ticket: forged TGT, abnormal lifetime", "args": {"siem_event": dict}},
     "detect_ransomware": {"function": detection.detect_ransomware, "category": "detection", "description": "Detect ransomware: shadow copy deletion, mass encryption", "args": {"siem_event": dict}},
@@ -42,6 +42,10 @@ TOOL_CATALOG = {
     "detect_c2": {"function": detection.detect_c2, "category": "detection", "description": "Detect C2: beacon intervals, DGA domains, encoded payloads", "args": {"siem_event": dict}},
     "detect_data_exfil": {"function": detection.detect_data_exfil, "category": "detection", "description": "Detect data exfiltration: large transfers, off-hours", "args": {"siem_event": dict}},
     "detect_lolbin_abuse": {"function": detection.detect_lolbin_abuse, "category": "detection", "description": "Detect LOLBin abuse: certutil, mshta, bitsadmin", "args": {"siem_event": dict}},
+    "detect_com_hijacking": {"function": detection.detect_com_hijacking, "category": "detection", "description": "Detect COM hijacking via registry modifications", "args": {"siem_event": dict}},
+    "detect_encoded_service": {"function": detection.detect_encoded_service, "category": "detection", "description": "Detect malicious services with encoded commands", "args": {"siem_event": dict}},
+    "detect_token_impersonation": {"function": detection.detect_token_impersonation, "category": "detection", "description": "Detect token impersonation via RunAs", "args": {"siem_event": dict}},
+    "detect_appcert_dlls": {"function": detection.detect_appcert_dlls, "category": "detection", "description": "Detect AppCert DLLs persistence", "args": {"siem_event": dict}},
 
     # --- Enrichment (4 tools) ---
     "map_mitre": {"function": enrichment.map_mitre, "category": "enrichment", "description": "Map MITRE ATT&CK technique IDs to names and tactics", "args": {"technique_ids": list}},

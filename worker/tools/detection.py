@@ -492,3 +492,164 @@ def detect_lolbin_abuse(siem_event: dict) -> dict:
         risk = max(risk, 5)
 
     return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
+
+
+
+def detect_com_hijacking(siem_event: dict) -> dict:
+    """Detect COM hijacking via registry modifications."""
+    raw_log = siem_event.get("raw_log", "")
+    findings = []
+    iocs = []
+    risk = 0
+    raw_lower = raw_log.lower()
+    
+    # COM hijacking registry paths
+    com_patterns = [
+        r'HKCU\\Software\\Classes\\CLSID',
+        r'HKEY_CURRENT_USER\\Software\\Classes\\CLSID',
+        r'HKLM\\Software\\Classes\\CLSID',
+        r'InprocServer32',
+        r'LocalServer32',
+    ]
+    
+    for pattern in com_patterns:
+        if re.search(pattern, raw_log, re.IGNORECASE):
+            findings.append(f"COM hijacking registry path detected: {pattern}")
+            risk += 25
+    
+    # Suspicious DLL in user-writable location
+    if re.search(r'InprocServer32.*\\Users\\.*\.dll', raw_log, re.IGNORECASE):
+        findings.append("COM DLL registered in user-writable location")
+        risk += 30
+    
+    # DLL that differs from system default
+    if re.search(r'shell32\.dll|kernel32\.dll|kernelbase\.dll', raw_lower):
+        if re.search(r'\\Users\\|\\Temp\\|\\AppData\\', raw_lower):
+            findings.append("System DLL replaced with user-controlled path")
+            risk += 35
+    
+    if findings:
+        risk = max(risk, 75)  # Minimum risk for COM hijacking
+    
+    return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
+
+
+def detect_encoded_service(siem_event: dict) -> dict:
+    """Detect malicious services with encoded commands."""
+    raw_log = siem_event.get("raw_log", "")
+    findings = []
+    iocs = []
+    risk = 0
+    raw_lower = raw_log.lower()
+    
+    # New service installation
+    if re.search(r'EventID\s*=\s*(7045|4697)', raw_log):
+        findings.append("New Windows service installed")
+        risk += 20
+    
+    # Encoded PowerShell in service
+    encoded_patterns = [
+        r'-enc\s+[A-Za-z0-9+/]{20,}',  # -enc with base64
+        r'-encodedcommand\s+[A-Za-z0-9+/]{20,}',
+        r'-e\s+[A-Za-z0-9+/]{20,}',
+    ]
+    
+    for pattern in encoded_patterns:
+        if re.search(pattern, raw_lower):
+            findings.append("Encoded command in service ImagePath")
+            risk += 40
+            break
+    
+    # PowerShell in service path
+    if re.search(r'powershell\.exe|pwsh\.exe', raw_lower):
+        findings.append("PowerShell executable in service")
+        risk += 15
+        
+        # Suspicious PowerShell flags
+        if re.search(r'-nop|-noprofile', raw_lower):
+            findings.append("PowerShell -NoProfile flag (evasion)")
+            risk += 10
+        if re.search(r'-w\s+hidden|-windowstyle\s+hidden', raw_lower):
+            findings.append("PowerShell hidden window")
+            risk += 15
+        if re.search(r'downloadstring|iex\s|invoke-expression', raw_lower):
+            findings.append("PowerShell download/cradle detected")
+            risk += 25
+    
+    if findings:
+        risk = max(risk, 80)  # Minimum for encoded service
+    
+    return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
+
+
+def detect_token_impersonation(siem_event: dict) -> dict:
+    """Detect token impersonation via RunAs."""
+    raw_log = siem_event.get("raw_log", "")
+    findings = []
+    iocs = []
+    risk = 0
+    raw_lower = raw_log.lower()
+    
+    # RunAs usage
+    if re.search(r'runas\.exe', raw_lower):
+        findings.append("RunAs.exe execution detected")
+        risk += 15
+    
+    # Saved credentials flag
+    if re.search(r'/savecred', raw_lower):
+        findings.append("RunAs with saved credentials (/savecred)")
+        risk += 25
+    
+    # Elevated user target
+    if re.search(r'admin|system|domain', raw_lower):
+        findings.append("Privilege escalation target detected")
+        risk += 20
+    
+    # Encoded command after runas
+    if re.search(r'-enc\s+|/enc\s+|-encodedcommand', raw_lower):
+        findings.append("Encoded command in RunAs context")
+        risk += 35
+    
+    # Suspicious execution after impersonation
+    if re.search(r'powershell|cmd\.exe|wscript|cscript', raw_lower):
+        findings.append("Script execution following impersonation")
+        risk += 20
+    
+    if findings:
+        risk = max(risk, 85)  # Minimum for token impersonation
+    
+    return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
+
+
+def detect_appcert_dlls(siem_event: dict) -> dict:
+    """Detect AppCert DLLs persistence."""
+    raw_log = siem_event.get("raw_log", "")
+    findings = []
+    iocs = []
+    risk = 0
+    raw_lower = raw_log.lower()
+    
+    # AppCertDlls registry path
+    if re.search(r'AppCertDlls', raw_log, re.IGNORECASE):
+        findings.append("AppCertDlls registry modification detected")
+        risk += 40
+    
+    # Session Manager path
+    if re.search(r'Session Manager.*AppCert', raw_log, re.IGNORECASE):
+        findings.append("Session Manager AppCert configuration")
+        risk += 35
+    
+    # DLL in suspicious location
+    if re.search(r'AppCertDlls.*\\Windows\\[^\\]+\.dll', raw_log, re.IGNORECASE):
+        findings.append("Custom DLL in AppCertDlls")
+        risk += 30
+    
+    # Registry modification by non-system user
+    if re.search(r'\\Users\\|\\Temp\\', raw_lower):
+        findings.append("AppCert DLL from user-writable location")
+        risk += 25
+    
+    if findings:
+        risk = max(risk, 85)  # Minimum for AppCert persistence
+    
+    return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}

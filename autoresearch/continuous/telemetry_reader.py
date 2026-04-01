@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Telemetry Reader — runs at the start of every AutoResearch cycle.
-Queries ALL live data sources and produces a priority queue of issues.
-Output: autoresearch/continuous/cycle_N_telemetry.json
+Telemetry reader. Runs at cycle start. Queries all live data sources.
+Produces priority queue of issues to fix this cycle.
 """
 import json, os, sys, time, subprocess
-from datetime import datetime, timedelta
+CYCLE = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+OUT = "autoresearch/continuous"
+os.makedirs(OUT, exist_ok=True)
 
 try:
     import httpx
@@ -13,668 +14,307 @@ except ImportError:
     subprocess.run([sys.executable, "-m", "pip", "install", "httpx", "-q"])
     import httpx
 
-try:
-    import psycopg2
-    HAS_PSYCOPG2 = True
-except ImportError:
-    HAS_PSYCOPG2 = False
-
-CYCLE = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-OUTPUT_DIR = "autoresearch/continuous"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
 report = {
     "cycle": CYCLE,
     "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
     "sources": {},
-    "issues": [],          # populated below — each issue has severity, category, detail
-    "priority_queue": [],  # top issues ranked by impact
+    "issues": [],
+    "priority_queue": [],
 }
 
-# ─────────────────────────────────────────────────────────────────
-# SOURCE 1: SIGNOZ — Trace Analysis
-# Query ClickHouse directly for span-level performance data
-# ─────────────────────────────────────────────────────────────────
-print("Reading Signoz traces...")
+# ── SOURCE 1: SIGNOZ ──────────────────────────────────────────────
+print("[telemetry] Reading Signoz traces...")
 try:
-    # ClickHouse HTTP interface (from host perspective)
-    CH_URL = "http://localhost:8123"
-    # Try container name if localhost fails
-    CH_URL_FALLBACK = "http://zovark-clickhouse:8123"
+    def ch(sql):
+        r = httpx.post("http://localhost:8123", content=sql,
+                       params={"database": "signoz_traces"}, timeout=20)
+        return [l.split("\t") for l in r.text.strip().split("\n") if l] if r.status_code == 200 else []
 
-    def ch_query(sql):
-        resp = httpx.post(CH_URL, content=sql,
-                          params={"database": "signoz_traces"},
-                          timeout=30)
-        if resp.status_code == 200:
-            lines = resp.text.strip().split("\n")
-            return [line.split("\t") for line in lines if line]
-        return []
-
-    # 1a. Slowest spans in last 6 hours
-    slow_spans = ch_query("""
-        SELECT
-            name,
-            quantile(0.95)(durationNano) / 1e9 AS p95_seconds,
-            quantile(0.50)(durationNano) / 1e9 AS p50_seconds,
-            count() AS call_count,
-            countIf(statusCode = 2) AS error_count
+    slow = ch("""
+        SELECT name,
+               quantile(0.95)(durationNano)/1e9 AS p95,
+               quantile(0.50)(durationNano)/1e9 AS p50,
+               count() AS n,
+               countIf(statusCode=2) AS errs
         FROM signoz_index_v2
-        WHERE timestamp > now() - INTERVAL 6 HOUR
-        AND name NOT LIKE '%health%'
-        GROUP BY name
-        ORDER BY p95_seconds DESC
-        LIMIT 20
+        WHERE timestamp > now()-INTERVAL 6 HOUR
+          AND name NOT LIKE '%health%'
+        GROUP BY name ORDER BY p95 DESC LIMIT 20
     """)
-
-    # 1b. Error rate by service
-    error_rates = ch_query("""
-        SELECT
-            serviceName,
-            count() AS total,
-            countIf(statusCode = 2) AS errors,
-            round(countIf(statusCode = 2) * 100.0 / count(), 2) AS error_pct
+    errs = ch("""
+        SELECT serviceName,
+               count() AS total,
+               countIf(statusCode=2) AS errors,
+               round(countIf(statusCode=2)*100.0/count(),2) AS pct
         FROM signoz_index_v2
-        WHERE timestamp > now() - INTERVAL 6 HOUR
-        GROUP BY serviceName
-        ORDER BY error_pct DESC
+        WHERE timestamp > now()-INTERVAL 6 HOUR
+        GROUP BY serviceName ORDER BY pct DESC
     """)
-
-    # 1c. LLM call latency trend (is it getting worse?)
-    llm_trend = ch_query("""
-        SELECT
-            toStartOfHour(timestamp) AS hour,
-            avg(durationNano) / 1e9 AS avg_seconds,
-            quantile(0.95)(durationNano) / 1e9 AS p95_seconds,
-            count() AS calls
+    tool_errs = ch("""
+        SELECT name, count() AS n, any(traceID) AS tid
         FROM signoz_index_v2
-        WHERE name = 'llm.call'
-        AND timestamp > now() - INTERVAL 24 HOUR
-        GROUP BY hour
-        ORDER BY hour DESC
-        LIMIT 24
+        WHERE statusCode=2 AND name LIKE 'tool.%'
+          AND timestamp > now()-INTERVAL 6 HOUR
+        GROUP BY name ORDER BY n DESC LIMIT 10
     """)
-
-    # 1d. Tool-level error traces
-    tool_errors = ch_query("""
-        SELECT
-            name,
-            count() AS error_count,
-            any(traceID) AS example_trace_id
+    llm_trend = ch("""
+        SELECT toStartOfHour(timestamp) AS h,
+               avg(durationNano)/1e9 AS avg_s,
+               quantile(0.95)(durationNano)/1e9 AS p95_s,
+               count() AS n
         FROM signoz_index_v2
-        WHERE statusCode = 2
-        AND name LIKE 'tool.%'
-        AND timestamp > now() - INTERVAL 6 HOUR
-        GROUP BY name
-        ORDER BY error_count DESC
-        LIMIT 10
+        WHERE name='llm.call'
+          AND timestamp > now()-INTERVAL 24 HOUR
+        GROUP BY h ORDER BY h DESC LIMIT 12
     """)
-
-    # 1e. Investigation path distribution (Path A vs C)
-    path_dist = ch_query("""
-        SELECT
-            tagMap['execution_mode'] AS path,
-            count() AS count
+    path_dist = ch("""
+        SELECT tagMap['execution_mode'] AS mode, count() AS n
         FROM signoz_index_v2
-        WHERE name = 'investigation.complete'
-        AND timestamp > now() - INTERVAL 6 HOUR
-        GROUP BY path
-    """)
-
-    # 1f. Slowest individual tool calls (find outliers)
-    tool_outliers = ch_query("""
-        SELECT
-            name,
-            traceID,
-            durationNano / 1e6 AS duration_ms,
-            tagMap['tenant_id'] AS tenant,
-            tagMap['task_type'] AS task_type
-        FROM signoz_index_v2
-        WHERE name LIKE 'tool.%'
-        AND durationNano > 1e9
-        AND timestamp > now() - INTERVAL 6 HOUR
-        ORDER BY durationNano DESC
-        LIMIT 20
+        WHERE name='investigation.complete'
+          AND timestamp > now()-INTERVAL 6 HOUR
+        GROUP BY mode
     """)
 
     report["sources"]["signoz"] = {
         "status": "ok",
-        "slow_spans": slow_spans[:10],
-        "error_rates": error_rates,
+        "slow_spans": slow[:10],
+        "service_errors": errs,
+        "tool_errors": tool_errs,
         "llm_trend": llm_trend[:6],
-        "tool_errors": tool_errors,
         "path_distribution": path_dist,
-        "tool_outliers": tool_outliers[:10],
     }
 
-    # Generate issues from Signoz data
-    for row in slow_spans:
+    for row in slow:
         if len(row) >= 2:
-            name, p95 = row[0], float(row[1]) if row[1] != '\\N' else 0
-            if p95 > 30:
-                report["issues"].append({
-                    "severity": "HIGH",
-                    "source": "signoz",
-                    "category": "latency",
-                    "detail": f"Span '{name}' p95={p95:.1f}s — investigate and optimize",
-                    "span_name": name,
-                    "p95_seconds": p95,
-                })
-            elif p95 > 10:
-                report["issues"].append({
-                    "severity": "MEDIUM",
-                    "source": "signoz",
-                    "category": "latency",
-                    "detail": f"Span '{name}' p95={p95:.1f}s — monitor",
-                    "span_name": name,
-                    "p95_seconds": p95,
-                })
+            try:
+                p95 = float(row[1])
+                if p95 > 30:
+                    report["issues"].append({"severity":"HIGH","source":"signoz",
+                        "category":"latency","detail":f"Span '{row[0]}' p95={p95:.1f}s",
+                        "span":row[0],"p95":p95})
+                elif p95 > 10:
+                    report["issues"].append({"severity":"MEDIUM","source":"signoz",
+                        "category":"latency","detail":f"Span '{row[0]}' p95={p95:.1f}s",
+                        "span":row[0],"p95":p95})
+            except: pass
 
-    for row in error_rates:
+    for row in errs:
         if len(row) >= 4:
-            service, total, errors, pct = row[0], row[1], row[2], float(row[3])
-            if pct > 5:
-                report["issues"].append({
-                    "severity": "HIGH",
-                    "source": "signoz",
-                    "category": "errors",
-                    "detail": f"Service '{service}' error rate {pct:.1f}% ({errors}/{total})",
-                    "service": service,
-                    "error_pct": pct,
-                })
+            try:
+                pct = float(row[3])
+                if pct > 5:
+                    report["issues"].append({"severity":"HIGH","source":"signoz",
+                        "category":"errors",
+                        "detail":f"Service '{row[0]}' error rate {pct:.1f}%",
+                        "service":row[0],"pct":pct})
+            except: pass
 
-    for row in tool_errors:
+    for row in tool_errs:
         if len(row) >= 2:
-            tool_name, count = row[0], int(row[1])
-            if count > 0:
-                report["issues"].append({
-                    "severity": "HIGH",
-                    "source": "signoz",
-                    "category": "tool_error",
-                    "detail": f"Tool '{tool_name}' threw {count} errors in last 6h",
-                    "tool": tool_name.replace("tool.", ""),
-                    "error_count": count,
-                    "example_trace": row[2] if len(row) > 2 else None,
-                })
+            try:
+                n = int(row[1])
+                if n > 0:
+                    report["issues"].append({"severity":"HIGH","source":"signoz",
+                        "category":"tool_error",
+                        "detail":f"Tool '{row[0]}' threw {n} errors in 6h",
+                        "tool":row[0].replace("tool.",""),"count":n,
+                        "trace":row[2] if len(row)>2 else None})
+            except: pass
 
-    # Check LLM latency trend (is it getting worse over time?)
-    if len(llm_trend) >= 2:
-        latest_p95 = float(llm_trend[0][2]) if llm_trend[0][2] != '\\N' else 0
-        oldest_p95 = float(llm_trend[-1][2]) if llm_trend[-1][2] != '\\N' else 0
-        if latest_p95 > oldest_p95 * 1.2:
-            report["issues"].append({
-                "severity": "MEDIUM",
-                "source": "signoz",
-                "category": "latency_trend",
-                "detail": f"LLM call latency trending up: {oldest_p95:.1f}s → {latest_p95:.1f}s",
-                "trend_pct": round((latest_p95 / oldest_p95 - 1) * 100),
-            })
-
-    print(f"  Signoz: {len(slow_spans)} span types, "
-          f"{sum(int(r[2]) for r in error_rates if len(r)>2 and r[2].isdigit())} total errors")
-
+    print(f"  Signoz: {len(slow)} span types, {len(tool_errs)} tool errors")
 except Exception as e:
-    report["sources"]["signoz"] = {"status": "error", "error": str(e)}
-    print(f"  Signoz: UNAVAILABLE ({e})")
+    report["sources"]["signoz"] = {"status":"error","error":str(e)}
+    print(f"  Signoz: {e}")
 
 
-# ─────────────────────────────────────────────────────────────────
-# SOURCE 2: POSTGRESQL — Investigation Quality Metrics
-# ─────────────────────────────────────────────────────────────────
-print("Reading PostgreSQL investigation data...")
+# ── SOURCE 2: POSTGRES ────────────────────────────────────────────
+print("[telemetry] Reading PostgreSQL...")
 try:
-    def pg_query(sql):
-        result = subprocess.run(
-            ["docker", "compose", "exec", "-T", "postgres",
-             "psql", "-U", "zovark", "-d", "zovark",
-             "-t", "-c", sql],
-            capture_output=True, text=True, timeout=30
-        )
-        return result.stdout.strip()
+    def pg(sql):
+        r = subprocess.run(
+            ["docker","compose","exec","-T","postgres",
+             "psql","-U","zovark","-d","zovark","-t","-c",sql],
+            capture_output=True, text=True, timeout=30)
+        return r.stdout.strip()
 
-    tenant_id_raw = pg_query(
-        "SELECT DISTINCT tenant_id FROM agent_tasks LIMIT 1;"
-    ).strip()
-    tenant_id = tenant_id_raw.split('\n')[0].strip() if tenant_id_raw else None
+    tid = pg("SELECT DISTINCT tenant_id FROM agent_tasks LIMIT 1;").split('\n')[0].strip()
 
-    if tenant_id:
-        def pg_tenant(sql):
-            wrapped = f"""
-BEGIN;
-SET LOCAL app.current_tenant = '{tenant_id}';
-{sql}
-COMMIT;"""
-            return pg_query(wrapped)
+    def pgt(sql):
+        return pg(f"BEGIN;SET LOCAL app.current_tenant='{tid}';{sql}COMMIT;")
 
-        # 2a. Verdict distribution (last 24h)
-        verdict_dist = pg_tenant("""
-SELECT output->>'verdict' as verdict, COUNT(*) as count
-FROM agent_tasks
-WHERE status = 'completed'
-AND created_at > NOW() - INTERVAL '24 hours'
-GROUP BY verdict
-ORDER BY count DESC;""")
-
-        # 2b. Error rate by task type
-        error_by_type = pg_tenant("""
-SELECT task_type,
-       COUNT(*) as total,
-       SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors,
-       ROUND(AVG(EXTRACT(EPOCH FROM (updated_at - created_at))), 2) as avg_duration_s
-FROM agent_tasks
-WHERE created_at > NOW() - INTERVAL '24 hours'
-GROUP BY task_type
-ORDER BY errors DESC
-LIMIT 10;""")
-
-        # 2c. Risk score distribution — are we over-scoring or under-scoring?
-        risk_dist = pg_tenant("""
-SELECT
-    CASE
-        WHEN (output->>'risk_score')::int >= 80 THEN 'critical_80_100'
-        WHEN (output->>'risk_score')::int >= 60 THEN 'high_60_79'
-        WHEN (output->>'risk_score')::int >= 40 THEN 'medium_40_59'
-        WHEN (output->>'risk_score')::int >= 20 THEN 'low_20_39'
-        ELSE 'minimal_0_19'
-    END as bucket,
-    COUNT(*) as count
-FROM agent_tasks
-WHERE status = 'completed'
-AND output->>'risk_score' IS NOT NULL
-AND created_at > NOW() - INTERVAL '24 hours'
-GROUP BY bucket
-ORDER BY bucket;""")
-
-        # 2d. Path distribution (A = template, C = LLM)
-        path_dist_pg = pg_tenant("""
-SELECT output->>'execution_mode' as path, COUNT(*) as count
-FROM agent_tasks
-WHERE status = 'completed'
-AND created_at > NOW() - INTERVAL '24 hours'
-GROUP BY path;""")
-
-        # 2e. Investigations that took longest (potential optimization targets)
-        slowest_investigations = pg_tenant("""
-SELECT task_type,
-       output->>'execution_mode' as path,
-       ROUND(EXTRACT(EPOCH FROM (updated_at - created_at)), 1) as duration_s,
-       output->>'verdict' as verdict
-FROM agent_tasks
-WHERE status = 'completed'
-AND created_at > NOW() - INTERVAL '24 hours'
-ORDER BY duration_s DESC
-LIMIT 10;""")
-
-        # 2f. Template coverage gaps
-        template_coverage = pg_tenant("""
-SELECT
-    t.task_type,
-    COUNT(DISTINCT tmpl.id) as template_count,
-    COUNT(DISTINCT t.id) as investigation_count,
-    ROUND(COUNT(DISTINCT CASE WHEN t.output->>'execution_mode' = 'template'
-                              THEN t.id END) * 100.0
-          / NULLIF(COUNT(DISTINCT t.id), 0), 1) as path_a_rate_pct
-FROM agent_tasks t
-LEFT JOIN investigation_templates tmpl
-    ON tmpl.task_type = t.task_type AND tmpl.status = 'approved'
-WHERE t.status = 'completed'
-AND t.created_at > NOW() - INTERVAL '24 hours'
-GROUP BY t.task_type
-ORDER BY path_a_rate_pct ASC NULLS FIRST
-LIMIT 10;""")
-
-        # 2g. Suspicious → true_positive escalation failures
-        escalation_failures = pg_tenant("""
-SELECT task_type, COUNT(*) as suspicious_count
-FROM agent_tasks
-WHERE status = 'completed'
-AND output->>'verdict' = 'suspicious'
-AND (output->>'risk_score')::int >= 65
-AND created_at > NOW() - INTERVAL '24 hours'
-GROUP BY task_type
-ORDER BY suspicious_count DESC;""")
+    if tid:
+        v_dist    = pgt("SELECT output->>'verdict',COUNT(*) FROM agent_tasks WHERE status='completed' AND created_at>NOW()-INTERVAL '24 hours' GROUP BY 1 ORDER BY 2 DESC;")
+        path_pg   = pgt("SELECT output->>'execution_mode',COUNT(*) FROM agent_tasks WHERE status='completed' AND created_at>NOW()-INTERVAL '24 hours' GROUP BY 1;")
+        slow_inv  = pgt("SELECT task_type,output->>'execution_mode',ROUND(EXTRACT(EPOCH FROM(updated_at-created_at)),1) FROM agent_tasks WHERE status='completed' AND created_at>NOW()-INTERVAL '24 hours' ORDER BY 3 DESC LIMIT 5;")
+        esc_fail  = pgt("SELECT task_type,COUNT(*) FROM agent_tasks WHERE status='completed' AND output->>'verdict'='suspicious' AND (output->>'risk_score')::int>=65 AND created_at>NOW()-INTERVAL '24 hours' GROUP BY 1 ORDER BY 2 DESC;")
+        tmpl_cov  = pgt("SELECT t.task_type,COUNT(DISTINCT tmpl.id) AS tmpls,COUNT(DISTINCT t.id) AS invests FROM agent_tasks t LEFT JOIN investigation_templates tmpl ON tmpl.task_type=t.task_type AND tmpl.status='approved' WHERE t.status='completed' AND t.created_at>NOW()-INTERVAL '24 hours' GROUP BY t.task_type ORDER BY tmpls ASC LIMIT 10;")
+        err_types = pgt("SELECT task_type,COUNT(*) FROM agent_tasks WHERE status='error' AND created_at>NOW()-INTERVAL '24 hours' GROUP BY 1 ORDER BY 2 DESC LIMIT 5;")
 
         report["sources"]["postgres"] = {
-            "status": "ok",
-            "tenant_id": tenant_id,
-            "verdict_distribution": verdict_dist,
-            "error_by_type": error_by_type,
-            "risk_distribution": risk_dist,
-            "path_distribution": path_dist_pg,
-            "slowest_investigations": slowest_investigations,
-            "template_coverage": template_coverage,
-            "escalation_failures": escalation_failures,
+            "status":"ok","tenant_id":tid,
+            "verdict_dist":v_dist,"path_dist":path_pg,
+            "slowest":slow_inv,"escalation_failures":esc_fail,
+            "template_coverage":tmpl_cov,"error_types":err_types,
         }
 
-        # Generate issues from Postgres data
-        for line in escalation_failures.strip().split('\n'):
-            parts = [p.strip() for p in line.split('|') if p.strip()]
-            if len(parts) >= 2 and parts[1].isdigit() and int(parts[1]) > 2:
-                report["issues"].append({
-                    "severity": "HIGH",
-                    "source": "postgres",
-                    "category": "verdict_calibration",
-                    "detail": f"Task type '{parts[0]}' has {parts[1]} suspicious verdicts "
-                              f"with risk_score >= 65 — risk floor may need raising",
-                    "task_type": parts[0],
-                    "count": int(parts[1]),
-                })
+        for line in esc_fail.split('\n'):
+            p = [x.strip() for x in line.split('|') if x.strip()]
+            if len(p)>=2 and p[1].isdigit() and int(p[1])>2:
+                report["issues"].append({"severity":"HIGH","source":"postgres",
+                    "category":"verdict_calibration",
+                    "detail":f"'{p[0]}' has {p[1]} suspicious verdicts with risk>=65",
+                    "task_type":p[0],"count":int(p[1])})
 
-        for line in template_coverage.strip().split('\n'):
-            parts = [p.strip() for p in line.split('|') if p.strip()]
-            if len(parts) >= 4:
+        for line in tmpl_cov.split('\n'):
+            p = [x.strip() for x in line.split('|') if x.strip()]
+            if len(p)>=2:
                 try:
-                    task_type = parts[0]
-                    path_a_rate = float(parts[3].replace('%', ''))
-                    tmpl_count = int(parts[1]) if parts[1].isdigit() else 0
-                    if path_a_rate < 50 and tmpl_count < 3:
-                        report["issues"].append({
-                            "severity": "MEDIUM",
-                            "source": "postgres",
-                            "category": "template_gap",
-                            "detail": f"Task type '{task_type}' Path A rate={path_a_rate:.0f}%, "
-                                      f"only {tmpl_count} templates — add more",
-                            "task_type": task_type,
-                            "path_a_rate": path_a_rate,
-                            "template_count": tmpl_count,
-                        })
-                except (ValueError, IndexError):
-                    pass
+                    if int(p[1])==0:
+                        report["issues"].append({"severity":"MEDIUM","source":"postgres",
+                            "category":"template_gap",
+                            "detail":f"'{p[0]}' has 0 templates — add at least 1",
+                            "task_type":p[0]})
+                except: pass
 
-        print(f"  Postgres: investigation data loaded for tenant {tenant_id}")
+        for line in err_types.split('\n'):
+            p = [x.strip() for x in line.split('|') if x.strip()]
+            if len(p)>=2 and p[1].isdigit() and int(p[1])>0:
+                report["issues"].append({"severity":"HIGH","source":"postgres",
+                    "category":"investigation_errors",
+                    "detail":f"Task type '{p[0]}' had {p[1]} errors in 24h",
+                    "task_type":p[0],"count":int(p[1])})
+
+        print(f"  Postgres: tenant {tid}, data loaded")
     else:
         print("  Postgres: no tenant found")
-
 except Exception as e:
-    report["sources"]["postgres"] = {"status": "error", "error": str(e)}
-    print(f"  Postgres: UNAVAILABLE ({e})")
+    report["sources"]["postgres"] = {"status":"error","error":str(e)}
+    print(f"  Postgres: {e}")
 
 
-# ─────────────────────────────────────────────────────────────────
-# SOURCE 3: TEMPORAL — Workflow Health
-# ─────────────────────────────────────────────────────────────────
-print("Reading Temporal workflow data...")
+# ── SOURCE 3: TEMPORAL ───────────────────────────────────────────
+print("[telemetry] Reading Temporal...")
 try:
-    temporal_result = subprocess.run(
-        ["docker", "compose", "exec", "-T", "temporal",
-         "tctl", "--namespace", "default",
-         "workflow", "list", "--status", "Failed",
-         "--pagesize", "20", "-o", "json"],
-        capture_output=True, text=True, timeout=30
-    )
-
-    failed_workflows = []
-    if temporal_result.returncode == 0 and temporal_result.stdout:
-        try:
-            wf_data = json.loads(temporal_result.stdout)
-            failed_workflows = wf_data if isinstance(wf_data, list) else []
-        except json.JSONDecodeError:
-            pass
-
-    running_result = subprocess.run(
-        ["docker", "compose", "exec", "-T", "temporal",
-         "tctl", "--namespace", "default",
-         "workflow", "list", "--status", "Running",
-         "--pagesize", "5", "-o", "json"],
-        capture_output=True, text=True, timeout=30
-    )
-    running_count = 0
-    if running_result.returncode == 0 and running_result.stdout:
-        try:
-            running_data = json.loads(running_result.stdout)
-            running_count = len(running_data) if isinstance(running_data, list) else 0
-        except:
-            pass
-
+    r = subprocess.run(
+        ["docker","compose","exec","-T","temporal",
+         "tctl","--namespace","default","workflow","list",
+         "--status","Failed","--pagesize","20","-o","json"],
+        capture_output=True, text=True, timeout=30)
+    failed = []
+    if r.returncode==0 and r.stdout:
+        try: failed = json.loads(r.stdout) if r.stdout.strip().startswith('[') else []
+        except: pass
     report["sources"]["temporal"] = {
-        "status": "ok",
-        "failed_workflow_count": len(failed_workflows),
-        "running_workflow_count": running_count,
-        "failed_workflow_types": list(set(
-            wf.get("type", {}).get("name", "unknown")
-            for wf in failed_workflows
-        )),
+        "status":"ok","failed_count":len(failed),
+        "types":list(set(w.get("type",{}).get("name","?") for w in failed)),
     }
-
-    if len(failed_workflows) > 5:
-        report["issues"].append({
-            "severity": "HIGH",
-            "source": "temporal",
-            "category": "workflow_failures",
-            "detail": f"{len(failed_workflows)} failed workflows in Temporal — "
-                      f"investigate worker crash recovery",
-            "count": len(failed_workflows),
-            "workflow_types": report["sources"]["temporal"]["failed_workflow_types"],
-        })
-
-    print(f"  Temporal: {len(failed_workflows)} failed, {running_count} running")
-
+    if len(failed)>3:
+        report["issues"].append({"severity":"HIGH","source":"temporal",
+            "category":"workflow_failures",
+            "detail":f"{len(failed)} failed workflows — check worker logs",
+            "count":len(failed)})
+    print(f"  Temporal: {len(failed)} failed workflows")
 except Exception as e:
-    report["sources"]["temporal"] = {"status": "error", "error": str(e)}
+    report["sources"]["temporal"] = {"status":"error","error":str(e)}
     print(f"  Temporal: {e}")
 
 
-# ─────────────────────────────────────────────────────────────────
-# SOURCE 4: OLLAMA — Model Performance
-# ─────────────────────────────────────────────────────────────────
-print("Reading Ollama model stats...")
+# ── SOURCE 4: OLLAMA ─────────────────────────────────────────────
+print("[telemetry] Reading Ollama...")
 try:
-    with httpx.Client(timeout=10) as client:
-        tags_resp = client.get("http://localhost:11434/api/tags")
-        models = tags_resp.json().get("models", []) if tags_resp.status_code == 200 else []
-
-        ps_resp = client.get("http://localhost:11434/api/ps")
-        running = ps_resp.json().get("models", []) if ps_resp.status_code == 200 else []
-
-    model_info = {}
-    for m in models:
-        name = m.get("name", "")
-        size_gb = m.get("size", 0) / 1e9
-        model_info[name] = {
-            "size_gb": round(size_gb, 2),
-            "modified_at": m.get("modified_at", ""),
-        }
-
+    with httpx.Client(timeout=10) as c:
+        tags = c.get("http://localhost:11434/api/tags").json().get("models",[])
+        loaded = c.get("http://localhost:11434/api/ps").json().get("models",[])
+    names = [m.get("name","") for m in tags]
     report["sources"]["ollama"] = {
-        "status": "ok",
-        "models_available": list(model_info.keys()),
-        "models_loaded": [m.get("name") for m in running],
-        "model_details": model_info,
+        "status":"ok","available":names,
+        "loaded":[m.get("name") for m in loaded],
     }
-
-    expected = ["llama3.1:8b", "llama3.2:3b"]
-    for m in expected:
-        if not any(m in k for k in model_info.keys()):
-            report["issues"].append({
-                "severity": "HIGH",
-                "source": "ollama",
-                "category": "model_missing",
-                "detail": f"Expected model '{m}' not found in Ollama",
-                "model": m,
-            })
-
-    print(f"  Ollama: {list(model_info.keys())} | loaded: {[m.get('name') for m in running]}")
-
+    for exp in ["llama3.1:8b","llama3.2:3b"]:
+        if not any(exp in n for n in names):
+            report["issues"].append({"severity":"HIGH","source":"ollama",
+                "category":"model_missing",
+                "detail":f"Model '{exp}' not found","model":exp})
+    print(f"  Ollama: {names}")
 except Exception as e:
-    report["sources"]["ollama"] = {"status": "error", "error": str(e)}
+    report["sources"]["ollama"] = {"status":"error","error":str(e)}
     print(f"  Ollama: {e}")
 
 
-# ─────────────────────────────────────────────────────────────────
-# SOURCE 5: CODE GRAPH RAG — Codebase Intelligence
-# ─────────────────────────────────────────────────────────────────
-print("Reading Code Graph RAG...")
+# ── SOURCE 5: RED TEAM STATUS ─────────────────────────────────────
+print("[telemetry] Reading red team status...")
 try:
-    cgr_result = subprocess.run(
-        ["python3", "-c", """
-import sys
-sys.path.insert(0, '.')
-try:
-    from code_graph_rag import query_graph
-    
-    results = {
-        "most_complex": query_graph("functions with highest cyclomatic complexity"),
-        "most_connected": query_graph("functions called by the most other functions"),
-        "no_tests": query_graph("functions with no test coverage"),
-        "recent_changes": query_graph("recently modified files"),
-    }
-    import json
-    print(json.dumps(results))
-except ImportError:
-    print('{"error": "CGR not available"}')
-"""],
-        capture_output=True, text=True, timeout=60
-    )
-
-    if cgr_result.returncode == 0 and cgr_result.stdout:
-        try:
-            cgr_data = json.loads(cgr_result.stdout)
-            report["sources"]["code_graph_rag"] = {"status": "ok", "data": cgr_data}
-            print(f"  Code Graph RAG: data loaded")
-        except:
-            report["sources"]["code_graph_rag"] = {
-                "status": "partial", "raw": cgr_result.stdout[:500]
-            }
-            print(f"  Code Graph RAG: partial data")
-    else:
-        report["sources"]["code_graph_rag"] = {
-            "status": "unavailable",
-            "note": "Query Code Graph RAG manually via MCP before modifying any source file"
-        }
-        print(f"  Code Graph RAG: use MCP tools to query before changes")
-
-except Exception as e:
-    report["sources"]["code_graph_rag"] = {"status": "error", "error": str(e)}
-    print(f"  Code Graph RAG: {e}")
-
-
-# ─────────────────────────────────────────────────────────────────
-# SOURCE 6: TEST COVERAGE — Find gaps
-# ─────────────────────────────────────────────────────────────────
-print("Reading test coverage...")
-try:
-    cov_result = subprocess.run(
-        ["docker", "compose", "exec", "-T", "worker",
-         "python", "-m", "pytest", "worker/tests/",
-         "--cov=worker", "--cov-report=json",
-         "--no-header", "-q", "--tb=no"],
-        capture_output=True, text=True, timeout=300
-    )
-
-    coverage_data = {}
-    if os.path.exists(".coverage.json"):
-        with open(".coverage.json") as f:
-            cov_json = json.load(f)
-            for filepath, data in cov_json.get("files", {}).items():
-                pct = data.get("summary", {}).get("percent_covered", 100)
-                if pct < 80:
-                    coverage_data[filepath] = round(pct, 1)
-
-    report["sources"]["test_coverage"] = {
-        "status": "ok",
-        "low_coverage_files": dict(sorted(
-            coverage_data.items(), key=lambda x: x[1]
-        )[:15]),
-    }
-
-    for filepath, pct in list(coverage_data.items())[:5]:
-        if pct < 60:
-            report["issues"].append({
-                "severity": "MEDIUM",
-                "source": "test_coverage",
-                "category": "low_coverage",
-                "detail": f"File '{filepath}' has {pct:.0f}% test coverage — add tests",
-                "file": filepath,
-                "coverage_pct": pct,
-            })
-
-    print(f"  Coverage: {len(coverage_data)} files below 80%")
-
-except Exception as e:
-    report["sources"]["test_coverage"] = {"status": "error", "error": str(e)}
-    print(f"  Coverage: {e}")
-
-
-# ─────────────────────────────────────────────────────────────────
-# SOURCE 7: RED TEAM STATUS
-# ─────────────────────────────────────────────────────────────────
-print("Reading red team status...")
-try:
-    bypass_files = [f for f in os.listdir("autoresearch/redteam_nightly/bypasses/")
-                    if f.endswith(".json")] if os.path.exists(
-                        "autoresearch/redteam_nightly/bypasses/") else []
-    vector_count = 0
+    bp_dir = "autoresearch/redteam_nightly/bypasses"
+    bps = [f for f in os.listdir(bp_dir) if f.endswith(".json")] if os.path.exists(bp_dir) else []
+    vec_count = 0
     if os.path.exists("autoresearch/redteam_nightly/attack_vectors.json"):
-        with open("autoresearch/redteam_nightly/attack_vectors.json") as f:
-            vector_count = len(json.load(f))
-
-    report["sources"]["red_team"] = {
-        "status": "ok",
-        "total_vectors": vector_count,
-        "open_bypasses": len(bypass_files),
-        "bypass_files": bypass_files,
-    }
-
-    if bypass_files:
-        report["issues"].append({
-            "severity": "CRITICAL",
-            "source": "red_team",
-            "category": "open_bypass",
-            "detail": f"{len(bypass_files)} open bypass(es) — MUST FIX before other work",
-            "files": bypass_files,
-        })
-
-    print(f"  Red team: {vector_count} vectors, {len(bypass_files)} open bypasses")
-
+        vec_count = len(json.load(open("autoresearch/redteam_nightly/attack_vectors.json")))
+    report["sources"]["red_team"] = {"status":"ok","vectors":vec_count,"bypasses":len(bps)}
+    if bps:
+        report["issues"].append({"severity":"CRITICAL","source":"red_team",
+            "category":"open_bypass",
+            "detail":f"{len(bps)} open bypass(es) — fix before anything else",
+            "files":bps})
+    print(f"  Red team: {vec_count} vectors, {len(bps)} open bypasses")
 except Exception as e:
-    report["sources"]["red_team"] = {"status": "error", "error": str(e)}
+    report["sources"]["red_team"] = {"status":"error","error":str(e)}
     print(f"  Red team: {e}")
 
 
-# ─────────────────────────────────────────────────────────────────
-# BUILD PRIORITY QUEUE
-# Rank all issues: CRITICAL > HIGH > MEDIUM
-severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
-category_impact = {
-    "open_bypass": 10,
-    "workflow_failures": 9,
-    "tool_error": 8,
-    "errors": 8,
-    "verdict_calibration": 7,
-    "latency": 6,
-    "latency_trend": 5,
-    "template_gap": 4,
-    "model_missing": 9,
-    "low_coverage": 2,
-}
+# ── SOURCE 6: TEST COVERAGE ───────────────────────────────────────
+print("[telemetry] Reading test coverage...")
+try:
+    r = subprocess.run(
+        ["docker","compose","exec","-T","worker",
+         "python","-m","pytest","worker/tests/",
+         "--cov=worker","--cov-report=json",
+         "-q","--tb=no","--no-header"],
+        capture_output=True, text=True, timeout=300)
+    low = {}
+    cov_file = ".coverage.json"
+    if os.path.exists(cov_file):
+        data = json.load(open(cov_file))
+        for fp,d in data.get("files",{}).items():
+            pct = d.get("summary",{}).get("percent_covered",100)
+            if pct < 70:
+                low[fp] = round(pct,1)
+    report["sources"]["coverage"] = {
+        "status":"ok",
+        "low_files": dict(sorted(low.items(),key=lambda x:x[1])[:10])
+    }
+    for fp,pct in list(low.items())[:3]:
+        if pct < 50:
+            report["issues"].append({"severity":"MEDIUM","source":"coverage",
+                "category":"low_coverage",
+                "detail":f"'{fp}' at {pct:.0f}% coverage","file":fp,"pct":pct})
+    print(f"  Coverage: {len(low)} files below 70%")
+except Exception as e:
+    report["sources"]["coverage"] = {"status":"error","error":str(e)}
+    print(f"  Coverage: {e}")
 
-report["issues"].sort(key=lambda x: (
-    severity_order.get(x["severity"], 99),
-    -category_impact.get(x["category"], 0),
-    -x.get("count", x.get("error_count", x.get("error_pct", 0))),
+
+# ── PRIORITY QUEUE ────────────────────────────────────────────────
+sev = {"CRITICAL":0,"HIGH":1,"MEDIUM":2,"LOW":3}
+imp = {"open_bypass":10,"workflow_failures":9,"model_missing":9,"tool_error":8,
+       "errors":8,"investigation_errors":8,"verdict_calibration":7,
+       "latency":6,"template_gap":4,"low_coverage":2}
+report["issues"].sort(key=lambda x:(
+    sev.get(x["severity"],9),
+    -imp.get(x["category"],0),
+    -x.get("count",x.get("pct",0)),
 ))
+report["priority_queue"] = report["issues"][:8]
 
-report["priority_queue"] = report["issues"][:10]
+json.dump(report, open(f"{OUT}/cycle_{CYCLE}_telemetry.json","w"), indent=2)
 
-# Save full report
-output_path = os.path.join(OUTPUT_DIR, f"cycle_{CYCLE}_telemetry.json")
-with open(output_path, "w") as f:
-    json.dump(report, f, indent=2)
-
-# Print summary
-print(f"\n{'='*65}")
-print(f"TELEMETRY SUMMARY — CYCLE {CYCLE}")
-print(f"{'='*65}")
-print(f"\nDATA SOURCES:")
-for source, data in report["sources"].items():
-    status = data.get("status", "unknown")
-    icon = "✅" if status == "ok" else "⚠️" if status == "partial" else "❌"
-    print(f"  {icon} {source}: {status}")
-
-print(f"\nISSUES FOUND: {len(report['issues'])}")
-print(f"\nPRIORITY QUEUE (top 10 — work on these first):")
-for i, issue in enumerate(report["priority_queue"], 1):
-    print(f"  {i}. [{issue['severity']}] {issue['category'].upper()}")
-    print(f"     {issue['detail']}")
-print(f"\nFull report: {output_path}")
-print(f"{'='*65}\n")
+print(f"\n{'='*60}")
+print(f"TELEMETRY — CYCLE {CYCLE} — {report['timestamp']}")
+print(f"{'='*60}")
+for src,d in report["sources"].items():
+    icon = "OK" if d.get("status")=="ok" else "ERR"
+    print(f"  [{icon}] {src}")
+print(f"\nISSUES: {len(report['issues'])} found")
+print(f"PRIORITY QUEUE:")
+for i,iss in enumerate(report["priority_queue"],1):
+    print(f"  {i}. [{iss['severity']}] {iss['category']}: {iss['detail'][:80]}")
+print(f"{'='*60}\n")

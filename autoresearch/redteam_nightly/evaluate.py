@@ -102,7 +102,7 @@ def evaluate_result(vector: dict, result: dict) -> dict:
 async def run_evaluation():
     """Run full red team evaluation."""
     # Load attack vectors
-    vectors_file = "autoresearch/redteam_nightly/attack_vectors.json"
+    vectors_file = os.path.join(os.path.dirname(__file__), "attack_vectors.json")
     if not os.path.exists(vectors_file):
         print(f"ERROR: {vectors_file} not found")
         sys.exit(1)
@@ -151,7 +151,7 @@ async def run_evaluation():
                     bypasses.append(bypass)
                     
                     # Write to bypasses directory
-                    bypass_file = f"autoresearch/redteam_nightly/bypasses/{vector.get('id')}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+                    bypass_file = os.path.join(os.path.dirname(__file__), "bypasses", f"{vector.get('id')}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json")
                     os.makedirs(os.path.dirname(bypass_file), exist_ok=True)
                     with open(bypass_file, "w") as f:
                         json.dump(bypass, f, indent=2)
@@ -190,7 +190,7 @@ async def run_evaluation():
             "bypasses": bypasses_count,
             "results": results
         }
-        with open("autoresearch/redteam_nightly/last_evaluation.json", "w") as f:
+        with open(os.path.join(os.path.dirname(__file__), "last_evaluation.json"), "w") as f:
             json.dump(summary, f, indent=2)
         
         return bypasses_count

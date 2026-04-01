@@ -1,0 +1,33 @@
+{
+  "cycle": 3,
+  "timestamp": "2026-04-01T04:26:33Z",
+  "sources": {
+    "signoz": {
+      "status": "error",
+      "error": "[Errno 111] Connection refused"
+    },
+    "postgres": {
+      "status": "error",
+      "error": "[Errno 2] No such file or directory: 'docker'"
+    },
+    "temporal": {
+      "status": "error",
+      "error": "[Errno 2] No such file or directory: 'docker'"
+    },
+    "ollama": {
+      "status": "error",
+      "error": "[Errno 111] Connection refused"
+    },
+    "red_team": {
+      "status": "ok",
+      "vectors": 20,
+      "bypasses": 0
+    },
+    "coverage": {
+      "status": "error",
+      "error": "[Errno 2] No such file or directory: 'docker'"
+    }
+  },
+  "issues": [],
+  "priority_queue": []
+}
