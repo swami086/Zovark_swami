@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-04-01T12:00:00Z",
+  "last_updated": "2026-04-02T13:30:00Z",
   "categories": {
     "extraction": {
       "count": 8,
@@ -18,8 +18,8 @@
       "tools": ["score_brute_force", "score_phishing", "score_lateral_movement", "score_exfiltration", "score_c2_beacon", "score_generic"]
     },
     "detection": {
-      "count": 11,
-      "tools": ["detect_kerberoasting", "detect_golden_ticket", "detect_ransomware", "detect_phishing", "detect_c2", "detect_data_exfil", "detect_lolbin_abuse", "detect_com_hijacking", "detect_encoded_service", "detect_token_impersonation", "detect_appcert_dlls"]
+      "count": 12,
+      "tools": ["detect_kerberoasting", "detect_golden_ticket", "detect_ransomware", "detect_phishing", "detect_c2", "detect_data_exfil", "detect_lolbin_abuse", "detect_lateral_movement", "detect_com_hijacking", "detect_encoded_service", "detect_token_impersonation", "detect_appcert_dlls"]
     },
     "enrichment": {
       "count": 4,
