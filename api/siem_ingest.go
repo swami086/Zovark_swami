@@ -71,6 +71,42 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 		severity = s
 	}
 
+	// --- Layer 1: Pre-Temporal Redis Dedup ---
+	if isDup, existingID := checkPreDedup(ctx, taskType, input); isDup {
+		// Insert with deduplicated status for audit trail, but skip workflow
+		dbCtx, dbCancel := dbContextWithTimeout(ctx)
+		defer dbCancel()
+		_, _ = dbPool.Exec(dbCtx,
+			"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+			taskID, tenantID, taskType, input, "deduplicated", time.Now(), traceID,
+		)
+		log.Printf("[INGEST] Dedup: task %s is duplicate of %s", taskID, existingID)
+		return existingID, nil
+	}
+
+	// --- Layer 2: Pre-Temporal Batch Buffer ---
+	sourceIP := ""
+	if se, ok := input["siem_event"].(map[string]interface{}); ok {
+		if v, ok := se["source_ip"].(string); ok {
+			sourceIP = v
+		}
+	}
+	if v, ok := input["source_ip"].(string); ok && sourceIP == "" {
+		sourceIP = v
+	}
+
+	if shouldSkip, batchParentID := tryBatchAlert(ctx, taskType, sourceIP, severity, taskID); shouldSkip {
+		// Insert with batched status for audit trail, but skip workflow
+		dbCtx, dbCancel := dbContextWithTimeout(ctx)
+		defer dbCancel()
+		_, _ = dbPool.Exec(dbCtx,
+			"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+			taskID, tenantID, taskType, input, "batched", time.Now(), traceID,
+		)
+		log.Printf("[INGEST] Batched: task %s absorbed into batch parent %s", taskID, batchParentID)
+		return batchParentID, nil
+	}
+
 	// Insert task inside explicit transaction
 	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid race condition
 	dbCtx, dbCancel := dbContextWithTimeout(ctx)
@@ -112,6 +148,23 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	}
 	dbCancel()
 
+	// Register dedup hash AFTER commit so subsequent alerts get deduplicated
+	registerPreDedup(ctx, taskType, input, taskID, severity)
+
+	// --- Layer 3: Temporal Backpressure ---
+	allowed, depth := checkBackpressure(ctx)
+	if !allowed {
+		if isHardLimitReached(depth) {
+			// Hard limit — mark as failed, caller should return 503
+			_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
+			return "", fmt.Errorf("backpressure hard limit reached (depth=%d)", depth)
+		}
+		// Soft limit — queue for later processing by drain goroutine
+		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'queued' WHERE id = $1", taskID)
+		log.Printf("[INGEST] Backpressure: task %s queued (depth=%d)", taskID, depth)
+		return taskID, nil
+	}
+
 	// Start Temporal workflow AFTER commit
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
@@ -131,6 +184,9 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		return "", fmt.Errorf("failed to start workflow: %w", err)
 	}
+
+	// Track workflow for backpressure
+	recordWorkflowStart(ctx, "task-"+taskID)
 
 	return taskID, nil
 }

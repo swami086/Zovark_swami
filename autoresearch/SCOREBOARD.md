@@ -4,6 +4,54 @@
 
 ---
 
+## Cycle 8 — COMPLETED ✅ (2026-04-02 evening)
+
+**Status:** Infrastructure hardening + burst protection + pipeline fixes
+
+### Deliverables
+
+| # | Deliverable | Status |
+|---|-------------|--------|
+| 1 | 3-layer pre-Temporal alert funnel (dedup, batch, backpressure) | ✅ Implemented & tested |
+| 2 | Plan alias resolution fix (phishing/ransomware/etc. routing) | ✅ Fixed |
+| 3 | MITRE field fix (technique_id vs id in Pydantic validation) | ✅ Fixed |
+| 4 | Worker scaling (16→32 workflows, 8→16 activities) | ✅ Applied |
+| 5 | 100-alert API smoke test script | ✅ 62/62 attacks, 100% detection |
+| 6 | HANDOVER.md (AI-to-AI handover guide) | ✅ Created |
+| 7 | END_TO_END_WORKFLOW.md (complete flow documentation) | ✅ Created |
+
+### Test Results
+
+| Test | Result |
+|------|--------|
+| 20 identical alerts → dedup | 1 workflow + 19 deduplicated ✅ |
+| 10 same-IP alerts → batch | 1 workflow + 9 batched ✅ |
+| 100-alert smoke test (attacks) | 62/62 true_positive ✅ |
+| 100-alert smoke test (benign) | 3/3 benign ✅ |
+| Unit tests | 370 passing ✅ |
+| API build | Compiles cleanly ✅ |
+
+### Files Created/Modified
+
+**New files (6):**
+- `api/alert_dedup.go` — Layer 1: Redis pre-dedup
+- `api/batch_buffer.go` — Layer 2: Batch buffer (Lua script)
+- `api/backpressure.go` — Layer 3: Queue depth throttle + drain goroutine
+- `HANDOVER.md` — AI-to-AI handover guide
+- `docs/END_TO_END_WORKFLOW.md` — Complete pipeline trace
+- `scripts/smoke_test_100.sh` — 100-alert API smoke test
+
+**Modified files (7):**
+- `api/siem_ingest.go` — All 3 layers integrated into createIngestTask()
+- `api/task_handlers.go` — All 3 layers integrated into createTaskHandler()
+- `api/main.go` — Drain goroutine startup
+- `docker-compose.yml` — Worker concurrency doubled
+- `worker/stages/analyze.py` — Plan alias mapping + substring matching
+- `worker/stages/assess.py` — MITRE field fix
+- `state/architecture.json` — Added critical_constraints
+
+---
+
 ## Cycle 7 — COMPLETED ✅ (2026-04-02)
 
 **Status:** All tracks completed successfully

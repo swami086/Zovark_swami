@@ -658,13 +658,47 @@ async def _analyze_v3_tools(ingest: IngestOutput) -> AnalyzeOutput:
             activity.logger.warning(f"Failed to load saved plan for {ingest.skill_id}: {e}")
 
     # Check investigation_plans.json for built-in plans
+    # Alias map: SIEM task_types → investigation_plans.json keys
+    _PLAN_ALIASES = {
+        "phishing": "phishing_investigation",
+        "ransomware": "ransomware_triage",
+        "data_exfiltration": "data_exfiltration_detection",
+        "data_exfil": "data_exfiltration_detection",
+        "exfiltration": "data_exfiltration_detection",
+        "privilege_escalation": "privilege_escalation_hunt",
+        "priv_esc": "privilege_escalation_hunt",
+        "c2": "c2_communication_hunt",
+        "c2_beacon": "c2_communication_hunt",
+        "command_and_control": "c2_communication_hunt",
+        "lateral_movement": "lateral_movement_detection",
+        "insider_threat": "insider_threat_detection",
+        "beaconing": "network_beaconing",
+        "cloud_attack": "cloud_infrastructure_attack",
+        "supply_chain": "supply_chain_compromise",
+        "credential_dump": "credential_access",
+        "dll_sideload": "dll_sideloading",
+        "lolbin": "lolbin_abuse",
+        "dns_exfil": "dns_exfiltration",
+        "powershell_obfusc": "powershell_obfuscation",
+    }
     try:
         plans_path = os.path.join(os.path.dirname(__file__), "..", "tools", "investigation_plans.json")
         with open(plans_path) as f:
             all_plans = json.load(f)
-        # Match by task_type (try exact match, then fuzzy, then benign fallback)
+        # Match by task_type (try exact match, then alias, then substring, then benign fallback)
         task_type = ingest.task_type.lower().replace("-", "_")
         plan_data = all_plans.get(task_type) or all_plans.get(ingest.task_type)
+        # Try alias mapping
+        if not plan_data:
+            alias_key = _PLAN_ALIASES.get(task_type)
+            if alias_key:
+                plan_data = all_plans.get(alias_key)
+        # Try substring match (e.g. "phishing" matches "phishing_investigation")
+        if not plan_data:
+            for key in all_plans:
+                if task_type in key or key.startswith(task_type):
+                    plan_data = all_plans[key]
+                    break
         # If task_type not found, check if this is a benign-routed alert
         # Ingest sets skill_id to UUID, so check skill_methodology or task_type patterns
         if not plan_data:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
@@ -124,6 +125,11 @@ func main() {
 	if natsClient != nil {
 		defer natsClient.Close()
 	}
+
+	// Start backpressure queue drain goroutine
+	drainCtx, drainCancel := context.WithCancel(context.Background())
+	defer drainCancel()
+	go startQueueDrainLoop(drainCtx)
 
 	// Setup Gin router
 	router := gin.Default()

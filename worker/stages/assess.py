@@ -674,7 +674,7 @@ async def assess_results(data: dict) -> dict:
                 "risk_score": risk_score,
                 "severity": sev_map.get(severity, "medium"),
                 "summary": out.get("plain_english_summary", "") or summary or "Investigation complete",
-                "mitre_techniques": [t.get("technique_id", t) if isinstance(t, dict) else str(t) for t in out.get("mitre_attack", [])],
+                "mitre_techniques": [t.get("technique_id") or t.get("id", str(t)) if isinstance(t, dict) else str(t) for t in out.get("mitre_attack", [])],
             }
             validated = VerdictOutput.model_validate(verdict_for_validation)
             # Apply cleaned MITRE techniques back (invalid IDs silently dropped)

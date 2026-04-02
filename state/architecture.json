@@ -1,28 +1,41 @@
 {
-  "last_updated": "2026-04-01T12:00:00Z",
+  "last_updated": "2026-04-02T16:30:00Z",
   "stack": {
-    "api": "Go (Gin) - 90+ routes",
-    "worker": "Python 3.11 + Temporal.io",
+    "api": "Go (Gin) - 90+ routes, port 8090",
+    "worker": "Python 3.11 + Temporal.io (runs inside Docker)",
     "frontend": "React 19 + TypeScript + Vite 7 + Tailwind 4",
     "database": "PostgreSQL 16 + pgvector",
     "cache": "Redis",
     "queue": "Temporal.io",
-    "llm": "Ollama (llama3.1:8b + llama3.2:3b)",
+    "llm": "Ollama on HOST (not Docker) - llama3.1:8b + llama3.2:3b",
     "observability": "Signoz (ClickHouse backend)"
   },
   "pipeline": {
-    "stage_1_ingest": "Sanitize, normalize, dedup, PII mask, skill retrieval",
-    "stage_2_analyze": "Load saved plan OR LLM tool selection",
-    "stage_3_execute": "In-process tool runner (no Docker sandbox)",
-    "stage_4_assess": "Verdict derivation, IOC validation, signal boost",
+    "stage_1_ingest": "Sanitize, normalize, dedup, PII mask, skill retrieval, benign routing",
+    "stage_2_analyze": "Load saved plan from investigation_plans.json (Path A) OR LLM tool selection (Path C)",
+    "stage_3_execute": "In-process tool runner — chains 2-8 tools per plan with variable resolution",
+    "stage_4_assess": "Verdict derivation, IOC provenance validation, signal boost, risk floor, suppression detection",
     "stage_4_5_govern": "Autonomy check (observe/assist/autonomous)",
-    "stage_5_store": "Persist results, audit events"
+    "stage_5_store": "Persist results + audit events to PostgreSQL"
   },
+  "critical_constraints": [
+    "Tools are NEVER called individually — they are chained in investigation plans",
+    "The assess stage transforms risk_score and verdict — tool output alone is not the final result",
+    "Testing MUST go through the API (POST /api/v1/tasks), not by importing Python functions",
+    "investigation_plans.json keys are canonical plan names (e.g. phishing_investigation, not phishing)",
+    "analyze.py resolves task_type aliases to plan keys (e.g. phishing → phishing_investigation)",
+    "Benign routing uses inverted logic — alerts are benign by DEFAULT unless they match ATTACK_INDICATORS",
+    "Rate limit: 10 auth attempts per 15 minutes per IP — login once per test batch"
+  ],
   "key_files": {
-    "worker/tools/catalog.py": "38-tool catalog",
-    "worker/tools/investigation_plans.json": "24 attack type plans",
-    "worker/stages/analyze.py": "Tool selection logic",
-    "worker/stages/assess.py": "Verdict derivation",
-    "autoresearch/redteam_nightly/evaluate.py": "Continuous testing harness"
+    "HANDOVER.md": "READ THIS FIRST — rules of engagement for AI assistants",
+    "CLAUDE.md": "Full architecture reference (800+ lines)",
+    "worker/tools/catalog.py": "39-tool catalog with function references",
+    "worker/tools/investigation_plans.json": "24 attack plans — this is how tools map to attack types",
+    "worker/tools/detection.py": "12 detection tool implementations",
+    "worker/stages/analyze.py": "Plan lookup with alias resolution",
+    "worker/stages/assess.py": "Verdict derivation, signal boost, risk floor",
+    "worker/stages/ingest.py": "ATTACK_INDICATORS list, benign routing, content-based override",
+    "autoresearch/redteam_nightly/evaluate.py": "Continuous testing harness (API-based)"
   }
 }

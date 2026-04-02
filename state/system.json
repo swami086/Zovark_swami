@@ -3,19 +3,21 @@
   "tagline": "Autonomous AI SOC Agent for regulated enterprises",
   "version": "3.1-hardening",
   "status": "production-ready",
-  "last_updated": "2026-04-02T13:30:00Z",
+  "last_updated": "2026-04-02T17:00:00Z",
   "features": [
     "39 investigation tools (extraction, analysis, parsing, scoring, detection, enrichment)",
     "24 saved investigation plans for attack types",
     "V3 6-stage pipeline (ingest, analyze, execute, assess, govern, store)",
     "FAST_FILL mode: 0.026s avg latency (99.9% improvement)",
-    "100% detection rate, 0% false positive rate",
+    "100% attack detection rate on 62-alert API test, 0 false negatives",
     "OpenTelemetry tracing with Signoz",
     "Real-time dashboard with SSE streaming",
-    "40 red team attack vectors (doubled)",
-    "12 detection tools (all hardened to 100% fitness)",
+    "40 red team attack vectors",
+    "12 hardened detection tools at 100% fitness",
+    "3-layer pre-Temporal alert funnel (dedup, batch buffer, backpressure)",
+    "Plan alias resolution (task_type → investigation_plans.json)",
     "evaluate.py operational for continuous testing",
-    "AutoResearch: 7 cycles completed, 462 tests"
+    "AutoResearch: 7 cycles completed, 370+ tests"
   ],
   "metrics": {
     "detection_rate": 1.0,
@@ -24,7 +26,10 @@
     "red_team_vectors": 40,
     "open_bypasses": 0,
     "tools_count": 39,
-    "tests_passing": 462
+    "tests_passing": 370,
+    "max_burst_alerts_handled": 5000,
+    "dedup_reduction_identical": "99.95%",
+    "batch_reduction_same_ip": "90%"
   },
   "users": {
     "target": "SOC analysts in regulated enterprises (healthcare, finance, defense)",

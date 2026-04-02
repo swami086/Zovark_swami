@@ -9,19 +9,19 @@
 | Field | Value |
 |-------|-------|
 | Version | v3.0.0 tagged on master + v3.1-hardening branch (Pydantic, LLM validation, streaming, Signoz) |
-| Date | 2026-03-31 |
-| Status | Production-ready — 34 tools, 24 plans, 100% detection, Pydantic-validated, Signoz-traced |
+| Date | 2026-04-02 |
+| Status | Production-ready — 39 tools, 24 plans, 100% detection, 3-layer burst protection, Pydantic-validated, Signoz-traced |
 | Stack | Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Redis + Ollama |
 | Models | Meta Llama 3.2 3B (tool selection) + Meta Llama 3.1 8B (assess/synthesis). American only. |
 | LLM Host | Ollama on host port 11434. No litellm. Singleton httpx client with Semaphore(2). |
 | Pipeline | V3 6-stage — deterministic tools + governance layer (v2 sandbox behind feature flag) |
-| Tools | 38 investigation tools (7 categories) + 24 saved investigation plans |
+| Tools | 39 investigation tools (7 categories) + 24 saved investigation plans |
 | Templates | 25 active (12 hand-written + 2 flywheel + 10 AutoResearch + 1 quorum-promoted) |
 | Tests | 535 unit + 14 integration + 515-alert corpus |
 | Services | 10 core Docker containers + optional profiles (tracing, monitoring, siem-lab, etc.) |
 | Dashboard | React 19 + TypeScript + Vite 7 + Tailwind 4, 17 pages, SOC War Room design |
 | Database | PostgreSQL 16 + pgvector, 86 tables, 62 migrations, RLS on 10 tables |
-| Concurrency | 8 concurrent activities, 16 concurrent workflows, Semaphore(2) on LLM calls |
+| Concurrency | 16 concurrent activities, 32 concurrent workflows, Semaphore(2) on LLM calls |
 | Feature Flag | `ZOVARK_EXECUTION_MODE=tools` (v3, default) or `sandbox` (v2 legacy) |
 | Observability | OpenTelemetry → Signoz (self-hosted ClickHouse). `docker compose --profile tracing up -d` |
 | Config | Pydantic Settings (`worker/settings.py`), SecretStr credentials, .env support |
@@ -233,7 +233,10 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 | `api/auth.go` | JWT (30min), OIDC/SSO, TOTP 2FA |
 | `api/task_handlers.go` | Task CRUD, verdict/risk/path in list response |
 | `api/promotion_handlers.go` | promotion-queue, analyst-feedback (2-person quorum), promotion-approve, auto-templates, dashboard-stats |
-| `api/siem_ingest.go` | Splunk HEC + Elastic SIEM webhook ingest, trace_id generation |
+| `api/siem_ingest.go` | Splunk HEC + Elastic SIEM webhook ingest, trace_id generation, 3-layer funnel |
+| `api/alert_dedup.go` | Layer 1: Pre-Temporal Redis dedup (hash-compatible with Python) |
+| `api/batch_buffer.go` | Layer 2: Pre-Temporal batch buffer (Redis Lua script, 5s window) |
+| `api/backpressure.go` | Layer 3: Temporal queue depth throttle + drain goroutine |
 | `api/cipher_audit_handlers.go` | 5 cipher audit API endpoints |
 | `api/admin_handlers.go` | Diagnostic export (.zvk zip with secret scrubbing) |
 | `api/compliance_handlers.go` | CMMC compliance evidence report (IR controls mapping) |
@@ -467,6 +470,9 @@ All variables have sensible defaults. Key configuration:
 | Zero Hallucination | Prompt rules forbid inventing IOCs not in log data | IMPLEMENTED |
 | Error Handling | `respondInternalError()` -- never expose Go errors to clients | IMPLEMENTED |
 | Circuit Breaker | GREEN/YELLOW/RED states prevent cascading LLM failures | IMPLEMENTED |
+| Pre-Temporal Dedup | Redis SHA-256 dedup before workflow creation. 5000 identical → 1 workflow. Hash-compatible with Python. | IMPLEMENTED |
+| Batch Buffer | Redis Lua script groups (task_type, source_ip) in 5s window. 5000 same-IP → ~1 workflow per window. | IMPLEMENTED |
+| Backpressure | Redis sorted set tracks workflow count. Soft limit (200) → queue. Hard limit (1000) → reject. Drain goroutine. | IMPLEMENTED |
 | Learning Gate | Path C results flagged needs_analyst_review for human feedback | IMPLEMENTED |
 | Pydantic LLM Validation | VerdictOutput (verdict enum, risk 0-100, MITRE regex), IOCItem (hash lengths, CVE format), ToolSelectionOutput (catalog check). Invalid → safe fallback. | IMPLEMENTED |
 | Centralized Secrets | Pydantic Settings + SecretStr. No hardcoded passwords in pipeline stages. .env in .gitignore. | IMPLEMENTED |
@@ -887,12 +893,43 @@ Tracks 3-6 (templates, tool hardening, benchmarks, tests) now operational with d
 
 ---
 
+## What Was Built — Cycle 8: Burst Protection + Pipeline Fixes (April 2, 2026)
+
+### 3-Layer Pre-Temporal Alert Funnel
+1. **Layer 1: Redis Pre-Dedup** (`api/alert_dedup.go`) — SHA-256 hash of 6 canonical fields, hash-compatible with Python dedup. 20 identical alerts → 1 workflow. TTL by severity (60s-7200s). Fail-open.
+2. **Layer 2: Batch Buffer** (`api/batch_buffer.go`) — Groups by (task_type, source_ip) in 5s window via atomic Redis Lua script. 10 same-IP alerts → 1 workflow. Severity multipliers (critical=1.25s, info=15s). Fail-open.
+3. **Layer 3: Backpressure** (`api/backpressure.go`) — Redis sorted set tracks workflow starts. Soft limit (200) → queue for drain goroutine. Hard limit (1000) → HTTP 503 + Retry-After. Drain goroutine processes 10 queued tasks every 2 seconds.
+4. **Integration** — All 3 layers added to `createTaskHandler()` (`task_handlers.go`) and `createIngestTask()` (`siem_ingest.go`). Covers all 4 alert entry points.
+5. **Drain goroutine** — Started in `api/main.go` on server boot.
+
+### Pipeline Fixes
+6. **Plan alias resolution** (`worker/stages/analyze.py`) — 20 aliases mapping SIEM task_types to investigation_plans.json keys (e.g., `phishing` → `phishing_investigation`, `ransomware` → `ransomware_triage`). Plus substring matching fallback.
+7. **MITRE field fix** (`worker/stages/assess.py`) — Pydantic VerdictOutput now checks both `technique_id` and `id` fields from MITRE dicts.
+8. **Worker scaling** (`docker-compose.yml`) — `MAX_CONCURRENT_WORKFLOWS` 16→32, `MAX_CONCURRENT_ACTIVITIES` 8→16.
+
+### Testing & Documentation
+9. **100-alert API smoke test** (`scripts/smoke_test_100.sh`) — 70 attack + 30 benign through full pipeline. 62/62 attacks detected (100%), 0 false negatives.
+10. **HANDOVER.md** — AI-to-AI handover guide with testing protocol, architecture constraints, anti-patterns. Prevents next AI from testing tools in isolation.
+11. **END_TO_END_WORKFLOW.md** — Complete flow trace from HTTP request through 10 middleware layers, 3 pre-Temporal filters, 6 pipeline stages, SSE streaming, to React dashboard.
+
+### Key New Environment Variables
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `ZOVARK_API_DEDUP_ENABLED` | `true` | Layer 1 pre-Temporal dedup |
+| `ZOVARK_API_BATCH_ENABLED` | `true` | Layer 2 batch buffer |
+| `ZOVARK_API_BATCH_WINDOW_SECONDS` | `5` | Batch grouping window |
+| `ZOVARK_MAX_PENDING_WORKFLOWS` | `200` | Backpressure soft limit |
+| `ZOVARK_MAX_PENDING_WORKFLOWS_HARD` | `1000` | Backpressure hard limit |
+| `ZOVARK_BACKPRESSURE_ENABLED` | `true` | Layer 3 backpressure |
+
+---
+
 ## Pending Work
 
-1. **~~Overnight AutoResearch~~** — IN PROGRESS: Cycles 1-3 complete, Tracks 3-6 now running
+1. **~~Overnight AutoResearch~~** — Cycles 1-8 complete
    - Assess prompt optimization
    - Tool selection prompt optimization
-   - Tool hardening harness (now operational)
+   - Tool hardening harness (operational)
    - Nightly red team (evaluate.py working)
 2. **Merge v3.1-hardening to master** — All hardening work is on v3.1-hardening branch
 3. **A100 benchmark** — Rerun with parallel workers on fast hardware
