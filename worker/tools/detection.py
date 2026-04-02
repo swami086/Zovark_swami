@@ -502,7 +502,7 @@ def detect_lolbin_abuse(siem_event: dict) -> dict:
             (r'certutil.*-encode', "certutil base64 encode"),
         ],
         "mshta": [
-            (r'mshta\s+(?:http|vbscript|javascript)', "mshta executing remote/scripted content"),
+            (r'mshta(?:\.exe)?[\s:]*(?:http|vbscript|javascript)', "mshta executing remote/scripted content"),
         ],
         "bitsadmin": [
             (r'bitsadmin.*transfer', "bitsadmin file transfer"),
@@ -566,6 +566,10 @@ def detect_lolbin_abuse(siem_event: dict) -> dict:
     # Benign certutil usage (just -verify)
     if re.search(r'certutil.*-verify', raw_lower) and not findings:
         risk = min(risk, 15)
+    
+    # LOLBin abuse requires minimum risk when indicators found
+    if findings and risk >= 30 and risk < 55:
+        risk = 55  # Ensure detection
 
     if not findings:
         risk = max(risk, 5)
@@ -748,5 +752,95 @@ def detect_appcert_dlls(siem_event: dict) -> dict:
         risk = max(risk, 85)
     elif findings and risk < 20:
         risk = 10  # Benign mention
+    
+    return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
+
+
+def detect_lateral_movement(siem_event: dict) -> dict:
+    """Detect lateral movement: SMB admin shares, PsExec, WMI, SSH, etc."""
+    raw_log = siem_event.get("raw_log", "")
+    findings = []
+    iocs = []
+    risk = 0
+    
+    raw_lower = raw_log.lower()
+    
+    # SMB admin share access
+    admin_share_patterns = [
+        r'net use.*admin\$',
+        r'\\[\d.]+\\(admin|c|d)\$',
+        r'smb.*admin\$',
+    ]
+    for pattern in admin_share_patterns:
+        if re.search(pattern, raw_lower):
+            findings.append("SMB admin share access detected")
+            risk += 30
+            break
+    
+    # PsExec usage
+    psexec_patterns = [
+        r'psexec\.exe',
+        r'psexec64\.exe',
+        r'psexec.*-u.*-p',
+        r'psexec.*\\\\[\d.]+',
+    ]
+    for pattern in psexec_patterns:
+        if re.search(pattern, raw_lower):
+            findings.append("PsExec remote execution detected")
+            risk += 35
+            break
+    
+    # WMI remote execution
+    wmi_patterns = [
+        r'wmic.*\/node:',
+        r'wmic.*process call create',
+    ]
+    for pattern in wmi_patterns:
+        if re.search(pattern, raw_lower):
+            findings.append("WMI remote execution detected")
+            risk += 30
+            break
+    
+    # Remote service creation
+    if re.search(r'sc\\.exe.*\\\\[\d.]+.*create', raw_lower):
+        findings.append("Remote service creation detected")
+        risk += 35
+    
+    # SSH/SCP to internal hosts
+    ssh_patterns = [
+        r'ssh\s+\w+@\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',
+        r'scp.*\w+@\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:',
+    ]
+    for pattern in ssh_patterns:
+        if re.search(pattern, raw_lower):
+            findings.append("SSH/SCP to remote host detected")
+            risk += 20
+            break
+    
+    # Extract IPs
+    ips = extract_ipv4(raw_log)
+    iocs.extend(ips)
+    
+    # Source and destination IP check
+    src_ip = siem_event.get("source_ip", "")
+    dst_ip = siem_event.get("destination_ip", "")
+    
+    if src_ip and not any(i.get("value") == src_ip for i in iocs):
+        iocs.append(_make_ioc("ipv4", src_ip, raw_log))
+    
+    if dst_ip and not any(i.get("value") == dst_ip for i in iocs):
+        iocs.append(_make_ioc("ipv4", dst_ip, raw_log))
+    
+    # Different source/destination indicates lateral movement
+    if src_ip and dst_ip and src_ip != dst_ip:
+        risk += 10
+        findings.append(f"Cross-host activity: {src_ip} -> {dst_ip}")
+    
+    # Lateral movement requires minimum risk when indicators found
+    if findings and risk >= 20 and risk < 55:
+        risk = 55  # Ensure detection
+    
+    if not findings:
+        risk = max(risk, 5)
     
     return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
