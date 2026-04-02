@@ -1,0 +1,7 @@
+[
+  {"input": {"raw_log": "EventID=4768 TicketEncryptionType=0x17 ServiceName=krbtgt/DOMAIN.COM", "source_ip": "10.0.1.60", "username": "admin"}, "expected_detected": true},
+  {"input": {"raw_log": "EventID=4768 TicketEncryptionType=0x17 ServiceName=krbtgt", "source_ip": "10.0.1.61", "username": "legit_user"}, "expected_detected": true},
+  {"input": {"raw_log": "EventID=4768 TicketEncryptionType=0x12 ServiceName=krbtgt", "source_ip": "10.0.1.62", "username": "normal"}, "expected_detected": false},
+  {"input": {"raw_log": "EventID=4624 LogonType=3", "source_ip": "10.0.1.63", "username": "workstation$"}, "expected_detected": false},
+  {"input": {"raw_log": "EventID=4768 TicketOptions=0x50800010 Lifetime=600h", "source_ip": "10.0.1.64", "username": "svc_backup"}, "expected_detected": true}
+]

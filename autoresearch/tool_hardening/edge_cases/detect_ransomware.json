@@ -1,0 +1,7 @@
+[
+  {"input": {"raw_log": "vssadmin delete shadows /all /quiet"}, "expected_detected": true},
+  {"input": {"raw_log": "wmic shadowcopy delete"}, "expected_detected": true},
+  {"input": {"raw_log": "file.doc.locked file.xls.encrypted"}, "expected_detected": true},
+  {"input": {"raw_log": "README.txt ransom payment bitcoin"}, "expected_detected": true},
+  {"input": {"raw_log": "Service started normally PID=1234"}, "expected_detected": false}
+]

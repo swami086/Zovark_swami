@@ -338,5 +338,112 @@
     "expected_verdict": "true_positive",
     "expected_risk_min": 80,
     "investigation_plan": "lolbin_abuse"
+  },
+  {
+    "id": "CVE-2024-001",
+    "name": "Windows Installer Elevation",
+    "description": "Exploits Windows Installer vulnerability for SYSTEM privilege escalation",
+    "tactic": "privilege_escalation",
+    "technique": "T1068",
+    "payload": {
+      "task_type": "privilege_escalation_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "msiexec.exe /i C:\\\\Users\\\\Public\\\\payload.msi /quiet /qn",
+        "source_ip": "10.0.0.15",
+        "username": "standard_user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "PERSIST-001",
+    "name": "Time Provider DLL Hijacking",
+    "description": "Malicious time provider DLL for persistence",
+    "tactic": "persistence",
+    "technique": "T1547",
+    "payload": {
+      "task_type": "persistence_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "HKLM\\\\System\\\\CurrentControlSet\\\\Services\\\\W32Time\\\\TimeProviders modified",
+        "source_ip": "10.0.0.20",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "LATERAL-001",
+    "name": "WMI Event Subscription Remote",
+    "description": "WMI event subscription for lateral movement",
+    "tactic": "lateral_movement",
+    "technique": "T1021",
+    "payload": {
+      "task_type": "lateral_movement_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "wmic /node:10.0.0.50 process call create powershell",
+        "source_ip": "10.0.0.25",
+        "destination_ip": "10.0.0.50"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "DEFENSE-001",
+    "name": "Tamper Windows Defender",
+    "description": "Attempts to disable or tamper with Defender",
+    "tactic": "defense_evasion",
+    "technique": "T1562",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "MpCmdRun.exe -RemoveDefinitions -All",
+        "source_ip": "10.0.0.30",
+        "username": "admin"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "CRED-001",
+    "name": "LSASS Memory Dump via comsvcs",
+    "description": "Uses comsvcs.dll to dump LSASS memory",
+    "tactic": "credential_access",
+    "technique": "T1003",
+    "payload": {
+      "task_type": "credential_access_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "rundll32.exe comsvcs.dll, MiniDump 708 C:\\\\temp\\\\lsass.dmp full",
+        "source_ip": "10.0.0.35",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 90
+  },
+  {
+    "id": "BYPASS-001",
+    "name": "AMSI Bypass via Reflection",
+    "description": "In-memory AMSI bypass using reflection",
+    "tactic": "defense_evasion",
+    "technique": "T1562",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "[Ref].Assembly.GetTypes() | Where-Object { $_ -like '*iUtils' }",
+        "source_ip": "10.0.0.40"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 85
   }
 ]

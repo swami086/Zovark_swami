@@ -1,0 +1,7 @@
+[
+  {"input": {"raw_log": "EventID=4769 TicketEncryptionType=0x17 ServiceName=MSSQLSvc/db01:1433", "source_ip": "10.0.1.50", "username": "svc_sql"}, "expected_detected": true},
+  {"input": {"raw_log": "EventID=4769 TicketEncryptionType=0x12 ServiceName=HTTP/web01", "source_ip": "10.0.1.51", "username": "svc_web"}, "expected_detected": false},
+  {"input": {"raw_log": "EventID=4768 TicketEncryptionType=0x17 ServiceName=krbtgt", "source_ip": "10.0.1.52", "username": "jdoe"}, "expected_detected": false},
+  {"input": {"raw_log": "Normal authentication activity", "source_ip": "10.0.1.53", "username": "normal_user"}, "expected_detected": false},
+  {"input": {"raw_log": "EventID=4769 TicketEncryptionType=0x17 ServiceName=CIFS/file01", "source_ip": "10.0.1.54", "username": "attacker"}, "expected_detected": true}
+]

@@ -77,6 +77,24 @@ def detect_kerberoasting(siem_event: dict) -> dict:
     if username and not any(i["value"] == username for i in iocs):
         iocs.append(_make_ioc("username", username, raw_log))
 
+    # Kerberoasting requires BOTH RC4 encryption AND TGS request for non-krbtgt service
+    is_rc4 = encryption == "0x17"
+    is_tgs = event_id == "4769"
+    is_krbtgt = service_name and "krbtgt" in service_name.lower()
+    
+    # Only high risk if RC4 + TGS for actual service (not krbtgt)
+    if is_rc4 and is_tgs and not is_krbtgt:
+        risk = max(risk, 55)
+    elif is_rc4 and is_tgs and is_krbtgt:
+        # RC4 TGT request - suspicious but not kerberoasting
+        risk = 25
+    elif is_rc4:
+        # RC4 used but not TGS - moderate concern
+        risk = max(risk, 30)
+    elif is_tgs and not is_krbtgt:
+        # TGS without RC4 - low concern
+        risk = max(risk, 15)
+    
     if not findings:
         risk = max(risk, 10)
 
@@ -107,17 +125,29 @@ def detect_golden_ticket(siem_event: dict) -> dict:
         findings.append(f"krbtgt service targeted: {service_name}")
         risk += 20
 
-    # Abnormal lifetime
+    # Abnormal lifetime (check both parsed and raw log)
     if lifetime:
         hour_match = re.search(r'(\d+)h', lifetime)
         if hour_match and int(hour_match.group(1)) > 720:  # > 30 days
             findings.append(f"Abnormally long ticket lifetime: {lifetime}")
-            risk += 25
+            risk += 35
+    # Also check raw log for lifetime patterns
+    raw_lifetime = re.search(r'Lifetime[=:\s](\d+)h', raw_log)
+    if raw_lifetime:
+        hours = int(raw_lifetime.group(1))
+        if hours > 100:  # > ~4 days is suspicious
+            findings.append(f"Extended ticket lifetime: {hours}h")
+            risk += 35
 
     # Suspicious ticket options
     if ticket_options and ticket_options.startswith("0x50"):
         findings.append(f"Suspicious ticket options: {ticket_options}")
-        risk += 10
+        risk += 15
+    
+    # Also check raw log for ticket options
+    if re.search(r'TicketOptions[=:\s]0x50', raw_log):
+        findings.append("Suspicious ticket options in raw log")
+        risk += 15
 
     # IOCs
     ips = extract_ipv4(raw_log)
@@ -160,17 +190,17 @@ def detect_ransomware(siem_event: dict) -> dict:
         risk += 30
 
     # File extension changes
-    ransom_extensions = [r'\.locked\b', r'\.encrypted\b', r'\.crypt\b', r'\.ransom\b', r'\.cry\b']
+    ransom_extensions = [r'\.locked', r'\.encrypted', r'\.crypt', r'\.ransom', r'\.cry\b']
     for ext in ransom_extensions:
         if re.search(ext, raw_lower):
             findings.append(f"Ransomware file extension detected: {ext.replace(chr(92), '')}")
-            risk += 20
+            risk += 25
             break
 
     # Ransom notes
     if re.search(r'ransom|readme\.txt|decrypt|bitcoin|btc|payment', raw_lower):
         findings.append("Ransom-related language detected")
-        risk += 15
+        risk += 20
 
     # IOCs
     ips = extract_ipv4(raw_log)
@@ -180,6 +210,10 @@ def detect_ransomware(siem_event: dict) -> dict:
     if src_ip and not any(i.get("value") == src_ip for i in iocs):
         iocs.append(_make_ioc("ipv4", src_ip, raw_log))
 
+    # Ransomware indicators should have minimum risk if detected
+    if findings and risk < 50:
+        risk = 60  # Ensure detection meets threshold
+    
     if not findings:
         risk = max(risk, 5)
 
