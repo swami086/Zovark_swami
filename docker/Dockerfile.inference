@@ -1,0 +1,98 @@
+# --------------------------------------------------------------------------- #
+#  Zovark Inference — llama.cpp + CUDA in a distroless-style container        #
+#  Stage 1: Build llama-server with CUDA support                              #
+#  Stage 2: Build a static Go healthcheck binary                              #
+#  Stage 3: Minimal runtime with only CUDA libs + the server binary           #
+# --------------------------------------------------------------------------- #
+
+# ---- Stage 1: Build llama.cpp with CUDA ---------------------------------- #
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS llama-builder
+
+ARG CUDA_ARCH=86
+ARG LLAMA_CPP_VERSION=b4679
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git cmake build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+RUN git clone --depth 1 --branch ${LLAMA_CPP_VERSION} \
+        https://github.com/ggerganov/llama.cpp.git .
+
+RUN cmake -B build \
+        -DGGML_CUDA=ON \
+        -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH} \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLLAMA_CURL=OFF \
+        -DLLAMA_BUILD_TESTS=OFF \
+        -DLLAMA_BUILD_EXAMPLES=OFF \
+        -DLLAMA_BUILD_SERVER=ON \
+    && cmake --build build --target llama-server -j$(nproc) \
+    && strip build/bin/llama-server
+
+# ---- Stage 2: Build Go healthcheck -------------------------------------- #
+FROM golang:1.22-alpine AS hc-builder
+
+ARG LLAMA_PORT=8080
+
+WORKDIR /hc
+
+# Inline the healthcheck source — no external file dependency
+RUN cat > main.go <<'GOEOF'
+package main
+
+import (
+	"net/http"
+	"os"
+	"time"
+)
+
+func main() {
+	port := os.Getenv("LLAMA_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/health")
+	if err != nil {
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		os.Exit(0)
+	}
+	os.Exit(1)
+}
+GOEOF
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w" -trimpath -o /out/healthcheck .
+
+# ---- Stage 3: Minimal runtime ------------------------------------------- #
+FROM cgr.dev/chainguard/cc-dynamic:latest
+
+# CUDA runtime libraries (only what llama-server actually dlopens)
+COPY --from=llama-builder /usr/local/cuda-12.4/targets/x86_64-linux/lib/libcudart.so.12    /usr/lib/
+COPY --from=llama-builder /usr/local/cuda-12.4/targets/x86_64-linux/lib/libcublas.so.12     /usr/lib/
+COPY --from=llama-builder /usr/local/cuda-12.4/targets/x86_64-linux/lib/libcublasLt.so.12   /usr/lib/
+
+# Application binaries
+COPY --from=llama-builder /build/build/bin/llama-server /llama-server
+COPY --from=hc-builder    /out/healthcheck              /healthcheck
+
+# CUDA tuning — reduce startup latency and memory overhead
+ENV CUDA_CACHE_DISABLE=1 \
+    CUDA_MODULE_LOADING=LAZY \
+    LLAMA_PORT=8080 \
+    LD_LIBRARY_PATH=/usr/lib
+
+USER nonroot:nonroot
+
+EXPOSE ${LLAMA_PORT}
+
+# Model loading can take 30-60s on cold start; generous start_period
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
+    CMD ["/healthcheck"]
+
+ENTRYPOINT ["/llama-server"]

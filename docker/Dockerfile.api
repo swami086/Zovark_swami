@@ -1,0 +1,58 @@
+# --------------------------------------------------------------------------- #
+#  Zovark API — Distroless Production Container                               #
+#  Base: cgr.dev/chainguard/static:latest (no shell, no package manager)      #
+#  Build: golang:1.22-alpine with static linking (CGO_ENABLED=0)              #
+# --------------------------------------------------------------------------- #
+
+# ---- Builder stage -------------------------------------------------------- #
+FROM golang:1.22-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+WORKDIR /build
+
+# Dependency layer (cached unless go.mod/go.sum change)
+COPY api/go.mod api/go.sum ./
+RUN go mod download
+
+# Source layer
+COPY api/ ./
+
+# Build API binary — fully static, no CGO
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -extldflags=-static" \
+    -trimpath \
+    -o /out/zovark-api .
+
+# Build healthcheck binary — same constraints
+COPY cmd/healthcheck/main.go /hc/main.go
+RUN cd /hc && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -extldflags=-static" \
+    -trimpath \
+    -o /out/healthcheck .
+
+# ---- Runtime stage -------------------------------------------------------- #
+FROM cgr.dev/chainguard/static:latest
+
+# TLS root certificates (for outbound HTTPS to Ollama, Temporal, etc.)
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+# Timezone data (for time.LoadLocation)
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Application binaries
+COPY --from=builder /out/zovark-api    /zovark-api
+COPY --from=builder /out/healthcheck   /healthcheck
+
+# Run as non-root (UID 65534 is the nonroot user in Chainguard images)
+USER nonroot:nonroot
+
+# API port + metrics/pprof sidecar port
+EXPOSE 8090 9091
+
+# Healthcheck calls the static binary — no shell required
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/healthcheck"]
+
+ENTRYPOINT ["/zovark-api"]
