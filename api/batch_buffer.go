@@ -107,18 +107,9 @@ func effectiveBatchWindow(severity string) float64 {
 	return apiBatchWindowSeconds * mult
 }
 
-// tryBatchAlert checks if this alert should be absorbed into an existing batch.
-// Returns (shouldSkip, batchParentTaskID).
-// shouldSkip=true means another workflow already covers this alert — don't create a new one.
-// Fail-open: returns (false, "") if Redis is unavailable.
-func tryBatchAlert(ctx context.Context, taskType, sourceIP, severity, taskID string) (bool, string) {
-	if !apiBatchEnabled || redisClient == nil {
-		return false, ""
-	}
-
-	batchKey := computeBatchKey(taskType, sourceIP)
-	redisKey := "apibatch:" + batchKey
-	window := effectiveBatchWindow(severity)
+// checkOrCreateBatch runs the Lua batch script against a single Redis key.
+// Returns (absorbed, parentTaskID, error).
+func checkOrCreateBatch(ctx context.Context, redisKey, taskID string, window float64) (bool, string, error) {
 	nowTS := float64(time.Now().UnixMilli()) / 1000.0
 	ttl := int(window) + 30 // Redis key TTL with grace period
 
@@ -128,32 +119,61 @@ func tryBatchAlert(ctx context.Context, taskType, sourceIP, severity, taskID str
 	).Result()
 
 	if err != nil {
-		// Redis error — fail-open, proceed with workflow
-		log.Printf("[BATCH] Redis batch check failed: %v", err)
-		return false, ""
+		return false, "", err
 	}
 
 	// Parse Lua response: [status_code, task_id]
 	resultSlice, ok := result.([]interface{})
 	if !ok || len(resultSlice) < 2 {
-		return false, ""
+		return false, "", nil
 	}
 
 	statusCode, _ := resultSlice[0].(int64)
 	batchParentID, _ := resultSlice[1].(string)
 
-	switch statusCode {
-	case 0:
-		// First alert in batch — proceed with workflow
-		return false, ""
-	case 1:
-		// Absorbed into existing batch — skip workflow
-		log.Printf("[BATCH] Alert absorbed: type=%s ip=%s batch_parent=%s", taskType, sourceIP, batchParentID)
-		return true, batchParentID
-	case 2:
-		// Window expired or batch full — new batch, proceed with workflow
-		return false, ""
-	default:
+	if statusCode == 1 {
+		return true, batchParentID, nil
+	}
+	return false, "", nil
+}
+
+// tryBatchAlert checks if this alert should be absorbed into an existing batch.
+// Returns (shouldSkip, batchParentTaskID).
+// shouldSkip=true means another workflow already covers this alert — don't create a new one.
+// Checks both source IP (outbound attacks) and destination IP (inbound attacks).
+// Fail-open: returns (false, "") if Redis is unavailable.
+func tryBatchAlert(ctx context.Context, taskType, sourceIP, destIP, severity, taskID string) (bool, string) {
+	if !apiBatchEnabled || redisClient == nil {
 		return false, ""
 	}
+
+	window := effectiveBatchWindow(severity)
+
+	// Check source IP batch key (catches outbound attacks)
+	srcKey := "apibatch:src:" + computeBatchKey(taskType, sourceIP)
+	absorbed, parentID, err := checkOrCreateBatch(ctx, srcKey, taskID, window)
+	if err != nil {
+		log.Printf("[BATCH] Redis batch check failed (src): %v", err)
+		return false, ""
+	}
+	if absorbed {
+		log.Printf("[BATCH] Alert absorbed (src): type=%s src_ip=%s batch_parent=%s", taskType, sourceIP, parentID)
+		return true, parentID
+	}
+
+	// Check destination IP batch key (catches inbound attacks)
+	if destIP != "" {
+		dstKey := "apibatch:dst:" + computeBatchKey(taskType, destIP)
+		absorbed, parentID, err = checkOrCreateBatch(ctx, dstKey, taskID, window)
+		if err != nil {
+			log.Printf("[BATCH] Redis batch check failed (dst): %v", err)
+			return false, ""
+		}
+		if absorbed {
+			log.Printf("[BATCH] Alert absorbed (dst): type=%s dest_ip=%s batch_parent=%s", taskType, destIP, parentID)
+			return true, parentID
+		}
+	}
+
+	return false, ""
 }

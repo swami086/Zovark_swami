@@ -37,11 +37,11 @@ var timestampPatterns = []*regexp.Regexp{
 
 // Severity-based TTLs (in seconds) — must match Python DEDUP_TTL
 var dedupTTL = map[string]int{
-	"critical": 60,
-	"high":     300,
-	"medium":   900,
-	"low":      3600,
-	"info":     7200,
+	"critical": 900,  // 15 min — active incidents produce sustained identical alerts
+	"high":     600,  // 10 min
+	"medium":   300,  // 5 min
+	"low":      3600, // 1 hour
+	"info":     7200, // 2 hours
 }
 
 // normalizeRawLog strips timestamps from raw_log for dedup hashing.

@@ -117,13 +117,26 @@ func startQueueDrainLoop(ctx context.Context) {
 			log.Println("[BACKPRESSURE] Queue drain goroutine stopped")
 			return
 		case <-ticker.C:
-			drainQueuedTasks(ctx)
+			// Compute dynamic drain count based on headroom
+			_, depth := checkBackpressure(ctx)
+			headroom := maxPendingWorkflows - depth
+			if headroom <= 0 {
+				continue // At capacity, wait
+			}
+			drainCount := headroom / 10
+			if drainCount < 1 {
+				drainCount = 1
+			}
+			if drainCount > 30 {
+				drainCount = 30
+			}
+			drainQueuedTasks(ctx, drainCount)
 		}
 	}
 }
 
-// drainQueuedTasks processes up to 10 queued tasks per tick.
-func drainQueuedTasks(ctx context.Context) {
+// drainQueuedTasks processes up to maxDrain queued tasks per tick.
+func drainQueuedTasks(ctx context.Context, maxDrain int) {
 	if dbPool == nil || tc == nil {
 		return
 	}
@@ -138,7 +151,7 @@ func drainQueuedTasks(ctx context.Context) {
 		`SELECT id, task_type, input FROM agent_tasks
 		 WHERE status = 'queued'
 		 ORDER BY created_at ASC
-		 LIMIT 10`)
+		 LIMIT $1`, maxDrain)
 	if err != nil {
 		return
 	}

@@ -270,11 +270,6 @@ func main() {
 		api.GET("/retention-policies", requireRole("admin"), listRetentionPoliciesHandler)
 		api.PUT("/retention-policies/:id", requireRole("admin"), updateRetentionPolicyHandler)
 
-		// SIEM Ingest — vendor-specific webhook receivers (analyst + admin)
-		api.POST("/ingest/splunk", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), splunkIngestHandler)
-		api.POST("/ingest/elastic", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), elasticIngestHandler)
-		api.GET("/ingest/health", ingestHealthHandler)
-
 		// Integration management (admin only)
 		api.POST("/integrations/slack/test", requireRole("admin"), testSlackWebhookHandler)
 		api.PUT("/integrations/slack", requireRole("admin"), configureSlackWebhookHandler)
@@ -341,6 +336,21 @@ func main() {
 		api.GET("/governance/config", requireRole("admin"), getGovernanceConfigHandler)
 		api.PUT("/governance/config", requireRole("admin"), updateGovernanceConfigHandler)
 	}
+
+	// SIEM ingest routes — high-volume alert ingestion
+	// Rate control handled by 3-layer burst protection (dedup + batch + backpressure)
+	// NOT by per-tenant rate limiter — see HANDOVER.md
+	siem := router.Group("/api/v1/ingest")
+	siem.Use(authMiddleware())
+	siem.Use(auditMiddleware())
+	{
+		siem.POST("/splunk", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), splunkIngestHandler)
+		siem.POST("/elastic", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), elasticIngestHandler)
+		siem.GET("/health", requireRole("admin", "analyst", "api_key"), ingestHealthHandler)
+	}
+
+	// Start OOB watchdog on :9091 (independent of main Gin server)
+	go startOOBServer()
 
 	// Start server
 	log.Printf("Listening and serving HTTP on :%s\n", appConfig.Port)

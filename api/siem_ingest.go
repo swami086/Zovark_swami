@@ -95,7 +95,19 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 		sourceIP = v
 	}
 
-	if shouldSkip, batchParentID := tryBatchAlert(ctx, taskType, sourceIP, severity, taskID); shouldSkip {
+	destIP := ""
+	if se, ok := input["siem_event"].(map[string]interface{}); ok {
+		if v, ok := se["destination_ip"].(string); ok {
+			destIP = v
+		} else if v, ok := se["dest_ip"].(string); ok {
+			destIP = v
+		}
+	}
+	if v, ok := input["dest_ip"].(string); ok && destIP == "" {
+		destIP = v
+	}
+
+	if shouldSkip, batchParentID := tryBatchAlert(ctx, taskType, sourceIP, destIP, severity, taskID); shouldSkip {
 		// Insert with batched status for audit trail, but skip workflow
 		dbCtx, dbCancel := dbContextWithTimeout(ctx)
 		defer dbCancel()

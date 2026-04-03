@@ -233,6 +233,9 @@ services:
     container_name: zovark-api
     ports:
       - "8090:8090"
+      # WARNING: If using --network host, port 9091 becomes externally accessible.
+      # The OOB watchdog has NO authentication. Use iptables/firewall rules to restrict access.
+      - "127.0.0.1:9091:9091"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "--timeout=3", "http://127.0.0.1:8090/ready"]
       interval: 15s

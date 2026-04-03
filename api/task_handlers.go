@@ -141,10 +141,22 @@ func createTaskHandler(c *gin.Context) {
 		sourceIP = v
 	}
 
+	destIP := ""
+	if se, ok := req.Input["siem_event"].(map[string]interface{}); ok {
+		if v, ok := se["destination_ip"].(string); ok {
+			destIP = v
+		} else if v, ok := se["dest_ip"].(string); ok {
+			destIP = v
+		}
+	}
+	if v, ok := req.Input["dest_ip"].(string); ok && destIP == "" {
+		destIP = v
+	}
+
 	severity := extractPriority(req.Input)
 	taskID := uuid.New().String()
 
-	if shouldSkip, batchParentID := tryBatchAlert(c.Request.Context(), req.TaskType, sourceIP, severity, taskID); shouldSkip {
+	if shouldSkip, batchParentID := tryBatchAlert(c.Request.Context(), req.TaskType, sourceIP, destIP, severity, taskID); shouldSkip {
 		c.JSON(http.StatusOK, gin.H{
 			"status":          "batched",
 			"batch_parent_id": batchParentID,
