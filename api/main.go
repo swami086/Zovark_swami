@@ -349,6 +349,38 @@ func main() {
 		siem.GET("/health", requireRole("admin", "analyst", "api_key"), ingestHealthHandler)
 	}
 
+	// Control Plane — admin routes for config, diagnostics, bootstrap
+	adminGroup := router.Group("/api/v1/admin")
+	adminGroup.Use(authMiddleware())
+	adminGroup.Use(requireRole("admin"))
+	adminGroup.Use(auditMiddleware())
+	{
+		// Diagnostics proxy (sidecar)
+		adminGroup.POST("/diagnostics/ping", handleDiagPing)
+		adminGroup.POST("/diagnostics/http-check", handleDiagHTTPCheck)
+		adminGroup.POST("/diagnostics/dns", handleDiagDNS)
+		adminGroup.POST("/diagnostics/tcp", handleDiagTCP)
+		adminGroup.POST("/diagnostics/parse-test", handleDiagParseTest)
+		adminGroup.GET("/diagnostics/health", handleDiagHealth)
+
+		// System health (combined OOB + diagnostics)
+		adminGroup.GET("/system/health", handleSystemHealth)
+
+		// Config management
+		adminGroup.GET("/config", handleConfigGetAll)
+		adminGroup.GET("/config/audit", handleConfigAuditLog)
+		adminGroup.GET("/config/:key", handleConfigGet)
+		adminGroup.PUT("/config", handleConfigUpsert)
+		adminGroup.DELETE("/config/:key", handleConfigDelete)
+		adminGroup.POST("/config/:key/rollback/:audit_id", handleConfigRollback)
+
+		// Bootstrap wizard
+		adminGroup.POST("/bootstrap/inject-synthetic", handleInjectSynthetic)
+	}
+
+	// Break-glass emergency auth — NO auth middleware (it IS the auth)
+	router.POST("/api/v1/admin/breakglass/login", handleBreakglassLogin)
+
 	// Start OOB watchdog on :9091 (independent of main Gin server)
 	go startOOBServer()
 
