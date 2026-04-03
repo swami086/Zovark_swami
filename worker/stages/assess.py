@@ -455,7 +455,10 @@ async def assess_results(data: dict) -> dict:
         siem_rule = siem_event.get("rule_name", "")
     else:
         raw_log = siem_title = siem_rule = ""
-    combined_signal = f"{raw_log} {siem_title} {siem_rule} {stdout}".lower()
+    # Signal boost scans SIEM-provided data ONLY — not tool execution output.
+    # stdout contains tool runner variable refs ($raw_log, $step2) and JSON keys
+    # ("source", "evidence_refs") that trigger false positives on attack regexes.
+    combined_signal = f"{raw_log} {siem_title} {siem_rule}".lower()
 
     attack_signals = [
         (r"(?:union\s+select|or\s+1\s*=\s*1|'\s*or\s*'|drop\s+table|;.*--|\bsleep\s*\(|benchmark\s*\(|sqli|sql.?inject)", "SQL injection"),
