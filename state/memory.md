@@ -1,5 +1,76 @@
 # ZOVARK State Memory
 
+## Update (2026-04-03)
+
+### What Was Built — v3.2 Sovereign Appliance
+
+**8-agent build completed:**
+1. OOB Watchdog on :9091 (plain net/http, survives Gin crashes)
+2. zvadmin host CLI (status, queue, benchmark, breakglass, version)
+3. Distroless Dockerfiles (API + Inference + Diagnostics)
+4. Pure Go diagnostic sidecar (ZERO os/exec — ping, http-check, dns, tcp, parse-test)
+5. Control plane backend (config CRUD+audit, diagnostics proxy, breakglass, bootstrap injection)
+6. Burst protection integration tests
+7. Control plane React admin (bootstrap wizard + 3-tab dashboard)
+8. Docker compose overlays (dev + enterprise tiers)
+
+**Burst protection fixes (Agent 1):**
+- SIEM ingest routes exempted from tenant rate limiter
+- Dual batch keys (source IP + destination IP)
+- Dynamic drain rate (proportional to Temporal headroom)
+- Critical dedup TTL inverted: 60s → 900s
+
+**Cycle 9 validation (7 tracks):**
+- Infrastructure: 10/10
+- Burst protection: 3/3
+- Red team: auth enforced, SQL injection blocked
+- 8/10 attack types correctly detected
+
+**Signal boost fix applied:**
+- Excluded tool stdout from `combined_signal` in assess.py
+- Root cause: JSON keys like "source" matched `rce\b`, variable refs like `$raw_log` matched `\$\(.*\)`
+
+### Calibration Gaps Found (Cycle 10 priorities)
+
+1. `output_validator` rejects `findings=[]` for tools mode → triggers safe_default (risk=50) on benign alerts → false positives on password_change, health_check
+2. `detect_kerberoasting` returns risk=15 → below detection threshold without signal boost
+3. `detect_dns_exfil` returns risk=25 → same issue
+4. Risk floor threshold (36) too high → doesn't catch tool scores 15-35
+5. Circuit breaker `isIngestPaused()` cache propagation timing needs work
+
+### Files Created This Session (60+)
+
+**Go API (new):** `api/oob.go`, `api/alert_dedup.go`, `api/batch_buffer.go`, `api/backpressure.go`, `api/admin_config_handlers.go`, `api/admin_diagnostics_handlers.go`, `api/admin_breakglass.go`, `api/admin_bootstrap_handlers.go`
+
+**zvadmin CLI:** `cmd/zvadmin/` (main, status, queue, benchmark, breakglass, version)
+
+**Diagnostics sidecar:** `cmd/diagnostics/` (main, handlers, ping, httpcheck, dns, tcp, parsetest, healthcheck)
+
+**Distroless:** `docker/Dockerfile.api`, `docker/Dockerfile.inference`, `docker/Dockerfile.diagnostics`, `config/seccomp-inference.json`, `scripts/provision-models.sh`
+
+**Control plane frontend:** `web-admin/` (14 React files)
+
+**Compose overlays:** `docker-compose.distroless.yml`, `docker-compose.enterprise.yml`, `.env.example`
+
+**Tests/docs:** `scripts/smoke_test_100.sh`, `scripts/test_burst_protection.sh`, `autoresearch/cycle9/`, `HANDOVER.md`, `docs/END_TO_END_WORKFLOW.md`
+
+**Migration:** `migrations/041_system_configs.sql` (applied)
+
+### Current Commit History
+
+```
+c29df18 Cycle 9 fix: exclude stdout from signal boost
+e8a4bcb Cycle 9: v3.2 full system validation
+f6fdf4c v3.2 Agent 7+8: Control plane frontend + Docker compose overlays
+9903f82 v3.2 Agent 5+6: Control plane backend + burst protection tests
+99ae53d v3.2 Agent 3+4: Distroless containers + diagnostic sidecar
+f1746ee v3.2 Agent 1+2: OOB watchdog, burst fixes, zvadmin CLI
+843ad65 Update context zip for IDE handover
+199a93b Cycle 8: 3-layer burst protection + pipeline fixes + handover docs
+```
+
+---
+
 ## Update (2026-04-02 evening)
 
 ### What Was Built

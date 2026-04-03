@@ -1,47 +1,41 @@
 {
   "name": "ZOVARK",
-  "tagline": "Autonomous AI SOC Agent for regulated enterprises",
-  "version": "3.1-hardening",
-  "status": "production-ready",
-  "last_updated": "2026-04-02T17:00:00Z",
+  "tagline": "Autonomous AI SOC Agent — Sovereign Appliance",
+  "version": "3.2.0-dev",
+  "status": "v3.2 build complete, calibration in progress",
+  "last_updated": "2026-04-03T07:30:00Z",
+  "branch": "v3.1-hardening",
   "features": [
-    "39 investigation tools (extraction, analysis, parsing, scoring, detection, enrichment)",
-    "24 saved investigation plans for attack types",
+    "39 investigation tools (7 categories) + 24 saved investigation plans",
     "V3 6-stage pipeline (ingest, analyze, execute, assess, govern, store)",
-    "FAST_FILL mode: 0.026s avg latency (99.9% improvement)",
-    "100% attack detection rate on 62-alert API test, 0 false negatives",
-    "OpenTelemetry tracing with Signoz",
-    "Real-time dashboard with SSE streaming",
-    "40 red team attack vectors",
-    "12 hardened detection tools at 100% fitness",
-    "3-layer pre-Temporal alert funnel (dedup, batch buffer, backpressure)",
-    "Plan alias resolution (task_type → investigation_plans.json)",
-    "evaluate.py operational for continuous testing",
-    "AutoResearch: 7 cycles completed, 370+ tests"
+    "3-layer pre-Temporal burst protection (dedup, batch buffer, backpressure)",
+    "OOB watchdog on :9091 (survives API crashes)",
+    "zvadmin host CLI (status, queue, benchmark, breakglass)",
+    "Distroless containers (API, inference, diagnostics)",
+    "Pure Go diagnostic sidecar (zero os/exec)",
+    "Control plane backend (config CRUD, audit trail, circuit breaker, bootstrap)",
+    "Control plane React admin (bootstrap wizard, 3-tab dashboard)",
+    "GPU tier model (dev/mid/enterprise/enterprise-plus)",
+    "Docker compose overlays (dev single-inference, enterprise dual-inference)",
+    "Ed25519 signed update packages (zvadmin update)"
   ],
   "metrics": {
-    "detection_rate": 1.0,
-    "false_positive_rate": 0.0,
+    "detection_rate_api_tested": "8/10 attack types (80%)",
+    "false_positive_rate": "2/5 benign (40% — calibration gap, see Cycle 10)",
     "avg_investigation_latency_sec": 0.026,
     "red_team_vectors": 40,
-    "open_bypasses": 0,
     "tools_count": 39,
     "tests_passing": 370,
-    "max_burst_alerts_handled": 5000,
-    "dedup_reduction_identical": "99.95%",
-    "batch_reduction_same_ip": "90%"
+    "new_files_this_session": 60,
+    "commits_this_session": 8
   },
-  "users": {
-    "target": "SOC analysts in regulated enterprises (healthcare, finance, defense)",
-    "current": 0,
-    "pilot_programs": 0
-  },
-  "revenue_model": {
-    "type": "SaaS / On-premise license",
-    "tiers": [
-      {"name": "Essentials", "price": "$40K/year", "features": "Templates-only mode"},
-      {"name": "Professional", "price": "Custom", "features": "Full pipeline + LLM"},
-      {"name": "Enterprise", "price": "Custom", "features": "Air-gapped + CMMC compliance"}
-    ]
-  }
+  "cycle_10_priorities": [
+    "Fix output_validator for tools mode (empty findings OK)",
+    "Increase detect_kerberoasting risk scoring",
+    "Increase detect_dns_exfil risk scoring",
+    "Lower risk floor threshold from 36 to 15",
+    "Circuit breaker cache propagation timing",
+    "Build web-admin (npm install + npm run build)",
+    "Test distroless Dockerfiles on Linux with GPU"
+  ]
 }
