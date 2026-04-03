@@ -1,70 +1,110 @@
-# Enterprise override — replaces vLLM containers with larger models
-# Usage: docker compose -f docker-compose.yml -f docker-compose.enterprise.yml up -d
+# ============================================================
+# Zovark v3.2 Sovereign Appliance — Enterprise Tier (dual inference)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.distroless.yml -f docker-compose.enterprise.yml up -d
+#
+# Splits inference into two dedicated containers:
+#   - zovark-inference-fast: 3B model, 8 parallel slots (triage/param fill)
+#   - zovark-inference-code: 8B model, 2 parallel slots (code gen/assess)
 #
 # Hardware requirements:
-#   Minimum: 48GB VRAM (NVIDIA A6000 or L40S)
-#   Recommended: 80GB VRAM (NVIDIA A100) or dual-4090 (48GB combined)
+#   Minimum: 24GB VRAM (RTX 4090 or A5000)
+#   Recommended: 48GB+ VRAM (A6000, L40S, or dual-GPU)
 #   System RAM: 64GB minimum
-#   Storage: 100GB for model weights
+#   Storage: 50GB for model weights
+# ============================================================
 
 services:
-  zovark-vllm-fast:
-    image: vllm/vllm-openai:v0.15.1
-    container_name: zovark-vllm-fast
-    command: >
-      --model /models/chat-model-7b
-      --served-model-name fast
-      --max-model-len 8192
-      --gpu-memory-utilization 0.15
-      --dtype half
-      --quantization awq
-    volumes:
-      - ./local_models/chat-model-7b:/models/chat-model-7b:ro
+
+  # ─── FAST INFERENCE (3B model, high throughput) ─────────
+  # Handles: tool selection, param fill, triage routing
+  # 8 parallel slots — optimized for low-latency concurrent requests
+  zovark-inference:
+    container_name: zovark-inference-fast
+    command:
+      - --model
+      - /models/${ZOVARK_MODEL_FILE_FAST:-llama-3.2-3b-instruct.Q4_K_M.gguf}
+      - --alias
+      - ${ZOVARK_MODEL_ALIAS_FAST:-llama3.2:3b}
+      - --ctx-size
+      - "${ZOVARK_CTX_SIZE_FAST:-4096}"
+      - --parallel
+      - "8"
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8080"
     deploy:
       resources:
+        limits:
+          memory: 16G
         reservations:
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    networks:
-      - zovark-internal
-    restart: unless-stopped
 
-  zovark-vllm-standard:
-    image: vllm/vllm-openai:v0.15.1
-    container_name: zovark-vllm-standard
-    command: >
-      --model /models/chat-model-32b
-      --served-model-name standard
-      --max-model-len 32768
-      --gpu-memory-utilization 0.70
-      --dtype half
-      --quantization awq
-      --tensor-parallel-size 1
-    volumes:
-      - ./local_models/chat-model-32b:/models/chat-model-32b:ro
+  # ─── CODE INFERENCE (8B model, high quality) ────────────
+  # Handles: code generation, verdict assessment, IOC extraction
+  # 2 parallel slots — quality over throughput
+  zovark-inference-code:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+      args:
+        CUDA_ARCH: ${CUDA_ARCH:-86}
+    container_name: zovark-inference-code
+    read_only: true
+    tmpfs:
+      - /tmp:size=128M,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=config/seccomp-inference.json
     deploy:
       resources:
+        limits:
+          memory: 64G
         reservations:
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    expose:
+      - "8080"
+    volumes:
+      - ./models:/models:ro
+    command:
+      - --model
+      - /models/${ZOVARK_MODEL_FILE_CODE:-llama-3.1-8b-instruct.Q4_K_M.gguf}
+      - --alias
+      - ${ZOVARK_MODEL_ALIAS_CODE:-llama3.1:8b}
+      - --ctx-size
+      - "${ZOVARK_CTX_SIZE_CODE:-8192}"
+      - --parallel
+      - "2"
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8080"
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+    restart: unless-stopped
     networks:
       - zovark-internal
-    restart: unless-stopped
 
-  zovark-litellm:
-    volumes:
-      - ./litellm_config_enterprise.yaml:/app/config.yaml:ro
-
-  # Disable the 1.5B container in enterprise mode
-  zovark-vllm-chat:
-    profiles:
-      - disabled
-
-networks:
-  zovark-internal:
-    external: true
-    name: hydra-mvp_zovark-internal
+  # ─── WORKER (override: split endpoints to dual inference) ─
+  worker:
+    environment:
+      - ZOVARK_LLM_ENDPOINT_FAST=http://zovark-inference-fast:8080/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT_CODE=http://zovark-inference-code:8080/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT=http://zovark-inference-fast:8080/v1/chat/completions
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+    depends_on:
+      zovark-inference:
+        condition: service_healthy
+      zovark-inference-code:
+        condition: service_healthy

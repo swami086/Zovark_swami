@@ -1,0 +1,122 @@
+# ============================================================
+# Zovark v3.2 Sovereign Appliance — Dev Tier (single inference container)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.distroless.yml up -d
+#
+# Replaces host-Ollama with a single llama.cpp inference container
+# running both FAST (3B) and CODE (8B) models via model aliasing.
+# All containers are distroless / read-only where possible.
+#
+# Prerequisites:
+#   - GGUF model files in ./models/ directory
+#   - NVIDIA GPU with CUDA support
+#   - docker compose v2.20+ (GPU resource reservations)
+# ============================================================
+
+services:
+
+  # ─── API (distroless override) ──────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./web-admin/dist:/app/web-admin/dist:ro
+
+  # ─── INFERENCE (single container, both models) ──────────
+  # Dev tier: one llama-server instance serves both models.
+  # Parallel slots split across FAST+CODE workloads.
+  zovark-inference:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+      args:
+        CUDA_ARCH: ${CUDA_ARCH:-86}
+    container_name: zovark-inference
+    read_only: true
+    tmpfs:
+      - /tmp:size=128M,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=config/seccomp-inference.json
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    expose:
+      - "8080"
+    volumes:
+      - ./models:/models:ro
+    command:
+      - --model
+      - /models/${ZOVARK_MODEL_FILE:-llama-3.2-3b-instruct.Q4_K_M.gguf}
+      - --alias
+      - ${ZOVARK_MODEL_ALIAS:-llama3.2:3b}
+      - --ctx-size
+      - "${ZOVARK_CTX_SIZE:-4096}"
+      - --parallel
+      - "${ZOVARK_PARALLEL:-4}"
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8080"
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - zovark-internal
+
+  # ─── WORKER (override: point LLM at inference container) ─
+  worker:
+    environment:
+      - ZOVARK_LLM_ENDPOINT=http://zovark-inference:8080/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT_FAST=http://zovark-inference:8080/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT_CODE=http://zovark-inference:8080/v1/chat/completions
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+    depends_on:
+      zovark-inference:
+        condition: service_healthy
+
+  # ─── DIAGNOSTICS SIDECAR ────────────────────────────────
+  # Internal-only diagnostic endpoint. NO host port mapping.
+  # Access via API proxy or direct container-to-container calls.
+  zovark-diagnostics:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.diagnostics
+    container_name: zovark-diagnostics
+    read_only: true
+    tmpfs:
+      - /tmp:size=16M,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8091"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    environment:
+      - DIAG_AUTH_TOKEN=${DIAG_AUTH_TOKEN:-}
+      - DIAG_PORT=8091
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - zovark-internal
