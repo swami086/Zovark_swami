@@ -21,11 +21,11 @@ class ZovarkSettings(BaseSettings):
     redis_port: int = 6379
     redis_password: SecretStr = SecretStr("hydra-redis-dev-2026")
 
-    # LLM (Ollama)
-    llm_base_url: str = "http://host.docker.internal:11434"
-    llm_endpoint: str = "http://host.docker.internal:11434/v1/chat/completions"
-    llm_fast_model: str = "llama3.2:3b"
-    llm_quality_model: str = "llama3.1:8b"
+    # LLM inference — llama-server in zovark-inference container
+    llm_base_url: str = "http://zovark-inference:8080"
+    llm_endpoint: str = "http://zovark-inference:8080/v1/chat/completions"
+    llm_fast_model: str = "gemma-4-e4b-it"
+    llm_quality_model: str = "gemma-4-e4b-it"
     llm_key: str = "sk-zovark-dev-2026"
 
     # Execution
@@ -39,6 +39,10 @@ class ZovarkSettings(BaseSettings):
     # Operational
     max_investigation_timeout_seconds: int = 300
     max_concurrent_activities: int = 8
+
+    # Parallel tool execution (Feature C)
+    parallel_tools_enabled: bool = False  # ZOVARK_PARALLEL_TOOLS_ENABLED
+    max_parallel_tools: int = 4  # ZOVARK_MAX_PARALLEL_TOOLS (1-8)
 
     # Observability
     otel_enabled: bool = True

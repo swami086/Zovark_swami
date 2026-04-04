@@ -1,14 +1,19 @@
 """
 Tool runner — executes investigation plans against SIEM events.
 Supports variable resolution, conditional branching, timeouts, and error isolation.
+Optional: dependency-aware parallel execution (ZOVARK_PARALLEL_TOOLS_ENABLED).
 """
 import re
 import json
 import time
 import signal
+import logging
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tools.catalog import TOOL_CATALOG
+
+_logger = logging.getLogger(__name__)
 
 
 # --- Condition evaluator (no eval!) ---
@@ -147,11 +152,158 @@ def _evaluate_condition(condition: str, step_results: dict, siem_event: dict,
     return False
 
 
+# --- Dependency graph for parallel execution ---
+_STEP_REF_PATTERN = re.compile(r'\$step(\d+)')
+
+
+def _build_dependency_graph(steps: list[dict]) -> dict[int, set[int]]:
+    """Parse $stepN references to build dependency DAG.
+    Returns {step_index: set_of_dependency_indices} (0-indexed)."""
+    deps = {}
+    for i, step in enumerate(steps):
+        step_str = json.dumps(step)
+        step_deps = set()
+        for match in _STEP_REF_PATTERN.finditer(step_str):
+            ref = int(match.group(1)) - 1  # $stepN is 1-indexed, convert to 0-indexed
+            if 0 <= ref < i:
+                step_deps.add(ref)
+        deps[i] = step_deps
+    return deps
+
+
+def _topological_batches(deps: dict[int, set[int]]) -> list[list[int]]:
+    """Convert DAG into ordered batches of parallelizable steps."""
+    remaining = set(deps.keys())
+    completed = set()
+    batches = []
+
+    while remaining:
+        ready = {s for s in remaining if deps[s].issubset(completed)}
+        if not ready:
+            # Circular dep safety net — fall back to sequential for remaining
+            batches.append(sorted(remaining))
+            break
+        batches.append(sorted(ready))
+        completed.update(ready)
+        remaining -= ready
+
+    return batches
+
+
+def _run_single_step(i: int, step: dict, step_results: dict,
+                     siem_event: dict, raw_log: str,
+                     history_context: dict, institutional_knowledge: dict,
+                     per_tool_timeout: float,
+                     task_id: str, tenant_id: str, trace_id: str,
+                     parallel: bool = False) -> dict:
+    """Execute a single plan step. Returns {result, tool_name, error, findings, iocs, risk}."""
+    # Determine actual step (handle conditional branching)
+    actual_step = step
+    if "condition" in step:
+        cond_result = _evaluate_condition(
+            step["condition"], step_results, siem_event, raw_log,
+            history_context, institutional_knowledge
+        )
+        actual_step = step.get("if_true", {}) if cond_result else step.get("if_false", {})
+        if not actual_step or "tool" not in actual_step:
+            return {"result": None, "tool_name": "", "skipped": True}
+
+    tool_name = actual_step.get("tool", "")
+    tool_args = actual_step.get("args", {})
+
+    tool_entry = TOOL_CATALOG.get(tool_name)
+    if not tool_entry:
+        return {"result": None, "tool_name": tool_name, "error": f"unknown tool '{tool_name}'"}
+
+    resolved_args = _resolve_args(
+        tool_args, step_results, siem_event, raw_log,
+        history_context, institutional_knowledge
+    )
+
+    if task_id:
+        try:
+            from events import emit_event
+            emit_event(task_id, tenant_id, trace_id, "tool_started", {"tool": tool_name, "step": i})
+        except Exception:
+            pass
+
+    _span = None
+    try:
+        try:
+            from tracing import get_tracer
+            _span = get_tracer().start_span(f"tool.{tool_name}")
+            _span.set_attribute("tool.name", tool_name)
+            _span.set_attribute("tool.step", i)
+            _span.set_attribute("tool.parallel", parallel)
+        except Exception:
+            pass
+
+        tool_start = time.monotonic()
+        result = tool_entry["function"](**resolved_args)
+        tool_elapsed = time.monotonic() - tool_start
+
+        timeout_exceeded = tool_elapsed > per_tool_timeout
+
+        if _span:
+            try:
+                _span.set_attribute("tool.duration_ms", int(tool_elapsed * 1000))
+                _span.set_attribute("tool.success", True)
+                if isinstance(result, dict) and "risk_score" in result:
+                    _span.set_attribute("tool.risk_score", result["risk_score"])
+                if isinstance(result, list):
+                    _span.set_attribute("tool.result_count", len(result))
+                _span.end()
+            except Exception:
+                pass
+
+        if task_id:
+            try:
+                from events import emit_event, tool_summary
+                emit_event(task_id, tenant_id, trace_id, "tool_completed", {
+                    "tool": tool_name, "step": i,
+                    "duration_ms": int(tool_elapsed * 1000),
+                    "summary": tool_summary(tool_name, result, int(tool_elapsed * 1000)),
+                })
+            except Exception:
+                pass
+
+        # Collect aggregates
+        findings, iocs, risk = [], [], None
+        if isinstance(result, dict):
+            findings = result.get("findings", [])
+            iocs = result.get("iocs", [])
+            risk = result.get("risk_score")
+        elif isinstance(result, int) and tool_entry["category"] == "scoring":
+            risk = result
+        elif isinstance(result, list) and tool_entry["category"] == "extraction":
+            iocs = result
+
+        return {
+            "result": result, "tool_name": tool_name,
+            "findings": findings, "iocs": iocs, "risk": risk,
+            "error": f"{tool_name} took {tool_elapsed:.1f}s (limit {per_tool_timeout}s)" if timeout_exceeded else None,
+        }
+
+    except Exception as e:
+        if _span:
+            try:
+                _span.set_attribute("tool.success", False)
+                _span.record_exception(e)
+                _span.end()
+            except Exception:
+                pass
+        return {"result": None, "tool_name": tool_name, "error": f"{tool_name} error: {str(e)[:200]}"}
+
+
 def execute_plan(plan: list, siem_event: dict,
                  history_context: dict = None, institutional_knowledge: dict = None,
                  total_timeout: float = 30.0, per_tool_timeout: float = 5.0,
                  task_id: str = "", tenant_id: str = "", trace_id: str = "") -> dict:
     """Execute an investigation plan — list of tool steps — against a SIEM event.
+
+    Supports sequential (default) or parallel execution via ZOVARK_PARALLEL_TOOLS_ENABLED.
+    Parallel mode uses dependency-aware batching: independent steps run concurrently,
+    steps with $stepN references wait for their dependencies.
 
     Returns:
         dict with: findings, iocs, risk_score, verdict, tools_executed, tool_results, errors
@@ -160,6 +312,15 @@ def execute_plan(plan: list, siem_event: dict,
         history_context = {}
     if institutional_knowledge is None:
         institutional_knowledge = {}
+
+    # Check parallel execution flag
+    try:
+        from settings import settings as _s
+        parallel_enabled = _s.parallel_tools_enabled
+        max_parallel = _s.max_parallel_tools
+    except (ImportError, Exception):
+        parallel_enabled = False
+        max_parallel = 4
 
     raw_log = siem_event.get("raw_log", "")
     step_results = {}
@@ -170,121 +331,100 @@ def execute_plan(plan: list, siem_event: dict,
     errors = []
     start_time = time.monotonic()
 
-    for i, step in enumerate(plan):
-        # Total timeout check
-        if time.monotonic() - start_time > total_timeout:
-            errors.append(f"Total timeout ({total_timeout}s) exceeded at step {i}")
-            break
+    # Conditional steps have $stepN refs in their condition string, so the dependency
+    # graph correctly places them after their dependencies. Safe to parallelize.
+    if parallel_enabled and len(plan) > 1:
+        # --- Parallel execution: batch by dependency ---
+        deps = _build_dependency_graph(plan)
+        batches = _topological_batches(deps)
+        _logger.info(f"Parallel execution: {len(plan)} steps in {len(batches)} batches")
 
-        # Determine actual step (handle conditional branching)
-        actual_step = step
-        if "condition" in step:
-            cond_result = _evaluate_condition(
-                step["condition"], step_results, siem_event, raw_log,
-                history_context, institutional_knowledge
-            )
-            if cond_result:
-                actual_step = step.get("if_true", {})
+        for batch_idx, batch in enumerate(batches):
+            if time.monotonic() - start_time > total_timeout:
+                errors.append(f"Total timeout ({total_timeout}s) exceeded at batch {batch_idx}")
+                break
+
+            if len(batch) == 1:
+                # Single step — run directly (no thread overhead)
+                i = batch[0]
+                out = _run_single_step(
+                    i, plan[i], step_results, siem_event, raw_log,
+                    history_context, institutional_knowledge, per_tool_timeout,
+                    task_id, tenant_id, trace_id, parallel=False,
+                )
+                if out.get("skipped"):
+                    step_results[i + 1] = None
+                    continue
+                step_results[i + 1] = out["result"]
+                if out.get("tool_name"):
+                    tool_names_executed.append(out["tool_name"])
+                all_findings.extend(out.get("findings", []))
+                all_iocs.extend(out.get("iocs", []))
+                if out.get("risk") is not None:
+                    risk_scores.append(out["risk"])
+                if out.get("error"):
+                    errors.append(f"Step {i}: {out['error']}")
             else:
-                actual_step = step.get("if_false", {})
-            if not actual_step or "tool" not in actual_step:
+                # Multiple independent steps — run in parallel
+                with ThreadPoolExecutor(max_workers=min(len(batch), max_parallel)) as pool:
+                    futures = {}
+                    for i in batch:
+                        future = pool.submit(
+                            _run_single_step,
+                            i, plan[i], step_results, siem_event, raw_log,
+                            history_context, institutional_knowledge, per_tool_timeout,
+                            task_id, tenant_id, trace_id, True,
+                        )
+                        futures[future] = i
+
+                    for future in as_completed(futures, timeout=per_tool_timeout * 2):
+                        i = futures[future]
+                        try:
+                            out = future.result()
+                        except Exception as e:
+                            errors.append(f"Step {i}: thread error: {str(e)[:200]}")
+                            step_results[i + 1] = None
+                            continue
+
+                        if out.get("skipped"):
+                            step_results[i + 1] = None
+                            continue
+                        step_results[i + 1] = out["result"]
+                        if out.get("tool_name"):
+                            tool_names_executed.append(out["tool_name"])
+                        all_findings.extend(out.get("findings", []))
+                        all_iocs.extend(out.get("iocs", []))
+                        if out.get("risk") is not None:
+                            risk_scores.append(out["risk"])
+                        if out.get("error"):
+                            errors.append(f"Step {i}: {out['error']}")
+
+    else:
+        # --- Sequential execution (original path) ---
+        for i, step in enumerate(plan):
+            if time.monotonic() - start_time > total_timeout:
+                errors.append(f"Total timeout ({total_timeout}s) exceeded at step {i}")
+                break
+
+            out = _run_single_step(
+                i, step, step_results, siem_event, raw_log,
+                history_context, institutional_knowledge, per_tool_timeout,
+                task_id, tenant_id, trace_id, parallel=False,
+            )
+            if out.get("skipped"):
                 step_results[i + 1] = None
                 continue
-
-        tool_name = actual_step.get("tool", "")
-        tool_args = actual_step.get("args", {})
-
-        # Look up tool
-        tool_entry = TOOL_CATALOG.get(tool_name)
-        if not tool_entry:
-            errors.append(f"Step {i}: unknown tool '{tool_name}'")
-            step_results[i + 1] = None
-            continue
-
-        # Resolve variable references
-        resolved_args = _resolve_args(
-            tool_args, step_results, siem_event, raw_log,
-            history_context, institutional_knowledge
-        )
-
-        # Emit tool_started event
-        if task_id:
-            try:
-                from events import emit_event
-                emit_event(task_id, tenant_id, trace_id, "tool_started", {"tool": tool_name, "step": i})
-            except Exception:
-                pass
-
-        # Execute with per-tool timeout and optional tracing
-        try:
-            # Start trace span for this tool
-            try:
-                from tracing import get_tracer
-                _span = get_tracer().start_span(f"tool.{tool_name}")
-                _span.set_attribute("tool.name", tool_name)
-                _span.set_attribute("tool.step", i)
-            except Exception:
-                _span = None
-
-            tool_start = time.monotonic()
-            result = tool_entry["function"](**resolved_args)
-            tool_elapsed = time.monotonic() - tool_start
-
-            if tool_elapsed > per_tool_timeout:
-                errors.append(f"Step {i}: {tool_name} took {tool_elapsed:.1f}s (limit {per_tool_timeout}s)")
-
-            # Record tool result in span
-            if _span:
-                try:
-                    _span.set_attribute("tool.duration_ms", int(tool_elapsed * 1000))
-                    _span.set_attribute("tool.success", True)
-                    if isinstance(result, dict) and "risk_score" in result:
-                        _span.set_attribute("tool.risk_score", result["risk_score"])
-                    if isinstance(result, list):
-                        _span.set_attribute("tool.result_count", len(result))
-                    _span.end()
-                except Exception:
-                    pass
-
-            # Emit tool_completed event
-            if task_id:
-                try:
-                    from events import emit_event, tool_summary
-                    emit_event(task_id, tenant_id, trace_id, "tool_completed", {
-                        "tool": tool_name, "step": i,
-                        "duration_ms": int(tool_elapsed * 1000),
-                        "summary": tool_summary(tool_name, result, int(tool_elapsed * 1000)),
-                    })
-                except Exception:
-                    pass
-
-            step_results[i + 1] = result
-            tool_names_executed.append(tool_name)
-
-            # Aggregate findings, IOCs, risk from detection/scoring tools
-            if isinstance(result, dict):
-                if "findings" in result:
-                    all_findings.extend(result["findings"])
-                if "iocs" in result:
-                    all_iocs.extend(result["iocs"])
-                if "risk_score" in result:
-                    risk_scores.append(result["risk_score"])
-            elif isinstance(result, int) and tool_entry["category"] == "scoring":
-                risk_scores.append(result)
-            elif isinstance(result, list) and tool_entry["category"] == "extraction":
-                all_iocs.extend(result)
-
-        except Exception as e:
-            if _span:
-                try:
-                    _span.set_attribute("tool.success", False)
-                    _span.record_exception(e)
-                    _span.end()
-                except Exception:
-                    pass
-            errors.append(f"Step {i}: {tool_name} error: {str(e)[:200]}")
-            step_results[i + 1] = None
-            continue
+            step_results[i + 1] = out["result"]
+            if out.get("tool_name"):
+                tool_names_executed.append(out["tool_name"])
+            all_findings.extend(out.get("findings", []))
+            all_iocs.extend(out.get("iocs", []))
+            if out.get("risk") is not None:
+                risk_scores.append(out["risk"])
+            if out.get("error"):
+                errors.append(f"Step {i}: {out['error']}")
+            if out["result"] is None and not out.get("error"):
+                step_results[i + 1] = None
 
     # Aggregate risk score — use max from scoring/detection tools
     risk_score = max(risk_scores) if risk_scores else 0

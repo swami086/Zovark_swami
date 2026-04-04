@@ -193,7 +193,7 @@ async def fetch_task(task_id: str) -> dict:
 
 @activity.defn
 async def generate_code(task_data: dict) -> dict:
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
     api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     prompt = task_data.get("input", {}).get("prompt", "")
@@ -709,7 +709,7 @@ async def check_followup_needed(check_data: dict) -> dict:
 @activity.defn
 async def generate_followup_code(task_data: dict) -> dict:
     """Generate code for a follow-up step, including previous step context."""
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
     api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     prompt = task_data.get("prompt", "")
@@ -1060,7 +1060,7 @@ async def fill_skill_parameters(data: dict) -> dict:
             "input_tokens": 0, "output_tokens": 0,
         }
 
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
     api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
     tier_config = get_tier_config("fill_skill_parameters")
     model_name = tier_config["model"]
@@ -1294,7 +1294,7 @@ def _extract_iocs_from_input(task_input: dict) -> list:
 @activity.defn
 async def write_investigation_memory(memory_data: dict) -> None:
     try:
-        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
         api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
         tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 

@@ -18,7 +18,7 @@ type Config struct {
 	Port             string
 	DatabaseURL      string
 	TemporalAddress  string
-	OllamaMasterKey string
+	LLMKey string
 	JWTSecret        string
 	// OIDC/SSO configuration
 	OIDCIssuerURL    string
@@ -40,7 +40,7 @@ func init() {
 		Port:             getEnvOrDefault("PORT", "8090"),
 		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"),
 		TemporalAddress:  getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233"),
-		OllamaMasterKey: getEnvOrDefault("ZOVARK_LLM_KEY", ""),
+		LLMKey: getEnvOrDefault("ZOVARK_LLM_KEY", ""),
 		JWTSecret:        getEnvOrDefault("JWT_SECRET", ""),
 		// OIDC
 		OIDCIssuerURL:    getEnvOrDefault("OIDC_ISSUER_URL", ""),
@@ -382,7 +382,15 @@ func main() {
 	router.POST("/api/v1/admin/breakglass/login", handleBreakglassLogin)
 
 	// Start OOB watchdog on :9091 (independent of main Gin server)
-	go startOOBServer()
+	// Wait for it to be listening before starting main Gin server.
+	oobReady := make(chan struct{})
+	go startOOBServer(oobReady)
+	select {
+	case <-oobReady:
+		log.Println("[oob] watchdog ready")
+	case <-time.After(5 * time.Second):
+		log.Println("[oob] WARNING: watchdog did not become ready in 5s, proceeding anyway")
+	}
 
 	// Start server
 	log.Printf("Listening and serving HTTP on :%s\n", appConfig.Port)

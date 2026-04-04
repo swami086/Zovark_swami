@@ -17,19 +17,28 @@ import (
 // startOOBServer launches a plain net/http server on :9091 for out-of-band
 // diagnostics. It is intentionally outside the Gin router so it stays
 // reachable even when the main API is saturated or deadlocked.
-func startOOBServer() {
+func startOOBServer(ready chan<- struct{}) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/debug/state", oobStateHandler)
 
 	srv := &http.Server{
-		Addr:         ":9091",
 		Handler:      mux,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
+	// Bind first, then signal ready — guarantees OOB is accepting connections
+	// before main server starts.
+	listener, err := net.Listen("tcp", ":9091")
+	if err != nil {
+		log.Printf("[WARN] OOB server cannot bind :9091: %v", err)
+		close(ready)
+		return
+	}
 	log.Println("OOB watchdog listening on :9091")
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	close(ready)
+
+	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
 		log.Printf("[WARN] OOB server exited: %v", err)
 	}
 }
@@ -46,9 +55,9 @@ func oobStateHandler(w http.ResponseWriter, r *http.Request) {
 	gpuTier := getEnvOrDefault("ZOVARK_GPU_TIER", "dev")
 	temporalAddr := getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233")
 	endpointFast := getEnvOrDefault("ZOVARK_LLM_ENDPOINT_FAST",
-		getEnvOrDefault("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions"))
+		getEnvOrDefault("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions"))
 	endpointCode := getEnvOrDefault("ZOVARK_LLM_ENDPOINT_CODE",
-		getEnvOrDefault("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions"))
+		getEnvOrDefault("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions"))
 
 	var (
 		wg      sync.WaitGroup
@@ -167,22 +176,41 @@ func oobStateHandler(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 
+	// --- Inference metrics (scrape /metrics from llama-server if available) ---
+	inferenceMetrics := scrapeInferenceMetrics(endpointFast)
+
 	// --- Runtime metrics ---
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
+	// --- Dedup stats (1-hour window from Redis counters) ---
+	dedupStats := map[string]interface{}{}
+	if redisClient != nil {
+		dedupKeys := []string{"new_alert", "deduplicated", "severity_escalation", "retry_after_failure"}
+		for _, k := range dedupKeys {
+			val, err := redisClient.Get(context.Background(), "dedup:stats:"+k).Int64()
+			if err == nil {
+				dedupStats[k] = val
+			} else {
+				dedupStats[k] = 0
+			}
+		}
+	}
+
 	// --- Build response ---
 	response := map[string]interface{}{
-		"timestamp":      time.Now().UTC().Format(time.RFC3339),
-		"api":            "ok",
-		"postgres":       results["postgres"],
-		"redis":          results["redis"],
-		"temporal":       results["temporal"],
-		"version":        "3.1.0",
-		"uptime_seconds": int(time.Since(startTime).Seconds()),
-		"goroutines":     runtime.NumGoroutine(),
-		"heap_mb":        memStats.HeapAlloc / 1024 / 1024,
-		"gpu_tier":       gpuTier,
+		"timestamp":       time.Now().UTC().Format(time.RFC3339),
+		"api":             "ok",
+		"postgres":        results["postgres"],
+		"redis":           results["redis"],
+		"temporal":        results["temporal"],
+		"version":         "3.2.1",
+		"uptime_seconds":  int(time.Since(startTime).Seconds()),
+		"goroutines":      runtime.NumGoroutine(),
+		"heap_mb":         memStats.HeapAlloc / 1024 / 1024,
+		"gpu_tier":        gpuTier,
+		"dedup_stats_1h":    dedupStats,
+		"inference_metrics": inferenceMetrics,
 	}
 
 	// Add inference fields based on whether endpoints share the same host
@@ -198,6 +226,53 @@ func oobStateHandler(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(response)
+}
+
+// scrapeInferenceMetrics fetches /metrics from llama-server and extracts key values.
+// Returns empty map if metrics endpoint is unavailable (--metrics flag not enabled on llama-server).
+func scrapeInferenceMetrics(endpoint string) map[string]interface{} {
+	metricsURL := strings.Replace(endpoint, "/v1/chat/completions", "/metrics", 1)
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(metricsURL)
+	if err != nil {
+		return map[string]interface{}{"available": false}
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return map[string]interface{}{"available": false}
+	}
+	body := make([]byte, 64*1024) // 64KB max
+	n, _ := resp.Body.Read(body)
+	text := string(body[:n])
+
+	result := map[string]interface{}{"available": true}
+	// Parse key Prometheus metrics with simple line matching
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "#") || line == "" {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(line, "llamacpp:kv_cache_usage_ratio "):
+			result["kv_cache_usage_pct"] = parsePrometheusValue(line) * 100
+		case strings.HasPrefix(line, "llamacpp:requests_processing "):
+			result["requests_processing"] = int(parsePrometheusValue(line))
+		case strings.HasPrefix(line, "llamacpp:requests_pending "):
+			result["requests_pending"] = int(parsePrometheusValue(line))
+		case strings.HasPrefix(line, "llamacpp:tokens_predicted_total "):
+			result["tokens_generated_total"] = int(parsePrometheusValue(line))
+		}
+	}
+	return result
+}
+
+func parsePrometheusValue(line string) float64 {
+	parts := strings.Fields(line)
+	if len(parts) >= 2 {
+		var v float64
+		fmt.Sscanf(parts[len(parts)-1], "%f", &v)
+		return v
+	}
+	return 0
 }
 
 // inferenceHostPort extracts host:port from an LLM endpoint URL.

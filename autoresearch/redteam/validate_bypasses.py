@@ -4,7 +4,7 @@ SECOND-PASS LLM VALIDATION — Run AFTER the main red team loop completes.
 Takes score 3+ bypasses and sends them through the actual LLM pipeline
 to check for IOC hallucination and risk score manipulation.
 
-Requires Ollama running on the lab machine.
+Requires LLM inference running on the lab machine.
 
 Usage:
     python autoresearch/redteam/validate_bypasses.py
@@ -21,7 +21,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 sys.path.insert(0, PROJECT_ROOT)
 
 OLLAMA_ENDPOINT = os.getenv(
-    "ZOVARK_LLM_ENDPOINT", "http://localhost:11434/v1/chat/completions"
+    "ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions"
 )
 MODEL = os.getenv("ZOVARK_MODEL_CODE", "llama3.1:8b")
 BYPASSES_DIR = os.path.join(os.path.dirname(__file__), "bypasses")
@@ -29,7 +29,7 @@ RESULTS_PATH = os.path.join(os.path.dirname(__file__), "llm_validation_results.j
 
 
 def call_llm(system_prompt: str, user_prompt: str, timeout: float = 120) -> str:
-    """Call Ollama and return the response text."""
+    """Call LLM and return the response text."""
     with httpx.Client(timeout=timeout) as client:
         response = client.post(
             OLLAMA_ENDPOINT,

@@ -81,20 +81,20 @@ def detect_kerberoasting(siem_event: dict) -> dict:
     is_rc4 = encryption == "0x17"
     is_tgs = event_id == "4769"
     is_krbtgt = service_name and "krbtgt" in service_name.lower()
-    
-    # Only high risk if RC4 + TGS for actual service (not krbtgt)
+
+    # Full Kerberoasting combo: RC4 + TGS + non-krbtgt = high confidence
     if is_rc4 and is_tgs and not is_krbtgt:
-        risk = max(risk, 55)
+        risk = max(risk, 80)
     elif is_rc4 and is_tgs and is_krbtgt:
         # RC4 TGT request - suspicious but not kerberoasting
-        risk = 25
+        risk = max(risk, 35)
     elif is_rc4:
         # RC4 used but not TGS - moderate concern
-        risk = max(risk, 30)
+        risk = max(risk, 45)
     elif is_tgs and not is_krbtgt:
         # TGS without RC4 - low concern
-        risk = max(risk, 15)
-    
+        risk = max(risk, 25)
+
     if not findings:
         risk = max(risk, 10)
 
@@ -753,6 +753,104 @@ def detect_appcert_dlls(siem_event: dict) -> dict:
     elif findings and risk < 20:
         risk = 10  # Benign mention
     
+    return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
+
+
+def detect_dns_exfiltration(siem_event: dict) -> dict:
+    """Detect DNS exfiltration: high-entropy subdomains, TXT queries, high volume."""
+    raw_log = siem_event.get("raw_log", "")
+    findings = []
+    iocs = []
+    risk = 0
+
+    raw_lower = raw_log.lower()
+
+    # Parse DNS query
+    parsed = parse_dns_query(raw_log)
+
+    # Extract domains for IOCs
+    domains = extract_domains(raw_log)
+    iocs.extend(domains)
+    ips = extract_ipv4(raw_log)
+    iocs.extend(ips)
+
+    # High-entropy subdomain detection
+    for d in domains:
+        parts = d["value"].split(".")
+        if len(parts) >= 2:
+            subdomain = parts[0]
+            entropy = calculate_entropy(subdomain)
+            if entropy > 3.5:
+                findings.append(f"High-entropy DNS subdomain: {d['value']} (entropy={entropy:.2f})")
+                risk += 35
+                break
+            elif entropy > 3.0 and len(subdomain) > 15:
+                findings.append(f"Long high-entropy subdomain: {d['value']} (entropy={entropy:.2f}, len={len(subdomain)})")
+                risk += 25
+                break
+
+    # Also check domain field from siem_event
+    siem_domain = siem_event.get("domain", "")
+    if siem_domain and not findings:
+        entropy = calculate_entropy(siem_domain.split(".")[0])
+        if entropy > 3.5:
+            findings.append(f"High-entropy domain: {siem_domain} (entropy={entropy:.2f})")
+            risk += 35
+
+    # TXT record queries — primary DNS exfil channel
+    has_txt = bool(re.search(r'\bTXT\b|type=txt|query.type.*txt', raw_log, re.IGNORECASE))
+    if has_txt:
+        findings.append("TXT record query detected — common DNS exfiltration channel")
+        risk += 25
+
+    # High query volume
+    query_count_match = re.search(r'(?:queries?|count|volume)\s*[=:]\s*(\d+)', raw_log, re.IGNORECASE)
+    if query_count_match:
+        count = int(query_count_match.group(1))
+        if count > 100:
+            findings.append(f"High DNS query volume: {count}")
+            risk += 25
+        elif count > 20:
+            findings.append(f"Elevated DNS query volume: {count}")
+            risk += 15
+
+    # DNS tunneling keywords
+    tunnel_patterns = [
+        r'dns.*tunnel', r'dns.*exfil', r'iodine', r'dnscat', r'dns2tcp',
+        r'high.entropy.*dns', r'data.*encod.*dns', r'covert.*channel',
+    ]
+    for pat in tunnel_patterns:
+        if re.search(pat, raw_lower):
+            findings.append("DNS tunneling/exfiltration keyword detected")
+            risk += 20
+            break
+
+    # Long subdomain labels (>40 chars suggest encoded data)
+    for d in domains:
+        labels = d["value"].split(".")
+        for label in labels:
+            if len(label) > 40:
+                findings.append(f"Abnormally long DNS label: {len(label)} chars (possible encoded data)")
+                risk += 20
+                break
+
+    # nslookup/dig usage in raw log
+    if re.search(r'\bnslookup\b|\bdig\b', raw_lower):
+        findings.append("DNS lookup tool usage detected")
+        risk += 10
+
+    # Source IP
+    src_ip = siem_event.get("source_ip", "")
+    if src_ip and not any(i["value"] == src_ip for i in iocs):
+        iocs.append(_make_ioc("ipv4", src_ip, raw_log))
+
+    # DNS exfil indicators require minimum risk when found
+    if findings and risk < 65:
+        risk = 65
+
+    if not findings:
+        risk = max(risk, 5)
+
     return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
 
 

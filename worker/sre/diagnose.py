@@ -107,7 +107,7 @@ async def llm_diagnose(error_message: str, stack_trace: str, activity_name: str)
         source_context = source_info['content'][:2000]
 
     tier_config = get_tier_config('diagnose_failure')
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
     api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     system_prompt = (

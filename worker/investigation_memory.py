@@ -38,7 +38,7 @@ class InvestigationMemory:
         self.db_url = db_url or os.environ.get(
             "DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"
         )
-        self.llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+        self.llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
         self.llm_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
         self.embed_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
 

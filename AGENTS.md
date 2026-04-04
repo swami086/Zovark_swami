@@ -14,7 +14,7 @@ This file provides context for AI coding agents working on Zovark.
 
 - Temporal for all async work — never use raw goroutines or threading for the investigation pipeline
 - PostgreSQL + pgvector for all persistent state — no separate vector DB
-- Direct httpx to Ollama via ZOVARK_LLM_ENDPOINT — no LiteLLM (removed)
+- Direct httpx to llama-server via ZOVARK_LLM_ENDPOINT — no LiteLLM (removed)
 - Docker sandbox for code execution — never run LLM-generated code in worker process
 - NATS for real-time events — never poll the database for status updates
 - Redis for ephemeral state only (rate limits, cache) — never for durable data
@@ -73,7 +73,7 @@ docker compose exec temporal tctl --address temporal:7233 workflow show -w task-
 #    - Adversarial review timeout → passes through (by design)
 #    - fill_skill_parameters error → falls back to defaults (non-fatal)
 #    - Docker sandbox timeout → 30s kill timer
-#    - LLM 429 → Ollama single-threaded, retries automatically
+#    - LLM 429 → LLM single-threaded, retries automatically
 ```
 
 ### Update skill templates in the DB

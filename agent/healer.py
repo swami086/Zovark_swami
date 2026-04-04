@@ -12,7 +12,7 @@ Features:
   - Service discovery via docker ps
   - HTTP/TCP/CLI health checks per service type
   - 3-level restart escalation (restart -> restart+deps -> critical stop)
-  - AI crash diagnosis via local Ollama (Llama 3.2 3B)
+  - AI crash diagnosis via local LLM inference (Llama 3.2 3B)
   - Embedded HTML management UI (no external deps, air-gap safe)
   - Worker stuck detection (0 completions + pending > 0 for 10 min)
   - Disk pressure monitoring (warn 90%, auto-prune 95%)
@@ -54,8 +54,8 @@ REDIS_PASSWORD = os.environ.get("ZOVARK_REDIS_PASSWORD", os.environ.get("REDIS_P
 POSTGRES_USER = os.environ.get("ZOVARK_DB_USER", os.environ.get("POSTGRES_USER", "zovark"))
 POSTGRES_PASSWORD = os.environ.get("ZOVARK_DB_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "hydra_dev_2026"))
 POSTGRES_DB = os.environ.get("ZOVARK_DB_NAME", os.environ.get("POSTGRES_DB", "zovark"))
-LLM_MODEL = os.environ.get("ZOVARK_LLM_FAST_MODEL", os.environ.get("ZOVARK_MODEL_FAST", "llama3.2:3b"))
-LLM_HOST = os.environ.get("ZOVARK_LLM_BASE_URL", "http://host.docker.internal:11434")
+LLM_MODEL = os.environ.get("ZOVARK_LLM_FAST_MODEL", os.environ.get("ZOVARK_MODEL_FAST", "nemotron-mini-4b"))
+LLM_HOST = os.environ.get("ZOVARK_LLM_BASE_URL", "http://zovark-inference:8080")
 OTEL_ENABLED = os.environ.get("ZOVARK_OTEL_ENABLED", os.environ.get("OTEL_ENABLED", "false")).lower() in ("true", "1", "yes")
 LOG_DIR = Path("/var/log/zovark")
 API_PORT = 8081
@@ -98,7 +98,7 @@ class ServiceState:
         self.name = name
         self.container_id = container_id
         self.container_name = container_name
-        self.svc_type = svc_type  # api, worker, postgres, redis, dashboard, temporal, ollama, other
+        self.svc_type = svc_type  # api, worker, postgres, redis, dashboard, temporal, inference, other
         self.status = "unknown"   # healthy, degraded, down, unknown
         self.last_check = None
         self.last_healthy = None
@@ -211,20 +211,8 @@ def init_services():
                 svc.consecutive_failures = old.consecutive_failures
             new_services[cname] = svc
 
-        # Add Ollama (host-side, not a container)
-        ollama_name = "ollama-host"
-        svc = ServiceState(
-            name=ollama_name,
-            container_id="host",
-            container_name=ollama_name,
-            svc_type="ollama",
-        )
-        if ollama_name in services:
-            old = services[ollama_name]
-            svc.restart_count = old.restart_count
-            svc.last_healthy = old.last_healthy
-            svc.consecutive_failures = old.consecutive_failures
-        new_services[ollama_name] = svc
+        # Inference health is checked via LLM_HOST connectivity check, not as a managed container.
+        # The zovark-inference container is discovered via docker ps above.
 
         with lock:
             services = new_services
@@ -385,7 +373,7 @@ def health_check(svc: ServiceState) -> tuple[bool, str]:
             return check_redis(svc.container_name)
         elif svc.svc_type == "temporal":
             return check_container_running(svc.container_name)
-        elif svc.svc_type == "ollama":
+        elif svc.svc_type == "inference":
             return check_http(f"{LLM_HOST}/api/tags")
         elif svc.svc_type == "worker":
             return check_container_running(svc.container_name)
@@ -516,7 +504,7 @@ def restart_container(svc: ServiceState, reason: str = "health check failure"):
                     f"Restart count: {svc.restart_count}, consecutive failures: {svc.consecutive_failures}")
 
     # Trigger AI diagnosis in background
-    if svc.svc_type not in ("ollama", "self"):
+    if svc.svc_type not in ("inference", "self"):
         threading.Thread(
             target=ai_diagnose,
             args=(svc.name, svc.container_name, reason),
@@ -707,24 +695,24 @@ def check_connectivity() -> dict:
             except Exception as e:
                 emit_event("ERROR", "connectivity", f"API restart failed: {e}")
 
-    # 2. Worker → Ollama (LLM availability)
-    ollama_ok = {"ok": False, "detail": ""}
+    # 2. Worker → LLM inference (availability check)
+    llm_ok = {"ok": False, "detail": ""}
     try:
         req = urllib.request.Request(f"{LLM_HOST}/api/tags", method="GET")
         with urllib.request.urlopen(req, timeout=5) as resp:
             if resp.status == 200:
                 body = json.loads(resp.read().decode("utf-8"))
                 models = [m.get("name", "?") for m in body.get("models", [])]
-                ollama_ok = {"ok": True, "detail": f"models: {', '.join(models[:3])}"}
+                llm_ok = {"ok": True, "detail": f"models: {', '.join(models[:3])}"}
             else:
-                ollama_ok = {"ok": False, "detail": f"HTTP {resp.status}"}
+                llm_ok = {"ok": False, "detail": f"HTTP {resp.status}"}
     except Exception as e:
-        ollama_ok = {"ok": False, "detail": str(e)[:200]}
+        llm_ok = {"ok": False, "detail": str(e)[:200]}
 
-    results["worker_to_ollama"] = ollama_ok
-    if not ollama_ok["ok"]:
+    results["worker_to_llm"] = llm_ok
+    if not llm_ok["ok"]:
         emit_event("WARN", "connectivity",
-                   f"Ollama unreachable from healer: {ollama_ok['detail']}")
+                   f"LLM inference unreachable from healer: {llm_ok['detail']}")
 
     # 3. Dashboard → API (synthetic login — already handled by check_synthetic_login)
     # Skip here to avoid duplicate restarts; check_synthetic_login runs on its own timer.
@@ -1471,7 +1459,7 @@ def main():
         # Run health checks
         run_health_checks()
 
-        # Connectivity checks every 60 seconds (API→DB, Worker→Ollama)
+        # Connectivity checks every 60 seconds (API→DB, Worker→LLM)
         if time.time() - last_connectivity_check > CONNECTIVITY_CHECK_INTERVAL:
             check_connectivity()
             last_connectivity_check = time.time()

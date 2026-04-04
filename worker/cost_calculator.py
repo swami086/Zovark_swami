@@ -21,12 +21,11 @@ COST_PER_1K = {
     # Reasoning fallback (GPT-4o)
     'zovark-reasoning-fallback': {'input': 0.005, 'output': 0.015},
     'openai/gpt-4o': {'input': 0.005, 'output': 0.015},
-    # Air-gap (Ollama — free, local)
+    # Air-gap (local inference — free)
     'zovark-fast-airgap': {'input': 0.0, 'output': 0.0},
     'zovark-standard-airgap': {'input': 0.0, 'output': 0.0},
     'zovark-reasoning-airgap': {'input': 0.0, 'output': 0.0},
-    'ollama/llama3.2:3b': {'input': 0.0, 'output': 0.0},
-    'ollama/llama3.1:8b': {'input': 0.0, 'output': 0.0},
+    'nemotron-mini-4b': {'input': 0.0, 'output': 0.0},
     # Legacy
     'fast': {'input': 0.0002, 'output': 0.0002},
 }

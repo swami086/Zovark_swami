@@ -572,7 +572,7 @@ class PromptAssembler:
         previous_output: Optional[str] = None,
         missed_hints: Optional[str] = None,
     ) -> str:
-        """Build the full investigation prompt for local Ollama."""
+        """Build the full investigation prompt for local LLM inference."""
 
         ioc_map = TECHNIQUE_IOC_MAP.get(skill_type, {"required": ["ipv4"], "optional": []})
         required = ", ".join(ioc_map["required"])

@@ -40,7 +40,7 @@ from stages.code_cache import get_alert_signature, get_cached_code, set_cached_c
 # --- Configuration (read once at import) ---
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 ZOVARK_MODE = os.getenv("ZOVARK_MODE", "full")  # "full" or "templates-only"
-ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
 try:
     from settings import settings as _settings
     ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
@@ -503,26 +503,30 @@ async def _analyze_llm(ingest: IngestOutput) -> AnalyzeOutput:
 
 EXECUTION_MODE = os.getenv("ZOVARK_EXECUTION_MODE", "tools")  # "tools" (v3) or "sandbox" (v2)
 
-# Tool-calling system prompt (used when no saved plan exists)
-_TOOL_CALLING_SYSTEM = (
-    "You are Zovark's investigation planner. Given a SIEM alert, select the tools needed to investigate it.\n\n"
-    "{catalog_text}\n\n"
-    "{institutional_context}\n\n"
-    "Output ONLY valid JSON:\n"
-    '{"steps": [{"tool": "tool_name", "args": {"arg": "value"}}]}\n\n'
-    "Variable references:\n"
-    "- $raw_log = the alert's raw log text\n"
-    "- $siem_event = the full SIEM event dict\n"
-    "- $siem_event.field_name = a specific field\n"
-    "- $stepN = output of step N (1-indexed)\n"
-    "- $stepN.field = specific field from step N\n\n"
-    "Rules:\n"
-    "- Select 3-8 tools\n"
-    "- Always start with extraction tools for IOCs\n"
-    "- Always include a scoring or detection tool\n"
-    "- Always end with correlate_with_history and map_mitre\n"
-    "- Output ONLY JSON. No prose, no markdown."
+# PREFIX CACHING: All static content MUST come before dynamic content in the system message.
+# The SIEM alert, institutional knowledge, and tool results MUST be in the user message.
+# Moving static content after dynamic content kills prefix cache hits (llama-server §5.3.1).
+#
+# Structure:
+#   system: role + rules + output format + variable refs + catalog  ← STATIC (cached)
+#   user:   institutional context + SIEM alert JSON                 ← DYNAMIC (per-request)
+
+_TOOL_CALLING_SYSTEM_PREFIX = (
+    "Select investigation tools for this SIEM alert. "
+    "Output ONLY valid JSON: {\"steps\": [{\"tool\": \"name\", \"args\": {\"arg\": \"value\"}}]}\n\n"
+    "Rules: Select 3-8 tools. Start with extraction/parsing. Include a scoring or detection tool. "
+    "End with correlate_with_history and map_mitre. No prose, no markdown.\n\n"
+    "Variable refs: $raw_log = raw log text, $siem_event = full event dict, "
+    "$siem_event.field = specific field, $stepN = output of step N, $stepN.field = field from step N.\n\n"
+    "Examples:\n"
+    "brute_force → [parse_auth_log, extract_ipv4, extract_usernames, count_pattern, score_brute_force, correlate_with_history, map_mitre]\n"
+    "phishing → [extract_urls, extract_domains, extract_emails, detect_phishing, score_phishing, correlate_with_history, map_mitre]\n"
+    "ransomware → [parse_windows_event, extract_hashes, detect_ransomware, correlate_with_history, map_mitre]\n\n"
+    "Tool catalog:\n{catalog_text}"
 )
+
+# Kept for backward compat — resolves to the same content
+_TOOL_CALLING_SYSTEM = _TOOL_CALLING_SYSTEM_PREFIX
 
 
 def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
@@ -599,8 +603,16 @@ def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
 
 
 def _parse_tool_plan(llm_response: str) -> list:
-    """Parse LLM's JSON response into a validated tool plan."""
+    """Parse LLM's JSON response into a validated tool plan.
+
+    Post-LLM validation for Path C tool selection:
+    - Validates tool names against TOOL_CATALOG
+    - Deduplicates (same tool selected twice)
+    - Caps at 10 tools per investigation
+    Path A (saved plans) bypasses this — plans are pre-validated.
+    """
     from tools.catalog import TOOL_CATALOG
+    MAX_TOOLS_PER_INVESTIGATION = 10
 
     # Strip markdown fences
     content = llm_response.strip()
@@ -612,16 +624,28 @@ def _parse_tool_plan(llm_response: str) -> list:
     steps = parsed.get("steps", parsed if isinstance(parsed, list) else [])
 
     validated = []
+    seen_tools = set()
     for step in steps:
         if "condition" in step:
-            # Conditional step — validate both branches
             validated.append(step)
         elif "tool" in step:
             tool_name = step["tool"]
-            if tool_name in TOOL_CATALOG:
-                validated.append(step)
-            else:
-                activity.logger.warning(f"Unknown tool in LLM plan: {tool_name}, skipping")
+            if tool_name in seen_tools:
+                activity.logger.warning(f"Path C duplicate tool removed: {tool_name}")
+                continue
+            if tool_name not in TOOL_CATALOG:
+                activity.logger.warning(f"Path C unknown tool removed: {tool_name}")
+                continue
+            seen_tools.add(tool_name)
+            validated.append(step)
+
+    if len(validated) > MAX_TOOLS_PER_INVESTIGATION:
+        activity.logger.warning(f"Path C tool count capped: {len(validated)} → {MAX_TOOLS_PER_INVESTIGATION}")
+        validated = validated[:MAX_TOOLS_PER_INVESTIGATION]
+
+    if not validated:
+        activity.logger.error("Path C produced zero valid tools after validation")
+
     return validated
 
 
@@ -731,34 +755,43 @@ async def _analyze_v3_tools(ingest: IngestOutput) -> AnalyzeOutput:
             execution_mode="tools", generation_ms=0,
         )
 
-    # No saved plan — ask LLM to select tools (Path C)
+    # No saved plan — ask LLM to select tools (Path C, uses FAST model)
     try:
         from tools.catalog import get_catalog_text
-        catalog_text = get_catalog_text()
-        inst_knowledge = _load_institutional_knowledge(ingest.tenant_id, ingest.siem_event)
-        inst_context = ""
-        if inst_knowledge:
-            inst_context = "Institutional knowledge for entities in this alert:\n"
-            for entity, info in inst_knowledge.items():
-                inst_context += f"- {entity}: {info.get('description', '')} (expected: {info.get('expected_behavior', '')})\n"
-        else:
-            inst_context = "No institutional knowledge available for these entities."
+        from tools.tool_subsets import get_subset_catalog_text
 
-        prompt = _TOOL_CALLING_SYSTEM.format(
-            catalog_text=catalog_text,
-            institutional_context=inst_context,
-        )
+        # Use pruned catalog for known types (~60% fewer tokens), full for unknown
+        catalog_text = get_subset_catalog_text(ingest.task_type)
+        if catalog_text:
+            activity.logger.info(f"Using pruned tool catalog for {ingest.task_type}")
+        else:
+            catalog_text = get_catalog_text()
+
+        # System message: static content only (cached by llama-server prefix cache)
+        system_prompt = _TOOL_CALLING_SYSTEM_PREFIX.format(catalog_text=catalog_text)
+
+        # User message: dynamic content (institutional knowledge + alert)
+        inst_knowledge = _load_institutional_knowledge(ingest.tenant_id, ingest.siem_event)
+        user_parts = []
+        if inst_knowledge:
+            user_parts.append("Institutional knowledge:")
+            for entity, info in inst_knowledge.items():
+                user_parts.append(f"- {entity}: {info.get('description', '')} (expected: {info.get('expected_behavior', '')})")
+        user_parts.append("\nAlert:\n" + json.dumps(ingest.siem_event))
+        user_prompt = "\n".join(user_parts)
 
         result = await llm_call(
-            prompt=json.dumps(ingest.siem_event),
-            system_prompt=prompt,
-            model_config=TIER_FILL,  # 3B model — tool selection is simpler than code gen
+            prompt=user_prompt,
+            system_prompt=system_prompt,
+            model_config=TIER_FILL,  # FAST model — tool selection
             task_id=ingest.task_id,
             stage="analyze",
             task_type=ingest.task_type,
             tenant_id=ingest.tenant_id,
             timeout=30.0,
             response_format={"type": "json_object"},
+            role="tool_select",
+            grammar_name="tool_selection",
         )
 
         plan = _parse_tool_plan(result["content"])

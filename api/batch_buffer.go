@@ -53,10 +53,15 @@ var severityMultiplier = map[string]float64{
 	"info":     3.0,
 }
 
-// Lua script for atomic batch check-and-increment.
+// Lua script for atomic batch check-and-increment with severity promotion.
 // Returns 0 if this is the first alert (proceed with workflow).
 // Returns 1 if absorbed into existing batch (skip workflow).
 // Returns 2 if batch is full or window expired (proceed with new workflow).
+// Severity promotion: if new alert has higher severity, replace batch representative.
+//
+// Window expiry uses the ORIGINAL batch window (stored in 'window' field), not the
+// current alert's severity-adjusted window. This ensures a critical alert arriving
+// within the original batch window gets promoted rather than starting a new batch.
 const batchLuaScript = `
 local key = KEYS[1]
 local task_id = ARGV[1]
@@ -64,31 +69,47 @@ local now_ts = tonumber(ARGV[2])
 local window = tonumber(ARGV[3])
 local max_size = tonumber(ARGV[4])
 local ttl = tonumber(ARGV[5])
+local severity = ARGV[6]
+
+-- Severity ranking for promotion comparison
+local sev_rank = {critical=5, high=4, medium=3, low=2, info=1}
+local new_rank = sev_rank[severity] or 0
 
 local exists = redis.call('EXISTS', key)
 if exists == 0 then
-    -- First alert: start new batch
-    redis.call('HSET', key, 'task_id', task_id, 'count', 1, 'first_ts', tostring(now_ts))
+    -- First alert: start new batch, store the initial window for future expiry checks
+    redis.call('HSET', key, 'task_id', task_id, 'count', 1, 'first_ts', tostring(now_ts), 'severity', severity, 'window', tostring(window))
     redis.call('EXPIRE', key, ttl)
-    return {0, task_id}
+    return {0, task_id, 1}
 end
 
 -- Batch exists: check window and size
 local first_ts = tonumber(redis.call('HGET', key, 'first_ts'))
 local count = tonumber(redis.call('HGET', key, 'count'))
 local batch_task_id = redis.call('HGET', key, 'task_id')
+local batch_severity = redis.call('HGET', key, 'severity') or 'info'
+-- Use the ORIGINAL batch window for expiry, not the current alert's window
+local batch_window = tonumber(redis.call('HGET', key, 'window') or tostring(window))
 
-if (now_ts - first_ts) > window or count >= max_size then
+if (now_ts - first_ts) > batch_window or count >= max_size then
     -- Window expired or batch full: start new batch
     redis.call('DEL', key)
-    redis.call('HSET', key, 'task_id', task_id, 'count', 1, 'first_ts', tostring(now_ts))
+    redis.call('HSET', key, 'task_id', task_id, 'count', 1, 'first_ts', tostring(now_ts), 'severity', severity, 'window', tostring(window))
     redis.call('EXPIRE', key, ttl)
-    return {2, task_id}
+    return {2, task_id, 1}
 end
 
 -- Within window and under max: absorb this alert
-redis.call('HINCRBY', key, 'count', 1)
-return {1, batch_task_id}
+local new_count = redis.call('HINCRBY', key, 'count', 1)
+
+-- Severity promotion: replace representative if new alert is more critical
+local cur_rank = sev_rank[batch_severity] or 0
+if new_rank > cur_rank then
+    redis.call('HSET', key, 'task_id', task_id, 'severity', severity)
+    batch_task_id = task_id
+end
+
+return {1, batch_task_id, new_count}
 `
 
 // computeBatchKey creates a grouping key from task_type and source_ip.
@@ -109,13 +130,13 @@ func effectiveBatchWindow(severity string) float64 {
 
 // checkOrCreateBatch runs the Lua batch script against a single Redis key.
 // Returns (absorbed, parentTaskID, error).
-func checkOrCreateBatch(ctx context.Context, redisKey, taskID string, window float64) (bool, string, error) {
+func checkOrCreateBatch(ctx context.Context, redisKey, taskID, severity string, window float64) (bool, string, error) {
 	nowTS := float64(time.Now().UnixMilli()) / 1000.0
 	ttl := int(window) + 30 // Redis key TTL with grace period
 
 	result, err := redisClient.Eval(ctx, batchLuaScript, []string{redisKey},
 		taskID, fmt.Sprintf("%.3f", nowTS), fmt.Sprintf("%.3f", window),
-		apiBatchMaxSize, ttl,
+		apiBatchMaxSize, ttl, strings.ToLower(severity),
 	).Result()
 
 	if err != nil {
@@ -151,7 +172,7 @@ func tryBatchAlert(ctx context.Context, taskType, sourceIP, destIP, severity, ta
 
 	// Check source IP batch key (catches outbound attacks)
 	srcKey := "apibatch:src:" + computeBatchKey(taskType, sourceIP)
-	absorbed, parentID, err := checkOrCreateBatch(ctx, srcKey, taskID, window)
+	absorbed, parentID, err := checkOrCreateBatch(ctx, srcKey, taskID, severity, window)
 	if err != nil {
 		log.Printf("[BATCH] Redis batch check failed (src): %v", err)
 		return false, ""
@@ -164,7 +185,7 @@ func tryBatchAlert(ctx context.Context, taskType, sourceIP, destIP, severity, ta
 	// Check destination IP batch key (catches inbound attacks)
 	if destIP != "" {
 		dstKey := "apibatch:dst:" + computeBatchKey(taskType, destIP)
-		absorbed, parentID, err = checkOrCreateBatch(ctx, dstKey, taskID, window)
+		absorbed, parentID, err = checkOrCreateBatch(ctx, dstKey, taskID, severity, window)
 		if err != nil {
 			log.Printf("[BATCH] Redis batch check failed (dst): %v", err)
 			return false, ""

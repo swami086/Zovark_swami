@@ -263,13 +263,8 @@
             {"tool": "parse_dns_query", "args": {"raw_log": "$raw_log"}},
             {"tool": "extract_domains", "args": {"text": "$raw_log"}},
             {"tool": "extract_ipv4", "args": {"text": "$raw_log"}},
-            {"tool": "calculate_entropy", "args": {"text": "$siem_event.domain"}},
+            {"tool": "detect_dns_exfiltration", "args": {"siem_event": "$siem_event"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)TXT|dns|query|subdomain|nslookup|dig|high.entropy|tunnel"}},
-            {
-                "condition": "$step4 > 3.5",
-                "if_true": {"tool": "score_exfiltration", "args": {"bytes_transferred": 0, "is_external_dest": true, "is_off_hours": false, "is_encrypted": true}},
-                "if_false": {"tool": "score_generic", "args": {"indicators_found": "$step5", "high_severity_count": 0, "medium_severity_count": "$step5"}}
-            },
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 168, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1048.003", "T1071.004"]}}
         ]

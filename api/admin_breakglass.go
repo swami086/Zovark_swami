@@ -82,7 +82,7 @@ func logBreakglassAttempt(ctx context.Context, ip string, success bool, detail s
 	_, err := dbPool.Exec(ctx,
 		`INSERT INTO audit_events (tenant_id, event_type, actor_type, resource_type, resource_id, metadata)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		"00000000-0000-0000-0000-000000000000", // system-level event
+		"00000000-0000-0000-0000-000000000001", // system tenant (migration 063)
 		"breakglass_login_attempt",
 		"system",
 		"auth",
@@ -136,19 +136,21 @@ func handleBreakglassLogin(c *gin.Context) {
 		return
 	}
 
-	// Determine tenant_id: use env var or first tenant in DB
+	// Determine tenant_id: use env var, or fall back to the system tenant
+	// (created by migration 063). The system tenant is always valid for RLS.
+	const systemTenantID = "00000000-0000-0000-0000-000000000001"
 	tenantID := os.Getenv("ZOVARK_BREAKGLASS_TENANT_ID")
 	if tenantID == "" && dbPool != nil {
 		err := dbPool.QueryRow(c.Request.Context(),
 			`SELECT id FROM tenants WHERE is_active = true ORDER BY created_at LIMIT 1`,
 		).Scan(&tenantID)
 		if err != nil {
-			log.Printf("[BREAKGLASS] No active tenants found: %v", err)
-			tenantID = "00000000-0000-0000-0000-000000000000"
+			log.Printf("[BREAKGLASS] No active tenants found, using system tenant: %v", err)
+			tenantID = systemTenantID
 		}
 	}
 	if tenantID == "" {
-		tenantID = "00000000-0000-0000-0000-000000000000"
+		tenantID = systemTenantID
 	}
 
 	// Generate 15-minute JWT

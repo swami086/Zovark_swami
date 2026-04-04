@@ -1,0 +1,20 @@
+# Tool selection output: {"steps": [{...}, ...]}
+root        ::= "{" ws "\"steps\"" ws ":" ws "[" ws step-list ws "]" ws "}"
+step-list   ::= step ( "," ws step )*
+step        ::= "{" ws "\"tool\"" ws ":" ws string ws "," ws "\"args\"" ws ":" ws object ws "}"
+
+object      ::= "{" ws "}" | "{" ws pair ( "," ws pair )* ws "}"
+pair        ::= string ws ":" ws value
+value       ::= string | number | "true" | "false" | "null" | object | array
+array       ::= "[" ws "]" | "[" ws value ( "," ws value )* ws "]"
+
+string      ::= "\"" characters "\""
+characters  ::= "" | character characters
+character   ::= [^"\\] | "\\" escape
+escape      ::= "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
+
+number      ::= integer fraction?
+integer     ::= "-"? ( "0" | [1-9] [0-9]* )
+fraction    ::= "." [0-9]+
+
+ws          ::= [ \t\n]*

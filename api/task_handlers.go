@@ -120,14 +120,33 @@ func createTaskHandler(c *gin.Context) {
 		return
 	}
 
+	// --- Force reinvestigate bypass (analyst-triggered) ---
+	forceReinvestigate := false
+	if v, ok := req.Input["force_reinvestigate"]; ok {
+		forceReinvestigate = v == true || v == "true"
+	}
+	if forceReinvestigate {
+		log.Printf("[DEDUP] Force reinvestigate bypass for task_type=%s", req.TaskType)
+		clearDedupEntry(c.Request.Context(), req.Input)
+	}
+
 	// --- Layer 1: Pre-Temporal Redis Dedup (fast path before DB dedup) ---
-	if isDup, existingID := checkPreDedup(c.Request.Context(), req.TaskType, req.Input); isDup {
-		c.JSON(http.StatusOK, gin.H{
-			"status":          "deduplicated",
-			"existing_task_id": existingID,
-			"dedup_layer":     "api_redis",
-		})
-		return
+	if !forceReinvestigate {
+		if isDup, existingID := checkPreDedup(c.Request.Context(), req.TaskType, req.Input); isDup {
+			// Increment dedup counter on the original task
+			var dedupCount int
+			_ = dbPool.QueryRow(c.Request.Context(),
+				`UPDATE agent_tasks SET dedup_count = COALESCE(dedup_count, 0) + 1 WHERE id = $1 RETURNING dedup_count`,
+				existingID,
+			).Scan(&dedupCount)
+			c.JSON(http.StatusOK, gin.H{
+				"status":           "deduplicated",
+				"existing_task_id": existingID,
+				"dedup_layer":      "api_redis",
+				"dedup_count":      dedupCount,
+			})
+			return
+		}
 	}
 
 	// --- Layer 2: Pre-Temporal Batch Buffer ---
@@ -255,7 +274,7 @@ func createTaskHandler(c *gin.Context) {
 	if err != nil {
 		if isTemporalTimeout(err) {
 			fallbackModel := HandleModelTimeout(c.Request.Context(), tenantID, taskID, priority,
-				wfLatency, "temporal/ollama", "zovark-fast")
+				wfLatency, "temporal/llm", "zovark-fast")
 			log.Printf("Model timeout on task %s, fallback to %s", taskID, fallbackModel)
 		}
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)

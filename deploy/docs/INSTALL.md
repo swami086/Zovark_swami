@@ -91,11 +91,11 @@ REDIS_PASSWORD=change-this-redis-password
 
 # === LLM Configuration ===
 
-# Points workers to LLM endpoint. Default uses host Ollama.
+# Points workers to LLM inference container.
 # For GPU on host machine:
-ZOVARK_LLM_ENDPOINT=http://host.docker.internal:11434/v1/chat/completions
-# For Ollama in Docker (air-gap profile):
-# ZOVARK_LLM_ENDPOINT=http://zovark-ollama:11434/v1/chat/completions
+ZOVARK_LLM_ENDPOINT=http://zovark-inference:8080/v1/chat/completions
+# Inference is provided by zovark-inference container (see distroless overlay)
+
 
 # Model name
 ZOVARK_LLM_MODEL=qwen2.5:14b
@@ -111,22 +111,22 @@ MINIO_ROOT_USER=zovark
 MINIO_ROOT_PASSWORD=change-this-minio-password
 ```
 
-> **Note:** LiteLLM was previously used as an LLM proxy but has been removed due to supply chain risk (PyPI compromise). Zovark now communicates directly with Ollama via `ZOVARK_LLM_ENDPOINT`.
+> **Note:** LiteLLM was previously used as an LLM proxy but has been removed due to supply chain risk (PyPI compromise). Zovark now communicates directly with llama-server via `ZOVARK_LLM_ENDPOINT`.
 
 ## Start the LLM Server (GPU Host)
 
 Zovark expects a local LLM running on the host machine. Choose one:
 
-### Option A: Ollama (easiest)
+### LLM Inference Setup
 
 ```bash
-# Install Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
+# Start inference container (Nemotron-Mini-4B)
+docker compose -f docker-compose.yml -f docker-compose.distroless.yml up -d zovark-inference
 
 # Pull model
-ollama pull qwen2.5:14b
+# Model: models/Nemotron-Mini-4B-Instruct-Q4_K_M.gguf (must be present)
 
-# Ollama runs automatically on port 11434
+# llama-server starts on port 8080 inside the container
 ```
 
 ### Option B: llama.cpp (more control)
@@ -139,14 +139,14 @@ ollama pull qwen2.5:14b
 ./scripts/start_llama_server.sh
 # Or manually:
 # llama-server -m models/qwen2.5-14b-instruct-q4_k_m.gguf \
-#   --port 11434 --n-gpu-layers 49 -c 4096
+#   --port 8080 --n-gpu-layers 49 -c 4096
 ```
 
 ### Option C: CPU-only (no GPU)
 
 ```bash
-ollama pull qwen2.5:14b
-# Ollama auto-detects CPU-only and runs without GPU acceleration
+# Model: models/Nemotron-Mini-4B-Instruct-Q4_K_M.gguf (must be present)
+# CPU-only mode: llama-server runs without GPU acceleration
 # Expect 5-10x slower investigation times
 ```
 

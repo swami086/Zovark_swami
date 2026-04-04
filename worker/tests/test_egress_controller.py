@@ -70,7 +70,7 @@ class TestValidateURLInternal:
         self.ctrl = EgressController()
 
     @pytest.mark.parametrize("url", [
-        "http://host.docker.internal:11434/v1/chat/completions",
+        "http://zovark-inference:8080/v1/chat/completions",
         "http://postgres:5432",
         "http://redis:6379",
         "http://temporal:7233",
@@ -171,7 +171,7 @@ class TestGetProxyConfig:
 
     def test_internal_no_proxy(self):
         ctrl = EgressController()
-        config = ctrl.get_proxy_config("http://host.docker.internal:11434/v1/chat")
+        config = ctrl.get_proxy_config("http://zovark-inference:8080/v1/chat")
         assert config == {}
 
     def test_internal_postgres_no_proxy(self):

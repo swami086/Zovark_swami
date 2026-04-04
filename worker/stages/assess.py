@@ -25,7 +25,7 @@ from stages.output_validator import validate_investigation_output, safe_default_
 from stages.mitre_mapping import get_mitre_techniques
 
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
-ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
 try:
     from settings import settings as _settings
     ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
@@ -48,10 +48,10 @@ def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int, executi
         return "true_positive"
     if risk_score >= 70:
         return "true_positive"
-    # Suspicious: moderate signals (covers the 36-49 dead zone)
+    # Suspicious: moderate signals (covers the 25-49 dead zone)
     if risk_score >= 50:
         return "suspicious"
-    if risk_score >= 36 and finding_count >= 1:
+    if risk_score >= 25 and finding_count >= 1:
         return "suspicious"
     # Benign: low risk with no findings
     if finding_count == 0 and ioc_count == 0:
@@ -86,21 +86,30 @@ def _template_summary(task_type: str, findings: list, iocs: list, risk_score: in
     )
 
 
-# --- LLM summary (optional) ---
+# --- LLM summary (optional, uses CODE model) ---
+# PREFIX CACHING: static system prompt is cached; only investigation data is dynamic.
+_SUMMARY_SYSTEM = (
+    "Summarize this SOC investigation in 2-3 sentences for an L1 analyst. "
+    "Lead with the verdict, mention key IOCs, and state the recommended action. "
+    "Be specific — cite IPs, usernames, and MITRE techniques from the data."
+)
+
 async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id: str = "") -> str:
     """Call LLM to generate a 2-3 sentence investigation summary."""
     try:
         summary_config = get_model_config(severity="low", task_type=task_type)
-        summary_config.update({"model": MODEL_CODE, "temperature": 0.1, "max_tokens": 200})
+        summary_config.update({"model": MODEL_CODE, "temperature": 0.3, "max_tokens": 200})
         result = await llm_call(
             prompt=stdout[:2000],
-            system_prompt="Summarize this investigation in 2-3 sentences.",
+            system_prompt=_SUMMARY_SYSTEM,
             model_config=summary_config,
             task_id=task_id,
             stage="assess",
             task_type=task_type,
             tenant_id=tenant_id,
             timeout=ASSESS_SUMMARY_TIMEOUT,
+            role="summary",
+            grammar_name=None,  # no grammar for prose summary
         )
         return result["content"]
     except Exception as e:
@@ -350,7 +359,7 @@ def _generate_plain_english(task_type: str, verdict: str, risk_score: int,
     # Risk
     if risk_score >= 70:
         lines.append(f"• HIGH RISK ({risk_score}/100) — immediate action recommended")
-    elif risk_score >= 36:
+    elif risk_score >= 25:
         lines.append(f"• MEDIUM RISK ({risk_score}/100) — review recommended")
     else:
         lines.append(f"• LOW RISK ({risk_score}/100) — no action needed")
@@ -430,7 +439,11 @@ async def assess_results(data: dict) -> dict:
         "risk_score": risk_score,
         "recommendations": recommendations,
     }
-    is_valid, validation_error = validate_investigation_output(sandbox_output)
+    validation_context = {
+        "tools_executed": data.get("tools_executed"),
+        "plan_executed": data.get("plan_executed"),
+    }
+    is_valid, validation_error = validate_investigation_output(sandbox_output, context=validation_context)
     if not is_valid:
         activity.logger.warning(
             f"Sandbox output validation failed for task {task_id}: {validation_error}"
@@ -572,7 +585,7 @@ async def assess_results(data: dict) -> dict:
     siem_rule_name = siem_event.get("rule_name", "") if isinstance(siem_event, dict) else ""
     siem_title_val = siem_event.get("title", "") if isinstance(siem_event, dict) else ""
     if _has_attack_indicators(task_type, siem_rule_name, siem_title_val):
-        if 36 <= risk_score < 70:
+        if 25 <= risk_score < 70:
             activity.logger.info(f"Boosting template-matched attack from risk {risk_score} to 70")
             risk_score = 70
 

@@ -2,9 +2,12 @@
 # Zovark v3.2 Sovereign Appliance — Dev Tier (single inference container)
 # Usage: docker compose -f docker-compose.yml -f docker-compose.distroless.yml up -d
 #
-# Replaces host-Ollama with a single llama.cpp inference container
-# running both FAST (3B) and CODE (8B) models via model aliasing.
+# Provides llama-server as a single llama.cpp inference container
+# running both FAST and CODE models via model aliasing.
 # All containers are distroless / read-only where possible.
+#
+# Current model: Gemma 4 E4B Q4_K_M (5.0GB, --ctx-size 4096)
+# Previous model: Nemotron-Mini-4B-Instruct Q4_K_M (2.6GB, kept for rollback)
 #
 # Prerequisites:
 #   - GGUF model files in ./models/ directory
@@ -55,23 +58,40 @@ services:
     volumes:
       - ./models:/models:ro
     command:
-      - --model
-      - /models/${ZOVARK_MODEL_FILE:-llama-3.2-3b-instruct.Q4_K_M.gguf}
-      - --alias
-      - ${ZOVARK_MODEL_ALIAS:-llama3.2:3b}
-      - --ctx-size
-      - "${ZOVARK_CTX_SIZE:-4096}"
-      - --parallel
-      - "${ZOVARK_PARALLEL:-4}"
       - --host
       - "0.0.0.0"
       - --port
       - "8080"
+      - --model
+      - /models/${ZOVARK_MODEL_FILE:-gemma-4-e4b-it-Q4_K_M.gguf}
+      - --alias
+      - ${ZOVARK_MODEL_ALIAS:-gemma-4-e4b-it}
+      - --n-gpu-layers
+      - "${ZOVARK_GPU_LAYERS:-0}"
+      # --ctx-size 4096: Zovark prompts are 200-800 tokens. 4096 gives 2x headroom.
+      # Default 128K would allocate ~1.8GB KV cache — unnecessary for short SOC prompts.
+      # Increase to 8192 or 16384 if prompt engineering requires longer context.
+      - --ctx-size
+      - "4096"
+      - --parallel
+      - "2"
+      - -t
+      - "${ZOVARK_THREADS:-4}"
+      # Gemma 4: --jinja required for chat template processing.
+      # --reasoning off disables thinking mode to prevent
+      # <|channel>...<channel|> blocks that break GBNF grammar output.
+      # See: llama.cpp issues #20345 (grammar+thinking) and #21316 (token corruption)
+      - --jinja
+      - --reasoning
+      - "off"
+    environment:
+      - LLAMA_PORT=8080
+      - LLAMA_MODEL_ALIAS=${ZOVARK_MODEL_ALIAS:-gemma-4-e4b-it}
     healthcheck:
-      test: ["CMD", "/healthcheck"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
       interval: 15s
-      timeout: 5s
-      start_period: 60s
+      timeout: 10s
+      start_period: 300s    # CPU-only load on constrained Docker Desktop VM
       retries: 5
     restart: unless-stopped
     networks:

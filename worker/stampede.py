@@ -300,7 +300,7 @@ async def coalesced_llm_call(params: dict) -> dict:
     def _do_llm_call():
         from model_config import get_tier_config as _get_tier_config
         tier_config = _get_tier_config(model_tier)
-        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
         api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
         payload = {

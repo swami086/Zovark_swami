@@ -23,6 +23,64 @@ except ImportError:
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 
 
+REDIS_URL = os.environ.get("REDIS_URL", "redis://:zovark-redis-dev-2026@redis:6379/0")
+
+
+def _get_redis():
+    """Get a Redis connection for dedup entry updates. Returns None on failure."""
+    try:
+        import redis as _redis
+        return _redis.from_url(REDIS_URL, decode_responses=True)
+    except Exception:
+        return None
+
+
+def _update_dedup_entry(task_id: str, verdict: str, risk_score: int, status: str, siem_event: dict):
+    """Update the Redis dedup entry with investigation results (v2 dedup).
+    Non-fatal — dedup still works via TTL if this fails."""
+    try:
+        r = _get_redis()
+        if r is None:
+            return
+        # Recompute the same hash used by the Go API (alert_dedup.go)
+        import hashlib
+        import re as _re
+        ts_patterns = [
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?',
+            r'\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}',
+            r'\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}',
+        ]
+        raw_log = siem_event.get("raw_log", "") if isinstance(siem_event, dict) else ""
+        for pat in ts_patterns:
+            raw_log = _re.sub(pat, "TIMESTAMP", raw_log)
+        se = siem_event if isinstance(siem_event, dict) else {}
+        canonical = {
+            "destination_ip": se.get("destination_ip", se.get("dest_ip", "")),
+            "hostname": se.get("hostname", ""),
+            "raw_log": raw_log,
+            "rule_name": se.get("rule_name", ""),
+            "source_ip": se.get("source_ip", ""),
+            "username": se.get("username", ""),
+        }
+        data = json.dumps(canonical, sort_keys=True).encode()
+        alert_hash = hashlib.sha256(data).hexdigest()
+        key = f"dedup:exact:{alert_hash}"
+
+        existing = r.get(key)
+        if existing:
+            entry = json.loads(existing)
+            if entry.get("task_id") == task_id:
+                entry["status"] = "completed" if status == "completed" else "failed"
+                entry["verdict"] = verdict
+                entry["risk_score"] = risk_score
+                ttl = r.ttl(key)
+                if ttl and ttl > 0:
+                    r.setex(key, ttl, json.dumps(entry))
+        r.close()
+    except Exception as e:
+        print(f"Dedup entry update failed (non-fatal): {e}")
+
+
 def _get_db():
     return psycopg2.connect(DATABASE_URL)
 
@@ -292,6 +350,9 @@ async def store_investigation(data: dict) -> dict:
                     cur.execute("NOTIFY task_completed, %s", (notify_payload,))
             except Exception as notify_err:
                 print(f"NOTIFY failed (non-fatal): {notify_err}")
+
+        # Update Redis dedup entry with investigation results (v2 dedup)
+        _update_dedup_entry(task_id, verdict, risk_score, status, siem_event)
 
         conn.commit()
     except Exception as e:

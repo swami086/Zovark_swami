@@ -11,12 +11,12 @@ import sys
 
 import httpx
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
-if not os.getenv("OLLAMA_URL"):
+LLM_URL = os.getenv("LLM_URL", "http://zovark-inference:8080")
+if not os.getenv("LLM_URL"):
     try:
-        httpx.get("http://host.docker.internal:11434/api/tags", timeout=2)
+        httpx.get("http://zovark-inference:8080/api/tags", timeout=2)
     except Exception:
-        OLLAMA_URL = "http://localhost:11434"
+        LLM_URL = "http://zovark-inference:8080"
 
 MODEL = "llama3.1:8b"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +29,7 @@ def call_llm(system_prompt: str, user_content: str) -> tuple:
     try:
         with httpx.Client(timeout=180) as client:
             resp = client.post(
-                f"{OLLAMA_URL}/v1/chat/completions",
+                f"{LLM_URL}/v1/chat/completions",
                 json={
                     "model": MODEL,
                     "messages": [

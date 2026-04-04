@@ -220,25 +220,25 @@ except Exception as e:
 
 
 # ── SOURCE 4: OLLAMA ─────────────────────────────────────────────
-print("[telemetry] Reading Ollama...")
+print("[telemetry] Reading LLM inference...")
 try:
     with httpx.Client(timeout=10) as c:
-        tags = c.get("http://localhost:11434/api/tags").json().get("models",[])
-        loaded = c.get("http://localhost:11434/api/ps").json().get("models",[])
+        tags = c.get("http://zovark-inference:8080/api/tags").json().get("models",[])
+        loaded = c.get("http://zovark-inference:8080/api/ps").json().get("models",[])
     names = [m.get("name","") for m in tags]
-    report["sources"]["ollama"] = {
+    report["sources"]["inference"] = {
         "status":"ok","available":names,
         "loaded":[m.get("name") for m in loaded],
     }
     for exp in ["llama3.1:8b","llama3.2:3b"]:
         if not any(exp in n for n in names):
-            report["issues"].append({"severity":"HIGH","source":"ollama",
+            report["issues"].append({"severity":"HIGH","source":"inference",
                 "category":"model_missing",
                 "detail":f"Model '{exp}' not found","model":exp})
-    print(f"  Ollama: {names}")
+    print(f"  LLM: {names}")
 except Exception as e:
-    report["sources"]["ollama"] = {"status":"error","error":str(e)}
-    print(f"  Ollama: {e}")
+    report["sources"]["inference"] = {"status":"error","error":str(e)}
+    print(f"  LLM: {e}")
 
 
 # ── SOURCE 5: RED TEAM STATUS ─────────────────────────────────────

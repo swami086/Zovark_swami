@@ -14,9 +14,9 @@ import httpx
 # Configuration
 # ---------------------------------------------------------------------------
 MODEL = "llama3.2:3b"
-OLLAMA_URLS = [
-    "http://host.docker.internal:11434",
-    "http://localhost:11434",
+LLM_URLS = [
+    "http://zovark-inference:8080",
+    "http://zovark-inference:8080",
 ]
 PROMPT_FILE = Path("current_prompt.txt")
 TEST_ALERTS_FILE = Path("test_alerts.json")
@@ -66,16 +66,16 @@ KNOWN_TOOLS = {
 # Helpers
 # ---------------------------------------------------------------------------
 
-def find_ollama_base_url() -> str:
-    for url in OLLAMA_URLS:
+def find_llm_base_url() -> str:
+    for url in LLM_URLS:
         try:
             r = httpx.get(f"{url}/api/tags", timeout=5.0)
             if r.status_code == 200:
-                print(f"[INFO] Ollama reachable at {url}")
+                print(f"[INFO] LLM reachable at {url}")
                 return url
         except Exception as exc:
             print(f"[WARN] Could not reach {url}: {exc}")
-    raise RuntimeError("Ollama is not reachable at any configured URL.")
+    raise RuntimeError("LLM is not reachable at any configured URL.")
 
 
 def chat(client: httpx.Client, base_url: str, system: str, user: str) -> str:
@@ -152,7 +152,7 @@ def main() -> int:
     test_alerts = json.loads(TEST_ALERTS_FILE.read_text(encoding="utf-8"))
     print(f"[INFO] Loaded {len(test_alerts)} test alerts.")
 
-    base_url = find_ollama_base_url()
+    base_url = find_llm_base_url()
     client = httpx.Client()
 
     scores: list[float] = []

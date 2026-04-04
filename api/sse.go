@@ -200,6 +200,16 @@ func streamAllTaskUpdates(c *gin.Context) {
 				if et, ok := payload["event_type"].(string); ok && et != "" {
 					eventType = et
 				}
+				// Trigger SIEM push-back on task completion
+				if eventType == "task_completed" {
+					if tid, ok := payload["task_id"].(string); ok {
+						ptid := ""
+						if pt, ok := payload["tenant_id"].(string); ok {
+							ptid = pt
+						}
+						triggerPushbackFromNotify(tid, ptid)
+					}
+				}
 				c.Writer.WriteString(fmt.Sprintf("event: %s\n", eventType))
 				if traceID, ok := payload["trace_id"].(string); ok && traceID != "" {
 					c.Writer.WriteString(fmt.Sprintf("id: %s\n", traceID))

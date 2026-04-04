@@ -39,12 +39,12 @@ services:
     networks:
       - zovark-internal
 
-  # ─── CACHE / WORKING MEMORY ──────────────────────────
+  # ─── CACHE / WORKING MEMORY (Valkey — BSD license, Redis API-compatible) ───
   redis:
-    image: redis:7-alpine
+    image: valkey/valkey:7-alpine
     container_name: zovark-redis
     command: >
-      redis-server
+      valkey-server
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
       --requirepass ${REDIS_PASSWORD:-zovark-redis-dev-2026}
@@ -56,7 +56,7 @@ services:
     expose:
       - "6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-zovark-redis-dev-2026}", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${REDIS_PASSWORD:-zovark-redis-dev-2026}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -202,13 +202,13 @@ services:
       - zovark-internal
 
   # ─── LOCAL LLM ───────────────────────────────────────
-  # Primary: Ollama running on host (not in Docker)
-  #   Start with: ollama serve
-  #   Endpoint: http://host.docker.internal:11434/v1/chat/completions
-  #   Models: Meta Llama 3.1 8B (code/assess) + Meta Llama 3.2 3B (fast/param fill)
-  #   GPU: RTX 3050 4GB — only 1 model loaded at a time, Ollama swaps on demand
+  # Inference: llama-server in container zovark-inference (via distroless overlay)
+  #   Start with: docker compose -f docker-compose.yml -f docker-compose.distroless.yml up -d
+  #   Endpoint: http://zovark-inference:8080/v1/chat/completions
+  #   Model: Nemotron-Mini-4B-Instruct Q4_K_M
+  #   Customer tier: docker-compose.enterprise.yml (dual containers, bigger CODE model)
   #
-  # Fallback (air-gap without host GPU): Ollama in Docker
+  # DEPRECATED: legacy Ollama profile (replaced by zovark-inference)
   ollama:
     image: ollama/ollama:latest
     container_name: zovark-ollama
@@ -253,6 +253,10 @@ services:
       - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222
       - ZOVARK_ENCRYPTION_KEY=${ZOVARK_ENCRYPTION_KEY:-}
       - ZOVARK_WORKFLOW_VERSION=${ZOVARK_WORKFLOW_VERSION:-InvestigationWorkflowV2}
+      # LLM endpoint for OOB inference health check
+      - ZOVARK_LLM_ENDPOINT=${ZOVARK_LLM_ENDPOINT:-http://zovark-inference:8080/v1/chat/completions}
+      - ZOVARK_LLM_ENDPOINT_FAST=${ZOVARK_LLM_ENDPOINT_FAST:-http://zovark-inference:8080/v1/chat/completions}
+      - ZOVARK_LLM_ENDPOINT_CODE=${ZOVARK_LLM_ENDPOINT_CODE:-http://zovark-inference:8080/v1/chat/completions}
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -276,14 +280,14 @@ services:
       # Workers go through PgBouncer (transaction pooling)
       - DATABASE_URL=postgresql://zovark:${POSTGRES_PASSWORD:-zovark_dev_2026}@pgbouncer:5432/zovark
       - TEMPORAL_ADDRESS=temporal:7233
-      - ZOVARK_LLM_ENDPOINT=${ZOVARK_LLM_ENDPOINT:-http://host.docker.internal:11434/v1/chat/completions}
-      - ZOVARK_LLM_ENDPOINT_FAST=${ZOVARK_LLM_ENDPOINT_FAST:-http://host.docker.internal:11434/v1/chat/completions}
-      - ZOVARK_LLM_ENDPOINT_CODE=${ZOVARK_LLM_ENDPOINT_CODE:-http://host.docker.internal:11434/v1/chat/completions}
+      - ZOVARK_LLM_ENDPOINT=${ZOVARK_LLM_ENDPOINT:-http://zovark-inference:8080/v1/chat/completions}
+      - ZOVARK_LLM_ENDPOINT_FAST=${ZOVARK_LLM_ENDPOINT_FAST:-http://zovark-inference:8080/v1/chat/completions}
+      - ZOVARK_LLM_ENDPOINT_CODE=${ZOVARK_LLM_ENDPOINT_CODE:-http://zovark-inference:8080/v1/chat/completions}
       - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY:-sk-zovark-dev-2026}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-zovark-redis-dev-2026}@redis:6379/0
       - HOST_SANDBOX_DIR=${PWD}/sandbox
-      - ZOVARK_MODEL_FAST=${ZOVARK_MODEL_FAST:-llama3.2:3b}
-      - ZOVARK_MODEL_CODE=${ZOVARK_MODEL_CODE:-llama3.1:8b}
+      - ZOVARK_MODEL_FAST=${ZOVARK_MODEL_FAST:-gemma-4-e4b-it}
+      - ZOVARK_MODEL_CODE=${ZOVARK_MODEL_CODE:-gemma-4-e4b-it}
       - DEDUP_ENABLED=${DEDUP_ENABLED:-true}
       - ZOVARK_MODE=${ZOVARK_MODE:-full}
       - ZOVARK_EXECUTION_MODE=${ZOVARK_EXECUTION_MODE:-tools}
@@ -292,6 +296,8 @@ services:
       - ZOVARK_MAX_CONCURRENT_ACTIVITIES=${ZOVARK_MAX_CONCURRENT_ACTIVITIES:-16}
       - ZOVARK_MAX_CONCURRENT_WORKFLOWS=${ZOVARK_MAX_CONCURRENT_WORKFLOWS:-32}
       - ZOVARK_FAST_FILL=${ZOVARK_FAST_FILL:-true}
+      - ZOVARK_PARALLEL_TOOLS_ENABLED=${ZOVARK_PARALLEL_TOOLS_ENABLED:-false}
+      - ZOVARK_MAX_PARALLEL_TOOLS=${ZOVARK_MAX_PARALLEL_TOOLS:-4}
       - PYTHONUNBUFFERED=1
       - NATS_URL=nats://${NATS_USER:-zovark}:${NATS_PASSWORD:-zovark-nats-dev-2026}@zovark-nats:4222
       - DOCKER_HOST=tcp://docker-socket-proxy:2375
@@ -607,13 +613,17 @@ services:
       - ZOVARK_DB_PASSWORD=${POSTGRES_PASSWORD:-hydra_dev_2026}
       - ZOVARK_DB_NAME=${POSTGRES_DB:-zovark}
       - ZOVARK_REDIS_PASSWORD=${REDIS_PASSWORD:-hydra-redis-dev-2026}
-      - ZOVARK_LLM_FAST_MODEL=${ZOVARK_MODEL_FAST:-llama3.2:3b}
-      - ZOVARK_LLM_BASE_URL=${ZOVARK_LLM_BASE_URL:-http://host.docker.internal:11434}
+      - ZOVARK_LLM_FAST_MODEL=${ZOVARK_MODEL_FAST:-gemma-4-e4b-it}
+      - ZOVARK_LLM_BASE_URL=${ZOVARK_LLM_BASE_URL:-http://zovark-inference:8080}
       - ZOVARK_OTEL_ENABLED=${OTEL_ENABLED:-false}
     ports:
       - "8081:8081"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - zovark-internal
 

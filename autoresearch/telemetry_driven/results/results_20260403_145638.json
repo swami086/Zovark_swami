@@ -1,0 +1,236 @@
+[
+  {
+    "test": {
+      "name": "phishing_c50df9",
+      "task_type": "phishing",
+      "input": {
+        "prompt": "AutoResearch test: diverse sample",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "203.0.113.4",
+          "rule_name": "Phishing URL",
+          "raw_log": "URGENT verify your account immediately or suspended. Click here: https://login-verify-portal.com/auth/login.php password credential From: alert@amaz0n-security.com",
+          "title": "Phishing URL"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "diverse sample"
+    },
+    "task_id": "696b2ab6-3f72-4ffd-9b16-502a4c1add6f",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "c2_communication_b9e229",
+      "task_type": "c2_communication",
+      "input": {
+        "prompt": "AutoResearch test: diverse sample",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "10.0.10.4",
+          "rule_name": "C2 Beacon",
+          "raw_log": "beacon interval=60s stddev=1.2 connections=150 to xk7q9m2p.evil-c2.net:443 c2 beacon callback implant",
+          "title": "C2 Beacon"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "diverse sample"
+    },
+    "task_id": "7b86065c-02f7-42f6-b2e9-a8c2ac1a2419",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "phishing_673dea",
+      "task_type": "phishing",
+      "input": {
+        "prompt": "AutoResearch test: 'phishing' inconsistent scoring (stddev=54.8)",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "203.0.113.78",
+          "rule_name": "Phishing URL",
+          "raw_log": "URGENT verify your account immediately or suspended. Click here: https://login-verify-portal.com/auth/login.php password credential From: alert@amaz0n-security.com",
+          "title": "Phishing URL"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'phishing' inconsistent scoring (stddev=54.8)"
+    },
+    "task_id": "61db07b3-32ff-4843-a472-53420d0d23c7",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "phishing_404fe8",
+      "task_type": "phishing",
+      "input": {
+        "prompt": "AutoResearch test: Attack 'phishing' avg risk 36.7 (need >=65)",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "203.0.113.145",
+          "rule_name": "Phishing URL",
+          "raw_log": "URGENT verify your account immediately or suspended. Click here: https://login-verify-portal.com/auth/login.php password credential From: alert@amaz0n-security.com",
+          "title": "Phishing URL"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "Attack 'phishing' avg risk 36.7 (need >=65)"
+    },
+    "task_id": "aec38903-e772-49d8-a8dd-679ef7ce4c58",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_password_change",
+      "task_type": "password_change",
+      "input": {
+        "prompt": "Benign baseline: password_change",
+        "severity": "info",
+        "siem_event": {
+          "title": "Password Change",
+          "rule_name": "password_change",
+          "raw_log": "User jdoe changed password successfully via self-service portal",
+          "hostname": "BASELINE-80"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "5e0cd23d-ddc3-4dbc-83eb-b5903acc20dd",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_windows_update",
+      "task_type": "windows_update",
+      "input": {
+        "prompt": "Benign baseline: windows_update",
+        "severity": "info",
+        "siem_event": {
+          "title": "Windows Update",
+          "rule_name": "windows_update",
+          "raw_log": "Windows Update KB5034441 installed successfully on WORKSTATION-01",
+          "hostname": "BASELINE-90"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "06d82bcb-fafb-4618-87e8-2ebe1e2ac4cd",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_health_check",
+      "task_type": "health_check",
+      "input": {
+        "prompt": "Benign baseline: health_check",
+        "severity": "info",
+        "siem_event": {
+          "title": "Health Check",
+          "rule_name": "health_check",
+          "raw_log": "System health check passed. CPU 45 percent Memory 62 percent. All services normal.",
+          "hostname": "BASELINE-45"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "f473a0a4-45d0-4764-943d-28407d662b25",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_scheduled_backup",
+      "task_type": "scheduled_backup",
+      "input": {
+        "prompt": "Benign baseline: scheduled_backup",
+        "severity": "info",
+        "siem_event": {
+          "title": "Scheduled Backup",
+          "rule_name": "scheduled_backup",
+          "raw_log": "Nightly backup completed successfully. 150 GB backed up.",
+          "hostname": "BASELINE-04"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "175b6cca-3d30-4e0f-9ae6-d3a34071d3c4",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_user_login",
+      "task_type": "user_login",
+      "input": {
+        "prompt": "Benign baseline: user_login",
+        "severity": "info",
+        "siem_event": {
+          "title": "User Login",
+          "rule_name": "user_login",
+          "raw_log": "User asmith logged in via RDP from 10.0.1.150 at 09:00 UTC",
+          "hostname": "BASELINE-02"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "f41a7f50-f400-463d-8a27-93847c0ed5c8",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  }
+]

@@ -16,8 +16,14 @@ VALID_VERDICTS = {
 }
 
 
-def validate_investigation_output(output: dict) -> Tuple[bool, str]:
+def validate_investigation_output(output: dict, context: dict = None) -> Tuple[bool, str]:
     """Validate investigation output matches required schema.
+
+    Args:
+        output: The investigation output dict to validate.
+        context: Optional context from the pipeline. When tools_executed or
+                 plan_executed is present (v3 tools mode), empty findings are
+                 valid — they mean "tools found nothing suspicious".
 
     Returns:
         (is_valid, error_message) — error_message is "valid" when is_valid is True.
@@ -38,9 +44,12 @@ def validate_investigation_output(output: dict) -> Tuple[bool, str]:
         if not isinstance(output[key], expected_type):
             return False, f"{key}: expected {expected_type}, got {type(output[key]).__name__}"
 
-    # --- Findings must be non-empty (unless benign/low-risk) ---
+    # --- Findings must be non-empty (unless benign/low-risk or v3 tools mode) ---
+    # In v3 tools mode, empty findings means "tools found nothing suspicious" — valid.
     risk = output.get("risk_score", -1)
-    if len(output.get("findings", [])) == 0 and risk > 30:
+    ctx = context or {}
+    is_tools_mode = bool(ctx.get("tools_executed") or ctx.get("plan_executed"))
+    if len(output.get("findings", [])) == 0 and risk > 30 and not is_tools_mode:
         return False, "findings must be non-empty for non-benign verdicts"
 
     # --- risk_score must be 0-100 ---

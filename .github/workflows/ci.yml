@@ -144,7 +144,7 @@ jobs:
       - run: docker compose config --quiet
       - run: docker compose build api worker
 
-  # ─── Job 2: Integration Tests (mock Ollama, Docker stack) ─
+  # ─── Job 2: Integration Tests (mock LLM, Docker stack) ─
   integration-tests:
     runs-on: ubuntu-latest
     needs: [unit-tests, build]
@@ -160,7 +160,7 @@ jobs:
         run: |
           pip install pytest httpx psycopg2-binary redis pyyaml
 
-      - name: Build and start stack with mock Ollama
+      - name: Build and start stack with mock LLM
         run: |
           docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build
         env:
@@ -183,9 +183,9 @@ jobs:
             sleep 5
           done
 
-      - name: Verify mock Ollama is responding
+      - name: Verify mock LLM is responding
         run: |
-          curl -sf http://localhost:11434/health && echo "Mock Ollama healthy" || echo "Mock Ollama not reachable (may be internal-only)"
+          curl -sf http://localhost:11434/health && echo "Mock LLM healthy" || echo "Mock LLM not reachable (may be internal-only)"
 
       - name: Test authentication
         run: |
@@ -237,7 +237,7 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=100 api
           echo "=== Worker logs ==="
           docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=100 worker
-          echo "=== Mock Ollama logs ==="
+          echo "=== Mock LLM logs ==="
           docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=50 mock-ollama
 
       - name: Stop stack

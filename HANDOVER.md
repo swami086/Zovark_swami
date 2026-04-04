@@ -1,10 +1,14 @@
-# ZOVARK — AI-to-AI Handover Guide
+# Zovark v3.2.1 — AI-to-AI Handover Guide
 
-> Read this BEFORE writing any code. Violations of these rules produce invalid results.
+> Read this BEFORE reading CLAUDE.md. Read this BEFORE writing any code.
+> This is the "how to work here" guide. CLAUDE.md is the "what exists" reference.
+> If they conflict, HANDOVER.md wins for process; CLAUDE.md wins for architecture.
 
-## 1. What This Project Is
+---
 
-Zovark is an autonomous SOC (Security Operations Center) agent. It receives SIEM alerts, investigates them through a 6-stage pipeline, and produces structured verdicts.
+## 1. What Zovark Is (30-second version)
+
+Air-gapped SOC investigation platform. Receives SIEM alerts, runs deterministic tool-based investigations, delivers structured verdicts with risk scores, IOCs, and MITRE ATT&CK mappings. Targets regulated enterprises (CMMC/HIPAA/GDPR). Runs entirely on-premise with no cloud dependencies.
 
 **The pipeline is the product. Individual tools mean nothing in isolation.**
 
@@ -12,132 +16,304 @@ Zovark is an autonomous SOC (Security Operations Center) agent. It receives SIEM
 Alert → API (:8090) → Temporal → Ingest → Analyze → Execute → Assess → Govern → Store → Verdict
 ```
 
-Each stage transforms data. Skipping stages produces wrong results.
+**Stack:** Go API + Python Temporal Worker + React Dashboard + PostgreSQL/pgvector + Valkey + llama-server (Nemotron-Mini-4B)
 
-## 2. Rules of Engagement (MANDATORY)
+---
 
-### Testing
+## 2. Architecture Invariants (MANDATORY — DO NOT VIOLATE)
 
-- **ALWAYS test through the API** (`POST /api/v1/tasks`), never by calling Python functions directly
-- Individual tools (e.g., `detect_ransomware()`) are internal implementation details. They are selected and orchestrated by investigation plans. Calling them directly tests nothing meaningful.
-- The correct test flow:
-  1. Login: `POST /api/v1/auth/login` → get JWT token
-  2. Submit: `POST /api/v1/tasks` with task_type + siem_event
-  3. Wait 60-90 seconds
-  4. Poll: `GET /api/v1/tasks/{id}` → check verdict, risk_score, tools_executed
-- Unit tests go in `worker/tests/test_*.py` and are run inside the worker container: `docker compose exec -T worker python -m pytest tests/ -q`
-- Rate limit: 10 auth attempts per 15 minutes per IP. Use ONE login per test batch.
+Every prior session that violated one of these caused a regression that took hours to fix.
 
-### Code Changes
+### 2.1 Test Through the API Only
 
-- **Never create files in the repo root** (no `debug_*.py`, no `test_*.py` in root)
-- Scripts go in `scripts/`, tests go in `worker/tests/`
-- After Python changes: `docker compose build worker && docker compose up -d worker`
-- After Go changes: `docker compose build api && docker compose up -d api`
-- Do not leave debug/scratch files in the repo
-
-### Architecture Constraints
-
-- **Task types map to investigation plans** via `worker/tools/investigation_plans.json`. The key names in that file are the canonical names (e.g., `phishing_investigation`, not `phishing`). The analyze stage resolves aliases.
-- **Tools are chained in plans**, not called individually. A brute force investigation runs: `parse_auth_log → extract_ipv4 → extract_usernames → count_pattern → score_brute_force → correlate_with_history → map_mitre`. Testing just `score_brute_force` in isolation is meaningless.
-- **The assess stage transforms everything.** Even if a tool returns risk=50, the assess stage applies signal boost, risk floor, suppression detection, IOC provenance validation, and verdict derivation. The final verdict comes from assess, not from tools.
-- **Benign routing is inverted logic.** Alerts route to benign by default UNLESS they match attack indicators. This is intentional. Don't "fix" benign routing without understanding `ATTACK_INDICATORS` in `ingest.py`.
-
-### What NOT to Do
-
-- Do NOT call detection tools directly and report "detection rate" — this bypasses plan orchestration, assess-stage scoring, and signal boost. The number will be wrong.
-- Do NOT create arbitrary tool-to-attack mappings. The real mappings are in `investigation_plans.json`.
-- Do NOT import from `/app/` paths in scripts that run outside Docker.
-- Do NOT commit simulation results as ground truth. Simulation methodology must be validated first.
-- Do NOT modify `assess.py` signal boost patterns, risk floors, or verdict logic without running the full test suite AND a 5-alert smoke test through the API.
-
-## 3. Quick Reference
-
-| Item | Location |
-|------|----------|
-| Full architecture | `CLAUDE.md` (canonical, 800+ lines) |
-| Tool catalog | `worker/tools/catalog.py` |
-| Investigation plans | `worker/tools/investigation_plans.json` |
-| Detection tools | `worker/tools/detection.py` |
-| Pipeline stages | `worker/stages/{ingest,analyze,execute,assess,govern,store}.py` |
-| Tests | `worker/tests/test_*.py` (run inside container) |
-| State tracking | `state/system.json`, `state/tools.json`, `state/memory.md` |
-| Scoreboard | `autoresearch/SCOREBOARD.md` |
-
-## 4. How to Run a Valid Smoke Test
+**NEVER** test pipeline changes by calling Python functions directly. The pipeline has 6 stages with middleware between each. A tool that works in isolation will produce different results than the full pipeline because ingest sanitizes input, the tool runner resolves variables, assess applies signal boost and provenance validation, and the output validator checks schema conformance.
 
 ```bash
-# 1. Check health
-curl -s http://localhost:8090/ready
-
-# 2. Login (ONCE — save the token)
-TOKEN=$(curl -s -X POST http://localhost:8090/api/v1/auth/login \
+# Login once, reuse the token
+TOKEN=$(curl -sf -X POST http://localhost:8090/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@test.local","password":"TestPass2026"}' \
   | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
-# 3. Submit an attack alert
-curl -s -X POST http://localhost:8090/api/v1/tasks \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"task_type":"brute_force","input":{"prompt":"SSH brute force","severity":"high","siem_event":{"title":"SSH BF","source_ip":"185.220.101.45","username":"root","rule_name":"BruteForce","raw_log":"500 failed login attempts for root from 185.220.101.45 in 60 seconds via sshd"}}}'
-
-# 4. Wait 60-90 seconds, then poll
-curl -s http://localhost:8090/api/v1/tasks/{TASK_ID} -H "Authorization: Bearer $TOKEN"
-
-# 5. Verify: status=completed, verdict=true_positive, risk_score>=70
+# Submit via API, wait 60-120s, then poll
+curl -sf -X POST http://localhost:8090/api/v1/tasks \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"task_type":"brute_force","input":{"prompt":"SSH brute force","severity":"high","siem_event":{...}}}'
 ```
 
-**Expected results for common alert types:**
+### 2.2 Two-Model Architecture
+
+Zovark uses TWO LLM roles — same model on dev, different on customer tier:
+
+| Role | Pipeline Stage | Env Var | Dev Model | Customer Model |
+|------|---------------|---------|-----------|----------------|
+| **FAST** | Tool selection, param fill | `ZOVARK_MODEL_FAST` | Gemma 4 E4B | Same |
+| **CODE** | Verdict assessment, summary | `ZOVARK_MODEL_CODE` | Gemma 4 E4B | Bigger (8B-70B) |
+
+Do NOT collapse FAST and CODE into a single variable. Do NOT hardcode model names.
+
+### 2.3 Inference is llama-server, NOT Ollama
+
+- Engine: llama-server (llama.cpp) in container `zovark-inference` on port **8080**
+- Endpoint: `http://zovark-inference:8080/v1/chat/completions`
+- Start: `docker compose -f docker-compose.yml -f docker-compose.distroless.yml up -d`
+- Model: `models/gemma-4-e4b-it-Q4_K_M.gguf` (5.0GB, `--ctx-size 4096 --jinja --reasoning off`)
+- Previous: `models/Nemotron-Mini-4B-Instruct-Q4_K_M.gguf` (2.6GB, kept for rollback)
+- **No Ollama. No port 11434. No host.docker.internal.** All references were purged 2026-04-04.
+
+### 2.4 Tenant Isolation is Mandatory
+
+Every DB query MUST include `tenant_id`. Write transactions use:
+- Go: `beginTenantTx(ctx, tenantID)`
+- Python: `SET LOCAL app.current_tenant = '{tenant_id}'` (string format — PgBouncer requirement)
+
+### 2.5 Fail-Closed on LLM Down
+
+When the LLM is unavailable: Path A (saved plans) + benign routing continue normally. Path C alerts get `verdict=needs_manual_review` — NEVER benign. Circuit breaker goes RED.
+
+### 2.6 Signal Boost Scans SIEM Data Only
+
+`assess.py` signal boost scans `raw_log + title + rule_name` — NOT tool execution stdout. Tool stdout contains JSON keys and variable references that trigger false positive regex matches. This was a major Cycle 9 bug.
+
+---
+
+## 3. How to Start the System
+
+```bash
+# 1. Start core services
+docker compose up -d
+
+# 2. Start inference (llama-server + Nemotron-Mini-4B)
+docker compose -f docker-compose.yml -f docker-compose.distroless.yml up -d zovark-inference
+
+# 3. Wait ~60s for model load, then verify
+docker compose exec worker curl -sf http://zovark-inference:8080/health
+curl -sf http://localhost:8090/ready
+cmd/zvadmin/zvadmin.exe diagnose    # Full 8-check diagnostic
+```
+
+### Credentials
+
+| Resource | Credential |
+|----------|------------|
+| Admin login | admin@test.local / TestPass2026 (tenant e1c1bc5d) |
+| Analyst login | analyst2@test.local / TestPass2026 |
+| Database | user=zovark, password=hydra_dev_2026, db=zovark |
+| Redis/Valkey | password=hydra-redis-dev-2026 |
+| LLM endpoint | http://zovark-inference:8080/v1/chat/completions |
+
+---
+
+## 4. How to Verify Changes
+
+### Quick Check (2 min)
+```bash
+docker compose build worker && docker compose up -d worker && sleep 30
+cmd/zvadmin/zvadmin.exe diagnose
+```
+
+### Pipeline Regression (4 min)
+```bash
+bash autoresearch/cycle10/verify_all.sh
+# EXPECT: 15/15 (10 attacks ≥65 risk, 5 benign ≤25 risk)
+```
+
+### Dedup Stress Test (7 min)
+```bash
+bash autoresearch/cycle10/dedup_stress_test.sh
+# EXPECT: 13-14/14 passed, 0 failed
+```
+
+### AutoResearch Cycle (4 min)
+```bash
+bash autoresearch/telemetry_driven/run.sh --hours 24 --max-tests 15 --wait 120
+# Collects real telemetry, generates targeted tests, measures improvement
+```
+
+### Expected Verdicts
 
 | task_type | Expected Verdict | Expected Risk |
 |-----------|-----------------|---------------|
 | brute_force | true_positive | 70-100 |
 | phishing | true_positive | 70-100 |
 | ransomware | true_positive | 80-100 |
+| kerberoasting | true_positive | 65-100 |
+| dns_exfiltration | true_positive | 65-100 |
+| c2_communication | true_positive | 70-100 |
 | password_change | benign | 0-15 |
-| windows_update | benign | 0-15 |
+| windows_update | benign | 0 |
+| health_check | benign | 0 |
 
-## 5. How to Run Unit Tests
+---
+
+## 5. Anti-Patterns (Mistakes That Were Made Before)
+
+| Mistake | Why It's Wrong | What to Do Instead |
+|---------|---------------|-------------------|
+| Calling `detect_phishing()` directly | Bypasses plan orchestration and assess scoring | Submit via API with `task_type=phishing` |
+| Scanning tool stdout in signal boost | JSON keys trigger false positive attack regex matches | Signal boost scans SIEM data only (raw_log, title, rule_name) |
+| Empty findings → safe_default(risk=50) | In v3 tools mode, empty findings is valid (nothing suspicious found) | Check `tools_executed`/`plan_executed` before rejecting |
+| Hardcoding `host.docker.internal:11434` | Stale Ollama reference, breaks in container | Read from `ZOVARK_LLM_ENDPOINT` env var |
+| Risk floor at 36 | Too high, causes benign FPs on attack-typed task_types | Floor is 25 — low enough to not override tool judgment |
+| Running 100 tests with 100 logins | Triggers rate limiter (10/15min) | Login once, reuse token |
+| Using `python3` on the host | No Python on this Windows machine | Use `docker compose exec -T worker python` |
+| Modifying investigation_workflow.py | Breaks Temporal state machine | Modify stages, not the orchestrator |
+| Self-verifying output | Confirmation bias masks errors | Use multi-agent verification |
+| Adding llama-server flags without GBNF test | Can silently disable grammar constraints | Test grammar isolation before benchmark |
+| Assuming model fits in Docker memory | Gemma 4 E4B needed 7GB, VM had 5.8GB — crash loop | Check `docker info` total memory before model swaps |
+
+---
+
+## 6. Key File Map
+
+### Engineering Framework
+| File | What |
+|------|------|
+| `ENGINEERING_DISCIPLINE.md` | Claude Code operating framework, slash commands, anti-patterns |
+
+### Pipeline Stages
+| File | Stage | LLM? |
+|------|-------|------|
+| `worker/stages/ingest.py` | 1. Sanitize, normalize, dedup, route | No |
+| `worker/stages/analyze.py` | 2. Load plan (A) or LLM tool select (C) | FAST |
+| `worker/stages/execute.py` | 3. Run tool plan with variables | No |
+| `worker/stages/assess.py` | 4. Verdict, signal boost, IOC provenance | CODE |
+| `worker/stages/govern.py` | 4.5. Autonomy slider | No |
+| `worker/stages/store.py` | 5. DB write, NOTIFY, dedup update | No |
+
+### LLM Infrastructure
+| File | What |
+|------|------|
+| `worker/stages/llm_gateway.py` | Dual endpoint routing, model swap, audit logging |
+| `worker/llm_client.py` | Singleton httpx, dual semaphores (FAST/CODE), grammar support, OTEL |
+| `worker/grammars/tool_selection.gbnf` | Grammar-constrained decoding for tool selection JSON |
+| `worker/grammars/verdict.gbnf` | Grammar-constrained decoding for verdict JSON |
+| `worker/tools/tool_subsets.py` | Pruned catalogs per attack type (~60% fewer tokens) |
+| `dpo/prompts_v2.py` | Full prompt library: system, task, tools, scoring anchors (~900 LOC) |
+
+### Burst Protection (3 layers)
+| File | Layer |
+|------|-------|
+| `api/alert_dedup.go` | L1: Investigation-aware Redis dedup (v2 JSON, severity escalation, retry) |
+| `api/batch_buffer.go` | L2: Lua-atomic batch buffer with severity promotion |
+| `api/backpressure.go` | L3: Workflow queue depth throttle + drain goroutine |
+
+### Calibration (when risk scores are wrong)
+| File | What Controls |
+|------|--------------|
+| `worker/stages/assess.py` :463-483 | Signal boost patterns (+45 per match on SIEM data) |
+| `worker/stages/assess.py` :577 | Risk floor (attack-typed at risk 25-69 → boost to 70) |
+| `worker/stages/assess.py` :38-60 | `_derive_verdict()` risk→verdict thresholds |
+| `worker/tools/detection.py` | Per-tool risk weights |
+| `dpo/prompts_v2.py` :168-191 | Scoring anchors in LLM prompt |
+
+### Host-Side CLI
+| Command | What |
+|---------|------|
+| `zvadmin diagnose` | 8-check health diagnostic with operator actions |
+| `zvadmin alerts --hours 24` | Pipeline stats, verdict bar chart, low-confidence list |
+| `zvadmin model check` | Risk calibration report, attack/benign separation gap |
+| `zvadmin dedup health` | Dedup decision distribution, efficiency rating |
+| `zvadmin troubleshoot --symptom post-reboot` | Guided troubleshooting (5 symptoms) |
+
+---
+
+## 7. Current State (2026-04-04)
+
+### Working
+- 15/15 pipeline regression on Gemma 4 E4B via llama-server (swapped from Nemotron 2026-04-04)
+- 13/14 dedup stress test (1 skip = LLM timeout)
+- Investigation-aware dedup with severity escalation, force reinvestigate
+- SIEM verdict push-back (Splunk HEC + Elastic + webhook)
+- Valkey 7.2 (BSD, replaced Redis)
+- zvadmin CLI (11 commands)
+- Telemetry-driven AutoResearch engine
+- Inference optimization (prefix caching, tool pruning, GBNF grammars, dual semaphores)
+- ALL Ollama references purged from active code and docs
+
+### Not Yet Done
+1. Merge v3.1-hardening to master
+2. Build web-admin (`cd web-admin && npm install && npm run build`)
+3. GPU inference (Dockerfile.inference currently CPU-only from source)
+4. A100 benchmark
+5. Switch to zovark_app DB user for RLS enforcement
+
+### Known Calibration Gaps
+- `privilege_escalation_hunt` stddev=49.8 (inconsistent scoring)
+- MITRE coverage 0% for several attack types (not propagating from map_mitre tool to output)
+
+---
+
+## 8. Rebuild Commands
+
+```bash
+# Python changes (worker/stages/tools)
+docker compose build worker && docker compose up -d worker
+
+# Go API changes
+docker compose build api && docker compose up -d api
+
+# zvadmin changes (Windows)
+MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd)/cmd/zvadmin:/build" -w /build \
+  golang:1.22-alpine sh -c "apk add --no-cache git && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o zvadmin.exe ."
+
+# Inference container
+docker compose -f docker-compose.yml -f docker-compose.distroless.yml build zovark-inference
+docker compose -f docker-compose.yml -f docker-compose.distroless.yml up -d zovark-inference
+
+# After prompt changes
+scripts/flush_code_cache.sh
+
+# New migration (next: 065)
+docker compose exec -T postgres psql -U zovark -d zovark < migrations/065_name.sql
+```
+
+---
+
+## 9. Environment Variables That Matter
+
+| Variable | Default | What It Controls |
+|----------|---------|-----------------|
+| `ZOVARK_EXECUTION_MODE` | `tools` | `tools` = v3 (default). `sandbox` = v2 legacy. |
+| `ZOVARK_LLM_ENDPOINT` | `http://zovark-inference:8080/v1/chat/completions` | Where LLM calls go |
+| `ZOVARK_LLM_ENDPOINT_FAST` | same | FAST role endpoint |
+| `ZOVARK_LLM_ENDPOINT_CODE` | same | CODE role endpoint (customer: separate container) |
+| `ZOVARK_MODEL_FAST` | `gemma-4-e4b-it` | FAST model alias |
+| `ZOVARK_MODEL_CODE` | `gemma-4-e4b-it` | CODE model alias (customer: bigger) |
+| `ZOVARK_FAST_FILL` | `false` | `true` = skip LLM, template-only |
+| `ZOVARK_MODE` | `full` | `templates-only` = no LLM fallback |
+| `ZOVARK_GPU_LAYERS` | `0` | GPU layers for llama-server (99 for full GPU offload) |
+
+---
+
+## 10. Database Patterns
+
+```bash
+# Read-only (safe)
+docker compose exec -T postgres psql -U zovark -d zovark -c "SELECT ..."
+
+# FK-safe deletion order (for clearing test data):
+# template_promotion_approvals → analyst_feedback → entity_edges → entities
+# → investigation_memory → audit_events → agent_tasks
+
+# Before clearing data: terminate stale Temporal workflows first
+# tctl --address zovark-temporal:7233 workflow listall --op
+
+# agent_tasks results are in the `output` JSONB column (not `result`)
+# Access: output->>'verdict', output->>'risk_score', (output->>'risk_score')::int
+```
+
+---
+
+## 11. Unit Tests
 
 ```bash
 # All tests (inside worker container)
 docker compose exec -T worker python -m pytest tests/ -q --tb=short
 
-# Specific test file
-docker compose exec -T worker python -m pytest tests/test_detection_cycle7.py -q
-
 # Known pre-existing failures (skip these):
-# - test_egress_controller.py::test_external_without_proxy_returns_empty (env-dependent)
-# - test_adversarial_review.py::TestReviewFailSafe (3 tests, documented known issue)
+# - test_adversarial_review.py::TestReviewFailSafe (3 tests, LLM-dependent)
+
+# After changes, also run the API-level regression:
+bash autoresearch/cycle10/verify_all.sh    # 15 alerts through full pipeline
 ```
-
-## 6. Current Metrics (update after changes)
-
-| Metric | Value |
-|--------|-------|
-| Tools | 39 |
-| Investigation plans | 24 |
-| Red team vectors | 40 |
-| Tests passing | 370+ (excluding known failures) |
-| Detection rate (API-tested) | 100% on 5-alert smoke test |
-
-## 7. After Making Changes
-
-1. Run unit tests: `docker compose exec -T worker python -m pytest tests/ -q`
-2. Run 5-alert smoke test through the API (see section 4)
-3. Update `state/system.json` metrics
-4. Update `state/memory.md` with what changed and why
-5. Update `autoresearch/SCOREBOARD.md` if doing AutoResearch cycles
-6. Commit with descriptive message
-7. Verify `git status` is clean (no debug files left behind)
-
-## 8. Common Mistakes and How to Avoid Them
-
-| Mistake | Why It's Wrong | What to Do Instead |
-|---------|---------------|-------------------|
-| Calling `detect_phishing()` directly | Bypasses plan orchestration and assess scoring | Submit via API with `task_type=phishing` |
-| Reporting "26% detection rate" from direct tool calls | Tools aren't designed to be called standalone | Test through the full pipeline via API |
-| Creating `debug_*.py` in repo root | Pollutes the repo, won't run outside Docker anyway | Use `scripts/` dir, clean up when done |
-| Mapping `privilege_escalation → detect_com_hijacking` | Arbitrary; real mapping is in investigation_plans.json | Read `investigation_plans.json` for actual tool chains |
-| Running 100 tests with 100 logins | Triggers rate limiter (10/15min) | Login once, reuse token for all requests |
