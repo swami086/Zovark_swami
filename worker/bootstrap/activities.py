@@ -163,7 +163,7 @@ async def generate_synthetic_investigation(data: dict) -> dict:
     Input: {source: 'mitre'|'cisa', source_id, title, description, technique_id?}
     Returns: {source_id, investigation_length, tokens_used}
     """
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
     api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
     tier_config = get_tier_config("generate_synthetic_investigation")
     llm_model = tier_config["model"]

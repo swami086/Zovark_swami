@@ -1,0 +1,112 @@
+[
+  {
+    "category": "scoring",
+    "severity": "medium",
+    "task_type": "phishing",
+    "description": "'phishing' inconsistent scoring (stddev=32.2)",
+    "metric": "risk_stddev=32.2 (threshold=15)",
+    "priority": 72.2,
+    "test_hints": [
+      "Submit 5 phishing alerts with varying strength"
+    ]
+  },
+  {
+    "category": "scoring",
+    "severity": "medium",
+    "task_type": "kerberoasting",
+    "description": "'kerberoasting' inconsistent scoring (stddev=26.7)",
+    "metric": "risk_stddev=26.7 (threshold=15)",
+    "priority": 66.7,
+    "test_hints": [
+      "Submit 5 kerberoasting alerts with varying strength"
+    ]
+  },
+  {
+    "category": "scoring",
+    "severity": "medium",
+    "task_type": "dns_exfiltration",
+    "description": "'dns_exfiltration' inconsistent scoring (stddev=24.5)",
+    "metric": "risk_stddev=24.5 (threshold=15)",
+    "priority": 64.5,
+    "test_hints": [
+      "Submit 5 dns_exfiltration alerts with varying strength"
+    ]
+  },
+  {
+    "category": "coverage",
+    "severity": "medium",
+    "task_type": "user_login",
+    "description": "'user_login': only 0.0% have MITRE mappings",
+    "metric": "mitre_coverage_pct=0.0 (threshold=80)",
+    "priority": 30,
+    "test_hints": [
+      "Check map_mitre in user_login plan"
+    ]
+  },
+  {
+    "category": "coverage",
+    "severity": "medium",
+    "task_type": "dns_exfiltration",
+    "description": "'dns_exfiltration': only 0.0% have MITRE mappings",
+    "metric": "mitre_coverage_pct=0.0 (threshold=80)",
+    "priority": 30,
+    "test_hints": [
+      "Check map_mitre in dns_exfiltration plan"
+    ]
+  },
+  {
+    "category": "coverage",
+    "severity": "medium",
+    "task_type": "golden_ticket",
+    "description": "'golden_ticket': only 0.0% have MITRE mappings",
+    "metric": "mitre_coverage_pct=0.0 (threshold=80)",
+    "priority": 30,
+    "test_hints": [
+      "Check map_mitre in golden_ticket plan"
+    ]
+  },
+  {
+    "category": "coverage",
+    "severity": "medium",
+    "task_type": "health_check",
+    "description": "'health_check': only 0.0% have MITRE mappings",
+    "metric": "mitre_coverage_pct=0.0 (threshold=80)",
+    "priority": 30,
+    "test_hints": [
+      "Check map_mitre in health_check plan"
+    ]
+  },
+  {
+    "category": "coverage",
+    "severity": "medium",
+    "task_type": "kerberoasting",
+    "description": "'kerberoasting': only 0.0% have MITRE mappings",
+    "metric": "mitre_coverage_pct=0.0 (threshold=80)",
+    "priority": 30,
+    "test_hints": [
+      "Check map_mitre in kerberoasting plan"
+    ]
+  },
+  {
+    "category": "coverage",
+    "severity": "medium",
+    "task_type": "lolbin_abuse",
+    "description": "'lolbin_abuse': only 0.0% have MITRE mappings",
+    "metric": "mitre_coverage_pct=0.0 (threshold=80)",
+    "priority": 30,
+    "test_hints": [
+      "Check map_mitre in lolbin_abuse plan"
+    ]
+  },
+  {
+    "category": "coverage",
+    "severity": "medium",
+    "task_type": "powershell_obfuscation",
+    "description": "'powershell_obfuscation': only 0.0% have MITRE mappings",
+    "metric": "mitre_coverage_pct=0.0 (threshold=80)",
+    "priority": 30,
+    "test_hints": [
+      "Check map_mitre in powershell_obfuscation plan"
+    ]
+  }
+]

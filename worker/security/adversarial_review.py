@@ -45,7 +45,7 @@ class AdversarialReviewer:
     def __init__(self, model_url: str = None, model_name: str = None, timeout: int = 10):
         self.model_url = model_url or os.environ.get(
             "ADVERSARIAL_LLM_URL",
-            os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+            os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
         )
         self.model_name = model_name or os.environ.get("ADVERSARIAL_MODEL", "fast")
         self.api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")

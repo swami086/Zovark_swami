@@ -1,0 +1,7 @@
+[
+  {"input": {"raw_log": "HKCU\\Software\\Classes\\CLSID\\{AB8902B4-09CA-4bb6-B78D-A8F59079A8D5}\\InprocServer32 changed to C:\\Users\\john\\evil.dll"}, "expected_detected": true},
+  {"input": {"raw_log": "HKEY_CURRENT_USER\\Software\\Classes\\CLSID\\{00000000-0000-0000-0000-000000000000}\\InprocServer32 = C:\\Windows\\System32\\shell32.dll"}, "expected_detected": true},
+  {"input": {"raw_log": "Normal registry activity, no COM paths"}, "expected_detected": false},
+  {"input": {"raw_log": "CLSID\\InprocServer32 modification in user registry"}, "expected_detected": true},
+  {"input": {"raw_log": "System CLSID change by admin"}, "expected_detected": true}
+]

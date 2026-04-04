@@ -1,0 +1,41 @@
+{
+  "name": "ZOVARK",
+  "tagline": "Autonomous AI SOC Agent — Sovereign Appliance",
+  "version": "3.2.0-dev",
+  "status": "v3.2 build complete, calibration in progress",
+  "last_updated": "2026-04-03T07:30:00Z",
+  "branch": "v3.1-hardening",
+  "features": [
+    "39 investigation tools (7 categories) + 24 saved investigation plans",
+    "V3 6-stage pipeline (ingest, analyze, execute, assess, govern, store)",
+    "3-layer pre-Temporal burst protection (dedup, batch buffer, backpressure)",
+    "OOB watchdog on :9091 (survives API crashes)",
+    "zvadmin host CLI (status, queue, benchmark, breakglass)",
+    "Distroless containers (API, inference, diagnostics)",
+    "Pure Go diagnostic sidecar (zero os/exec)",
+    "Control plane backend (config CRUD, audit trail, circuit breaker, bootstrap)",
+    "Control plane React admin (bootstrap wizard, 3-tab dashboard)",
+    "GPU tier model (dev/mid/enterprise/enterprise-plus)",
+    "Docker compose overlays (dev single-inference, enterprise dual-inference)",
+    "Ed25519 signed update packages (zvadmin update)"
+  ],
+  "metrics": {
+    "detection_rate_api_tested": "8/10 attack types (80%)",
+    "false_positive_rate": "2/5 benign (40% — calibration gap, see Cycle 10)",
+    "avg_investigation_latency_sec": 0.026,
+    "red_team_vectors": 40,
+    "tools_count": 39,
+    "tests_passing": 370,
+    "new_files_this_session": 60,
+    "commits_this_session": 8
+  },
+  "cycle_10_priorities": [
+    "Fix output_validator for tools mode (empty findings OK)",
+    "Increase detect_kerberoasting risk scoring",
+    "Increase detect_dns_exfil risk scoring",
+    "Lower risk floor threshold from 36 to 15",
+    "Circuit breaker cache propagation timing",
+    "Build web-admin (npm install + npm run build)",
+    "Test distroless Dockerfiles on Linux with GPU"
+  ]
+}

@@ -120,8 +120,71 @@ func createTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. Generate task ID and trace ID
+	// --- Force reinvestigate bypass (analyst-triggered) ---
+	forceReinvestigate := false
+	if v, ok := req.Input["force_reinvestigate"]; ok {
+		forceReinvestigate = v == true || v == "true"
+	}
+	if forceReinvestigate {
+		log.Printf("[DEDUP] Force reinvestigate bypass for task_type=%s", req.TaskType)
+		clearDedupEntry(c.Request.Context(), req.Input)
+	}
+
+	// --- Layer 1: Pre-Temporal Redis Dedup (fast path before DB dedup) ---
+	if !forceReinvestigate {
+		if isDup, existingID := checkPreDedup(c.Request.Context(), req.TaskType, req.Input); isDup {
+			// Increment dedup counter on the original task
+			var dedupCount int
+			_ = dbPool.QueryRow(c.Request.Context(),
+				`UPDATE agent_tasks SET dedup_count = COALESCE(dedup_count, 0) + 1 WHERE id = $1 RETURNING dedup_count`,
+				existingID,
+			).Scan(&dedupCount)
+			c.JSON(http.StatusOK, gin.H{
+				"status":           "deduplicated",
+				"existing_task_id": existingID,
+				"dedup_layer":      "api_redis",
+				"dedup_count":      dedupCount,
+			})
+			return
+		}
+	}
+
+	// --- Layer 2: Pre-Temporal Batch Buffer ---
+	sourceIP := ""
+	if se, ok := req.Input["siem_event"].(map[string]interface{}); ok {
+		if v, ok := se["source_ip"].(string); ok {
+			sourceIP = v
+		}
+	}
+	if v, ok := req.Input["source_ip"].(string); ok && sourceIP == "" {
+		sourceIP = v
+	}
+
+	destIP := ""
+	if se, ok := req.Input["siem_event"].(map[string]interface{}); ok {
+		if v, ok := se["destination_ip"].(string); ok {
+			destIP = v
+		} else if v, ok := se["dest_ip"].(string); ok {
+			destIP = v
+		}
+	}
+	if v, ok := req.Input["dest_ip"].(string); ok && destIP == "" {
+		destIP = v
+	}
+
+	severity := extractPriority(req.Input)
 	taskID := uuid.New().String()
+
+	if shouldSkip, batchParentID := tryBatchAlert(c.Request.Context(), req.TaskType, sourceIP, destIP, severity, taskID); shouldSkip {
+		c.JSON(http.StatusOK, gin.H{
+			"status":          "batched",
+			"batch_parent_id": batchParentID,
+			"task_id":         taskID,
+		})
+		return
+	}
+
+	// 2. Generate trace ID
 	traceID := uuid.New().String()
 	c.Header("X-Zovark-Trace-ID", traceID)
 
@@ -137,7 +200,7 @@ func createTaskHandler(c *gin.Context) {
 	// 3. Insert into agent_tasks inside explicit transaction
 	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid
 	// race condition where the worker's fetch_task can't find the row.
-	priority := extractPriority(req.Input)
+	priority := severity
 	dbCtx, dbCancel := dbContextWithTimeout(c.Request.Context())
 	defer dbCancel()
 
@@ -173,6 +236,31 @@ func createTaskHandler(c *gin.Context) {
 		return
 	}
 
+	// Register dedup hash after commit
+	registerPreDedup(c.Request.Context(), req.TaskType, req.Input, taskID, severity)
+
+	// --- Layer 3: Temporal Backpressure ---
+	allowed, depth := checkBackpressure(c.Request.Context())
+	if !allowed {
+		if isHardLimitReached(depth) {
+			_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error":       "system at capacity, please retry",
+				"retry_after": 30,
+			})
+			c.Header("Retry-After", "30")
+			return
+		}
+		// Soft limit — queue for drain goroutine
+		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'queued' WHERE id = $1", taskID)
+		c.JSON(http.StatusAccepted, gin.H{
+			"task_id":  taskID,
+			"status":   "queued",
+			"trace_id": traceID,
+		})
+		return
+	}
+
 	// 6. Start Temporal Workflow AFTER commit (with timeout detection for model failover)
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        "task-" + taskID,
@@ -186,13 +274,16 @@ func createTaskHandler(c *gin.Context) {
 	if err != nil {
 		if isTemporalTimeout(err) {
 			fallbackModel := HandleModelTimeout(c.Request.Context(), tenantID, taskID, priority,
-				wfLatency, "temporal/ollama", "zovark-fast")
+				wfLatency, "temporal/llm", "zovark-fast")
 			log.Printf("Model timeout on task %s, fallback to %s", taskID, fallbackModel)
 		}
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 		respondInternalError(c, err, "start workflow")
 		return
 	}
+
+	// Track workflow for backpressure
+	recordWorkflowStart(c.Request.Context(), "task-"+taskID)
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"task_id":     taskID,

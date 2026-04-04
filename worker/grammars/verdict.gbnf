@@ -1,0 +1,28 @@
+# Verdict output: {"verdict": "...", "risk_score": N, "findings": [...], ...}
+root          ::= "{" ws verdict-kv "," ws risk-kv "," ws findings-kv ( "," ws extra-kv )* ws "}"
+
+verdict-kv    ::= "\"verdict\"" ws ":" ws verdict-val
+verdict-val   ::= "\"true_positive\"" | "\"suspicious\"" | "\"benign\"" | "\"needs_manual_review\"" | "\"inconclusive\""
+
+risk-kv       ::= "\"risk_score\"" ws ":" ws risk-num
+risk-num      ::= "0" | [1-9] [0-9]? | "100"
+
+findings-kv   ::= "\"findings\"" ws ":" ws "[" ws "]" | "\"findings\"" ws ":" ws "[" ws string ( "," ws string )* ws "]"
+
+extra-kv      ::= string ws ":" ws value
+
+object        ::= "{" ws "}" | "{" ws pair ( "," ws pair )* ws "}"
+pair          ::= string ws ":" ws value
+value         ::= string | number | "true" | "false" | "null" | object | array
+array         ::= "[" ws "]" | "[" ws value ( "," ws value )* ws "]"
+
+string        ::= "\"" characters "\""
+characters    ::= "" | character characters
+character     ::= [^"\\] | "\\" escape
+escape        ::= "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t"
+
+number        ::= integer fraction?
+integer       ::= "-"? ( "0" | [1-9] [0-9]* )
+fraction      ::= "." [0-9]+
+
+ws            ::= [ \t\n]*

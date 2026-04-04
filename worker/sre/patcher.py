@@ -79,7 +79,7 @@ async def _patch_logic_bug(diagnosis: dict) -> dict:
         return {'type': 'no_patch', 'reason': f'Could not locate source for activity: {activity_name}'}
 
     tier_config = get_tier_config('generate_patch')
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
     api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     system_prompt = (

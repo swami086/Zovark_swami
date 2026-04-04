@@ -132,27 +132,29 @@ class TestReviewUnsafe:
 
 
 class TestReviewFailSafe:
-    """Any exception in _call_llm must result in safe=False (fail-safe)."""
+    """Exceptions in _call_llm pass through (safe=True) so investigations are
+    not blocked when the review LLM is unavailable. AST prefilter + Docker
+    sandbox remain as the primary security layers."""
 
-    def test_timeout_blocks(self):
+    def test_timeout_passes_through(self):
         r = AdversarialReviewer()
         r._call_llm = MagicMock(side_effect=TimeoutError("timeout"))
         result = r.review("some_code")
-        assert result["safe"] is False
+        assert result["safe"] is True
 
-    def test_connection_error_blocks(self):
+    def test_connection_error_passes_through(self):
         r = AdversarialReviewer()
         r._call_llm = MagicMock(side_effect=ConnectionRefusedError("refused"))
         result = r.review("some_code")
-        assert result["safe"] is False
+        assert result["safe"] is True
 
-    def test_generic_exception_blocks(self):
+    def test_generic_exception_passes_through(self):
         r = AdversarialReviewer()
         r._call_llm = MagicMock(side_effect=RuntimeError("unexpected"))
         result = r.review("some_code")
-        assert result["safe"] is False
+        assert result["safe"] is True
 
-    def test_fail_safe_result_has_reason(self):
+    def test_pass_through_result_has_reason(self):
         r = AdversarialReviewer()
         r._call_llm = MagicMock(side_effect=TimeoutError("timeout"))
         result = r.review("some_code")

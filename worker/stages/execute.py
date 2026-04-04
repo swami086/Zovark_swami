@@ -276,7 +276,11 @@ def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor
-        DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
+        try:
+            from settings import settings as _settings
+            DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+        except ImportError:
+            DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
         entities = []
         for field_name in ("source_ip", "username", "hostname", "dest_ip"):
             val = siem_event.get(field_name)
@@ -316,7 +320,11 @@ def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor
-        DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
+        try:
+            from settings import settings as _settings
+            DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+        except ImportError:
+            DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
         entities = []
         for field_name in ("source_ip", "username", "hostname", "dest_ip"):
             val = siem_event.get(field_name)
@@ -363,11 +371,15 @@ def _execute_v3_tools(data: dict) -> dict:
     if not plan:
         raise ValueError("No tool plan provided")
 
+    task_id_val = data.get("task_id", "")
+    trace_id_val = data.get("trace_id", "")
+
     start_time = time.time()
     result = execute_plan(
         plan, siem_event,
         history_context=history_context,
         institutional_knowledge=institutional_knowledge,
+        task_id=task_id_val, tenant_id=tenant_id, trace_id=trace_id_val,
     )
     execution_ms = int((time.time() - start_time) * 1000)
 

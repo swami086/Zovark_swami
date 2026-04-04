@@ -1,0 +1,399 @@
+{
+  "collected_at": "2026-04-03T14:56:38Z",
+  "window_hours": 1,
+  "sources": {
+    "postgres": "ok",
+    "redis": "ok",
+    "oob": "ok"
+  },
+  "data": {
+    "risk_scores": [
+      [
+        "backup_job",
+        "1",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "benign_system_event",
+        "1",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "health_check",
+        "4",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "password_change",
+        "1",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "scheduled_backup",
+        "1",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "scheduled_task",
+        "1",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "user_login",
+        "1",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "windows_update",
+        "1",
+        "0.0",
+        "0.0",
+        "0",
+        "0"
+      ],
+      [
+        "data_exfiltration",
+        "1",
+        "100.0",
+        "0.0",
+        "100",
+        "100"
+      ],
+      [
+        "golden_ticket",
+        "1",
+        "100.0",
+        "0.0",
+        "100",
+        "100"
+      ],
+      [
+        "dns_exfiltration",
+        "1",
+        "100.0",
+        "0.0",
+        "100",
+        "100"
+      ],
+      [
+        "c2_communication",
+        "2",
+        "100.0",
+        "0.0",
+        "100",
+        "100"
+      ],
+      [
+        "phishing",
+        "3",
+        "36.7",
+        "54.8",
+        "5",
+        "100"
+      ],
+      [
+        "privilege_escalation_hunt",
+        "1",
+        "70.0",
+        "0.0",
+        "70",
+        "70"
+      ],
+      [
+        "brute_force",
+        "14",
+        "73.6",
+        "9.1",
+        "70",
+        "95"
+      ],
+      [
+        "ransomware",
+        "5",
+        "76.0",
+        "13.4",
+        "70",
+        "100"
+      ],
+      [
+        "kerberoasting",
+        "1",
+        "80.0",
+        "0.0",
+        "80",
+        "80"
+      ]
+    ],
+    "verdicts": [
+      [
+        "backup_job",
+        "benign",
+        "1"
+      ],
+      [
+        "benign_system_event",
+        "benign",
+        "1"
+      ],
+      [
+        "brute_force",
+        "true_positive",
+        "14"
+      ],
+      [
+        "c2_communication",
+        "true_positive",
+        "2"
+      ],
+      [
+        "data_exfiltration",
+        "true_positive",
+        "1"
+      ],
+      [
+        "dns_exfiltration",
+        "true_positive",
+        "1"
+      ],
+      [
+        "golden_ticket",
+        "true_positive",
+        "1"
+      ],
+      [
+        "health_check",
+        "benign",
+        "4"
+      ],
+      [
+        "kerberoasting",
+        "true_positive",
+        "1"
+      ],
+      [
+        "password_change",
+        "benign",
+        "1"
+      ],
+      [
+        "phishing",
+        "benign",
+        "2"
+      ],
+      [
+        "phishing",
+        "true_positive",
+        "1"
+      ],
+      [
+        "privilege_escalation_hunt",
+        "true_positive",
+        "1"
+      ],
+      [
+        "ransomware",
+        "true_positive",
+        "5"
+      ],
+      [
+        "scheduled_backup",
+        "benign",
+        "1"
+      ],
+      [
+        "scheduled_task",
+        "benign",
+        "1"
+      ],
+      [
+        "user_login",
+        "benign",
+        "1"
+      ],
+      [
+        "windows_update",
+        "benign",
+        "1"
+      ]
+    ],
+    "error_rates": [
+      [
+        "ransomware",
+        "0",
+        "0",
+        "5",
+        "0.0"
+      ],
+      [
+        "brute_force",
+        "0",
+        "0",
+        "18",
+        "0.0"
+      ],
+      [
+        "c2_communication",
+        "0",
+        "0",
+        "2",
+        "0.0"
+      ],
+      [
+        "health_check",
+        "0",
+        "0",
+        "7",
+        "0.0"
+      ],
+      [
+        "phishing",
+        "0",
+        "0",
+        "3",
+        "0.0"
+      ]
+    ],
+    "dedup_hotspots": [
+      [
+        "brute_force",
+        "30",
+        "6",
+        "5.0"
+      ],
+      [
+        "c2_communication",
+        "2",
+        "2",
+        "1.0"
+      ],
+      [
+        "health_check",
+        "3",
+        "3",
+        "1.0"
+      ],
+      [
+        "ransomware",
+        "2",
+        "2",
+        "1.0"
+      ]
+    ],
+    "latency": [
+      [
+        "A",
+        "40",
+        "0.81",
+        "0.30",
+        "2.27",
+        "2"
+      ]
+    ],
+    "mitre_coverage": [
+      [
+        "dns_exfiltration",
+        "1",
+        "0",
+        "0"
+      ],
+      [
+        "golden_ticket",
+        "1",
+        "0",
+        "0"
+      ],
+      [
+        "kerberoasting",
+        "1",
+        "0",
+        "0"
+      ],
+      [
+        "phishing",
+        "1",
+        "1",
+        "100"
+      ],
+      [
+        "privilege_escalation_hunt",
+        "1",
+        "1",
+        "100"
+      ],
+      [
+        "brute_force",
+        "14",
+        "14",
+        "100"
+      ],
+      [
+        "ransomware",
+        "5",
+        "5",
+        "100"
+      ],
+      [
+        "c2_communication",
+        "2",
+        "2",
+        "100"
+      ],
+      [
+        "data_exfiltration",
+        "1",
+        "1",
+        "100"
+      ]
+    ],
+    "recent_failures": [],
+    "dedup_stats": {
+      "new_alert": 63,
+      "deduplicated": 38,
+      "severity_escalation": 10,
+      "retry_after_failure": 0,
+      "total": 111,
+      "dedup_ratio_pct": 34.2
+    },
+    "backpressure_depth": 0,
+    "system_health": {
+      "api": "ok",
+      "dedup_stats_1h": {
+        "deduplicated": 38,
+        "new_alert": 63,
+        "retry_after_failure": 0,
+        "severity_escalation": 10
+      },
+      "goroutines": 11,
+      "gpu_tier": "dev",
+      "heap_mb": 2,
+      "inference": "down",
+      "postgres": "ok",
+      "redis": "ok",
+      "temporal": "ok",
+      "timestamp": "2026-04-03T14:56:38Z",
+      "uptime_seconds": 1730,
+      "version": "3.2.1"
+    }
+  }
+}

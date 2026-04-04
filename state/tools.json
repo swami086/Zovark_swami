@@ -1,0 +1,40 @@
+{
+  "last_updated": "2026-04-02T13:30:00Z",
+  "categories": {
+    "extraction": {
+      "count": 8,
+      "tools": ["extract_ipv4", "extract_ipv6", "extract_domains", "extract_urls", "extract_hashes", "extract_emails", "extract_usernames", "extract_cves"]
+    },
+    "analysis": {
+      "count": 4,
+      "tools": ["count_pattern", "calculate_entropy", "detect_encoding", "check_base64"]
+    },
+    "parsing": {
+      "count": 5,
+      "tools": ["parse_windows_event", "parse_syslog", "parse_auth_log", "parse_dns_query", "parse_http_request"]
+    },
+    "scoring": {
+      "count": 6,
+      "tools": ["score_brute_force", "score_phishing", "score_lateral_movement", "score_exfiltration", "score_c2_beacon", "score_generic"]
+    },
+    "detection": {
+      "count": 12,
+      "tools": ["detect_kerberoasting", "detect_golden_ticket", "detect_ransomware", "detect_phishing", "detect_c2", "detect_data_exfil", "detect_lolbin_abuse", "detect_lateral_movement", "detect_com_hijacking", "detect_encoded_service", "detect_token_impersonation", "detect_appcert_dlls"]
+    },
+    "enrichment": {
+      "count": 4,
+      "tools": ["map_mitre", "lookup_known_bad", "correlate_with_history", "lookup_institutional_knowledge"]
+    }
+  },
+  "capabilities": [
+    "Real-time SIEM alert ingestion (Splunk, Elastic)",
+    "Deterministic tool-based investigation (no LLM for execution)",
+    "Optional LLM for tool selection and summary",
+    "Sub-second investigation for templated alerts",
+    "IOC extraction with evidence references",
+    "MITRE ATT&CK technique mapping",
+    "Cross-investigation correlation",
+    "Governance layer (observe/assist/autonomous modes)",
+    "AutoResearch: continuous red team + self-improvement"
+  ]
+}

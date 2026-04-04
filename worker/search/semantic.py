@@ -17,7 +17,7 @@ def _get_db():
 
 
 EMBED_URL = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
-ZOVARK_EMBED_URL = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434") + "/v1/embeddings"
+ZOVARK_EMBED_URL = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080") + "/v1/embeddings"
 ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
 

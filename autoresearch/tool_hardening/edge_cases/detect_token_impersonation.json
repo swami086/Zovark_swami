@@ -1,0 +1,7 @@
+[
+  {"input": {"raw_log": "runas.exe /savecred /user:DOMAIN\\admin cmd.exe"}, "expected_detected": true},
+  {"input": {"raw_log": "RunAs with saved credentials executing powershell"}, "expected_detected": true},
+  {"input": {"raw_log": "runas /user:localuser notepad.exe"}, "expected_detected": false},
+  {"input": {"raw_log": "cmd.exe run without runas"}, "expected_detected": false},
+  {"input": {"raw_log": "runas.exe /savecred /user:Administrator powershell -enc ..."}, "expected_detected": true}
+]

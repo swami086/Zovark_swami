@@ -1,0 +1,274 @@
+{
+  "improved": 30,
+  "total": 34,
+  "results": [
+    {
+      "timestamp": "2026-03-31T19:16:39.791541Z",
+      "tool": "calculate_entropy",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:39.897363Z",
+      "tool": "check_base64",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:39.996398Z",
+      "tool": "correlate_with_history",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.099307Z",
+      "tool": "count_pattern",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.209822Z",
+      "tool": "detect_c2",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.316120Z",
+      "tool": "detect_data_exfil",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.424950Z",
+      "tool": "detect_encoding",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.534276Z",
+      "tool": "detect_golden_ticket",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "tool": "detect_kerberoasting",
+      "fitness": 0.0,
+      "passed": 0,
+      "failed": 0,
+      "total": 0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.751764Z",
+      "tool": "detect_lolbin_abuse",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.861322Z",
+      "tool": "detect_phishing",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:40.970090Z",
+      "tool": "detect_ransomware",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:41.092172Z",
+      "tool": "extract_cves",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:41.198727Z",
+      "tool": "extract_domains",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:41.315708Z",
+      "tool": "extract_emails",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "tool": "extract_hashes",
+      "fitness": 0.0,
+      "passed": 0,
+      "failed": 0,
+      "total": 0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:41.558193Z",
+      "tool": "extract_ipv4",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "tool": "extract_ipv6",
+      "fitness": 0.0,
+      "passed": 0,
+      "failed": 0,
+      "total": 0
+    },
+    {
+      "tool": "extract_urls",
+      "fitness": 0.0,
+      "passed": 0,
+      "failed": 0,
+      "total": 0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:41.887388Z",
+      "tool": "extract_usernames",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:41.987614Z",
+      "tool": "lookup_institutional_knowledge",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:42.086889Z",
+      "tool": "lookup_known_bad",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:42.192199Z",
+      "tool": "map_mitre",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:42.299476Z",
+      "tool": "parse_auth_log",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:42.404630Z",
+      "tool": "parse_dns_query",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:42.507762Z",
+      "tool": "parse_http_request",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:42.603654Z",
+      "tool": "parse_syslog",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:45.373020Z",
+      "tool": "parse_windows_event",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:45.480327Z",
+      "tool": "score_brute_force",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:45.579347Z",
+      "tool": "score_c2_beacon",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:45.679802Z",
+      "tool": "score_exfiltration",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:45.787925Z",
+      "tool": "score_generic",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:45.888818Z",
+      "tool": "score_lateral_movement",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    },
+    {
+      "timestamp": "2026-03-31T19:16:45.985700Z",
+      "tool": "score_phishing",
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "fitness": 1.0
+    }
+  ]
+}

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,7 @@ func healthCheckHandler(c *gin.Context) {
 
 	llmProvider := "OpenRouter (Cloud)"
 	if llmModel == "zovark-local" {
-		llmProvider = "Ollama (Local)"
+		llmProvider = "Local LLM"
 	}
 
 	// Check DB
@@ -24,12 +25,25 @@ func healthCheckHandler(c *gin.Context) {
 		dbOK = (err == nil)
 	}
 
-	// LLM health (Ollama on host — check is best-effort)
+	// LLM health — check configured endpoint (best-effort)
 	llmOK := false
-	resp, err := http.Get("http://host.docker.internal:11434/api/tags")
+	llmEndpoint := getEnvOrDefault("ZOVARK_LLM_ENDPOINT_FAST",
+		getEnvOrDefault("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions"))
+	// Derive health URL from chat completions endpoint
+	llmHealthURL := strings.TrimSuffix(llmEndpoint, "/v1/chat/completions") + "/health"
+	resp, err := http.Get(llmHealthURL)
 	if err == nil {
 		llmOK = (resp.StatusCode == 200)
 		resp.Body.Close()
+	}
+	if !llmOK {
+		// Fallback: try /api/tags (legacy compatibility)
+		llmTagsURL := strings.TrimSuffix(llmEndpoint, "/v1/chat/completions") + "/api/tags"
+		resp, err = http.Get(llmTagsURL)
+		if err == nil {
+			llmOK = (resp.StatusCode == 200)
+			resp.Body.Close()
+		}
 	}
 
 	// Check embedding server

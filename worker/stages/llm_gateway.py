@@ -10,25 +10,30 @@ from typing import Optional
 
 import httpx
 
-ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
-ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
+try:
+    from settings import settings as _settings
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
+    DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
+except ImportError:
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "sk-zovark-dev-2026")
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
 
-# Two-model routing: American models only (Meta Llama)
-# FAST: small model for simple param extraction (Path B)
-# CODE: larger model for code generation (Path C) + IOC extraction (Assess)
-MODEL_FAST = os.environ.get("ZOVARK_MODEL_FAST", "llama3.2:3b")
-MODEL_CODE = os.environ.get("ZOVARK_MODEL_CODE", "llama3.1:8b")
+# Two-model routing: Gemma 4 E4B (dev: same model both roles, customer: bigger CODE)
+# FAST: tool selection + param extraction (Path B/C)
+# CODE: verdict assessment + summary (Stage 4)
+MODEL_FAST = os.environ.get("ZOVARK_MODEL_FAST", "gemma-4-e4b-it")
+MODEL_CODE = os.environ.get("ZOVARK_MODEL_CODE", "gemma-4-e4b-it")
 
-# Dual-endpoint support: route FAST and CODE models to separate Ollama instances
+# Dual-endpoint support: route FAST and CODE models to separate inference endpoints
 _DEFAULT_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT",
-    "http://host.docker.internal:11434/v1/chat/completions")
+    "http://zovark-inference:8080/v1/chat/completions")
 ENDPOINT_FAST = os.environ.get("ZOVARK_LLM_ENDPOINT_FAST", _DEFAULT_ENDPOINT)
 ENDPOINT_CODE = os.environ.get("ZOVARK_LLM_ENDPOINT_CODE", _DEFAULT_ENDPOINT)
 
 
 def _get_endpoint_for_model(model: str) -> str:
-    """Route model to the correct Ollama instance endpoint."""
+    """Route model to the correct inference endpoint."""
     if model == MODEL_FAST:
         return ENDPOINT_FAST
     return ENDPOINT_CODE
@@ -58,6 +63,8 @@ async def llm_call(
     timeout: float = 900.0,
     response_format: Optional[dict] = None,
     prompt_name: str = "",
+    role: str = "",
+    grammar_name: str | None = None,
 ) -> dict:
     """
     Makes LLM call and logs audit metadata including prompt version.
@@ -92,32 +99,31 @@ async def llm_call(
     tokens_out = 0
     content = ""
 
-    # Start OTEL span for LLM call
-    try:
-        from tracing import get_tracer
-        _llm_span = get_tracer().start_span("llm.call")
-        _llm_span.set_attribute("llm.model", model_name)
-        _llm_span.set_attribute("llm.stage", stage)
-        _llm_span.set_attribute("llm.task_type", task_type)
-        _llm_span.set_attribute("llm.endpoint", endpoint)
-    except Exception:
-        _llm_span = None
+    # OTEL span is created inside llm_client.llm_request()
+    _llm_span = None  # kept for compatibility with error handlers below
 
     try:
-        # Use explicit timeout config matching original httpx usage
-        timeout_config = httpx.Timeout(timeout, connect=10.0)
-        async with httpx.AsyncClient(timeout=timeout_config) as client:
-            resp = await client.post(
-                endpoint,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                    "X-Zovark-Trace-ID": task_id or "",
-                },
-                json=request_body,
-            )
-            resp.raise_for_status()
-            result = resp.json()
+        # Use singleton LLM client with dual semaphore concurrency control
+        from llm_client import llm_request
+        # Auto-detect role from stage if not explicitly set
+        effective_role = role
+        if not effective_role:
+            if stage == "assess":
+                effective_role = "verdict"
+            elif stage == "analyze":
+                effective_role = "tool_select"
+            else:
+                effective_role = "tool_select"
+        result = await llm_request(
+            model=model_name,
+            messages=request_body["messages"],
+            temperature=request_body.get("temperature", 0.1),
+            max_tokens=request_body.get("max_tokens", 4096),
+            stage=stage,
+            response_format=request_body.get("response_format"),
+            role=effective_role,
+            grammar_name=grammar_name,
+        )
 
         usage = result.get("usage", {})
         tokens_in = usage.get("prompt_tokens", 0)
@@ -234,17 +240,21 @@ def _log_audit(
         pass  # Table may not exist yet — never block pipeline
 
 
-def preload_ollama_model():
-    """Pre-load CODE and FAST models into VRAM on their respective Ollama instances with 30m keep_alive."""
+def preload_llm_models():
+    """Pre-load CODE and FAST models into VRAM via Ollama-compatible /api/generate endpoint."""
     import logging
     logger = logging.getLogger(__name__)
     for model, ep in [(MODEL_CODE, ENDPOINT_CODE), (MODEL_FAST, ENDPOINT_FAST)]:
-        ollama_url = ep.replace("/v1/chat/completions", "").replace("/v1/models", "")
+        base_url = ep.replace("/v1/chat/completions", "").replace("/v1/models", "")
         try:
             import httpx
-            resp = httpx.post(f"{ollama_url}/api/generate", json={
+            resp = httpx.post(f"{base_url}/api/generate", json={
                 "model": model, "prompt": "ok", "keep_alive": "30m", "stream": False,
             }, timeout=60.0)
-            logger.info(f"Pre-loaded {model} on {ollama_url} (status={resp.status_code})")
+            logger.info(f"Pre-loaded {model} on {base_url} (status={resp.status_code})")
         except Exception as e:
-            logger.warning(f"Failed to pre-load {model} on {ollama_url}: {e}")
+            logger.warning(f"Failed to pre-load {model} on {base_url}: {e}")
+
+
+# Backward compatibility alias
+preload_ollama_model = preload_llm_models

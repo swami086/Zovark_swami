@@ -1,0 +1,138 @@
+{
+  "summary": {
+    "detection_rate": 0.7777777777777778,
+    "attack_passed": 7,
+    "attack_count": 9,
+    "risk_mean": 90.71428571428571,
+    "risk_min": 70,
+    "risk_max": 100,
+    "fp_rate": 0.0,
+    "benign_passed": 5,
+    "benign_count": 5
+  },
+  "attack_results": [
+    {
+      "name": "phishing_d888c2",
+      "task_type": "phishing",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    },
+    {
+      "name": "kerberoasting_2918ca",
+      "task_type": "kerberoasting",
+      "verdict": "true_positive",
+      "risk": 80,
+      "passed": true
+    },
+    {
+      "name": "dns_exfiltration_ff93b8",
+      "task_type": "dns_exfiltration",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    },
+    {
+      "name": "generic_user_login",
+      "task_type": "user_login",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": false
+    },
+    {
+      "name": "dns_exfiltration_d42295",
+      "task_type": "dns_exfiltration",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    },
+    {
+      "name": "golden_ticket_d30c9b",
+      "task_type": "golden_ticket",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    },
+    {
+      "name": "generic_health_check",
+      "task_type": "health_check",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": false
+    },
+    {
+      "name": "lolbin_abuse_ca0433",
+      "task_type": "lolbin_abuse",
+      "verdict": "true_positive",
+      "risk": 85,
+      "passed": true
+    },
+    {
+      "name": "powershell_obfuscation_5aabe7",
+      "task_type": "powershell_obfuscation",
+      "verdict": "true_positive",
+      "risk": 70,
+      "passed": true
+    }
+  ],
+  "benign_results": [
+    {
+      "name": "benign_password_change",
+      "task_type": "password_change",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_windows_update",
+      "task_type": "windows_update",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_health_check",
+      "task_type": "health_check",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_scheduled_backup",
+      "task_type": "scheduled_backup",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_user_login",
+      "task_type": "user_login",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    }
+  ],
+  "improvements": [
+    "phishing: 82 -> 100 (+18)",
+    "kerberoasting: 65 -> 80 (+15)",
+    "dns_exfiltration: 90 -> 100 (+10)",
+    "dns_exfiltration: 90 -> 100 (+10)"
+  ],
+  "regressions": [
+    "powershell_obfuscation: 82 -> 70 (-12) REGRESSION"
+  ],
+  "next_priorities": [
+    {
+      "task_type": "user_login",
+      "verdict": "benign",
+      "risk": 0,
+      "action": "Fix user_login: verdict=benign risk=0"
+    },
+    {
+      "task_type": "health_check",
+      "verdict": "benign",
+      "risk": 0,
+      "action": "Fix health_check: verdict=benign risk=0"
+    }
+  ]
+}

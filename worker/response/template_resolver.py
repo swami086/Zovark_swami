@@ -9,9 +9,15 @@ Usage:
 """
 import re
 import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from database.pool_manager import pooled_connection
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    from database.pool_manager import pooled_connection
+except ImportError:
+    psycopg2 = None
+    RealDictCursor = None
+    pooled_connection = None
 
 
 class PlaybookTemplateResolver:

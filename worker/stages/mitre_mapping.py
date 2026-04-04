@@ -60,6 +60,52 @@ MITRE_MAP = {
         {"id": "T1195.002", "name": "Compromise Software Supply Chain", "tactic": "Initial Access"},
         {"id": "T1195.001", "name": "Compromise Software Dependencies", "tactic": "Initial Access"},
     ],
+    "kerberoasting": [
+        {"id": "T1558.003", "name": "Kerberoasting", "tactic": "Credential Access"},
+    ],
+    "golden_ticket": [
+        {"id": "T1558.001", "name": "Golden Ticket", "tactic": "Credential Access"},
+    ],
+    "dns_exfiltration": [
+        {"id": "T1048.003", "name": "Exfiltration Over Unencrypted Non-C2 Protocol", "tactic": "Exfiltration"},
+        {"id": "T1071.004", "name": "DNS", "tactic": "Command and Control"},
+    ],
+    "lolbin_abuse": [
+        {"id": "T1218", "name": "System Binary Proxy Execution", "tactic": "Defense Evasion"},
+        {"id": "T1218.005", "name": "Mshta", "tactic": "Defense Evasion"},
+        {"id": "T1218.011", "name": "Rundll32", "tactic": "Defense Evasion"},
+    ],
+    "dcsync": [
+        {"id": "T1003.006", "name": "DCSync", "tactic": "Credential Access"},
+    ],
+    "dll_sideloading": [
+        {"id": "T1574.002", "name": "DLL Side-Loading", "tactic": "Persistence"},
+    ],
+    "process_injection": [
+        {"id": "T1055", "name": "Process Injection", "tactic": "Defense Evasion"},
+        {"id": "T1055.001", "name": "Dynamic-link Library Injection", "tactic": "Defense Evasion"},
+    ],
+    "wmi_lateral": [
+        {"id": "T1047", "name": "Windows Management Instrumentation", "tactic": "Execution"},
+        {"id": "T1021.003", "name": "Distributed Component Object Model", "tactic": "Lateral Movement"},
+    ],
+    "rdp_tunneling": [
+        {"id": "T1021.001", "name": "Remote Desktop Protocol", "tactic": "Lateral Movement"},
+        {"id": "T1572", "name": "Protocol Tunneling", "tactic": "Command and Control"},
+    ],
+    "powershell_obfuscation": [
+        {"id": "T1059.001", "name": "PowerShell", "tactic": "Execution"},
+        {"id": "T1027", "name": "Obfuscated Files or Information", "tactic": "Defense Evasion"},
+    ],
+    "credential_access": [
+        {"id": "T1003", "name": "OS Credential Dumping", "tactic": "Credential Access"},
+        {"id": "T1003.001", "name": "LSASS Memory", "tactic": "Credential Access"},
+        {"id": "T1110", "name": "Brute Force", "tactic": "Credential Access"},
+    ],
+    "api_key_abuse": [
+        {"id": "T1552.004", "name": "Private Keys", "tactic": "Credential Access"},
+        {"id": "T1528", "name": "Steal Application Access Token", "tactic": "Credential Access"},
+    ],
 }
 
 def get_mitre_techniques(task_type: str) -> list:

@@ -1,6 +1,14 @@
 """Extraction tools — IOC and entity extraction from text with evidence_refs."""
 import re
+import unicodedata
 from urllib.parse import urlparse
+
+
+def _normalize_text(text: str) -> str:
+    """NFKC normalize text to catch homoglyph and encoding attacks."""
+    if not isinstance(text, str):
+        text = str(text)
+    return unicodedata.normalize('NFKC', text)
 
 
 def _make_ioc(ioc_type, value, source_text, source_field="text"):
@@ -55,6 +63,7 @@ def extract_ipv6(text: str) -> list:
 
 def extract_domains(text: str) -> list:
     """Extract domain names with TLD validation."""
+    text = _normalize_text(text)
     # Common TLDs for validation
     valid_tlds = {
         "com", "org", "net", "io", "gov", "edu", "mil", "info", "biz", "co",
@@ -85,6 +94,7 @@ def extract_domains(text: str) -> list:
 
 def extract_urls(text: str) -> list:
     """Extract full URLs (http/https/ftp) from text."""
+    text = _normalize_text(text)
     pattern = r'(?:https?|ftp)://[^\s<>\"\')\]}>]+'
     results = []
     seen = set()
@@ -135,6 +145,8 @@ def extract_usernames(text: str) -> list:
     patterns = [
         r'(?:User|TargetUserName|SubjectUserName|AccountName|Account Name)\s*[:=]\s*(\S+)',
         r'(?:user|username)\s*[:=]\s*(\S+)',
+        # JSON-style key:value without parsing JSON (Track C)
+        r'"(?:user|username)"\s*:\s*"([^"]+)"',
     ]
     results = []
     seen = set()

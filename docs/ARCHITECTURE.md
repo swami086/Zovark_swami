@@ -61,7 +61,7 @@ ZOVARK is an autonomous AI SOC (Security Operations Center) agent designed for a
 | Orchestration | Temporal Server 1.24.2 |
 | Database | PostgreSQL 16 + pgvector + PgBouncer |
 | Cache | Redis 7 Alpine |
-| LLM Inference | Ollama on host (Qwen2.5-14B-Instruct Q4_K_M) |
+| LLM Inference | llama-server (llama.cpp) in container "zovark-inference" (Nemotron-Mini-4B-Instruct Q4_K_M) |
 | Dashboard | React 19 + TypeScript + Vite 7 + Tailwind 4 |
 | Sandbox | Docker (python:3.11-slim) with seccomp |
 | Egress Proxy | Squid (controlled outbound, not used by sandbox) |
@@ -82,9 +82,9 @@ ZOVARK is an autonomous AI SOC (Security Operations Center) agent designed for a
   |                   PostgreSQL (:5432)   |       |             |
   |                   via PgBouncer        |       |             |
   |                   + Redis (:6379)      v       v             |
-  |                                  Ollama      Sandbox         |
-  |                                  (:11434)    (Docker)        |
-  |                                  [HOST]      --network=none  |
+  |                                  llama-server  Sandbox        |
+  |                                  (:8080)       (Docker)      |
+  |                                  [container]   --network=none|
   |                                                              |
   |   Healer (:8081) ── monitors all services                   |
   ================================================================
@@ -103,7 +103,7 @@ ZOVARK is an autonomous AI SOC (Security Operations Center) agent designed for a
 | Worker | Temporal (:7233) | gRPC | Activity execution |
 | Worker | PgBouncer (:6432) | TCP | Data storage (pooled) |
 | Worker | Redis (:6379) | TCP | Dedup, code cache, batching |
-| Worker | Ollama (:11434) | HTTP | LLM inference via `host.docker.internal` |
+| Worker | llama-server (:8080) | HTTP | LLM inference via `zovark-inference` container |
 | Worker | Docker daemon | Unix socket | Sandbox container creation |
 | Healer | All services | HTTP/TCP | Health monitoring |
 | Sandbox containers | Nothing | None | `--network=none` enforced |
@@ -116,7 +116,7 @@ ZOVARK is an autonomous AI SOC (Security Operations Center) agent designed for a
 
 - 8 core Docker containers (postgres, redis, pgbouncer, temporal, api, worker, dashboard, squid-proxy)
 - Healer agent on port 8081
-- Ollama running on the host GPU with pre-staged model weights
+- llama-server (llama.cpp) running in container "zovark-inference" with pre-staged model weights
 - All investigation data, LLM interactions, and audit logs
 
 ### Outside the Boundary (Nothing)
@@ -130,8 +130,8 @@ ZOVARK is an autonomous AI SOC (Security Operations Center) agent designed for a
 
 ### Supply Chain Controls
 
-- **litellm removed.** PyPI packages 1.82.7-1.82.8 were compromised. Zovark uses direct `httpx` POST to Ollama. Zero AI proxy libraries.
-- **No Chinese-provenance models in default config.** MODEL_FAST and MODEL_CODE default to Meta Llama family. Qwen2.5-14B is used at the Ollama layer via operator choice.
+- **litellm removed.** PyPI packages 1.82.7-1.82.8 were compromised. Zovark uses direct `httpx` POST to the inference endpoint. Zero AI proxy libraries.
+- **No Chinese-provenance models in default config.** MODEL_FAST and MODEL_CODE default to NVIDIA Nemotron. Model is served by llama-server (llama.cpp) in a dedicated container.
 - **Docker images pinned.** Base images use specific tags, not `latest`.
 
 ---
@@ -569,7 +569,7 @@ The entire store operation is wrapped in a transaction. On exception: `conn.roll
 All LLM calls flow through a single gateway function. No other code in the system makes direct HTTP calls to the LLM endpoint.
 
 ```
-Pipeline Stage --> llm_call() --> httpx POST --> Ollama endpoint
+Pipeline Stage --> llm_call() --> httpx POST --> llama-server endpoint
                        |
                        v
                   _log_audit() --> llm_audit_log table
@@ -579,16 +579,16 @@ Pipeline Stage --> llm_call() --> httpx POST --> Ollama endpoint
 
 | Role | Env Var | Default | Purpose |
 |------|---------|---------|---------|
-| Fast | `ZOVARK_MODEL_FAST` | `llama3.2:3b` | Path B parameter extraction |
-| Code | `ZOVARK_MODEL_CODE` | `llama3.1:8b` | Path C code generation + Stage 4 summary |
+| Fast | `ZOVARK_MODEL_FAST` | `Nemotron-Mini-4B-Instruct` | Path B parameter extraction |
+| Code | `ZOVARK_MODEL_CODE` | `Nemotron-Mini-4B-Instruct` | Path C code generation + Stage 4 summary |
 
 ### Dual-Endpoint Support
 
-The gateway supports routing FAST and CODE models to separate Ollama instances:
+The gateway supports routing FAST and CODE models to separate inference instances:
 
 | Env Var | Default | Purpose |
 |---------|---------|---------|
-| `ZOVARK_LLM_ENDPOINT` | `http://host.docker.internal:11434/v1/chat/completions` | Default endpoint |
+| `ZOVARK_LLM_ENDPOINT` | `http://zovark-inference:8080/v1/chat/completions` | Default endpoint |
 | `ZOVARK_LLM_ENDPOINT_FAST` | Same as above | Override for FAST model |
 | `ZOVARK_LLM_ENDPOINT_CODE` | Same as above | Override for CODE model |
 
@@ -625,7 +625,7 @@ async def llm_call(
 }
 ```
 
-The `keep_alive: "30m"` parameter instructs Ollama to keep the model loaded in VRAM for 30 minutes between requests, avoiding cold-start latency.
+The `keep_alive: "30m"` parameter is an Ollama-compat parameter (ignored by llama-server, which keeps the model loaded persistently).
 
 ### Audit Logging
 
@@ -640,7 +640,7 @@ Prompts and responses are NEVER logged. Only metadata is stored.
 
 ### Preload
 
-On worker startup, `preload_ollama_model()` sends a minimal prompt to both MODEL_CODE and MODEL_FAST with `keep_alive: "30m"` to warm the VRAM.
+On worker startup, `preload_llm_models()` sends a minimal prompt to both MODEL_CODE and MODEL_FAST to warm the inference server.
 
 ---
 
@@ -1043,7 +1043,7 @@ Both endpoints normalize the incoming alert format, create an `agent_task`, and 
 |---------|--------|-------------------|
 | api | HTTP GET :8090/health | 200 OK |
 | dashboard | HTTP GET :3000 | 200 OK |
-| ollama | HTTP GET :11434/api/tags | 200 OK |
+| inference | HTTP GET :8080/health | 200 OK |
 | postgres | `pg_isready` | Exit code 0 |
 | redis | `redis-cli ping` | PONG |
 | worker | `docker inspect` | Running |
@@ -1130,14 +1130,14 @@ Written to `/var/log/zovark/healer_report_YYYYMMDD.json` with:
 | `monitoring` | prometheus:9090, grafana:3002, postgres-exporter, redis-exporter | Metrics and alerting |
 | `debug` | temporal-ui:8080 | Workflow debugging |
 | `storage` | minio | S3-compatible object storage |
-| `airgap-ollama` | ollama | LLM inference when not running on host |
+| `airgap-ollama` | ollama | DEPRECATED -- inference now runs in zovark-inference container by default |
 
-### LLM (Host Process)
+### LLM Inference (Container)
 
-Ollama runs on the host (not in Docker) for direct GPU access:
-- Port: 11434
-- Model: `qwen2.5:14b` (Qwen2.5-14B-Instruct Q4_K_M)
-- Worker connects via: `http://host.docker.internal:11434/v1/chat/completions`
+llama-server (llama.cpp) runs in the "zovark-inference" container with GPU passthrough:
+- Port: 8080
+- Model: Nemotron-Mini-4B-Instruct Q4_K_M
+- Worker connects via: `http://zovark-inference:8080/v1/chat/completions`
 - Env var: `ZOVARK_LLM_ENDPOINT` (not LITELLM_URL)
 
 ### Network
@@ -1156,17 +1156,17 @@ All core services communicate over the `zovark-internal` Docker bridge network. 
 | AST prefilter | 78 | `worker/tests/` | pytest | All blocked patterns, imports, builtins |
 | Normalizer | 19 | `worker/tests/` | pytest | 70+ field mappings, 4 SIEM formats |
 | Misc unit | 14 | `worker/tests/` | pytest | Output validator, MITRE mapping, etc. |
-| V2 pipeline integration | 14 | `worker/tests/` | pytest | Full pipeline with mock Ollama |
+| V2 pipeline integration | 14 | `worker/tests/` | pytest | Full pipeline with mock LLM server |
 | Cipher audit | 10 | `worker/tests/` | pytest | NIST SP 800-57 skill |
 | Go unit tests | 44 | `api/` | go test | API handlers, middleware, auth |
 
 **Total:** 223 test functions (155 unit + 14 integration + 10 cipher + 44 Go)
 
-### Mock Ollama Server
+### Mock LLM Server
 
 **File:** `tests/mock_ollama.py`
 
-Simulates Ollama's OpenAI-compatible API for integration testing without GPU hardware. Returns canned responses matching expected output schemas.
+Simulates the OpenAI-compatible chat completions API for integration testing without GPU hardware. Returns canned responses matching expected output schemas.
 
 ### Alert Corpora
 
@@ -1225,7 +1225,7 @@ Validates deployment hardware and recommends tier:
 Packer template for building a pre-configured VM:
 - Base: Ubuntu 24.04 LTS
 - Output formats: OVA (VMware/VirtualBox), QCOW2 (KVM/Proxmox)
-- Includes: Docker, Ollama, model weights, all Docker images
+- Includes: Docker, llama-server, model weights, all Docker images
 
 ### Crypto Bundles
 
@@ -1276,7 +1276,7 @@ Packages a Zovark release as a `.zvk` archive with Ed25519 signing:
 | 10 | DPO pipeline | Data exists in `dpo/` but no production model trained |
 | 11 | Zovark Core (log normalizer / ZCS schema) | Not implemented; planning only |
 | 12 | Real SIEM connection | Splunk/Elastic endpoints exist but untested with live SIEM |
-| 13 | Multi-GPU inference | Not supported; single Ollama instance only |
+| 13 | Multi-GPU inference | Not supported; single llama-server instance only |
 
 ---
 
@@ -1329,8 +1329,8 @@ Templates use `{{parameter_name}}` placeholders filled by Path A (direct mapping
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `ZOVARK_LLM_ENDPOINT` | `http://host.docker.internal:11434/v1/chat/completions` | Primary LLM endpoint |
-| `ZOVARK_LLM_KEY` | `zovark-llm-key-2026` | LLM API key (Ollama ignores this but logged) |
+| `ZOVARK_LLM_ENDPOINT` | `http://zovark-inference:8080/v1/chat/completions` | Primary LLM endpoint |
+| `ZOVARK_LLM_KEY` | `zovark-llm-key-2026` | LLM API key (llama-server ignores this but logged) |
 | `DATABASE_URL` | `postgresql://zovark:zovark_dev_2026@postgres:5432/zovark` | PostgreSQL connection |
 | `REDIS_URL` | `redis://:hydra-redis-dev-2026@redis:6379/0` | Redis connection |
 
@@ -1340,8 +1340,8 @@ Templates use `{{parameter_name}}` placeholders filled by Path A (direct mapping
 |----------|---------|---------|
 | `ZOVARK_FAST_FILL` | `false` | Enable Path A for all alerts (stress test mode) |
 | `ZOVARK_MODE` | `full` | `full` or `templates-only` |
-| `ZOVARK_MODEL_FAST` | `llama3.2:3b` | Fast model name |
-| `ZOVARK_MODEL_CODE` | `llama3.1:8b` | Code generation model name |
+| `ZOVARK_MODEL_FAST` | `Nemotron-Mini-4B-Instruct` | Fast model name |
+| `ZOVARK_MODEL_CODE` | `Nemotron-Mini-4B-Instruct` | Code generation model name |
 | `ZOVARK_LLM_ENDPOINT_FAST` | Same as primary | Separate endpoint for fast model |
 | `ZOVARK_LLM_ENDPOINT_CODE` | Same as primary | Separate endpoint for code model |
 | `ZOVARK_ASSESS_TIMEOUT` | `45` | Timeout (seconds) for assess LLM summary |

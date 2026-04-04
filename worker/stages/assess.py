@@ -25,8 +25,12 @@ from stages.output_validator import validate_investigation_output, safe_default_
 from stages.mitre_mapping import get_mitre_techniques
 
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
-ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
-ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
+try:
+    from settings import settings as _settings
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
+except ImportError:
+    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "sk-zovark-dev-2026")
 ASSESS_SUMMARY_TIMEOUT = float(os.getenv("ZOVARK_ASSESS_TIMEOUT", "45"))
 
 
@@ -44,10 +48,10 @@ def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int, executi
         return "true_positive"
     if risk_score >= 70:
         return "true_positive"
-    # Suspicious: moderate signals (covers the 36-49 dead zone)
+    # Suspicious: moderate signals (covers the 25-49 dead zone)
     if risk_score >= 50:
         return "suspicious"
-    if risk_score >= 36 and finding_count >= 1:
+    if risk_score >= 25 and finding_count >= 1:
         return "suspicious"
     # Benign: low risk with no findings
     if finding_count == 0 and ioc_count == 0:
@@ -82,21 +86,30 @@ def _template_summary(task_type: str, findings: list, iocs: list, risk_score: in
     )
 
 
-# --- LLM summary (optional) ---
+# --- LLM summary (optional, uses CODE model) ---
+# PREFIX CACHING: static system prompt is cached; only investigation data is dynamic.
+_SUMMARY_SYSTEM = (
+    "Summarize this SOC investigation in 2-3 sentences for an L1 analyst. "
+    "Lead with the verdict, mention key IOCs, and state the recommended action. "
+    "Be specific — cite IPs, usernames, and MITRE techniques from the data."
+)
+
 async def _llm_summary(stdout: str, task_type: str, task_id: str = "", tenant_id: str = "") -> str:
     """Call LLM to generate a 2-3 sentence investigation summary."""
     try:
         summary_config = get_model_config(severity="low", task_type=task_type)
-        summary_config.update({"model": MODEL_CODE, "temperature": 0.1, "max_tokens": 200})
+        summary_config.update({"model": MODEL_CODE, "temperature": 0.3, "max_tokens": 200})
         result = await llm_call(
             prompt=stdout[:2000],
-            system_prompt="Summarize this investigation in 2-3 sentences.",
+            system_prompt=_SUMMARY_SYSTEM,
             model_config=summary_config,
             task_id=task_id,
             stage="assess",
             task_type=task_type,
             tenant_id=tenant_id,
             timeout=ASSESS_SUMMARY_TIMEOUT,
+            role="summary",
+            grammar_name=None,  # no grammar for prose summary
         )
         return result["content"]
     except Exception as e:
@@ -278,7 +291,11 @@ def _fp_confidence(risk_score: int, ioc_count: int) -> float:
 
 
 # --- Validation failure logging ---
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
+try:
+    from settings import settings as _settings_db
+    DATABASE_URL = os.environ.get("DATABASE_URL", _settings_db.database_url)
+except ImportError:
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
 
 
 def _log_validation_failure(task_id: str, tenant_id: str, task_type: str, error_msg: str):
@@ -342,7 +359,7 @@ def _generate_plain_english(task_type: str, verdict: str, risk_score: int,
     # Risk
     if risk_score >= 70:
         lines.append(f"• HIGH RISK ({risk_score}/100) — immediate action recommended")
-    elif risk_score >= 36:
+    elif risk_score >= 25:
         lines.append(f"• MEDIUM RISK ({risk_score}/100) — review recommended")
     else:
         lines.append(f"• LOW RISK ({risk_score}/100) — no action needed")
@@ -422,7 +439,11 @@ async def assess_results(data: dict) -> dict:
         "risk_score": risk_score,
         "recommendations": recommendations,
     }
-    is_valid, validation_error = validate_investigation_output(sandbox_output)
+    validation_context = {
+        "tools_executed": data.get("tools_executed"),
+        "plan_executed": data.get("plan_executed"),
+    }
+    is_valid, validation_error = validate_investigation_output(sandbox_output, context=validation_context)
     if not is_valid:
         activity.logger.warning(
             f"Sandbox output validation failed for task {task_id}: {validation_error}"
@@ -447,7 +468,10 @@ async def assess_results(data: dict) -> dict:
         siem_rule = siem_event.get("rule_name", "")
     else:
         raw_log = siem_title = siem_rule = ""
-    combined_signal = f"{raw_log} {siem_title} {siem_rule} {stdout}".lower()
+    # Signal boost scans SIEM-provided data ONLY — not tool execution output.
+    # stdout contains tool runner variable refs ($raw_log, $step2) and JSON keys
+    # ("source", "evidence_refs") that trigger false positives on attack regexes.
+    combined_signal = f"{raw_log} {siem_title} {siem_rule}".lower()
 
     attack_signals = [
         (r"(?:union\s+select|or\s+1\s*=\s*1|'\s*or\s*'|drop\s+table|;.*--|\bsleep\s*\(|benchmark\s*\(|sqli|sql.?inject)", "SQL injection"),
@@ -561,7 +585,7 @@ async def assess_results(data: dict) -> dict:
     siem_rule_name = siem_event.get("rule_name", "") if isinstance(siem_event, dict) else ""
     siem_title_val = siem_event.get("title", "") if isinstance(siem_event, dict) else ""
     if _has_attack_indicators(task_type, siem_rule_name, siem_title_val):
-        if 36 <= risk_score < 70:
+        if 25 <= risk_score < 70:
             activity.logger.info(f"Boosting template-matched attack from risk {risk_score} to 70")
             risk_score = 70
 
@@ -627,11 +651,53 @@ async def assess_results(data: dict) -> dict:
         mitre=out.get("mitre_attack", []),
         siem_event=siem_event,
     )
+
+    # Emit real-time events for dashboard waterfall
+    trace_id = data.get("trace_id", "")
+    try:
+        from events import emit_event
+        # IOC discovery events
+        for ioc in iocs[:10]:  # cap at 10 to avoid flooding
+            ioc_val = ioc.get("value", "") if isinstance(ioc, dict) else str(ioc)
+            ioc_type = ioc.get("type", "unknown") if isinstance(ioc, dict) else "unknown"
+            if ioc_val:
+                emit_event(task_id, tenant_id, trace_id, "ioc_discovered", {"ioc_type": ioc_type, "value": ioc_val})
+        # MITRE mapping events
+        for technique in out.get("mitre_attack", [])[:5]:
+            tid = technique.get("technique_id", technique) if isinstance(technique, dict) else str(technique)
+            tname = technique.get("name", tid) if isinstance(technique, dict) else tid
+            emit_event(task_id, tenant_id, trace_id, "mitre_mapped", {"technique_id": tid, "name": tname})
+        # Verdict event
+        emit_event(task_id, tenant_id, trace_id, "verdict_ready", {"verdict": verdict, "risk_score": risk_score})
+    except Exception:
+        pass
     # Override status to "completed" when assess produced a valid verdict.
     # The execute stage may have set status="failed" from non-zero exit code,
     # but if assess derived a real verdict with risk > 0, the investigation succeeded.
     if verdict in ("true_positive", "suspicious", "benign", "needs_analyst_review") and risk_score > 0:
         out["status"] = "completed"
+
+    # Pydantic verdict validation (graceful — never crashes the investigation)
+    try:
+        from schemas import VerdictOutput
+        from pydantic import ValidationError
+        # Map severity for validation (assess uses "informational", schema uses "info")
+        sev_map = {"informational": "info", "critical": "critical", "high": "high", "medium": "medium", "low": "low", "info": "info"}
+        # Only validate the core verdicts (needs_analyst_review/needs_manual_review bypass validation)
+        if verdict in ("true_positive", "suspicious", "benign", "inconclusive", "error"):
+            verdict_for_validation = {
+                "verdict": verdict,
+                "risk_score": risk_score,
+                "severity": sev_map.get(severity, "medium"),
+                "summary": out.get("plain_english_summary", "") or summary or "Investigation complete",
+                "mitre_techniques": [t.get("technique_id") or t.get("id", str(t)) if isinstance(t, dict) else str(t) for t in out.get("mitre_attack", [])],
+            }
+            validated = VerdictOutput.model_validate(verdict_for_validation)
+            # Apply cleaned MITRE techniques back (invalid IDs silently dropped)
+            out["mitre_attack_validated"] = validated.mitre_techniques
+    except (ImportError, Exception) as e:
+        if not isinstance(e, ImportError):
+            activity.logger.warning(f"Verdict validation issue (non-fatal): {e}")
 
     # End OTEL span
     if _span:

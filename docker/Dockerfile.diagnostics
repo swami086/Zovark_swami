@@ -1,0 +1,37 @@
+# Zovark Diagnostic Sidecar
+# Pure Go, distroless runtime, no shell, no os/exec
+# Suggested memory limit: 64MB
+
+# ── Builder ──────────────────────────────────────────────
+FROM golang:1.22-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /build
+
+# Copy module files first for layer caching
+COPY cmd/diagnostics/go.mod cmd/diagnostics/go.sum* ./
+RUN go mod download
+
+# Copy source
+COPY cmd/diagnostics/ ./
+
+# Build diagnostics server (static, no CGO)
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /diagnostics .
+
+# Build healthcheck binary (static, no CGO)
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /healthcheck ./healthcheck
+
+# ── Runtime ──────────────────────────────────────────────
+FROM cgr.dev/chainguard/static:latest
+
+COPY --from=builder /diagnostics /diagnostics
+COPY --from=builder /healthcheck /healthcheck
+
+ENV DIAG_PORT=8091
+EXPOSE 8091
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["/healthcheck"]
+
+ENTRYPOINT ["/diagnostics"]

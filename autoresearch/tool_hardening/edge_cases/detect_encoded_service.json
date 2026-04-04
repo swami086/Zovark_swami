@@ -1,0 +1,7 @@
+[
+  {"input": {"raw_log": "EventID=7045 ServiceName=Test ImagePath=powershell.exe -enc UwB0AGEAcgB0AC0AUwBsAGUAZQBwACAALQBzACAAMQAwAA=="}, "expected_detected": true},
+  {"input": {"raw_log": "EventID=4697 ImagePath=cmd.exe /c echo hello"}, "expected_detected": false},
+  {"input": {"raw_log": "Service created: ImagePath=svchost.exe -k netsvcs"}, "expected_detected": false},
+  {"input": {"raw_log": "powershell.exe -encodedcommand ZQBjAGgAbwAgAHQAZQBzAHQA"}, "expected_detected": true},
+  {"input": {"raw_log": "-nop -w hidden -ep bypass -c IEX..."}, "expected_detected": true}
+]

@@ -1,0 +1,30 @@
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "comment": "Zovark inference seccomp profile — default-allow with targeted blocks for dangerous syscalls. CUDA/GPU workloads require broad syscall access (ioctl, mmap, etc.), so we block only the high-risk kernel interfaces that an inference container should never need.",
+  "syscalls": [
+    {
+      "names": [
+        "io_uring_setup",
+        "io_uring_enter",
+        "io_uring_register",
+        "userfaultfd",
+        "perf_event_open",
+        "ptrace",
+        "bpf",
+        "kexec_load",
+        "kexec_file_load",
+        "mount",
+        "umount2",
+        "unshare",
+        "process_vm_readv",
+        "process_vm_writev",
+        "keyctl",
+        "add_key",
+        "request_key",
+        "personality"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1
+    }
+  ]
+}

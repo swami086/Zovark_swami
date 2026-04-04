@@ -46,7 +46,7 @@ async def generate_recommendation(params: dict) -> dict:
     tenant_id = params["tenant_id"]
     investigation_data = params.get("investigation_data", {})
 
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://host.docker.internal:11434/v1/chat/completions")
+    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
     api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     tier_config = get_tier_config("generate_recommendation")

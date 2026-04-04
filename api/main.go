@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
@@ -17,7 +18,7 @@ type Config struct {
 	Port             string
 	DatabaseURL      string
 	TemporalAddress  string
-	OllamaMasterKey string
+	LLMKey string
 	JWTSecret        string
 	// OIDC/SSO configuration
 	OIDCIssuerURL    string
@@ -39,7 +40,7 @@ func init() {
 		Port:             getEnvOrDefault("PORT", "8090"),
 		DatabaseURL:      getEnvOrDefault("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark"),
 		TemporalAddress:  getEnvOrDefault("TEMPORAL_ADDRESS", "temporal:7233"),
-		OllamaMasterKey: getEnvOrDefault("ZOVARK_LLM_KEY", ""),
+		LLMKey: getEnvOrDefault("ZOVARK_LLM_KEY", ""),
 		JWTSecret:        getEnvOrDefault("JWT_SECRET", ""),
 		// OIDC
 		OIDCIssuerURL:    getEnvOrDefault("OIDC_ISSUER_URL", ""),
@@ -124,6 +125,11 @@ func main() {
 	if natsClient != nil {
 		defer natsClient.Close()
 	}
+
+	// Start backpressure queue drain goroutine
+	drainCtx, drainCancel := context.WithCancel(context.Background())
+	defer drainCancel()
+	go startQueueDrainLoop(drainCtx)
 
 	// Setup Gin router
 	router := gin.Default()
@@ -264,11 +270,6 @@ func main() {
 		api.GET("/retention-policies", requireRole("admin"), listRetentionPoliciesHandler)
 		api.PUT("/retention-policies/:id", requireRole("admin"), updateRetentionPolicyHandler)
 
-		// SIEM Ingest — vendor-specific webhook receivers (analyst + admin)
-		api.POST("/ingest/splunk", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), splunkIngestHandler)
-		api.POST("/ingest/elastic", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), elasticIngestHandler)
-		api.GET("/ingest/health", ingestHealthHandler)
-
 		// Integration management (admin only)
 		api.POST("/integrations/slack/test", requireRole("admin"), testSlackWebhookHandler)
 		api.PUT("/integrations/slack", requireRole("admin"), configureSlackWebhookHandler)
@@ -334,6 +335,61 @@ func main() {
 		// Governance configuration (admin only)
 		api.GET("/governance/config", requireRole("admin"), getGovernanceConfigHandler)
 		api.PUT("/governance/config", requireRole("admin"), updateGovernanceConfigHandler)
+	}
+
+	// SIEM ingest routes — high-volume alert ingestion
+	// Rate control handled by 3-layer burst protection (dedup + batch + backpressure)
+	// NOT by per-tenant rate limiter — see HANDOVER.md
+	siem := router.Group("/api/v1/ingest")
+	siem.Use(authMiddleware())
+	siem.Use(auditMiddleware())
+	{
+		siem.POST("/splunk", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), splunkIngestHandler)
+		siem.POST("/elastic", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), elasticIngestHandler)
+		siem.GET("/health", requireRole("admin", "analyst", "api_key"), ingestHealthHandler)
+	}
+
+	// Control Plane — admin routes for config, diagnostics, bootstrap
+	adminGroup := router.Group("/api/v1/admin")
+	adminGroup.Use(authMiddleware())
+	adminGroup.Use(requireRole("admin"))
+	adminGroup.Use(auditMiddleware())
+	{
+		// Diagnostics proxy (sidecar)
+		adminGroup.POST("/diagnostics/ping", handleDiagPing)
+		adminGroup.POST("/diagnostics/http-check", handleDiagHTTPCheck)
+		adminGroup.POST("/diagnostics/dns", handleDiagDNS)
+		adminGroup.POST("/diagnostics/tcp", handleDiagTCP)
+		adminGroup.POST("/diagnostics/parse-test", handleDiagParseTest)
+		adminGroup.GET("/diagnostics/health", handleDiagHealth)
+
+		// System health (combined OOB + diagnostics)
+		adminGroup.GET("/system/health", handleSystemHealth)
+
+		// Config management
+		adminGroup.GET("/config", handleConfigGetAll)
+		adminGroup.GET("/config/audit", handleConfigAuditLog)
+		adminGroup.GET("/config/:key", handleConfigGet)
+		adminGroup.PUT("/config", handleConfigUpsert)
+		adminGroup.DELETE("/config/:key", handleConfigDelete)
+		adminGroup.POST("/config/:key/rollback/:audit_id", handleConfigRollback)
+
+		// Bootstrap wizard
+		adminGroup.POST("/bootstrap/inject-synthetic", handleInjectSynthetic)
+	}
+
+	// Break-glass emergency auth — NO auth middleware (it IS the auth)
+	router.POST("/api/v1/admin/breakglass/login", handleBreakglassLogin)
+
+	// Start OOB watchdog on :9091 (independent of main Gin server)
+	// Wait for it to be listening before starting main Gin server.
+	oobReady := make(chan struct{})
+	go startOOBServer(oobReady)
+	select {
+	case <-oobReady:
+		log.Println("[oob] watchdog ready")
+	case <-time.After(5 * time.Second):
+		log.Println("[oob] WARNING: watchdog did not become ready in 5s, proceeding anyway")
 	}
 
 	// Start server

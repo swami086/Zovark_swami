@@ -145,11 +145,11 @@ Recommended: 2-3 workers for single-GPU setups, 5-10 for enterprise.
 
 ## Updating the LLM Model
 
-### Ollama
+### LLM Inference (llama-server)
 
 ```bash
 # Pull a new model
-ollama pull qwen2.5:14b
+# Model is pre-loaded in zovark-inference container
 
 # Switch models — update .env
 echo 'ZOVARK_LLM_MODEL=qwen2.5:32b' >> .env
@@ -256,22 +256,22 @@ docker stats --no-stream
 
 ```bash
 # Check if LLM server is responding
-curl -s http://localhost:11434/v1/models
+curl -s http://zovark-inference:8080/health
 
-# If using Ollama, check it's running
-systemctl status ollama    # Linux
-ollama list                # Any OS
+# Check inference container is running:
+docker compose ps zovark-inference
+docker compose logs zovark-inference --tail 5
 
 # Check worker can reach the LLM endpoint
 docker compose exec worker python -c "
 import urllib.request, json
-req = urllib.request.Request('http://host.docker.internal:11434/v1/models')
+req = urllib.request.Request('http://zovark-inference:8080/health')
 resp = urllib.request.urlopen(req, timeout=5)
 print(json.loads(resp.read()))
 "
 
 # If LLM is down, restart it
-systemctl restart ollama   # Linux
+docker compose restart zovark-inference
 # or restart llama-server process
 
 # Check GPU isn't out of memory

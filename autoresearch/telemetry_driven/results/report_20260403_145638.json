@@ -1,0 +1,87 @@
+{
+  "summary": {
+    "detection_rate": 1.0,
+    "attack_passed": 4,
+    "attack_count": 4,
+    "risk_mean": 100.0,
+    "risk_min": 100,
+    "risk_max": 100,
+    "fp_rate": 0.0,
+    "benign_passed": 5,
+    "benign_count": 5
+  },
+  "attack_results": [
+    {
+      "name": "phishing_c50df9",
+      "task_type": "phishing",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    },
+    {
+      "name": "c2_communication_b9e229",
+      "task_type": "c2_communication",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    },
+    {
+      "name": "phishing_673dea",
+      "task_type": "phishing",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    },
+    {
+      "name": "phishing_404fe8",
+      "task_type": "phishing",
+      "verdict": "true_positive",
+      "risk": 100,
+      "passed": true
+    }
+  ],
+  "benign_results": [
+    {
+      "name": "benign_password_change",
+      "task_type": "password_change",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_windows_update",
+      "task_type": "windows_update",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_health_check",
+      "task_type": "health_check",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_scheduled_backup",
+      "task_type": "scheduled_backup",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    },
+    {
+      "name": "benign_user_login",
+      "task_type": "user_login",
+      "verdict": "benign",
+      "risk": 0,
+      "passed": true
+    }
+  ],
+  "improvements": [
+    "phishing: 37 -> 100 (+63)",
+    "phishing: 37 -> 100 (+63)",
+    "phishing: 37 -> 100 (+63)"
+  ],
+  "regressions": [],
+  "next_priorities": []
+}

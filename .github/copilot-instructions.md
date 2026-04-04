@@ -11,10 +11,10 @@ Read `CLAUDE.md` at repo root for full project context.
 - **Tests:** Go: `*_test.go` in same package. Python: `worker/tests/test_*.py`
 - **Config:** All secrets via env vars. `.env.example` is the contract. Never hardcode.
 - **DB queries:** Always tenant-scoped (WHERE tenant_id = $X)
-- **LLM calls:** Always through `worker/stages/llm_gateway.py` via `ZOVARK_LLM_ENDPOINT` (direct to Ollama, no proxy)
+- **LLM calls:** Always through `worker/stages/llm_gateway.py` via `ZOVARK_LLM_ENDPOINT` (direct to llama-server, no proxy)
 - **Error responses:** Never leak table names, SQL, or stack traces to clients
 
-> **Note:** LiteLLM was previously used as an LLM proxy (port 4000) but has been removed due to supply chain risk (PyPI compromise). All LLM calls now go directly to Ollama via `ZOVARK_LLM_ENDPOINT`.
+> **Note:** LiteLLM was previously used as an LLM proxy (port 4000) but has been removed due to supply chain risk (PyPI compromise). All LLM calls now go directly to llama-server via `ZOVARK_LLM_ENDPOINT`.
 
 ## Architecture
 

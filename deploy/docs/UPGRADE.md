@@ -181,8 +181,8 @@ curl -s http://localhost:8090/health
 LLM model upgrades are independent of Zovark code upgrades.
 
 ```bash
-# Ollama
-ollama pull qwen2.5:14b    # or desired model
+# LLM inference
+# Models are pre-loaded in the inference container
 
 # llama.cpp — download new GGUF, restart server
 # Update ZOVARK_LLM_MODEL in .env if model name changed

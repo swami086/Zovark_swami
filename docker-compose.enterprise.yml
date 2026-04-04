@@ -1,70 +1,142 @@
-# Enterprise override — replaces vLLM containers with larger models
-# Usage: docker compose -f docker-compose.yml -f docker-compose.enterprise.yml up -d
+# ============================================================
+# Zovark v3.2.1 Sovereign Appliance — Enterprise Tier (dual inference)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.distroless.yml -f docker-compose.enterprise.yml up -d
 #
-# Hardware requirements:
-#   Minimum: 48GB VRAM (NVIDIA A6000 or L40S)
-#   Recommended: 80GB VRAM (NVIDIA A100) or dual-4090 (48GB combined)
-#   System RAM: 64GB minimum
-#   Storage: 100GB for model weights
+# Splits inference into two dedicated containers:
+#   - zovark-inference-fast: FAST model (4B), 8 parallel slots (tool select, param fill)
+#   - zovark-inference-code: CODE model (8B-70B), 2 parallel slots (verdict, summary)
+#
+# Hardware: A100/H100 (80GB VRAM) recommended.
+# ============================================================
 
 services:
-  zovark-vllm-fast:
-    image: vllm/vllm-openai:v0.15.1
-    container_name: zovark-vllm-fast
-    command: >
-      --model /models/chat-model-7b
-      --served-model-name fast
-      --max-model-len 8192
-      --gpu-memory-utilization 0.15
-      --dtype half
-      --quantization awq
-    volumes:
-      - ./local_models/chat-model-7b:/models/chat-model-7b:ro
+
+  # ─── FAST INFERENCE (tool selection, high throughput) ────
+  # 8 parallel slots, short context, small model.
+  # Handles: tool selection, param fill, triage routing.
+  zovark-inference:
+    container_name: zovark-inference-fast
+    command:
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8080"
+      - --model
+      - /models/${ZOVARK_FAST_MODEL_FILE:-Nemotron-3-Nano-4B-Q8_0.gguf}
+      - --alias
+      - ${ZOVARK_FAST_MODEL_ALIAS:-nemotron-3-nano-4b}
+      - --n-gpu-layers
+      - "99"
+      - --ctx-size
+      - "2048"              # tool selection needs short context only
+      - --parallel
+      - "8"                 # high concurrency — absorb burst of tool selection calls
+      - --cont-batching
+      - --flash-attn
+      - --cache-type-k
+      - f16                 # full precision — A100 has VRAM headroom
+      - --cache-type-v
+      - f16
+      - --metrics
+      - --log-disable
+    environment:
+      - LLAMA_PORT=8080
+      - LLAMA_MODEL_ALIAS=${ZOVARK_FAST_MODEL_ALIAS:-nemotron-3-nano-4b}
     deploy:
       resources:
+        limits:
+          memory: 16G       # 4B model + KV cache for 8 parallel slots
         reservations:
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    networks:
-      - zovark-internal
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/inference-healthcheck"]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s     # 4B model: fast load + warmup
+      retries: 5
 
-  zovark-vllm-standard:
-    image: vllm/vllm-openai:v0.15.1
-    container_name: zovark-vllm-standard
-    command: >
-      --model /models/chat-model-32b
-      --served-model-name standard
-      --max-model-len 32768
-      --gpu-memory-utilization 0.70
-      --dtype half
-      --quantization awq
-      --tensor-parallel-size 1
-    volumes:
-      - ./local_models/chat-model-32b:/models/chat-model-32b:ro
+  # ─── CODE INFERENCE (assessment, high quality) ──────────
+  # 2 parallel slots, long context, bigger model.
+  # Handles: verdict derivation, IOC extraction, plain-English summary.
+  zovark-inference-code:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+      args:
+        CUDA_ARCH: ${CUDA_ARCH:-80}    # A100=80, H100=90
+    container_name: zovark-inference-code
+    read_only: true
+    tmpfs:
+      - /tmp:size=128M,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=config/seccomp-inference.json
     deploy:
       resources:
+        limits:
+          memory: 64G       # 70B Q4_K_M = ~40GB weights + KV cache
         reservations:
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    expose:
+      - "8080"
+    volumes:
+      - ./models:/models:ro
+    command:
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8080"
+      - --model
+      - /models/${ZOVARK_CODE_MODEL_FILE:-Meta-Llama-3.1-8B-Q8_0.gguf}
+      - --alias
+      - ${ZOVARK_CODE_MODEL_ALIAS:-llama-3.1-8b}
+      - --n-gpu-layers
+      - "99"
+      - --ctx-size
+      - "8192"              # assessment: SIEM alert + ALL tool execution results
+      - --parallel
+      - "2"                 # lower parallelism — bigger model, deeper reasoning
+      - --cont-batching
+      - --flash-attn
+      - --cache-type-k
+      - q8_0                # quantized cache — saves VRAM for large model weights
+      - --cache-type-v
+      - q8_0
+      - --defrag-thold
+      - "0.1"              # defrag needed if big model fills VRAM
+      - --metrics
+      - --log-disable
+    environment:
+      - LLAMA_PORT=8080
+      - LLAMA_MODEL_ALIAS=${ZOVARK_CODE_MODEL_ALIAS:-llama-3.1-8b}
+    healthcheck:
+      test: ["CMD", "/inference-healthcheck"]
+      interval: 15s
+      timeout: 30s          # bigger model takes longer per warmup
+      start_period: 180s    # 70B model: ~120s load + ~30s warmup
+      retries: 5
+    restart: unless-stopped
     networks:
       - zovark-internal
-    restart: unless-stopped
 
-  zovark-litellm:
-    volumes:
-      - ./litellm_config_enterprise.yaml:/app/config.yaml:ro
-
-  # Disable the 1.5B container in enterprise mode
-  zovark-vllm-chat:
-    profiles:
-      - disabled
-
-networks:
-  zovark-internal:
-    external: true
-    name: hydra-mvp_zovark-internal
+  # ─── WORKER (split endpoints to dual inference) ─────────
+  worker:
+    environment:
+      - ZOVARK_LLM_ENDPOINT_FAST=http://zovark-inference-fast:8080/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT_CODE=http://zovark-inference-code:8080/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT=http://zovark-inference-fast:8080/v1/chat/completions
+      - ZOVARK_MODEL_FAST=${ZOVARK_FAST_MODEL_ALIAS:-nemotron-3-nano-4b}
+      - ZOVARK_MODEL_CODE=${ZOVARK_CODE_MODEL_ALIAS:-llama-3.1-8b}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+    depends_on:
+      zovark-inference:
+        condition: service_healthy
+      zovark-inference-code:
+        condition: service_healthy

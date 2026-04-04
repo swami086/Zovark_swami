@@ -1,0 +1,40 @@
+# --------------------------------------------------------------------------- #
+#  Zovark Inference — llama.cpp server (CPU build from source)                 #
+#  Builds from latest llama.cpp master to support Nemotron architecture.       #
+#  GPU build: set GGML_CUDA=ON and use nvidia/cuda base instead.              #
+# --------------------------------------------------------------------------- #
+
+FROM ubuntu:24.04 AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git cmake build-essential curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone --depth 1 https://github.com/ggerganov/llama.cpp.git .
+
+RUN cmake -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DLLAMA_CURL=OFF \
+        -DLLAMA_BUILD_TESTS=OFF \
+        -DLLAMA_BUILD_EXAMPLES=OFF \
+        -DLLAMA_BUILD_SERVER=ON \
+    && cmake --build build --target llama-server -j$(nproc)
+
+# ---------- Runtime ----------
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgomp1 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/build/bin/llama-server /llama-server
+
+ENV LLAMA_PORT=8080
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=10s --start-period=90s --retries=5 \
+    CMD curl -sf http://127.0.0.1:8080/health || exit 1
+
+ENTRYPOINT ["/llama-server"]
