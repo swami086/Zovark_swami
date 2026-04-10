@@ -134,6 +134,7 @@ secrets:
   databaseUrl: "postgresql://zovark:zovark_dev_2026@postgresql:5432/zovark"
   jwtSecret: "zovark-jwt-secret-dev-2026"
   litellmMasterKey: "sk-zovark-dev-2026"
+  redisUrl: "redis://redis:6379/0"
 
 # ─── Integration Secrets (optional) ──────────────────────
 integrations:

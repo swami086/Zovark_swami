@@ -1,8 +1,8 @@
 # ============================================================
 # Zovark SOC Platform — Makefile
 # ============================================================
-.PHONY: test test-unit test-integration test-ci validate build \
-        up down logs clean lint
+.PHONY: test test-unit test-integration test-openai test-ci validate build \
+        up down logs clean lint plan-samples
 
 # ─── Test Targets ──────────────────────────────────────────
 
@@ -15,9 +15,18 @@ test-unit:
 	cd worker && python -m pytest tests/ -v --tb=short
 	cd api && go test -v -race -count=1 ./...
 
-## Run integration tests with mock Ollama (requires Docker)
+## Gated OpenAI validation (requires OPENAI_API_KEY in environment)
+test-openai:
+	@if [ -z "$$OPENAI_API_KEY" ]; then echo "OPENAI_API_KEY is required for test-openai"; exit 1; fi
+	cd worker && ZOVARK_LLM_PROVIDER=openai \
+		ZOVARK_LLM_ENDPOINT=https://api.openai.com/v1/chat/completions \
+		ZOVARK_LLM_ENDPOINT_FAST=https://api.openai.com/v1/chat/completions \
+		ZOVARK_LLM_ENDPOINT_CODE=https://api.openai.com/v1/chat/completions \
+		python -m pytest -c ../pytest.ini tests/test_ticket8_openai.py -m openai -v --tb=short
+
+## Run integration tests (Docker; set OPENAI_API_KEY for LLM-backed paths)
 test-integration:
-	@echo "=== Starting test stack with mock Ollama ==="
+	@echo "=== Starting test stack (compose + test overlay) ==="
 	docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait || \
 		docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build
 	@echo "=== Waiting for API health ==="
@@ -32,6 +41,11 @@ test-integration:
 ## Run full CI test suite via script
 test-ci:
 	./scripts/run_ci_tests.sh all
+
+## Deterministic investigation plan samples (tools runner; no API)
+plan-samples:
+	@echo "=== Investigation plan samples (worker/tests/tools/run_plan_samples.py) ==="
+	cd worker && python tests/tools/run_plan_samples.py
 
 ## Validate project structure and imports
 validate:

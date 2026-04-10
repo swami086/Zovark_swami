@@ -1,0 +1,28 @@
+{
+  "title": "Zovark — Investigation Pipeline",
+  "description": "Ticket 7 — pipeline latency percentiles, verdict/path distribution (import or recreate panels in SigNoz UI from queries below).",
+  "schemaVersion": 1,
+  "tags": ["zovark", "ticket-7", "pipeline"],
+  "panels": [
+    {
+      "title": "Stage span p95 latency (24h)",
+      "type": "graph",
+      "query": "SELECT name, quantile(0.95)(durationNano) / 1e9 AS p95_s, count() AS n FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND (name LIKE 'stage.%' OR name = 'investigation.pipeline') GROUP BY name ORDER BY p95_s DESC"
+    },
+    {
+      "title": "Investigation.pipeline count (24h)",
+      "type": "value",
+      "query": "SELECT count() FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name = 'investigation.pipeline'"
+    },
+    {
+      "title": "Verdict distribution (from stage.store attributes)",
+      "type": "pie",
+      "query": "SELECT tagMap['verdict'] AS verdict, count() AS c FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name = 'stage.store' GROUP BY verdict ORDER BY c DESC"
+    },
+    {
+      "title": "Path / execution_mode (tagMap)",
+      "type": "table",
+      "query": "SELECT tagMap['plan_path'] AS path, count() AS c FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name = 'stage.analyze' GROUP BY path ORDER BY c DESC LIMIT 20"
+    }
+  ]
+}

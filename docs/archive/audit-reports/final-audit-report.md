@@ -108,12 +108,14 @@
 
 ## C. Complete File Inventory
 
+> **Archive update (2026):** The tree below reflects the **baseline snapshot** taken for this audit. In the current repo, core activities live in **`worker/_legacy_activities.py`** (re-exported via `worker/activities/__init__.py`), and the main investigation orchestrator is **`InvestigationWorkflowV2`** in **`worker/stages/investigation_workflow.py`** (registered through **`worker/stages/register.py`**), replacing legacy **`ExecuteTaskWorkflow`** in monolithic **`worker/workflows.py`**.
+
 ### Worker Python Files (39+ files)
 
 | File | Lines | Sprint | Purpose |
 |------|-------|--------|---------|
-| worker/activities.py | 940 | Baseline | 19 Temporal activities (core pipeline) |
-| worker/workflows.py | 1068 | Baseline | ExecuteTaskWorkflow (main investigation pipeline) |
+| worker/activities.py | 940 | Baseline | 19 Temporal activities (core pipeline) — **today:** `worker/_legacy_activities.py` + package `worker/activities/` |
+| worker/workflows.py | 1068 | Baseline | **Was** ExecuteTaskWorkflow (main investigation pipeline) — **today:** `worker/stages/investigation_workflow.py` (**InvestigationWorkflowV2**) |
 | worker/main.py | 65 | Baseline | Worker entrypoint, registers 10 workflows + 95 activities |
 | worker/entity_graph.py | 445 | 1G | extract_entities, write_entity_graph, embed_investigation |
 | worker/entity_normalize.py | 131 | 1G | Entity normalization + hashing (IP, domain, hash, URL, email) |

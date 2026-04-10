@@ -173,14 +173,20 @@ async def fetch_task(task_id: str) -> dict:
         conn = get_db_connection()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT id, tenant_id, task_type, input, status FROM agent_tasks WHERE id = %s", (task_id,))
+                cur.execute(
+                    "SELECT id, tenant_id, task_type, input, status, trace_id, raw_input, dedup_hash FROM agent_tasks WHERE id = %s",
+                    (task_id,),
+                )
                 row = cur.fetchone()
                 if row:
                     if attempt > 0:
                         activity.logger.info(f"Task {task_id} found on attempt {attempt + 1}")
                     row['id'] = str(row['id'])
                     row['tenant_id'] = str(row['tenant_id'])
-                    return dict(row)
+                    out = dict(row)
+                    if out.get('trace_id'):
+                        out['trace_id'] = str(out['trace_id'])
+                    return out
         finally:
             _return_connection(conn)
 
@@ -193,8 +199,7 @@ async def fetch_task(task_id: str) -> dict:
 
 @activity.defn
 async def generate_code(task_data: dict) -> dict:
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
 
     prompt = task_data.get("input", {}).get("prompt", "")
     task_type = task_data.get("task_type", "Log Analysis")
@@ -296,25 +301,20 @@ async def generate_code(task_data: dict) -> dict:
     llm_model = tier_config["model"]
     prompt_name = "code_generation_with_logs" if log_data else "code_generation_mock"
 
-    payload = {
-        "model": llm_model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": augmented_prompt}
-        ],
-        "temperature": 0.7,
-        "max_tokens": tier_config["max_tokens"],
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-
     start_time = time.time()
-    async with httpx.AsyncClient(timeout=900.0) as client:
-        response = await client.post(llm_endpoint, json=payload, headers=headers)
-        response.raise_for_status()
-        result = response.json()
+    result = await llm_request(
+        llm_model,
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": augmented_prompt},
+        ],
+        temperature=0.7,
+        max_tokens=tier_config["max_tokens"],
+        stage="legacy_generate_code",
+        role="verdict",
+        endpoint_url=chat_endpoint_for_model(llm_model),
+        api_key=resolve_llm_api_key(None),
+    )
 
     execution_ms = int((time.time() - start_time) * 1000)
 
@@ -709,8 +709,7 @@ async def check_followup_needed(check_data: dict) -> dict:
 @activity.defn
 async def generate_followup_code(task_data: dict) -> dict:
     """Generate code for a follow-up step, including previous step context."""
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
 
     prompt = task_data.get("prompt", "")
     previous_context = task_data.get("previous_context", "")
@@ -753,25 +752,20 @@ async def generate_followup_code(task_data: dict) -> dict:
     tier_config = get_tier_config("generate_followup_code")
     followup_model = tier_config["model"]
 
-    payload = {
-        "model": followup_model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
-        "temperature": 0.7,
-        "max_tokens": tier_config["max_tokens"],
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-
     start_time = time.time()
-    async with httpx.AsyncClient(timeout=900.0) as client:
-        response = await client.post(llm_endpoint, json=payload, headers=headers)
-        response.raise_for_status()
-        result = response.json()
+    result = await llm_request(
+        followup_model,
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ],
+        temperature=0.7,
+        max_tokens=tier_config["max_tokens"],
+        stage="legacy_generate_followup_code",
+        role="verdict",
+        endpoint_url=chat_endpoint_for_model(followup_model),
+        api_key=resolve_llm_api_key(None),
+    )
 
     execution_ms = int((time.time() - start_time) * 1000)
 
@@ -1060,8 +1054,8 @@ async def fill_skill_parameters(data: dict) -> dict:
             "input_tokens": 0, "output_tokens": 0,
         }
 
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
     tier_config = get_tier_config("fill_skill_parameters")
     model_name = tier_config["model"]
 
@@ -1085,61 +1079,57 @@ async def fill_skill_parameters(data: dict) -> dict:
             user_msg += f"Available SIEM Context:\\n{wrapped_siem_ctx}\\n\\n"
         user_msg += "Respond ONLY with a JSON object where keys are parameter names and values are the extracted values."
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                llm_endpoint,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": model_name,
-                    "messages": [
-                        {"role": "system", "content": sys_msg},
-                        {"role": "user", "content": user_msg}
-                    ],
-                    "temperature": tier_config["temperature"],
-                    "max_tokens": tier_config["max_tokens"],
-                    "response_format": {"type": "json_object"}
-                }
-            )
-            resp.raise_for_status()
+        resp_json = await llm_request(
+            model_name,
+            [
+                {"role": "system", "content": sys_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            temperature=tier_config["temperature"],
+            max_tokens=tier_config["max_tokens"],
+            stage="fill_skill_parameters",
+            role="param_fill",
+            response_format={"type": "json_object"},
+            endpoint_url=chat_endpoint_for_model(model_name),
+            api_key=resolve_llm_api_key(None),
+        )
+        usage = resp_json.get("usage", {})
+        input_tokens = usage.get("prompt_tokens", 0)
+        output_tokens = usage.get("completion_tokens", 0)
 
-            resp_json = resp.json()
-            usage = resp_json.get("usage", {})
-            input_tokens = usage.get("prompt_tokens", 0)
-            output_tokens = usage.get("completion_tokens", 0)
+        fill_ms = int((time.time() - start_time) * 1000)
+        log_llm_call(
+            activity_name="fill_skill_parameters",
+            model_tier=tier_config["tier"],
+            model_id=model_name,
+            prompt_name="parameter_extraction",
+            prompt_version=get_version("parameter_extraction"),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            latency_ms=fill_ms,
+            temperature=tier_config["temperature"],
+            max_tokens=tier_config["max_tokens"],
+            tenant_id=data.get("tenant_id"),
+            task_id=data.get("task_id"),
+        )
 
-            fill_ms = int((time.time() - start_time) * 1000)
-            log_llm_call(
-                activity_name="fill_skill_parameters",
-                model_tier=tier_config["tier"],
-                model_id=model_name,
-                prompt_name="parameter_extraction",
-                prompt_version=get_version("parameter_extraction"),
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                latency_ms=fill_ms,
-                temperature=tier_config["temperature"],
-                max_tokens=tier_config["max_tokens"],
-                tenant_id=data.get("tenant_id"),
-                task_id=data.get("task_id"),
-            )
+        content = resp_json["choices"][0]["message"]["content"].strip()
 
-            content = resp_json["choices"][0]["message"]["content"].strip()
+        extracted = json.loads(content)
 
-            extracted = json.loads(content)
+        for k, v in defaults.items():
+            if k not in extracted or extracted[k] is None:
+                extracted[k] = v
 
-            for k, v in defaults.items():
-                if k not in extracted or extracted[k] is None:
-                    extracted[k] = v
+        if "log_data" in defaults and log_data:
+            extracted["log_data"] = log_data
 
-            if "log_data" in defaults and log_data:
-                extracted["log_data"] = log_data
-
-            return {
-                "filled_parameters": extracted,
-                "execution_ms": int((time.time() - start_time) * 1000),
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens
-            }
+        return {
+            "filled_parameters": extracted,
+            "execution_ms": int((time.time() - start_time) * 1000),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens
+        }
 
     except Exception as e:
         print(f"Error in fill_skill_parameters: {e}")
@@ -1258,7 +1248,7 @@ async def enrich_alert_with_memory(task_input: dict) -> dict:
             return {'exact_matches': [], 'similar_entities': [], 'related_investigations': []}
         db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
         memory = InvestigationMemory(db_url=db_url)
-        return await memory.enrich_alert(raw_entities)
+        return await memory.enrich_alert(raw_entities, task_input.get("tenant_id"))
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"Memory enrichment failed non-fatally: {e}")
@@ -1294,9 +1284,11 @@ def _extract_iocs_from_input(task_input: dict) -> list:
 @activity.defn
 async def write_investigation_memory(memory_data: dict) -> None:
     try:
-        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-        api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+        from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
         tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
+        tier_mem = get_tier_config("write_investigation_memory")
+        mem_model = tier_mem["model"]
 
         task_id = memory_data.get("task_id")
         tenant_id = memory_data.get("tenant_id")
@@ -1332,19 +1324,25 @@ async def write_investigation_memory(memory_data: dict) -> None:
             f"Findings: {json.dumps(findings)}. Risk: {risk_score}. Recommends: {json.dumps(recommended)}."
         )
 
-        payload = {
-            "model": "fast",
-            "messages": [
-                {"role": "system", "content": "You are a succinct security analyst. Synthesize the JSON data into a short 2-3 sentence memory summary: 'Investigated [threat_type] alert. Found [N findings]. Risk score [X] because [reason]. Resolution: [recommended action].'"},
-                {"role": "user", "content": summary_prompt}
-            ]
-        }
+        mem_result = await llm_request(
+            mem_model,
+            [
+                {
+                    "role": "system",
+                    "content": "You are a succinct security analyst. Synthesize the JSON data into a short 2-3 sentence memory summary: 'Investigated [threat_type] alert. Found [N findings]. Risk score [X] because [reason]. Resolution: [recommended action].'",
+                },
+                {"role": "user", "content": summary_prompt},
+            ],
+            temperature=tier_mem["temperature"],
+            max_tokens=min(512, tier_mem["max_tokens"]),
+            stage="write_investigation_memory",
+            role="summary",
+            endpoint_url=chat_endpoint_for_model(mem_model),
+            api_key=resolve_llm_api_key(None),
+        )
+        memory_summary = mem_result["choices"][0]["message"]["content"].strip()
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(llm_endpoint, json=payload, headers={"Authorization": f"Bearer {api_key}"})
-            resp.raise_for_status()
-            memory_summary = resp.json()["choices"][0]["message"]["content"].strip()
-
             # Embed
             embed_resp = await client.post(tei_url, json={"inputs": memory_summary})
             embed_resp.raise_for_status()

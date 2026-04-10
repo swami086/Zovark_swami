@@ -1,0 +1,46 @@
+# Fluent Bit 3.x — collection buffer → HTTPS platform ingest (Ticket 5)
+# Tails read-only JSONL from /collection/buffer, bounded memory buffer, pushes JSON with Bearer auth.
+# HTTP 204 from the gateway is treated as success by the http output plugin.
+#
+# Set via environment (see docker-compose.yml profile collection):
+#   ZOVARK_PLATFORM_HOST, ZOVARK_PLATFORM_PORT, ZOVARK_PLATFORM_URI, ZOVARK_PLATFORM_TLS (on|off)
+#   ZOVARK_PLATFORM_API_KEY, ZOVARK_CUSTOMER_ID
+
+service:
+    flush: 5
+    daemon: off
+    log_level: info
+    http_server: on
+    http_listen: 0.0.0.0
+    http_port: 2020
+
+pipeline:
+    inputs:
+        - name: tail
+          tag: zovark.collection
+          path: /collection/buffer/*.jsonl
+          read_from_head: true
+          refresh_interval: 5
+          mem_buf_limit: 32MB
+          skip_long_lines: on
+          db: /tmp/flb-collection-tail.db
+          db.sync: normal
+
+    outputs:
+        - name: http
+          match: zovark.collection
+          host: ${ZOVARK_PLATFORM_HOST}
+          port: ${ZOVARK_PLATFORM_PORT}
+          uri: ${ZOVARK_PLATFORM_URI}
+          format: json
+          tls: ${ZOVARK_PLATFORM_TLS}
+          tls.verify: on
+          header: Authorization Bearer ${ZOVARK_PLATFORM_API_KEY}
+          # Gateway accepts raw JSONL lines or binary Parquet posts; Content-Type is forwarded as-is.
+          header: Content-Type application/json
+          header: X-Customer-ID ${ZOVARK_CUSTOMER_ID}
+          header: X-Zovark-Customer-Id ${ZOVARK_CUSTOMER_ID}
+          compress: gzip
+          net.keepalive: on
+          net.connect_timeout: 10
+          retry_limit: 5

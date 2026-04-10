@@ -1,0 +1,24 @@
+name: zovark-codegraph
+
+# Memgraph dedicated to Code Graph RAG for this repo only (isolated from other projects).
+#
+# Start:
+#   docker compose -f docker-compose.code-graph-rag.yml up -d
+#
+# Bolt: 127.0.0.1:7688 (maps to 7687 inside the container)
+#
+# Point Cursor MCP at MEMGRAPH_HOST=127.0.0.1 MEMGRAPH_PORT=7688 and
+# TARGET_REPO_PATH=/absolute/path/to/Zovark (see ~/.cursor/mcp.json).
+
+services:
+  memgraph-codegraph:
+    image: memgraph/memgraph:2.19.0
+    container_name: zovark-memgraph-codegraph
+    ports:
+      - "127.0.0.1:7688:7687"
+    volumes:
+      - zovark_memgraph_codegraph:/var/lib/memgraph
+    restart: unless-stopped
+
+volumes:
+  zovark_memgraph_codegraph:

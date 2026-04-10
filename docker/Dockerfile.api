@@ -45,6 +45,9 @@ COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /out/zovark-api    /zovark-api
 COPY --from=builder /out/healthcheck   /healthcheck
 
+# SQL migrations (schema_migrations + ./hydra-api migrate up | /zovark-api migrate up)
+COPY migrations/ /app/migrations/
+
 # Run as non-root (UID 65534 is the nonroot user in Chainguard images)
 USER nonroot:nonroot
 

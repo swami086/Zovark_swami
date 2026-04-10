@@ -2,6 +2,7 @@
 
 import os
 import json
+import time
 import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -89,8 +90,8 @@ async def analyze_false_positive(data: dict) -> dict:
     verdict = data.get("verdict", "inconclusive")
     risk_score = data.get("risk_score", 0)
 
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
     tier_config = get_tier_config("analyze_false_positive")
     llm_model = tier_config["model"]
     tei_url = os.environ.get("TEI_URL", "http://embedding-server:80/embed")
@@ -114,33 +115,8 @@ async def analyze_false_positive(data: dict) -> dict:
     except Exception as e:
         print(f"FP analyzer: similarity search failed (non-fatal): {e}")
 
-    # 2. Query for entity overlap
+    # 2. Entity overlap — PostgreSQL entity graph removed (Ticket 2); use Surreal in future.
     entity_overlap = []
-    try:
-        conn = _get_db()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("""
-                    SELECT i.id::text as investigation_id, i.verdict, i.risk_score, i.confidence,
-                           COUNT(DISTINCT eo.entity_id) as shared_entities
-                    FROM investigations i
-                    JOIN entity_observations eo ON eo.investigation_id = i.id
-                    WHERE eo.entity_id IN (
-                        SELECT entity_id FROM entity_observations WHERE investigation_id = %s
-                    )
-                    AND i.id != %s
-                    AND i.tenant_id = %s
-                    AND NOT COALESCE(i.injection_detected, false)
-                    GROUP BY i.id, i.verdict, i.risk_score, i.confidence
-                    HAVING COUNT(DISTINCT eo.entity_id) >= 2
-                    ORDER BY shared_entities DESC
-                    LIMIT 10
-                """, (investigation_id, investigation_id, tenant_id))
-                entity_overlap = [dict(r) for r in cur.fetchall()]
-        finally:
-            conn.close()
-    except Exception as e:
-        print(f"FP analyzer: entity overlap query failed (non-fatal): {e}")
 
     # 3. Compute base confidence from similar investigations
     all_similar = similar_investigations + entity_overlap
@@ -181,6 +157,7 @@ async def analyze_false_positive(data: dict) -> dict:
     ]
 
     try:
+        _llm_t0 = time.time()
         similar_context = json.dumps([
             {"verdict": s.get("verdict"), "risk_score": s.get("risk_score"),
              "similarity": round(float(s.get("similarity", 0)), 3),
@@ -207,47 +184,44 @@ async def analyze_false_positive(data: dict) -> dict:
             f"Explain why the verdict '{verdict}' is appropriate based on the evidence."
         )
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                llm_endpoint,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": llm_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 512,
-                    "response_format": {"type": "json_object"},
-                },
-            )
-            resp.raise_for_status()
-            result = resp.json()
+        result = await llm_request(
+            llm_model,
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=512,
+            stage="analyze_false_positive",
+            role="verdict",
+            response_format={"type": "json_object"},
+            endpoint_url=chat_endpoint_for_model(llm_model),
+            api_key=resolve_llm_api_key(None),
+        )
 
-            usage = result.get("usage", {})
-            log_llm_call(
-                activity_name="analyze_false_positive",
-                model_tier=tier_config["tier"],
-                model_id=llm_model,
-                prompt_name="fp_analysis",
-                prompt_version=get_version("fp_analysis"),
-                input_tokens=usage.get("prompt_tokens", 0),
-                output_tokens=usage.get("completion_tokens", 0),
-                latency_ms=0,
-                temperature=tier_config["temperature"],
-                max_tokens=tier_config["max_tokens"],
-                tenant_id=tenant_id,
-            )
+        usage = result.get("usage", {})
+        log_llm_call(
+            activity_name="analyze_false_positive",
+            model_tier=tier_config["tier"],
+            model_id=llm_model,
+            prompt_name="fp_analysis",
+            prompt_version=get_version("fp_analysis"),
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
+            latency_ms=int((time.time() - _llm_t0) * 1000),
+            temperature=tier_config["temperature"],
+            max_tokens=tier_config["max_tokens"],
+            tenant_id=tenant_id,
+        )
 
-            content = result["choices"][0]["message"]["content"].strip()
+        content = result["choices"][0]["message"]["content"].strip()
 
-            try:
-                parsed = json.loads(content)
-                reasoning = parsed.get("reasoning", content[:300])
-                recommendation = parsed.get("recommendation", "")
-            except json.JSONDecodeError:
-                reasoning = content[:300]
+        try:
+            parsed = json.loads(content)
+            reasoning = parsed.get("reasoning", content[:300])
+            recommendation = parsed.get("recommendation", "")
+        except json.JSONDecodeError:
+            reasoning = content[:300]
     except Exception as e:
         print(f"FP analyzer: LLM reasoning failed (non-fatal): {e}")
         reasoning = f"Confidence {confidence} based on {len(all_similar)} similar investigations"

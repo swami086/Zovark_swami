@@ -12,6 +12,7 @@ Uses Redis for in-memory coalescing.
 import json
 import os
 import random
+import threading
 import time
 
 import psycopg2
@@ -299,40 +300,43 @@ async def coalesced_llm_call(params: dict) -> dict:
     # Compute function for coalescing
     def _do_llm_call():
         from model_config import get_tier_config as _get_tier_config
+        from llm_client import sync_llm_chat, resolve_llm_api_key, chat_endpoint_for_model
+
         tier_config = _get_tier_config(model_tier)
-        llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-        api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+        m = tier_config["model"]
+        box: dict = {}
 
-        payload = {
-            "model": tier_config["model"],
-            "messages": [
-                {"role": "system", "content": "You are a senior security analyst. Respond with valid JSON."},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": tier_config["temperature"],
-            "max_tokens": tier_config["max_tokens"],
-        }
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
+        def _thread_llm():
+            try:
+                box["result"] = sync_llm_chat(
+                    model=m,
+                    messages=[
+                        {"role": "system", "content": "You are a senior security analyst. Respond with valid JSON."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=tier_config["temperature"],
+                    max_tokens=tier_config["max_tokens"],
+                    stage="coalesced_llm_call",
+                    role="tool_select",
+                    endpoint_url=chat_endpoint_for_model(m),
+                    api_key=resolve_llm_api_key(None),
+                )
+            except Exception as e:
+                box["error"] = e
 
-        # Synchronous call (used within coalescer)
-        import urllib.request
-        req = urllib.request.Request(
-            llm_endpoint,
-            data=json.dumps(payload).encode(),
-            headers=headers,
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read().decode())
-                content = result["choices"][0]["message"]["content"].strip()
-                return {"content": content, "usage": result.get("usage", {})}
-        except Exception as e:
+        th = threading.Thread(target=_thread_llm, daemon=True)
+        th.start()
+        th.join(timeout=125)
+        if th.is_alive():
+            logger.error("Coalesced LLM call timed out (thread join)")
+            return {"content": "", "usage": {}, "error": "timeout"}
+        if "error" in box:
+            e = box["error"]
             logger.error("Coalesced LLM call failed", error=str(e))
             return {"content": "", "usage": {}, "error": str(e)}
+        result = box.get("result") or {}
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        return {"content": content, "usage": result.get("usage", {})}
 
     if cache_key:
         result = _coalescer.coalesce(cache_key, _do_llm_call, ttl_seconds=300, tenant_id=tenant_id)

@@ -25,8 +25,9 @@ classifiers = [
     "Topic :: Security",
 ]
 
-# No external dependencies — uses only stdlib
-dependencies = []
+dependencies = [
+    "tenacity>=8.2.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -35,7 +36,8 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["hydra*"]
+where = ["."]
+include = ["zovark*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

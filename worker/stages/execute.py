@@ -272,7 +272,7 @@ EXECUTION_MODE = os.environ.get("ZOVARK_EXECUTION_MODE", "tools")  # "tools" (v3
 
 def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
     """Load recent investigations with overlapping IOCs for correlation."""
-    context = {"investigations": []}
+    context = {"investigations": [], "tenant_id": tenant_id}
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor

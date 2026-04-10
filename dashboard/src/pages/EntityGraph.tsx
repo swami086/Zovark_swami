@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Share2, Filter, Loader2, Info, X } from 'lucide-react';
-import { fetchEntities, type Entity, type EntityGraphData } from '../api/client';
+import { fetchEntities, fetchEntityNeighborhood, type Entity, type EntityGraphData } from '../api/client';
 
 const ENTITY_COLORS: Record<string, { fill: string; stroke: string; text: string; bg: string }> = {
     ip: { fill: '#06b6d4', stroke: '#0891b2', text: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' },
@@ -41,6 +41,9 @@ export default function EntityGraph() {
     const [graphData, setGraphData] = useState<EntityGraphData | null>(null);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
+    const [searchQ, setSearchQ] = useState('');
+    const [crumbs, setCrumbs] = useState<{ label: string; data: EntityGraphData }[]>([]);
+    const [expanding, setExpanding] = useState(false);
     const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null);
     const [nodes, setNodes] = useState<NodePos[]>([]);
     const svgRef = useRef<SVGSVGElement>(null);
@@ -51,16 +54,49 @@ export default function EntityGraph() {
         const load = async () => {
             try {
                 setLoading(true);
-                const data = await fetchEntities(filter || undefined);
+                const data = await fetchEntities(filter || undefined, 500);
                 setGraphData(data);
+                setCrumbs([{ label: 'Overview', data }]);
             } catch {
                 setGraphData(null);
+                setCrumbs([]);
             } finally {
                 setLoading(false);
             }
         };
         load();
     }, [filter]);
+
+    const navigateCrumb = (idx: number) => {
+        setCrumbs(prev => {
+            const next = prev.slice(0, idx + 1);
+            const last = next[next.length - 1];
+            if (last) setGraphData(last.data);
+            return next;
+        });
+    };
+
+    const expandNeighborhood = async () => {
+        if (!selectedEntity) return;
+        try {
+            setExpanding(true);
+            const sub = await fetchEntityNeighborhood(selectedEntity.id);
+            const label = `Near: ${selectedEntity.value.length > 24 ? selectedEntity.value.slice(0, 22) + '…' : selectedEntity.value}`;
+            setCrumbs(prev => [...prev, { label, data: sub }]);
+            setGraphData(sub);
+            setSelectedEntity(null);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setExpanding(false);
+        }
+    };
+
+    const searchLower = searchQ.trim().toLowerCase();
+    const nodeDimmed = (e: Entity) =>
+        Boolean(searchLower) &&
+        !e.value.toLowerCase().includes(searchLower) &&
+        !e.entity_type.toLowerCase().includes(searchLower);
 
     // Initialize node positions
     useEffect(() => {
@@ -182,19 +218,45 @@ export default function EntityGraph() {
                     </h1>
                     <p className="text-slate-400 mt-1">Visualize relationships between entities across investigations</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                    <Filter className="w-4 h-4 text-slate-500" />
-                    <select
-                        value={filter}
-                        onChange={e => setFilter(e.target.value)}
-                        className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500/50"
-                    >
-                        {ENTITY_TYPE_OPTIONS.map(o => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                    </select>
+                <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center space-x-3">
+                        <input
+                            type="search"
+                            placeholder="Highlight entities…"
+                            value={searchQ}
+                            onChange={e => setSearchQ(e.target.value)}
+                            className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-slate-200 w-44 focus:outline-none focus:border-cyan-500/50 font-mono"
+                        />
+                        <Filter className="w-4 h-4 text-slate-500" />
+                        <select
+                            value={filter}
+                            onChange={e => setFilter(e.target.value)}
+                            className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500/50"
+                        >
+                            {ENTITY_TYPE_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
+
+            {crumbs.length > 0 && (
+                <nav className="flex flex-wrap items-center gap-1 text-xs font-mono text-slate-400">
+                    {crumbs.map((c, i) => (
+                        <span key={`${c.label}-${i}`} className="flex items-center gap-1">
+                            {i > 0 && <span className="text-slate-600">/</span>}
+                            <button
+                                type="button"
+                                onClick={() => navigateCrumb(i)}
+                                className={`hover:text-cyan-400 transition-colors max-w-[200px] truncate ${i === crumbs.length - 1 ? 'text-cyan-400 font-bold' : ''}`}
+                            >
+                                {c.label}
+                            </button>
+                        </span>
+                    ))}
+                </nav>
+            )}
 
             {/* Legend */}
             <div className="flex items-center space-x-4">
@@ -260,10 +322,12 @@ export default function EntityGraph() {
                                 const colors = ENTITY_COLORS[node.entity.entity_type] || ENTITY_COLORS.ip;
                                 const isSelected = selectedEntity?.id === node.entity.id;
                                 const radius = isSelected ? 22 : 18;
+                                const dim = nodeDimmed(node.entity);
                                 return (
                                     <g
                                         key={node.entity.id}
                                         className="cursor-pointer"
+                                        style={{ opacity: dim ? 0.35 : 1 }}
                                         onClick={() => setSelectedEntity(node.entity)}
                                     >
                                         {/* Glow ring for selected */}
@@ -295,10 +359,10 @@ export default function EntityGraph() {
                                             cx={node.x}
                                             cy={node.y}
                                             r={radius}
-                                            fill={colors.fill}
-                                            fillOpacity={0.15}
-                                            stroke={colors.stroke}
-                                            strokeWidth={2}
+                                            fill={dim ? '#64748b' : colors.fill}
+                                            fillOpacity={dim ? 0.08 : searchLower && !dim ? 0.35 : 0.15}
+                                            stroke={dim ? '#475569' : colors.stroke}
+                                            strokeWidth={searchLower && !dim ? 3 : 2}
                                         />
                                         <text
                                             x={node.x}
@@ -368,6 +432,14 @@ export default function EntityGraph() {
                                     <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Last Seen</p>
                                     <p className="text-xs text-slate-400 mt-1">{new Date(selectedEntity.last_seen).toLocaleString()}</p>
                                 </div>
+                                <button
+                                    type="button"
+                                    disabled={expanding}
+                                    onClick={() => void expandNeighborhood()}
+                                    className="w-full mt-2 py-2 rounded-lg bg-violet-600/20 border border-violet-500/40 text-violet-200 text-xs font-bold uppercase tracking-wider hover:bg-violet-600/30 disabled:opacity-50"
+                                >
+                                    {expanding ? 'Loading…' : 'Expand neighborhood'}
+                                </button>
                                 {/* Connections */}
                                 <div className="pt-3 border-t border-slate-700/50">
                                     <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Connections</p>

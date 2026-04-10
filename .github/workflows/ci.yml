@@ -237,8 +237,7 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=100 api
           echo "=== Worker logs ==="
           docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=100 worker
-          echo "=== Mock LLM logs ==="
-          docker compose -f docker-compose.yml -f docker-compose.test.yml logs --tail=50 mock-ollama
+          echo "=== (Ticket 8: no mock-ollama service in test overlay) ==="
 
       - name: Stop stack
         if: always()

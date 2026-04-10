@@ -15,6 +15,7 @@ Usage:
   python scripts/dpo_train.py --epochs 2
 """
 import argparse
+import os
 import sys
 
 
@@ -39,7 +40,11 @@ def main():
 
     # RTX 3050 4GB: use 0.5B + 1024 seq for DPO (DPO needs 2x forward passes)
     # Production training on A6000 48GB: use 1.5B with max_seq_length=2048, r=16
-    model_name = "unsloth/Qwen2.5-0.5B-Instruct"
+    # Air-gap policy: set ZOVARK_DPO_BASE_MODEL to an approved Hugging Face id (e.g. Meta Llama family).
+    model_name = os.environ.get(
+        "ZOVARK_DPO_BASE_MODEL",
+        "unsloth/Qwen2.5-0.5B-Instruct",
+    )
     max_seq_length = 1024
 
     print(f"Loading model {model_name}...")

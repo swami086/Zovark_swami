@@ -1,7 +1,7 @@
 """Semantic investigation search activity (Issue #33).
 
-Combines pgvector cosine similarity with keyword search (pg_trgm)
-for ranked investigation retrieval with snippets.
+Primary path: SurrealDB `investigation_vec` cosine similarity plus keyword blend.
+Falls back to PostgreSQL pg_trgm when Surreal returns no rows or embeddings are unavailable.
 """
 
 import os
@@ -88,58 +88,26 @@ async def semantic_search(data: dict) -> dict:
 
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if query_embedding:
-                # Combined semantic + keyword search
-                semantic_query = """
-                    SELECT
-                        id::text as investigation_id,
-                        LEFT(summary, 300) as summary_snippet,
-                        verdict,
-                        risk_score,
-                        confidence,
-                        1.0 - (embedding <-> %s::vector) as semantic_score,
-                        COALESCE(similarity(summary, %s), 0) as keyword_score,
-                        created_at
-                    FROM investigations
-                    WHERE embedding IS NOT NULL
-                """
-                params = [str(query_embedding), query]
+                from surreal_graph import semantic_search_surreal
 
-                if tenant_id:
-                    semantic_query += " AND tenant_id = %s"
-                    params.append(tenant_id)
-
-                semantic_query += """
-                    ORDER BY (
-                        %s * (1.0 - (embedding <-> %s::vector)) +
-                        %s * COALESCE(similarity(summary, %s), 0)
-                    ) DESC
-                    LIMIT %s
-                """
-                params.extend([semantic_weight, str(query_embedding),
-                              keyword_weight, query, limit])
-
-                cur.execute(semantic_query, params)
-                rows = cur.fetchall()
-
-                for row in rows:
-                    r = dict(row)
-                    combined_score = (
-                        semantic_weight * float(r.get("semantic_score", 0)) +
-                        keyword_weight * float(r.get("keyword_score", 0))
+                surreal_rows = await semantic_search_surreal(
+                    tenant_id, query_embedding, query, limit, semantic_weight, keyword_weight
+                )
+                for r in surreal_rows:
+                    results.append(
+                        {
+                            "investigation_id": r.get("investigation_id"),
+                            "summary_snippet": r.get("summary_snippet", ""),
+                            "score": r.get("score", 0),
+                            "semantic_score": r.get("semantic_score", 0),
+                            "keyword_score": r.get("keyword_score", 0),
+                            "verdict": r.get("verdict"),
+                            "risk_score": r.get("risk_score"),
+                            "match_type": r.get("match_type", "surreal_vector"),
+                            "created_at": r.get("created_at", ""),
+                        }
                     )
-                    results.append({
-                        "investigation_id": r["investigation_id"],
-                        "summary_snippet": r.get("summary_snippet", ""),
-                        "score": round(combined_score, 4),
-                        "semantic_score": round(float(r.get("semantic_score", 0)), 4),
-                        "keyword_score": round(float(r.get("keyword_score", 0)), 4),
-                        "verdict": r.get("verdict"),
-                        "risk_score": r.get("risk_score"),
-                        "match_type": "semantic+keyword",
-                        "created_at": str(r.get("created_at", "")),
-                    })
-            else:
-                # Keyword-only search (fallback if embedding fails)
+            if not results:
                 keyword_query = """
                     SELECT
                         id::text as investigation_id,

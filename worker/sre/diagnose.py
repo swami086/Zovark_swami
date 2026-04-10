@@ -6,7 +6,6 @@ import time
 import glob as glob_mod
 from temporalio import activity
 
-import httpx
 from llm_logger import log_llm_call
 from model_config import get_tier_config
 
@@ -106,9 +105,9 @@ async def llm_diagnose(error_message: str, stack_trace: str, activity_name: str)
         # Truncate to 2000 chars
         source_context = source_info['content'][:2000]
 
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
     tier_config = get_tier_config('diagnose_failure')
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
 
     system_prompt = (
         "You are an SRE agent diagnosing workflow failures. Classify the error into exactly one category: "
@@ -123,22 +122,21 @@ async def llm_diagnose(error_message: str, stack_trace: str, activity_name: str)
 
     start_time = time.time()
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                llm_endpoint,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": tier_config["model"],
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": tier_config["temperature"],
-                    "max_tokens": tier_config["max_tokens"],
-                },
-            )
-            resp.raise_for_status()
-            result = resp.json()
+        m = tier_config["model"]
+        result = await llm_request(
+            m,
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=tier_config["temperature"],
+            max_tokens=tier_config["max_tokens"],
+            stage="diagnose_failure",
+            role="verdict",
+            response_format={"type": "json_object"},
+            endpoint_url=chat_endpoint_for_model(m),
+            api_key=resolve_llm_api_key(None),
+        )
 
         latency_ms = int((time.time() - start_time) * 1000)
         usage = result.get("usage", {})

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchTaskDetail, fetchTaskTimeline, fetchTaskSteps, decideApproval, type TaskDetail as TaskDetailType, type TimelineEvent, type InvestigationStep, getUser } from '../api/client';
+import { fetchTaskDetail, fetchTaskTimeline, fetchTaskSteps, decideApproval, getAccessToken, type TaskDetail as TaskDetailType, type TimelineEvent, type InvestigationStep, getUser } from '../api/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Loader2, ArrowLeft, Terminal, FileCode2, Clock3, Cpu, DollarSign, ListFilter, CheckCircle, Copy, Check, ShieldAlert, Crosshair, AlertTriangle, Info, ListChecks, Target, CheckSquare, ChevronDown, ChevronUp, ChevronRight, Circle, Zap, ShieldCheck, XCircle, MessageSquare, Share2, FileJson } from 'lucide-react';
@@ -219,11 +219,10 @@ const TaskDetail = () => {
     const [linkCopied, setLinkCopied] = useState(false);
 
     useEffect(() => {
-        let interval: number;
+        if (!id) return;
 
         const loadTask = async () => {
             try {
-                if (!id) return;
                 const data = await fetchTaskDetail(id);
                 setTask(data);
                 document.title = `Investigation: ${data.id.split('-')[0]} | Zovark`;
@@ -231,34 +230,70 @@ const TaskDetail = () => {
                 try {
                     const tlData = await fetchTaskTimeline(id);
                     setTimeline(tlData);
-                } catch (e) {
+                } catch {
                     console.error("Failed to fetch timeline data");
                 }
 
-                if (data.status === 'completed' || data.status === 'failed') {
-                    clearInterval(interval);
-                    // Fetch steps when task is finished
+                if (data.status === 'executing' || data.status === 'pending' || data.status === 'awaiting_approval') {
                     try {
                         const stepsData = await fetchTaskSteps(id);
                         setSteps(stepsData);
-                        // Auto-expand the latest step
+                    } catch {
+                        console.error('Failed to fetch steps');
+                    }
+                }
+
+                if (data.status === 'completed' || data.status === 'failed') {
+                    try {
+                        const stepsData = await fetchTaskSteps(id);
+                        setSteps(stepsData);
                         if (stepsData.length > 0) {
                             const latestStep = Math.max(...stepsData.map(s => s.step_number));
                             setExpandedSteps(prev => ({ ...prev, [latestStep]: true }));
                         }
-                    } catch (e) {
+                    } catch {
                         console.error('Failed to fetch steps');
                     }
                 }
-            } catch (err: any) {
-                setError(err.message || 'Failed to load investigation');
-                clearInterval(interval);
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : 'Failed to load investigation';
+                setError(msg);
             }
         };
 
         loadTask();
-        interval = window.setInterval(loadTask, 2000);
-        return () => clearInterval(interval);
+
+        const token = getAccessToken();
+        if (!token) return;
+
+        let es: EventSource | null = null;
+        let attempt = 0;
+        let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
+        const connect = () => {
+            reconnectTimer = undefined;
+            es?.close();
+            const apiBase = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '');
+            const u = `${apiBase}/api/v1/tasks/${encodeURIComponent(id)}/stream?token=${encodeURIComponent(token)}`;
+            es = new EventSource(u);
+            es.onopen = () => { attempt = 0; };
+            const bump = () => { loadTask(); };
+            es.addEventListener('step_completed', bump);
+            es.addEventListener('status_changed', bump);
+            es.addEventListener('investigation_complete', bump);
+            es.onerror = () => {
+                es?.close();
+                attempt += 1;
+                const delay = Math.min(30000, 1000 * Math.pow(2, attempt));
+                reconnectTimer = window.setTimeout(connect, delay);
+            };
+        };
+        connect();
+
+        return () => {
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            es?.close();
+        };
     }, [id]);
 
     const handleCopy = () => {

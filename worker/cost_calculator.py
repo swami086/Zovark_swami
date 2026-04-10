@@ -1,6 +1,8 @@
 # cost_calculator.py — Per-model cost calculation for LLM calls
 
 COST_PER_1K = {
+    # Ticket 8 — OpenAI gpt-4o-mini (direct runtime id)
+    'gpt-4o-mini': {'input': 0.00015, 'output': 0.0006},
     # Fast tier (Groq)
     'zovark-fast': {'input': 0.0002, 'output': 0.0002},
     'groq/llama-3.1-8b-instant': {'input': 0.0002, 'output': 0.0002},

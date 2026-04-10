@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -15,19 +16,60 @@ func alertsCmd() *cobra.Command {
 		Run:   runAlerts,
 	}
 	cmd.Flags().Int("hours", 1, "Lookback window in hours")
+	cmd.Flags().String("since", "", "Shorthand lookback, e.g. 24h or 7d (overrides --hours)")
 	cmd.Flags().String("type", "", "Filter by task_type")
+	cmd.Flags().String("severity", "", "Filter by input severity (e.g. high, critical)")
+	cmd.Flags().String("verdict", "", "Filter completed tasks by output verdict")
 	cmd.Flags().Bool("json", false, "Output as JSON")
 	return cmd
 }
 
+func parseSince(s string) (int, bool) {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return 0, false
+	}
+	if strings.HasSuffix(s, "h") {
+		n, err := strconv.Atoi(strings.TrimSuffix(s, "h"))
+		if err != nil || n < 1 {
+			return 0, false
+		}
+		return n, true
+	}
+	if strings.HasSuffix(s, "d") {
+		n, err := strconv.Atoi(strings.TrimSuffix(s, "d"))
+		if err != nil || n < 1 {
+			return 0, false
+		}
+		return n * 24, true
+	}
+	return 0, false
+}
+
+func sqlQuote(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
+}
+
 func runAlerts(cmd *cobra.Command, args []string) {
 	hours, _ := cmd.Flags().GetInt("hours")
+	sinceStr, _ := cmd.Flags().GetString("since")
+	if s, ok := parseSince(sinceStr); ok {
+		hours = s
+	}
 	typeFilter, _ := cmd.Flags().GetString("type")
+	sevFilter, _ := cmd.Flags().GetString("severity")
+	verdictFilter, _ := cmd.Flags().GetString("verdict")
 	jsonOut, _ := cmd.Flags().GetBool("json")
 
 	typeWhere := ""
 	if typeFilter != "" {
-		typeWhere = fmt.Sprintf(" AND task_type = '%s'", typeFilter)
+		typeWhere = fmt.Sprintf(" AND task_type = '%s'", sqlQuote(typeFilter))
+	}
+	if sevFilter != "" {
+		typeWhere += fmt.Sprintf(" AND input->>'severity' = '%s'", sqlQuote(sevFilter))
+	}
+	if verdictFilter != "" {
+		typeWhere += fmt.Sprintf(" AND output->>'verdict' = '%s'", sqlQuote(verdictFilter))
 	}
 
 	// Counts

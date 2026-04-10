@@ -44,7 +44,10 @@ spec:
                   name: {{ include "zovark.fullname" . }}-secrets
                   key: litellm-master-key
             - name: REDIS_URL
-              value: {{ .Values.worker.env.REDIS_URL | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "zovark.fullname" . }}-secrets
+                  key: redis-url
             - name: ZOVARK_LLM_MODEL
               value: {{ .Values.worker.env.ZOVARK_LLM_MODEL | quote }}
             - name: PYTHONUNBUFFERED

@@ -71,7 +71,15 @@ class SmartBatcher:
             - (False, None)      — first alert, no batching needed, process normally
             - (False, aggregated) — batch window expired, process the aggregated event
         """
-        source_ip = siem_event.get("source_ip", "unknown")
+        source_ip = siem_event.get("source_ip") or ""
+        if not source_ip:
+            ep = siem_event.get("src_endpoint")
+            if isinstance(ep, dict):
+                ip = ep.get("ip")
+                if isinstance(ip, str):
+                    source_ip = ip
+        if not source_ip:
+            source_ip = "unknown"
         bkey = _batch_key(task_type, source_ip)
         now = time.time()
         window = self._effective_window(severity)

@@ -9,7 +9,7 @@ import json
 import time
 import httpx
 import psycopg2
-from psycopg2.extras import execute_values, RealDictCursor
+from psycopg2.extras import RealDictCursor
 from temporalio import activity
 
 from entity_normalize import normalize_entity, compute_entity_hash
@@ -114,8 +114,8 @@ async def extract_entities(data: dict) -> dict:
     if os.environ.get('ZOVARK_FAST_FILL', '') == 'true':
         return {"entities": [], "edges": [], "usage_tokens": {"prompt_tokens": 0, "completion_tokens": 0}, "execution_ms": 0}
 
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
     tier_config = get_tier_config("extract_entities")
     llm_model = tier_config["model"]
 
@@ -131,33 +131,30 @@ async def extract_entities(data: dict) -> dict:
     llm_status = "success"
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                llm_endpoint,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": llm_model,
-                    "messages": [
-                        {"role": "system", "content": ENTITY_EXTRACTION_SYSTEM_PROMPT},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "temperature": tier_config["temperature"],
-                    "max_tokens": tier_config["max_tokens"],
-                    "response_format": {"type": "json_object"}
-                }
-            )
-            resp.raise_for_status()
-            result = resp.json()
-            usage_tokens = result.get("usage", usage_tokens)
+        result = await llm_request(
+            llm_model,
+            [
+                {"role": "system", "content": ENTITY_EXTRACTION_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=tier_config["temperature"],
+            max_tokens=tier_config["max_tokens"],
+            stage="extract_entities",
+            role="tool_select",
+            response_format={"type": "json_object"},
+            endpoint_url=chat_endpoint_for_model(llm_model),
+            api_key=resolve_llm_api_key(None),
+        )
+        usage_tokens = result.get("usage", usage_tokens)
 
-            content = result["choices"][0]["message"]["content"].strip()
-            parsed = json.loads(content)
+        content = result["choices"][0]["message"]["content"].strip()
+        parsed = json.loads(content)
 
-            raw_entities = parsed.get("entities", [])
-            raw_edges = parsed.get("edges", [])
+        raw_entities = parsed.get("entities", [])
+        raw_edges = parsed.get("edges", [])
 
-            entities = [e for e in raw_entities if _validate_entity(e)]
-            edges = [e for e in raw_edges if _validate_edge(e)]
+        entities = [e for e in raw_entities if _validate_entity(e)]
+        edges = [e for e in raw_edges if _validate_edge(e)]
 
     except (json.JSONDecodeError, KeyError, httpx.HTTPError) as e:
         print(f"Entity extraction LLM failed, falling back to regex: {e}")
@@ -237,97 +234,24 @@ async def write_entity_graph(data: dict) -> dict:
         entity_hashes = list(hash_to_entity.keys())
 
         if not entity_records:
-            return {"entities_upserted": 0, "edges_upserted": 0, "observations_created": 0}
+            return {
+                "entities_upserted": 0,
+                "edges_upserted": 0,
+                "observations_created": 0,
+                "entity_hashes": [],
+            }
 
-        conn = _get_db()
-        try:
-            with conn.cursor() as cur:
-                _sync_commit(cur)
-                # 1. Batch upsert entities
-                entity_values = [
-                    (r["hash"], r["type"], r["value"], tenant_id)
-                    for r in entity_records
-                ]
-                execute_values(
-                    cur,
-                    """INSERT INTO entities (entity_hash, entity_type, value, tenant_id)
-                       VALUES %s
-                       ON CONFLICT (entity_hash, tenant_id) DO UPDATE SET
-                           last_seen = NOW(),
-                           observation_count = entities.observation_count + 1""",
-                    entity_values,
-                    template="(%s, %s, %s, %s)"
-                )
-                entities_upserted = len(entity_values)
+        from surreal_graph import write_entity_graph_surreal
 
-                # 2. Fetch hash -> id mapping for this tenant
-                hashes = [r["hash"] for r in entity_records]
-                cur.execute(
-                    "SELECT id, entity_hash FROM entities WHERE entity_hash = ANY(%s) AND tenant_id = %s",
-                    (hashes, tenant_id)
-                )
-                hash_id_map = {row[1]: str(row[0]) for row in cur.fetchall()}
-
-                # 3. Insert observations (one per entity mention, not deduplicated)
-                obs_values = []
-                for r in all_observations:
-                    eid = hash_id_map.get(r["hash"])
-                    if eid:
-                        role = r["role"] if r["role"] in VALID_ROLES else "indicator"
-                        obs_values.append((
-                            eid, investigation_id, role,
-                            r.get("context", ""), r.get("mitre_technique"),
-                            confidence_source
-                        ))
-                if obs_values:
-                    execute_values(
-                        cur,
-                        """INSERT INTO entity_observations (entity_id, investigation_id, role, context, mitre_technique, confidence_source)
-                           VALUES %s""",
-                        obs_values,
-                        template="(%s, %s, %s, %s, %s, %s)"
-                    )
-                    observations_created = len(obs_values)
-
-                # Flag investigation if injection detected
-                if confidence_source == "injection_detected" and investigation_id:
-                    cur.execute(
-                        "UPDATE investigations SET injection_detected = true WHERE id = %s",
-                        (investigation_id,)
-                    )
-
-                # 4. Resolve and insert edges
-                edge_values = []
-                for edge in raw_edges:
-                    src = edge.get("source", {})
-                    tgt = edge.get("target", {})
-                    src_norm = normalize_entity(src.get("type", ""), src.get("value", ""))
-                    tgt_norm = normalize_entity(tgt.get("type", ""), tgt.get("value", ""))
-                    src_hash = compute_entity_hash(src.get("type", ""), src_norm)
-                    tgt_hash = compute_entity_hash(tgt.get("type", ""), tgt_norm)
-                    src_id = hash_id_map.get(src_hash)
-                    tgt_id = hash_id_map.get(tgt_hash)
-                    if src_id and tgt_id:
-                        edge_values.append((
-                            src_id, tgt_id, edge["edge_type"],
-                            investigation_id, tenant_id,
-                            edge.get("mitre_technique"),
-                            edge.get("confidence", 0.5)
-                        ))
-                if edge_values:
-                    execute_values(
-                        cur,
-                        """INSERT INTO entity_edges
-                           (source_entity_id, target_entity_id, edge_type, investigation_id, tenant_id, mitre_technique, confidence)
-                           VALUES %s""",
-                        edge_values,
-                        template="(%s, %s, %s, %s, %s, %s, %s)"
-                    )
-                    edges_upserted = len(edge_values)
-
-            conn.commit()
-        finally:
-            conn.close()
+        return await write_entity_graph_surreal(
+            tenant_id,
+            str(investigation_id) if investigation_id else None,
+            entity_records,
+            raw_edges,
+            all_observations,
+            entity_hashes,
+            confidence_source,
+        )
 
     except Exception as e:
         print(f"write_entity_graph non-fatal error: {e}")
@@ -419,15 +343,13 @@ async def embed_investigation(data: dict) -> dict:
                     INSERT INTO investigations
                     (tenant_id, task_id, verdict, risk_score, confidence,
                      attack_techniques, skill_id, skill_version,
-                     summary, summary_embedding,
-                     model_id, model_version, prompt_version, source)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s, %s, %s)
+                     summary, model_id, model_version, prompt_version, source)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
                     tenant_id, task_id, verdict, risk_score, confidence,
                     attack_techniques, skill_id, skill_version,
-                    summary, embedding,
-                    model_id, model_version, prompt_version, source
+                    summary, model_id, model_version, prompt_version, source
                 ))
                 row = cur.fetchone()
                 investigation_id = str(row[0]) if row else None
@@ -436,6 +358,16 @@ async def embed_investigation(data: dict) -> dict:
             conn.close()
     except Exception as e:
         print(f"embed_investigation: DB insert failed (non-fatal): {e}")
+
+    if investigation_id and embedding:
+        try:
+            from surreal_graph import upsert_investigation_vector_surreal
+
+            await upsert_investigation_vector_surreal(
+                investigation_id, tenant_id or "", summary, verdict, int(risk_score or 0), embedding
+            )
+        except Exception as se:
+            print(f"embed_investigation: Surreal vector upsert failed (non-fatal): {se}")
 
     execution_ms = int((time.time() - start_time) * 1000)
     return {
@@ -446,30 +378,28 @@ async def embed_investigation(data: dict) -> dict:
 
 
 def search_similar_investigations(tenant_id: str, embedding: list, limit: int = 10) -> list:
-    """Utility: pgvector cosine similarity search on investigations.
+    """Cosine similarity via SurrealDB investigation_vec (vectors no longer in PostgreSQL)."""
+    import asyncio
+    from surreal_graph import semantic_search_surreal
 
-    Args:
-        tenant_id: Filter by tenant
-        embedding: 768-dim vector
-        limit: Max results
+    async def _run():
+        rows = await semantic_search_surreal(
+            tenant_id, embedding, "", limit, 1.0, 0.0
+        )
+        out = []
+        for r in rows:
+            out.append(
+                {
+                    "investigation_id": r.get("investigation_id"),
+                    "summary": r.get("summary_snippet"),
+                    "verdict": r.get("verdict"),
+                    "risk_score": r.get("risk_score"),
+                    "similarity": r.get("semantic_score", 0),
+                }
+            )
+        return out
 
-    Returns:
-        List of dicts with investigation_id, summary, similarity, verdict, risk_score
-    """
-    conn = _get_db()
     try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""
-                SELECT id AS investigation_id, summary, verdict, risk_score,
-                       1 - (summary_embedding <=> %s::vector) AS similarity
-                FROM investigations
-                WHERE tenant_id = %s
-                  AND summary_embedding IS NOT NULL
-                  AND NOT COALESCE(injection_detected, false)
-                ORDER BY summary_embedding <=> %s::vector
-                LIMIT %s
-            """, (embedding, tenant_id, embedding, limit))
-            results = cur.fetchall()
-            return [dict(r) for r in results]
-    finally:
-        conn.close()
+        return asyncio.get_event_loop().run_until_complete(_run())
+    except RuntimeError:
+        return asyncio.run(_run())

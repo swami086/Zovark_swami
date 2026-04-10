@@ -92,6 +92,11 @@ func slidingWindowIncrement(tenantID, endpoint string, windowSeconds, limit int)
 
 	ctx := context.Background()
 
+	if redisClient == nil {
+		allowed := localRateCheck(key, limit, time.Duration(windowSeconds)*time.Second)
+		return 0, allowed, fmt.Errorf("redis unavailable")
+	}
+
 	// Pipeline: ZADD + ZREMRANGEBYSCORE + ZCARD + EXPIRE in one round trip
 	pipe := redisClient.Pipeline()
 	pipe.ZAdd(ctx, key, redis.Z{Score: float64(now), Member: member})

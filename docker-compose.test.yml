@@ -1,34 +1,10 @@
-# CI/CD test stack -- uses mock Ollama instead of real GPU inference.
+# CI / integration overlay — Ticket 8: no mock-ollama coupling.
+# LLM-backed tests use host-provided OPENAI_API_KEY and ZOVARK_LLM_* from the environment
+# (see Makefile test-integration and .env.example).
+#
 # Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
-
-services:
-  mock-ollama:
-    build:
-      context: .
-      dockerfile: tests/Dockerfile.mock-ollama
-    ports:
-      - "${MOCK_OLLAMA_PORT:-11436}:11434"
-    container_name: zovark-mock-ollama
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:11434/')"]
-      interval: 5s
-      retries: 5
-      start_period: 3s
-    networks:
-      - zovark-internal
-
-  worker:
-    environment:
-      - ZOVARK_LLM_ENDPOINT=http://mock-ollama:11434/v1/chat/completions
-      - ZOVARK_LLM_ENDPOINT_FAST=http://mock-ollama:11434/v1/chat/completions
-      - ZOVARK_LLM_ENDPOINT_CODE=http://mock-ollama:11434/v1/chat/completions
-      - ZOVARK_MODEL_FAST=llama3.2:3b
-      - ZOVARK_MODEL_CODE=llama3.1:8b
-    depends_on:
-      mock-ollama:
-        condition: service_healthy
 
 networks:
   zovark-internal:
     external: true
-    name: hydra-mvp_zovark-internal
+    name: zovark_zovark-internal

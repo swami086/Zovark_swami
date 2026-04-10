@@ -52,6 +52,11 @@ NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 NVIDIA_MODEL = "moonshotai/kimi-k2.5"
 
 
+def _dpo_forge_chat_url() -> str:
+    """OpenAI-compatible chat completions URL (NVIDIA cloud or local llama-server)."""
+    return os.environ.get("ZOVARK_DPO_FORGE_ENDPOINT", "").strip() or NVIDIA_API_URL
+
+
 def call_kimi(
     client: httpx.Client,
     messages: list,
@@ -62,11 +67,15 @@ def call_kimi(
 
     Only retries on transient errors (429, 502-504, connection, timeout).
     Auth errors (401, 403) raise immediately.
+
+    Set ZOVARK_DPO_FORGE_ENDPOINT to a local URL (e.g. http://zovark-inference:8080/v1/chat/completions)
+    for air-gapped / on-prem models.
     """
+    url = _dpo_forge_chat_url()
     for attempt in range(1, _max_attempts + 1):
         try:
             response = client.post(
-                NVIDIA_API_URL,
+                url,
                 json={
                     "model": NVIDIA_MODEL,
                     "messages": messages,

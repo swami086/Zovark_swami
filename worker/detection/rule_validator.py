@@ -6,6 +6,9 @@ against historical investigations.
 
 import os
 import json
+import shutil
+import subprocess
+import tempfile
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from temporalio import activity
@@ -83,6 +86,54 @@ def _validate_sigma_structure(sigma_yaml: str) -> dict:
     return {"valid": len(errors) == 0, "errors": errors, "parsed": parsed}
 
 
+def _sigma_transpile_splunk(sigma_yaml: str) -> tuple[bool, str]:
+    """Run sigma-cli convert to Splunk (SPL). Requires `sigma` on PATH (pip install sigma-cli)."""
+    sigma_bin = shutil.which("sigma")
+    if not sigma_bin:
+        return False, "sigma-cli not found in PATH (pip install sigma-cli)"
+
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yml", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(sigma_yaml)
+            path = f.name
+
+        # sigma-cli: prefer `-f splunk`, fall back to `-t splunk` across versions
+        proc = subprocess.run(
+            [sigma_bin, "convert", path, "-f", "splunk"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if proc.returncode != 0:
+            proc = subprocess.run(
+                [sigma_bin, "convert", path, "-t", "splunk"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "").strip() or "sigma convert failed"
+            return False, err[:4000]
+
+        out = (proc.stdout or "").strip()
+        if not out:
+            return False, "sigma convert produced empty SPL output"
+        return True, out
+    except subprocess.TimeoutExpired:
+        return False, "sigma convert timed out (>120s)"
+    except Exception as e:
+        return False, str(e)[:2000]
+    finally:
+        if path:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
 @activity.defn
 async def validate_sigma_rule(data: dict) -> dict:
     """Validate a Sigma rule and test against investigation corpus.
@@ -111,7 +162,25 @@ async def validate_sigma_rule(data: dict) -> dict:
             "investigations_matched": 0,
         }
 
-    # 2. Test against investigation corpus
+    # 2. Sigma → SPL transpilation (sigma-cli). Failure = validation_failed, not validated/deployed.
+    spl_ok, spl_out = _sigma_transpile_splunk(sigma_yaml)
+    if not spl_ok:
+        _update_candidate(candidate_id, "validation_failed", {
+            "structure_valid": True,
+            "transpile_ok": False,
+            "transpile_error": spl_out,
+        })
+        return {
+            "candidate_id": candidate_id,
+            "valid": False,
+            "tp_rate": 0,
+            "fp_rate": 0,
+            "status": "validation_failed",
+            "errors": [f"Sigma transpilation failed: {spl_out[:500]}"],
+            "investigations_matched": 0,
+        }
+
+    # 3. Test against investigation corpus
     tp_matches = 0
     fp_matches = 0
     total_matches = 0
@@ -155,6 +224,8 @@ async def validate_sigma_rule(data: dict) -> dict:
 
     validation_result = {
         "structure_valid": True,
+        "transpile_ok": True,
+        "spl_preview": spl_out[:500] if spl_out else "",
         "tp_matches": tp_matches,
         "fp_matches": fp_matches,
         "total_matches": total_matches,

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchTasks, fetchStats, type Stats, type TaskListResponse } from '../api/client';
+import { fetchTasks, fetchStats, getAccessToken, getUser, type Stats, type TaskListResponse } from '../api/client';
 import { Search, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, Zap, Target, Cloud } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton, CardSkeleton } from '../components/Skeleton';
@@ -78,14 +78,26 @@ const SelectFilter = ({ value, onChange, options }: { value: string; onChange: (
     </select>
 );
 
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000];
+
 const TaskList = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const [data, setData] = useState<TaskListResponse>({ tasks: [], total: 0, page: 1, limit: 20, pages: 0 });
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [liveConnected, setLiveConnected] = useState(false);
+    const [liveReconnecting, setLiveReconnecting] = useState(false);
+    const [liveStatic, setLiveStatic] = useState(false);
+    const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
     const searchRef = useRef<HTMLInputElement>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const esRef = useRef<EventSource | null>(null);
+    const reconnectAttempt = useRef(0);
+    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const streamHadFailureRef = useRef(false);
+    /** For keyset Prev: cursor values that led to the current page (parent chain). */
+    const cursorBreadcrumbRef = useRef<string[]>([]);
 
     // Read filters from URL
     const search = searchParams.get('search') || '';
@@ -96,16 +108,32 @@ const TaskList = () => {
     const sort = searchParams.get('sort') || 'created_at';
     const order = searchParams.get('order') || 'desc';
     const page = parseInt(searchParams.get('page') || '1');
+    const listCursor = searchParams.get('cursor') || '';
+    const useCreatedAtKeyset = sort === 'created_at';
 
     const setFilter = useCallback((key: string, value: string) => {
         const params = new URLSearchParams(searchParams);
         if (value) params.set(key, value);
         else params.delete(key);
-        if (key !== 'page') params.set('page', '1');
+        if (key !== 'page' && key !== 'cursor') {
+            params.delete('cursor');
+            cursorBreadcrumbRef.current = [];
+            if (useCreatedAtKeyset) {
+                params.delete('page');
+            } else {
+                params.set('page', '1');
+            }
+        }
+        if (key === 'page' && useCreatedAtKeyset) {
+            params.delete('page');
+        }
         setSearchParams(params, { replace: true });
-    }, [searchParams, setSearchParams]);
+    }, [searchParams, setSearchParams, useCreatedAtKeyset]);
 
-    const clearFilters = () => setSearchParams({}, { replace: true });
+    const clearFilters = () => {
+        cursorBreadcrumbRef.current = [];
+        setSearchParams({}, { replace: true });
+    };
 
     const toggleSort = (field: string) => {
         const params = new URLSearchParams(searchParams);
@@ -114,6 +142,13 @@ const TaskList = () => {
         } else {
             params.set('sort', field);
             params.set('order', 'desc');
+            params.delete('cursor');
+            cursorBreadcrumbRef.current = [];
+            if (field === 'created_at') {
+                params.delete('page');
+            } else {
+                params.set('page', '1');
+            }
         }
         setSearchParams(params, { replace: true });
     };
@@ -130,8 +165,12 @@ const TaskList = () => {
             if (dateTo) params.date_to = dateTo;
             params.sort = sort;
             params.order = order;
-            params.page = String(page);
             params.limit = '20';
+            if (useCreatedAtKeyset) {
+                if (listCursor) params.cursor = listCursor;
+            } else {
+                params.page = String(page);
+            }
 
             const [taskData, statsData] = await Promise.all([fetchTasks(params), fetchStats()]);
             setData(taskData);
@@ -141,14 +180,85 @@ const TaskList = () => {
         } finally {
             setLoading(false);
         }
-    }, [search, status, taskType, dateFrom, dateTo, sort, order, page]);
+    }, [search, status, taskType, dateFrom, dateTo, sort, order, page, useCreatedAtKeyset, listCursor]);
 
     useEffect(() => {
         loadData();
         document.title = 'Investigations | Zovark';
-        const interval = window.setInterval(() => loadData(), 5000);
-        return () => clearInterval(interval);
     }, [loadData]);
+
+    const eventMatchesFilters = useCallback((payload: Record<string, unknown>) => {
+        const st = typeof payload.status === 'string' ? payload.status : '';
+        const tt = typeof payload.task_type === 'string' ? payload.task_type : '';
+        if (status && st && st !== status) return false;
+        if (taskType && tt && tt !== taskType) return false;
+        return true;
+    }, [status, taskType]);
+
+    useEffect(() => {
+        const token = getAccessToken();
+        const user = getUser();
+        if (!token || user?.role === 'viewer') return;
+        if (liveStatic) return;
+
+        const apiBase = import.meta.env.VITE_API_URL || `${window.location.origin.replace(/\/$/, '')}`;
+        const connect = () => {
+            if (reconnectTimerRef.current) {
+                clearTimeout(reconnectTimerRef.current);
+                reconnectTimerRef.current = undefined;
+            }
+            esRef.current?.close();
+            const url = `${apiBase}/api/v1/tasks/stream?token=${encodeURIComponent(token)}`;
+            const es = new EventSource(url);
+            esRef.current = es;
+            es.onopen = () => {
+                setLiveConnected(true);
+                setLiveReconnecting(false);
+                if (streamHadFailureRef.current) {
+                    streamHadFailureRef.current = false;
+                    void loadData();
+                }
+                reconnectAttempt.current = 0;
+            };
+            es.onerror = () => {
+                setLiveConnected(false);
+                es.close();
+                streamHadFailureRef.current = true;
+                const attempt = reconnectAttempt.current;
+                if (attempt >= RECONNECT_DELAYS_MS.length) {
+                    setLiveStatic(true);
+                    setLiveReconnecting(false);
+                    return;
+                }
+                const delay = RECONNECT_DELAYS_MS[attempt];
+                reconnectAttempt.current = attempt + 1;
+                setLiveReconnecting(true);
+                reconnectTimerRef.current = window.setTimeout(connect, delay);
+            };
+            const onCompleted = (ev: MessageEvent) => {
+                try {
+                    const payload = JSON.parse(ev.data) as Record<string, unknown>;
+                    if (eventMatchesFilters(payload)) {
+                        void loadData();
+                    }
+                    const verdict = typeof payload.verdict === 'string' ? payload.verdict : '';
+                    const risk = payload.risk_score != null ? String(payload.risk_score) : '';
+                    const tid = typeof payload.task_id === 'string' ? payload.task_id.slice(0, 8) : '';
+                    setToast({ title: 'Investigation complete', body: `${tid}… verdict=${verdict} risk=${risk}` });
+                    window.setTimeout(() => setToast(null), 6000);
+                } catch { /* ignore */ }
+            };
+            es.addEventListener('task_completed', onCompleted);
+        };
+        connect();
+        return () => {
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+            esRef.current?.close();
+            esRef.current = null;
+            setLiveConnected(false);
+            setLiveReconnecting(false);
+        };
+    }, [loadData, eventMatchesFilters, liveStatic]);
 
     const handleSearchInput = (value: string) => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -181,10 +291,29 @@ const TaskList = () => {
     return (
         <div className="space-y-5">
             {/* Header */}
-            <div>
-                <h1 className="text-xl font-bold text-[#E2E8F0] tracking-tight font-mono">INVESTIGATIONS</h1>
-                <p className="text-[#475569] text-xs mt-1 font-mono uppercase tracking-wider">Search and filter security analysis across your organization</p>
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="text-xl font-bold text-[#E2E8F0] tracking-tight font-mono">INVESTIGATIONS</h1>
+                    <p className="text-[#475569] text-xs mt-1 font-mono uppercase tracking-wider">Search and filter security analysis across your organization</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider ${
+                        liveConnected ? 'text-[#00FF88]' : liveStatic ? 'text-[#FFAA00]' : liveReconnecting ? 'text-[#94A3B8]' : 'text-[#475569]'
+                    }`}>
+                        <span className={`w-2 h-2 rounded-full ${
+                            liveConnected ? 'bg-[#00FF88] animate-pulse' : liveReconnecting ? 'bg-[#94A3B8] animate-pulse' : 'bg-slate-600'
+                        }`} />
+                        {liveConnected ? 'Live' : liveStatic ? 'Static list' : liveReconnecting ? 'Reconnecting…' : 'Offline'}
+                    </span>
+                </div>
             </div>
+
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-[#00FF88]/40 bg-[#0D1117] shadow-xl px-4 py-3 text-sm text-[#E2E8F0] font-mono">
+                    <div className="text-[#00FF88] text-xs font-bold uppercase tracking-wider mb-1">{toast.title}</div>
+                    <div className="text-slate-300">{toast.body}</div>
+                </div>
+            )}
 
             {/* Metric Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -288,7 +417,9 @@ const TaskList = () => {
                 ) : (
                     <span className="ml-auto text-xs text-[#475569] font-mono flex items-center gap-2">
                         {loading && <span className="w-2 h-2 rounded-full bg-[#00FF88] animate-pulse" />}
-                        Showing {data.tasks.length} of {data.total} investigations
+                        {useCreatedAtKeyset
+                            ? <>Showing {data.tasks.length}{data.next_cursor ? '+' : ''} investigations</>
+                            : <>Showing {data.tasks.length} of {data.total} investigations</>}
                     </span>
                 )}
             </div>
@@ -373,21 +504,62 @@ const TaskList = () => {
                 </div>
             </div>
 
-            {/* Pagination */}
-            {data.pages > 1 && (
-                <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#475569] font-mono">Page {data.page} of {data.pages}</span>
-                    <div className="flex items-center space-x-2">
-                        <button onClick={() => setFilter('page', String(page - 1))} disabled={page <= 1}
-                            className="btn btn-secondary btn-sm">
-                            <ChevronLeft className="w-3 h-3" /><span>Previous</span>
-                        </button>
-                        <button onClick={() => setFilter('page', String(page + 1))} disabled={page >= data.pages}
-                            className="btn btn-secondary btn-sm">
-                            <span>Next</span><ChevronRight className="w-3 h-3" />
-                        </button>
+            {/* Pagination — keyset (created_at) vs offset (other sorts) */}
+            {useCreatedAtKeyset ? (
+                (listCursor || data.next_cursor) && (
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#475569] font-mono">Cursor pagination (newest first)</span>
+                        <div className="flex items-center space-x-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const params = new URLSearchParams(searchParams);
+                                    const parent = cursorBreadcrumbRef.current.pop();
+                                    if (parent === undefined && !listCursor) return;
+                                    if (parent === undefined || parent === '') params.delete('cursor');
+                                    else params.set('cursor', parent);
+                                    params.delete('page');
+                                    setSearchParams(params, { replace: true });
+                                }}
+                                disabled={!listCursor}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                <ChevronLeft className="w-3 h-3" /><span>Previous</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!data.next_cursor) return;
+                                    const params = new URLSearchParams(searchParams);
+                                    cursorBreadcrumbRef.current.push(listCursor);
+                                    params.set('cursor', data.next_cursor);
+                                    params.delete('page');
+                                    setSearchParams(params, { replace: true });
+                                }}
+                                disabled={!data.next_cursor}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                <span>Next</span><ChevronRight className="w-3 h-3" />
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )
+            ) : (
+                data.pages > 1 && (
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#475569] font-mono">Page {data.page} of {data.pages}</span>
+                        <div className="flex items-center space-x-2">
+                            <button onClick={() => setFilter('page', String(page - 1))} disabled={page <= 1}
+                                className="btn btn-secondary btn-sm">
+                                <ChevronLeft className="w-3 h-3" /><span>Previous</span>
+                            </button>
+                            <button onClick={() => setFilter('page', String(page + 1))} disabled={page >= data.pages}
+                                className="btn btn-secondary btn-sm">
+                                <span>Next</span><ChevronRight className="w-3 h-3" />
+                            </button>
+                        </div>
+                    </div>
+                )
             )}
 
             {/* Recent Activity */}

@@ -34,6 +34,9 @@ export const clearToken = () => {
 
 export const getUser = () => currentUser;
 
+/** For EventSource (SSE) which cannot send Authorization headers. */
+export const getAccessToken = () => jwtToken;
+
 // Flag to prevent concurrent refresh attempts
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
@@ -106,6 +109,10 @@ export interface Task {
     created_at: string;
     execution_ms?: number;
     severity?: 'critical' | 'high' | 'medium' | 'low' | 'informational';
+    prompt?: string | null;
+    verdict?: string | null;
+    risk_score?: number | null;
+    path_taken?: string | null;
 }
 
 export interface TaskDetail extends Task {
@@ -199,6 +206,10 @@ export interface TaskListResponse {
     page: number;
     limit: number;
     pages: number;
+    /** Opaque cursor for the next page when sorting by created_at (keyset pagination). */
+    next_cursor?: string | null;
+    /** API ignored legacy ?page= when keyset mode is active. */
+    deprecated_page_ignored?: boolean;
 }
 
 export const fetchTasks = async (params?: Record<string, string>): Promise<TaskListResponse> => {
@@ -688,9 +699,9 @@ export interface EntityGraphData {
     edges: EntityEdge[];
 }
 
-export const fetchEntities = async (entityType?: string): Promise<EntityGraphData> => {
-    let url = `${API_BASE_URL}/entities`;
-    if (entityType) url += `?type=${entityType}`;
+export const fetchEntities = async (entityType?: string, limit = 500): Promise<EntityGraphData> => {
+    let url = `${API_BASE_URL}/entities?limit=${limit}`;
+    if (entityType) url += `&type=${encodeURIComponent(entityType)}`;
     const response = await fetchWithRefresh(url, {
         headers: getHeaders(),
         cache: 'no-store'
@@ -701,6 +712,50 @@ export const fetchEntities = async (entityType?: string): Promise<EntityGraphDat
         return generatePlaceholderEntities();
     }
     return response.json();
+};
+
+export const fetchEntityNeighborhood = async (entityId: string): Promise<EntityGraphData> => {
+    const response = await fetchWithRefresh(
+        `${API_BASE_URL}/entities/${encodeURIComponent(entityId)}/neighborhood`,
+        { headers: getHeaders(), cache: 'no-store' }
+    );
+    if (response.status === 401 || response.status === 403) throw new Error('Unauthorized');
+    if (!response.ok) throw new Error('Failed to load neighborhood');
+    return response.json();
+};
+
+export interface McpKeyRow {
+    id: string;
+    name: string;
+    created_at: string;
+    active: boolean;
+    last_used_at?: string;
+    revoked_at?: string;
+}
+
+export const listMcpKeys = async (): Promise<McpKeyRow[]> => {
+    const r = await fetchWithRefresh(`${API_BASE_URL}/mcp-keys`, { headers: getHeaders() });
+    if (!r.ok) throw new Error('Failed to list MCP keys');
+    const d = await r.json();
+    return d.items || [];
+};
+
+export const createMcpKey = async (name: string): Promise<{ id: string; name: string; key: string; created_at: string }> => {
+    const r = await fetchWithRefresh(`${API_BASE_URL}/mcp-keys`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ name }),
+    });
+    if (!r.ok) throw new Error('Failed to create MCP key');
+    return r.json();
+};
+
+export const revokeMcpKey = async (id: string): Promise<void> => {
+    const r = await fetchWithRefresh(`${API_BASE_URL}/mcp-keys/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+    });
+    if (!r.ok) throw new Error('Failed to revoke MCP key');
 };
 
 function generatePlaceholderEntities(): EntityGraphData {

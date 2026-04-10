@@ -10,24 +10,29 @@ from typing import Optional
 
 import httpx
 
-ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "https://api.openai.com/v1/chat/completions")
 try:
     from settings import settings as _settings
-    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", _settings.llm_key)
+    from llm_client import resolve_llm_api_key as _resolve_llm_api_key
+    ZOVARK_LLM_KEY = _resolve_llm_api_key(None)
     DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
 except ImportError:
-    ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "sk-zovark-dev-2026")
+    ZOVARK_LLM_KEY = (
+        os.environ.get("OPENAI_API_KEY", "").strip()
+        or os.environ.get("ZOVARK_OPENAI_API_KEY", "").strip()
+        or os.environ.get("ZOVARK_LLM_KEY", "").strip()
+    )
     DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
 
 # Two-model routing: Gemma 4 E4B (dev: same model both roles, customer: bigger CODE)
 # FAST: tool selection + param extraction (Path B/C)
 # CODE: verdict assessment + summary (Stage 4)
-MODEL_FAST = os.environ.get("ZOVARK_MODEL_FAST", "gemma-4-e4b-it")
-MODEL_CODE = os.environ.get("ZOVARK_MODEL_CODE", "gemma-4-e4b-it")
+MODEL_FAST = os.environ.get("ZOVARK_MODEL_FAST", "gpt-4o-mini")
+MODEL_CODE = os.environ.get("ZOVARK_MODEL_CODE", "gpt-4o-mini")
 
 # Dual-endpoint support: route FAST and CODE models to separate inference endpoints
 _DEFAULT_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT",
-    "http://zovark-inference:8080/v1/chat/completions")
+    "https://api.openai.com/v1/chat/completions")
 ENDPOINT_FAST = os.environ.get("ZOVARK_LLM_ENDPOINT_FAST", _DEFAULT_ENDPOINT)
 ENDPOINT_CODE = os.environ.get("ZOVARK_LLM_ENDPOINT_CODE", _DEFAULT_ENDPOINT)
 
@@ -71,7 +76,8 @@ async def llm_call(
     Returns: {"content": str, "tokens_in": int, "tokens_out": int, "latency_ms": int, "model": str, "prompt_version": str}
     """
     model_name = model_config.get("model", model_config.get("name", "unknown"))
-    endpoint = model_config.get("endpoint") or _get_endpoint_for_model(model_name)
+    # Env-based FAST/CODE URLs (ZOVARK_LLM_ENDPOINT_*) — avoids stale YAML hostnames in Docker.
+    endpoint = _get_endpoint_for_model(model_name)
     api_key = model_config.get("api_key", ZOVARK_LLM_KEY)
 
     request_body = {
@@ -123,6 +129,8 @@ async def llm_call(
             response_format=request_body.get("response_format"),
             role=effective_role,
             grammar_name=grammar_name,
+            endpoint_url=endpoint,
+            api_key=api_key,
         )
 
         usage = result.get("usage", {})
@@ -244,6 +252,9 @@ def preload_llm_models():
     """Pre-load CODE and FAST models into VRAM via Ollama-compatible /api/generate endpoint."""
     import logging
     logger = logging.getLogger(__name__)
+    if os.environ.get("ZOVARK_LLM_PROVIDER", "local").lower().strip() == "openai":
+        logger.info("Skipping VRAM preload — ZOVARK_LLM_PROVIDER=openai")
+        return
     for model, ep in [(MODEL_CODE, ENDPOINT_CODE), (MODEL_FAST, ENDPOINT_FAST)]:
         base_url = ep.replace("/v1/chat/completions", "").replace("/v1/models", "")
         try:

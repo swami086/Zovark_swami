@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -107,7 +108,39 @@ func handleInjectSynthetic(c *gin.Context) {
 	var errors []string
 
 	for i, alert := range alerts {
-		taskID, err := createIngestTask(ctx, tenantID, alert.TaskType, alert.Prompt, alert.Source, alert.Input)
+		se, _ := alert.Input["siem_event"].(map[string]interface{})
+		flat := map[string]interface{}{}
+		for k, v := range se {
+			flat[k] = v
+		}
+		if s, ok := alert.Input["severity"]; ok {
+			flat["severity"] = s
+		}
+		ocsf := NormalizeFlatSIEMToOCSF(flat)
+		envelope := map[string]interface{}{}
+		for k, v := range alert.Input {
+			if k == "siem_event" {
+				continue
+			}
+			envelope[k] = v
+		}
+		if se != nil {
+			if v, ok := se["source_ip"].(string); ok {
+				envelope["source_ip"] = v
+			}
+			if v, ok := se["destination_ip"].(string); ok {
+				envelope["dest_ip"] = v
+			}
+			if v, ok := se["dest_ip"].(string); ok && envelope["dest_ip"] == nil {
+				envelope["dest_ip"] = v
+			}
+			if v, ok := se["username"].(string); ok {
+				envelope["user"] = v
+			}
+			envelope["siem_vendor"] = "bootstrap"
+		}
+		rawSynthetic, _ := json.Marshal(alert.Input)
+		taskID, _, err := createIngestTask(ctx, tenantID, alert.TaskType, alert.Prompt, alert.Source, rawSynthetic, ocsf, envelope)
 		if err != nil {
 			log.Printf("[BOOTSTRAP] Failed to inject synthetic alert %d (%s): %v", i+1, alert.TaskType, err)
 			errors = append(errors, fmt.Sprintf("%s: %v", alert.TaskType, err))

@@ -121,3 +121,43 @@ TEMPLATE_METADATA = {
     "threat_types": ["powershell_obfuscation", "execution", "defense_evasion"],
     "description": "Detect obfuscated PowerShell — encoded commands, IEX, download cradles",
 }
+
+_SIEM_PLACEHOLDER = "{{siem_event_json}}"
+
+
+def render_template_code(code: str, siem_event: dict) -> tuple[str, str]:
+    """Inject SIEM JSON into template source using AST Constant replacement.
+
+    Returns (rendered_code, method) where method is ``ast`` or ``string_fallback``.
+    String replace is only used when parse/transform fails (explicit warning logged).
+    """
+    import ast
+    import json as _json
+    import logging as _logging
+
+    log = _logging.getLogger(__name__)
+    payload = _json.dumps(siem_event, ensure_ascii=False)
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        log.warning(
+            "template_mutation: syntax error in template — using string placeholder fallback"
+        )
+        return code.replace(_SIEM_PLACEHOLDER, payload), "string_fallback"
+
+    class _Inject(ast.NodeTransformer):
+        def visit_Constant(self, node):
+            if isinstance(node.value, str) and _SIEM_PLACEHOLDER in node.value:
+                new_val = node.value.replace(_SIEM_PLACEHOLDER, payload)
+                return ast.copy_location(ast.Constant(value=new_val), node)
+            return node
+
+    try:
+        new_tree = ast.fix_missing_locations(_Inject().visit(tree))
+        out = ast.unparse(new_tree)
+        return out, "ast"
+    except Exception as e:
+        log.warning(
+            "template_mutation: AST transform failed (%s) — string fallback", e
+        )
+        return code.replace(_SIEM_PLACEHOLDER, payload), "string_fallback"

@@ -6,8 +6,6 @@ Self-contained: imports psycopg2, redis directly.
 Does NOT import from _legacy_activities.py.
 """
 import os
-import json
-import hashlib
 import re
 import time
 from typing import Optional
@@ -31,9 +29,10 @@ except ImportError:
             import logging
             return logging.getLogger("mock_activity")
     activity = _MockActivity()
+
+from stages.trace_helpers import trace_investigation_pipeline, trace_stage_ingest_span
 from stages import IngestOutput
 from stages.input_sanitizer import sanitize_siem_event
-from stages.normalizer import normalize_siem_event
 from stages.smart_batcher import get_batcher
 
 # --- Config ---
@@ -44,7 +43,6 @@ try:
 except ImportError:
     DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
     REDIS_URL = os.environ.get("REDIS_URL", "redis://:hydra-redis-dev-2026@redis:6379/0")
-DEDUP_ENABLED = os.environ.get("DEDUP_ENABLED", "true").lower() == "true"
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
 
 
@@ -148,44 +146,40 @@ def _has_raw_log_attack_content(raw_log: str) -> bool:
     return False
 
 
-# --- Dedup (inlined from dedup/stage1_exact.py) ---
-TIMESTAMP_PATTERNS = [
-    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?',
-    r'\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}',
-    r'\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}',
-]
-DEDUP_TTL = {'critical': 60, 'high': 300, 'medium': 900, 'low': 3600, 'info': 7200}
+def _endpoint_ip(ev: dict, key: str) -> str:
+    ep = ev.get(key)
+    if isinstance(ep, dict):
+        v = ep.get("ip")
+        return v if isinstance(v, str) else ""
+    return ""
 
 
-def _normalize_raw_log(raw_log: str) -> str:
-    for p in TIMESTAMP_PATTERNS:
-        raw_log = re.sub(p, 'TIMESTAMP', raw_log)
-    return raw_log
-
-
-def _compute_alert_hash(alert: dict) -> str:
-    canonical = {
-        'rule_name': alert.get('rule_name', ''),
-        'source_ip': alert.get('source_ip', ''),
-        'destination_ip': alert.get('destination_ip', ''),
-        'hostname': alert.get('hostname', ''),
-        'username': alert.get('username', ''),
-        'raw_log': _normalize_raw_log(alert.get('raw_log', '')),
-    }
-    return hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
-
-
-def _check_exact_dedup(alert: dict, redis_client) -> Optional[str]:
-    alert_hash = _compute_alert_hash(alert)
-    existing = redis_client.get(f'dedup:exact:{alert_hash}')
-    return existing.decode() if existing else None
-
-
-def _register_dedup(alert: dict, task_id: str, redis_client):
-    severity = alert.get('severity', 'high').lower()
-    ttl = DEDUP_TTL.get(severity, 300)
-    alert_hash = _compute_alert_hash(alert)
-    redis_client.setex(f'dedup:exact:{alert_hash}', ttl, task_id)
+def enrich_legacy_fields_from_ocsf(ev: dict) -> dict:
+    """Add ZCS-style flat keys from OCSF 1.3 shapes for downstream tools and pattern code."""
+    if not isinstance(ev, dict) or ev.get("class_uid") is None:
+        return ev
+    out = dict(ev)
+    sip = _endpoint_ip(ev, "src_endpoint")
+    if sip and not out.get("source_ip"):
+        out["source_ip"] = sip
+    dip = _endpoint_ip(ev, "dst_endpoint")
+    if dip and not out.get("destination_ip"):
+        out["destination_ip"] = dip
+    actor = ev.get("actor")
+    if isinstance(actor, dict):
+        user = actor.get("user")
+        if isinstance(user, dict):
+            n = user.get("name")
+            if isinstance(n, str) and n and not out.get("username"):
+                out["username"] = n
+    fi = ev.get("finding_info")
+    if isinstance(fi, dict):
+        t = fi.get("title")
+        if isinstance(t, str) and t and not out.get("rule_name"):
+            out["rule_name"] = t
+    if out.get("message") and not out.get("raw_log"):
+        out["raw_log"] = str(out["message"])
+    return out
 
 
 # --- PII masking (simplified — regex-based, no Redis entity map) ---
@@ -252,7 +246,10 @@ async def fetch_task(task_id: str) -> dict:
     conn = _get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT id, tenant_id, task_type, input, status, trace_id FROM agent_tasks WHERE id = %s", (task_id,))
+            cur.execute(
+                "SELECT id, tenant_id, task_type, input, status, trace_id, raw_input, dedup_hash FROM agent_tasks WHERE id = %s",
+                (task_id,),
+            )
             row = cur.fetchone()
             if not row:
                 raise ValueError(f"Task {task_id} not found")
@@ -273,15 +270,25 @@ async def ingest_alert(task_data: dict) -> dict:
 
     Returns dict (serializable IngestOutput fields).
     """
-    # OTEL span
-    try:
-        from tracing import get_tracer
-        _span = get_tracer().start_span("stage.ingest")
-        _span.set_attribute("zovark.task_id", task_data.get("task_id", ""))
-        _span.set_attribute("zovark.task_type", task_data.get("task_type", ""))
-    except Exception:
-        _span = None
+    with trace_investigation_pipeline(task_data):
+        with trace_stage_ingest_span(task_data):
+            return await _ingest_alert_body(task_data)
 
+
+async def _ingest_alert_body(task_data: dict) -> dict:
+    import time as _time
+    _t0 = _time.perf_counter()
+    try:
+        return await __ingest_alert_core(task_data)
+    finally:
+        try:
+            from metrics import record_pipeline_stage
+            record_pipeline_stage("ingest", _time.perf_counter() - _t0)
+        except Exception:
+            pass
+
+
+async def __ingest_alert_core(task_data: dict) -> dict:
     task_id = task_data.get("task_id", "")
     tenant_id = task_data.get("tenant_id", "")
     task_type = task_data.get("task_type", "")
@@ -289,8 +296,9 @@ async def ingest_alert(task_data: dict) -> dict:
     siem_event = sanitize_siem_event(siem_event)
     if siem_event.get("_injection_warning"):
         activity.logger.warning(f"Prompt injection patterns detected in SIEM data for task {task_id}")
-    siem_event = normalize_siem_event(siem_event)
-    activity.logger.info(f"Normalized: style={siem_event.get('_field_style', 'unknown')}, fields={len(siem_event.get('_original_fields', {}))}")
+    siem_event = enrich_legacy_fields_from_ocsf(siem_event)
+    if isinstance(siem_event, dict) and siem_event.get("class_uid") is not None:
+        activity.logger.info(f"Ingest OCSF event class_uid={siem_event.get('class_uid')}")
     prompt = task_data.get("input", {}).get("prompt", "")
 
     # --- Redis client (shared by smart batcher + dedup) ---
@@ -319,6 +327,7 @@ async def ingest_alert(task_data: dict) -> dict:
                     is_duplicate=True,
                     duplicate_of="batch",
                     dedup_reason="smart_batch",
+                    trace_id=str(task_data.get("trace_id", "") or ""),
                 ))
 
             if aggregated:
@@ -333,22 +342,10 @@ async def ingest_alert(task_data: dict) -> dict:
         task_type=task_type,
         siem_event=siem_event,
         prompt=prompt,
+        trace_id=str(task_data.get("trace_id", "") or ""),
     )
 
-    # --- Dedup (Redis) ---
-    if DEDUP_ENABLED and siem_event and _redis_client:
-        try:
-            alert_for_dedup = {**siem_event, "task_type": task_type}
-            match = _check_exact_dedup(alert_for_dedup, _redis_client)
-            if match:
-                result.is_duplicate = True
-                result.duplicate_of = match
-                result.dedup_reason = "exact_duplicate"
-                return asdict(result)
-            # Register for future dedup
-            _register_dedup(alert_for_dedup, task_id, _redis_client)
-        except Exception as e:
-            print(f"Dedup check failed (non-fatal): {e}")
+    # Pre-Temporal exact dedup runs in the Go API; worker does not register duplicate Redis keys.
 
     # --- PII masking ---
     if prompt:
@@ -384,14 +381,5 @@ async def ingest_alert(task_data: dict) -> dict:
             conn.close()
     except Exception as e:
         print(f"Skill retrieval failed (non-fatal): {e}")
-
-    # End OTEL span
-    if _span:
-        try:
-            _span.set_attribute("result.is_duplicate", result.is_duplicate)
-            _span.set_attribute("result.skill_id", result.skill_id or "")
-            _span.end()
-        except Exception:
-            pass
 
     return asdict(result)

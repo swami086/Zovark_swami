@@ -90,7 +90,7 @@ SIEM Alert → Go API (:8090) → PostgreSQL → Temporal Workflow →
 | File | Purpose |
 |------|---------|
 | `worker/_legacy_activities.py` | 23 core activities including generate_code, fill_skill_parameters |
-| `worker/_legacy_workflows.py` | ExecuteTaskWorkflow — main investigation pipeline |
+| `worker/stages/investigation_workflow.py` | InvestigationWorkflowV2 — main investigation pipeline (registered via `stages/register.py`) |
 | `worker/skills/lateral_movement.py` | PtH/NTLM/mimikatz detection template |
 | `worker/skills/network_beaconing.py` | C2 beacon + DNS tunnel detection template |
 | `worker/skills/deobfuscation.py` | Base64/hex/PowerShell payload decoder |

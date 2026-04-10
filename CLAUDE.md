@@ -206,7 +206,7 @@ Dual-endpoint opt-in via `ZOVARK_LLM_ENDPOINT_FAST` and `ZOVARK_LLM_ENDPOINT_COD
 | `config/signoz/otel-collector-config.yaml` | OTLP receivers → ClickHouse exporters for traces/metrics/logs |
 | `config/signoz/clickhouse-cluster.xml` | Single-node ClickHouse with built-in Keeper for Signoz |
 | `config/signoz/frontend-nginx.conf` | Nginx proxy — prefix match for /api/* to query service |
-| `dashboard/src/components/LiveInvestigationFeed.tsx` | Real-time SSE event feed — tool progress, IOC discovery, verdict reveal |
+| `dashboard/src/pages/TaskList.tsx`, `TaskDetail.tsx` | `EventSource` clients for `GET /api/v1/tasks/stream` — live task completion / investigation events |
 
 ### Worker Pipeline (Python)
 
@@ -733,7 +733,21 @@ Requires: Signoz tracing stack running (`docker compose --profile tracing up -d`
 Signoz login: admin@zovark.local / TestPass2026
 
 ### Code Graph RAG MCP (codebase knowledge graph)
-Register: `claude mcp add-json code-graph-rag '{"command":"npx","args":["-y","@er77/code-graph-rag-mcp","/path/to/hydra-mvp"],"env":{"MCP_TIMEOUT":"80000"}}'`
+Uses **vitali87/code-graph-rag** (Memgraph + `uv run … mcp-server`), not the npm `@er77` package.
+
+1. Start dedicated Memgraph: `docker compose -f docker-compose.code-graph-rag.yml up -d` (Bolt on **127.0.0.1:7688**).
+2. Cursor `~/.cursor/mcp.json`: server **`code-graph-rag-zovark`** with `TARGET_REPO_PATH` = absolute path to this repo, `MEMGRAPH_HOST=127.0.0.1`, `MEMGRAPH_PORT=7688`, plus `CYPHER_*` for NL→Cypher.
+3. Optional: repo-root **`.cgrignore`** excludes bulky trees from the index.
+
+**Troubleshooting (index looks wrong / mixed projects / bogus call edges):**
+- **`delete_project` leaves orphans:** Upstream `index_repository` only deletes nodes under `Project` via `CONTAINS_*`. **`Module` and `ExternalPackage` nodes stay** (~400+), so the graph rots after each MCP reindex. Fix: set **`CGR_FULL_GRAPH_RESET_ON_INDEX=true`** in MCP env (patched local `code-graph-rag` supports this) or run **`./scripts/code_graph_rag_reindex.sh`** / `code-graph-rag start --update-graph --clean` for a full wipe.
+- **Memgraph must be up** on `MEMGRAPH_PORT` (e.g. `docker compose -f docker-compose.code-graph-rag.yml up -d`).
+- **Go / TypeScript not in graph:** The indexer only parses languages with installed **tree-sitter** wheels. This repo’s `code-graph-rag` `pyproject.toml` includes Go/JS/TS/Rust/Java/Cpp/Scala/Lua in main dependencies; run **`uv sync`** in the `code-graph-rag` clone after pull. Verify with: `uv run python -c "from codebase_rag.parser_loader import load_parsers; print(load_parsers()[0].keys())"` — must include `go` and `typescript`.
+- **Semantic embeddings:** Optional extras are not installed by default; logs may say *“Semantic search dependencies not available”* — structural graph still works.
+- **Some NL queries fail** with Memgraph *“Not yet implemented”* — simplify Cypher or upgrade Memgraph; not an indexing failure.
+- **Multi-statement Cypher from the LLM** is truncated to the first statement before execution (Memgraph one-query-per-call).
+
+Claude Code CLI equivalent: `claude mcp add --transport stdio code-graph-rag-zovark --env TARGET_REPO_PATH="$(pwd)" --env MEMGRAPH_HOST=127.0.0.1 --env MEMGRAPH_PORT=7688 … -- uv run --directory /path/to/code-graph-rag code-graph-rag mcp-server`
 Index: Use `batch_index` tool in Claude Code after first setup, continue until 100%
 Query: Ask natural language questions about the codebase
 ```
@@ -863,7 +877,7 @@ From commit 8507c11 to f0f8b2f — 27 commits in one session:
 ### Phase 5: Streaming Investigation Waterfall
 7. **worker/events.py** — PostgreSQL NOTIFY on `investigation_events` channel. Events: tool_started, tool_completed, ioc_discovered, mitre_mapped, verdict_ready. Human-readable tool summaries. Fire-and-forget.
 8. **api/sse.go** — Added LISTEN investigation_events alongside task_completed. Events forwarded with event type and trace_id.
-9. **LiveInvestigationFeed.tsx** — React SSE consumer with monospace timeline, tool indentation, IOC highlighting, colored verdict reveal.
+9. **Dashboard SSE** — `TaskList.tsx` / `TaskDetail.tsx` subscribe to `GET /api/v1/tasks/stream` via `EventSource` (token query param); demo pipeline UI uses `InvestigationWaterfall` and related components on `/demo`.
 
 ### Phase 6: Code Graph RAG + Signoz MCP
 10. **Code Graph RAG MCP** — registered for codebase knowledge graph queries

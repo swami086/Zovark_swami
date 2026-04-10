@@ -178,6 +178,9 @@ func complianceReportHandler(c *gin.Context) {
 		mitreTechniques = []string{}
 	}
 
+	yamlRules := loadComplianceRulesYAML()
+	yamlCompliance := mapYAMLCompliance(mitreTechniques, yamlRules)
+
 	// Severity distribution
 	var criticalCount, highCount, mediumCount, lowCount int
 	_ = dbPool.QueryRow(ctx, `
@@ -215,6 +218,7 @@ func complianceReportHandler(c *gin.Context) {
 		"controls":               controlEvidence,
 		"mitre_attack_coverage":  mitreTechniques,
 		"mitre_technique_count":  len(mitreTechniques),
+		"compliance_rules_yaml":  yamlCompliance,
 		"compliance_note":        fmt.Sprintf("Report covers %d investigations across %s to %s", totalInvestigations, req.StartDate, req.EndDate),
 	}
 

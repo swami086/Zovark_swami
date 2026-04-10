@@ -22,11 +22,74 @@ logger = logging.getLogger(__name__)
 
 try:
     from settings import settings as _settings
-    _BASE_URL = _settings.llm_base_url
+    _CONTEXT_BUDGET = int(getattr(_settings, "context_token_budget", 12000))
 except ImportError:
-    _BASE_URL = os.environ.get("ZOVARK_LLM_BASE_URL", "http://zovark-inference:8080")
+    _settings = None
+    _CONTEXT_BUDGET = int(os.environ.get("ZOVARK_CONTEXT_TOKEN_BUDGET", "12000"))
+
+
+def _llm_provider() -> str:
+    """local = llama.cpp / Ollama-style; openai = OpenAI Chat Completions API."""
+    if _settings is not None:
+        return str(getattr(_settings, "llm_provider", "local") or "local").lower().strip()
+    return os.environ.get("ZOVARK_LLM_PROVIDER", "local").lower().strip()
+
+
+def _default_chat_endpoint() -> str:
+    if _settings is not None:
+        ep = getattr(_settings, "llm_endpoint", None)
+        if ep:
+            return str(ep)
+    return os.environ.get(
+        "ZOVARK_LLM_ENDPOINT", "https://api.openai.com/v1/chat/completions"
+    )
+
+
+def chat_endpoint_for_model(model_name: str) -> str:
+    """Resolve FAST vs CODE chat URL from env/settings (same logic as stages.llm_gateway)."""
+    default = _default_chat_endpoint()
+    fast_m = ""
+    if _settings is not None:
+        fast_m = str(getattr(_settings, "llm_fast_model", "") or "").strip()
+    if not fast_m:
+        fast_m = os.environ.get("ZOVARK_MODEL_FAST", "").strip()
+    ep_fast = os.environ.get("ZOVARK_LLM_ENDPOINT_FAST", "").strip() or default
+    ep_code = os.environ.get("ZOVARK_LLM_ENDPOINT_CODE", "").strip() or default
+    if model_name == fast_m:
+        return ep_fast
+    return ep_code
+
+
+def resolve_llm_api_key(explicit: str | None = None) -> str:
+    """Bearer token for chat completions. OpenAI: prefer openai_api_key / OPENAI_API_KEY, then legacy keys."""
+    if explicit is not None and str(explicit).strip():
+        return str(explicit).strip()
+    prov = _llm_provider()
+    if prov == "openai":
+        if _settings is not None:
+            oa = getattr(_settings, "openai_api_key", None)
+            if oa is not None:
+                v = oa.get_secret_value().strip()
+                if v:
+                    return v
+        for env_k in ("OPENAI_API_KEY", "ZOVARK_OPENAI_API_KEY"):
+            v = os.environ.get(env_k, "").strip()
+            if v:
+                return v
+    if _settings is not None:
+        lk = str(getattr(_settings, "llm_key", "") or "").strip()
+        if lk:
+            return lk
+    return os.environ.get("ZOVARK_LLM_KEY", "").strip()
+
+
+def sync_llm_chat(**kwargs) -> dict:
+    """Run llm_request from synchronous code (no nested event loop)."""
+    return asyncio.run(llm_request(**kwargs))
 
 _client: httpx.AsyncClient | None = None
+# AsyncClient must not be reused across different event loops (e.g. repeated asyncio.run in tests).
+_client_loop_id: int | None = None
 _fast_semaphore = asyncio.Semaphore(1)  # FAST role: tool selection, param fill
 _code_semaphore = asyncio.Semaphore(1)  # CODE role: assessment, summary
 
@@ -69,6 +132,129 @@ _CONTROL_TOKEN_RE = re.compile(
 )
 
 
+def _approx_message_tokens(messages: list) -> int:
+    """Rough token estimate (chars/4) for budgeting."""
+    n = 0
+    for m in messages:
+        c = m.get("content")
+        if isinstance(c, str):
+            n += max(1, len(c) // 4)
+    return n
+
+
+def _shrink_delimited_block(content: str, start_m: str, end_m: str, trim_log: list) -> tuple[str, bool]:
+    """Remove one trailing line from inside a marked section. Returns (new_content, changed)."""
+    if not isinstance(content, str) or start_m not in content or end_m not in content:
+        return content, False
+    si = content.index(start_m) + len(start_m)
+    ei = content.index(end_m, si)
+    inner = content[si:ei]
+    lines = inner.strip("\n").split("\n")
+    if len(lines) <= 1:
+        return content, False
+    removed = lines[-1]
+    new_inner = "\n".join(lines[:-1])
+    trim_log.append(
+        {
+            "marker_pair": f"{start_m[:24]}…",
+            "removed_line_chars": len(removed),
+        }
+    )
+    return content[:si] + "\n" + new_inner + "\n" + content[ei:], True
+
+
+def _trim_tail_lines_non_system(msgs: list, trim_log: list) -> bool:
+    """Drop one trailing line from the last non-system message (after all marked sections shrunk)."""
+    for i in range(len(msgs) - 1, -1, -1):
+        if msgs[i].get("role") == "system":
+            continue
+        c = msgs[i].get("content")
+        if not isinstance(c, str) or len(c) < 120:
+            return False
+        lines = c.split("\n")
+        if len(lines) <= 2:
+            return False
+        removed = lines.pop()
+        trim_log.append({"section": "user_tail_line", "removed_line_chars": len(removed)})
+        msgs[i]["content"] = "\n".join(lines)
+        return True
+    return False
+
+
+def _truncate_messages_for_budget(messages: list, budget: int) -> list:
+    """Section-aware trim: never modify system/instruction messages.
+
+    Order: shrink correlation marked block, then institutional block, then generic user tail lines.
+    """
+    try:
+        from context_markers import (
+            CORRELATION_END,
+            CORRELATION_START,
+            INSTITUTIONAL_END,
+            INSTITUTIONAL_START,
+        )
+    except ImportError:
+        CORRELATION_START = "<<<ZOVARK_CORRELATION_CONTEXT>>>"
+        CORRELATION_END = "<<</ZOVARK_CORRELATION_CONTEXT>>>"
+        INSTITUTIONAL_START = "<<<ZOVARK_INSTITUTIONAL_KNOWLEDGE>>>"
+        INSTITUTIONAL_END = "<<</ZOVARK_INSTITUTIONAL_KNOWLEDGE>>>"
+
+    msgs = [{"role": m.get("role", "user"), "content": m.get("content", "")} for m in messages]
+    before = _approx_message_tokens(msgs)
+    if before <= budget:
+        return msgs
+
+    trim_log: list = []
+    meta = {
+        "approx_tokens_before": before,
+        "budget": budget,
+        "sections_trimmed": trim_log,
+        "strategy": "correlation_then_institutional_then_user_tail",
+    }
+
+    safety = 0
+    while _approx_message_tokens(msgs) > budget and safety < 600:
+        safety += 1
+        progressed = False
+        for i, m in enumerate(msgs):
+            if m.get("role") == "system":
+                continue
+            c = m.get("content", "")
+            if not isinstance(c, str):
+                continue
+            nc, ch = _shrink_delimited_block(c, CORRELATION_START, CORRELATION_END, trim_log)
+            if ch:
+                msgs[i]["content"] = nc
+                progressed = True
+                break
+        if progressed:
+            continue
+        for i, m in enumerate(msgs):
+            if m.get("role") == "system":
+                continue
+            c = m.get("content", "")
+            if not isinstance(c, str):
+                continue
+            nc, ch = _shrink_delimited_block(c, INSTITUTIONAL_START, INSTITUTIONAL_END, trim_log)
+            if ch:
+                msgs[i]["content"] = nc
+                progressed = True
+                break
+        if progressed:
+            continue
+        if _trim_tail_lines_non_system(msgs, trim_log):
+            continue
+        break
+
+    meta["approx_tokens_after"] = _approx_message_tokens(msgs)
+    meta["trim_rounds"] = safety
+    logger.warning(
+        "LLM context over token budget — section-aware truncation applied",
+        extra={"zovark_context_trim": meta},
+    )
+    return msgs
+
+
 def _sanitize_llm_output(text: str) -> str:
     """Strip control tokens that may leak into grammar-constrained output."""
     cleaned = _CONTROL_TOKEN_RE.sub('', text).strip()
@@ -81,15 +267,23 @@ def _sanitize_llm_output(text: str) -> str:
 
 
 def get_client() -> httpx.AsyncClient:
-    """Get or create the singleton httpx.AsyncClient."""
-    global _client
+    """Get or create the singleton httpx.AsyncClient (no base_url — chat URL is absolute)."""
+    global _client, _client_loop_id
+    cur_id: int | None = None
+    try:
+        cur_id = id(asyncio.get_running_loop())
+    except RuntimeError:
+        pass
+    if cur_id is not None:
+        if _client_loop_id is not None and _client_loop_id != cur_id:
+            _client = None
+        _client_loop_id = cur_id
     if _client is None or _client.is_closed:
         _client = httpx.AsyncClient(
-            base_url=_BASE_URL,
             timeout=httpx.Timeout(
-                connect=5.0,
+                connect=30.0 if _llm_provider() == "openai" else 5.0,
                 read=120.0,
-                write=5.0,
+                write=30.0 if _llm_provider() == "openai" else 5.0,
                 pool=10.0,
             ),
         )
@@ -105,6 +299,8 @@ async def llm_request(
     response_format: dict | None = None,
     role: str = "tool_select",
     grammar_name: str | None = None,
+    endpoint_url: str | None = None,
+    api_key: str | None = None,
 ) -> dict:
     """Make an LLM request through semaphore-controlled singleton client.
 
@@ -114,7 +310,15 @@ async def llm_request(
         grammar_name: GBNF grammar file name (without .gbnf). None = no grammar.
 
     Returns the raw response JSON from the /v1/chat/completions endpoint.
+
+    endpoint_url: full URL (e.g. https://api.openai.com/v1/chat/completions).
+    api_key: Bearer token; defaults to ZOVARK_LLM_KEY / settings.
     """
+    provider = _llm_provider()
+    is_openai = provider == "openai"
+    chat_url = (endpoint_url or "").strip() or _default_chat_endpoint()
+    auth_key = resolve_llm_api_key(api_key)
+
     # Select semaphore based on role
     is_code_role = role in ("verdict", "summary")
     sem = _code_semaphore if is_code_role else _fast_semaphore
@@ -125,25 +329,46 @@ async def llm_request(
     async with sem:
         client = get_client()
         start = time.perf_counter()
-        body = {
+        budget = _CONTEXT_BUDGET
+        if _settings is not None:
+            budget = int(getattr(_settings, "context_token_budget", budget))
+        work_messages = _truncate_messages_for_budget(messages, budget)
+        eff_temp = temperature if temperature != 0.1 else sampling["temperature"]
+        body: dict = {
             "model": model,
-            "messages": messages,
-            "temperature": temperature if temperature != 0.1 else sampling["temperature"],
+            "messages": work_messages,
+            "temperature": eff_temp,
             "max_tokens": max_tokens,
-            "keep_alive": "30m",
         }
-        if sampling.get("top_k"):
-            body["top_k"] = sampling["top_k"]
-        if response_format:
-            body["response_format"] = response_format
+        headers = {"Content-Type": "application/json"}
+        if auth_key:
+            headers["Authorization"] = f"Bearer {auth_key}"
 
-        # Grammar-constrained decoding (Agent 3)
-        if grammar_name:
-            grammar_text = _load_grammar(grammar_name)
+        grammar_text = None
+        if not is_openai:
+            body["keep_alive"] = "30m"
+            if sampling.get("top_k"):
+                body["top_k"] = sampling["top_k"]
+            if response_format:
+                body["response_format"] = response_format
+            gf = os.environ.get("ZOVARK_GRAMMAR_FILE", "").strip()
+            if not gf and _settings is not None:
+                gf = (getattr(_settings, "grammar_file", None) or "").strip()
+            if gf:
+                try:
+                    with open(gf, encoding="utf-8") as gfobj:
+                        grammar_text = gfobj.read()
+                except OSError as e:
+                    logger.warning("ZOVARK_GRAMMAR_FILE unreadable: %s", e)
+            elif grammar_name:
+                grammar_text = _load_grammar(grammar_name)
             if grammar_text:
                 body["grammar"] = grammar_text
-                # Remove response_format when using grammar — they conflict
                 body.pop("response_format", None)
+        else:
+            # OpenAI Chat Completions: no grammar / keep_alive / top_k
+            if response_format:
+                body["response_format"] = response_format
 
         # OTEL span
         _span = None
@@ -153,12 +378,12 @@ async def llm_request(
             _span.set_attribute("llm.model", model)
             _span.set_attribute("llm.stage", stage)
             _span.set_attribute("llm.role", role)
-            _span.set_attribute("llm.grammar_used", grammar_name is not None)
+            _span.set_attribute("llm.grammar_used", bool(grammar_text))
         except Exception:
             pass
 
         try:
-            response = await client.post("/v1/chat/completions", json=body)
+            response = await client.post(chat_url, json=body, headers=headers)
             response.raise_for_status()
             duration = round(time.perf_counter() - start, 2)
 
@@ -184,6 +409,12 @@ async def llm_request(
                 except Exception:
                     pass
 
+            try:
+                from metrics import record_llm_call
+                record_llm_call(duration, True, tokens_in, tokens_out)
+            except Exception:
+                pass
+
             return result
 
         except httpx.TimeoutException as e:
@@ -197,9 +428,15 @@ async def llm_request(
                     _span.end()
                 except Exception:
                     pass
+            try:
+                from metrics import record_llm_call
+                record_llm_call(duration, False, 0, 0)
+            except Exception:
+                pass
             raise
 
         except httpx.HTTPStatusError as e:
+            duration = round(time.perf_counter() - start, 2)
             logger.error(f"LLM {model} [{stage}/{role}] returned {e.response.status_code}")
             if _span:
                 try:
@@ -208,12 +445,18 @@ async def llm_request(
                     _span.end()
                 except Exception:
                     pass
+            try:
+                from metrics import record_llm_call
+                record_llm_call(duration, False, 0, 0)
+            except Exception:
+                pass
             raise
 
 
 async def close_client():
     """Close the singleton client (call on shutdown)."""
-    global _client
+    global _client, _client_loop_id
     if _client and not _client.is_closed:
         await _client.aclose()
-        _client = None
+    _client = None
+    _client_loop_id = None

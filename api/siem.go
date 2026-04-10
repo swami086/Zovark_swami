@@ -15,7 +15,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.temporal.io/sdk/client"
 )
 
 // ============================================================
@@ -70,8 +69,9 @@ func webhookAlertHandler(c *gin.Context) {
 		return
 	}
 
-	// 5. Auto-detect SIEM format and normalize
-	normalized := normalizeSIEMAlert(payload)
+	// 5. OCSF boundary normalization (Sentinel vs generic webhook vs other shapes)
+	ocsf := ChooseSentinelOrGeneric(payload)
+	alertName, severity, sourceIP, destIP, ruleName := OCSFSIEMColumnValues(ocsf)
 
 	// TODO(security): Go-side sanitization is limited to control-char stripping and
 	// field truncation (see sanitizeSIEMField / autoInvestigateAlert). Deep prompt-injection
@@ -87,17 +87,15 @@ func webhookAlertHandler(c *gin.Context) {
 		autoInvestigate = ai
 	}
 
-	rawJSON, _ := json.Marshal(payload)
-	normJSON, _ := json.Marshal(normalized)
+	rawCopy := append([]byte(nil), body...)
+	normJSON, _ := json.Marshal(ocsf)
 
 	_, err = dbPool.Exec(c.Request.Context(),
 		`INSERT INTO siem_alerts (id, tenant_id, log_source_id, alert_name, severity, source_ip, dest_ip, rule_name, raw_event, normalized_event, status, auto_investigate)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'new', $11)`,
 		alertID, tenantID, sourceID,
-		normalized["alert_name"], normalized["severity"],
-		normalized["source_ip"], normalized["dest_ip"],
-		normalized["rule_name"],
-		rawJSON, normJSON,
+		alertName, severity, sourceIP, destIP, ruleName,
+		rawCopy, normJSON,
 		autoInvestigate,
 	)
 	if err != nil {
@@ -114,7 +112,7 @@ func webhookAlertHandler(c *gin.Context) {
 	// 8. Auto-investigate if configured
 	var investigationID *string
 	if autoInvestigate {
-		taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, normalized)
+		taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, ocsf, rawCopy)
 		if err != nil {
 			log.Printf("Auto-investigate failed for alert %s: %v", alertID, err)
 		} else {
@@ -129,80 +127,15 @@ func webhookAlertHandler(c *gin.Context) {
 	})
 }
 
-func normalizeSIEMAlert(payload map[string]interface{}) map[string]interface{} {
-	norm := map[string]interface{}{
-		"alert_name": "Unknown Alert",
-		"severity":   "medium",
-		"source_ip":  "",
-		"dest_ip":    "",
-		"rule_name":  "",
+// ocsfFromStoredNormalized returns OCSF if stored normalized_event already has class_uid, else maps flat ZCS to OCSF.
+func ocsfFromStoredNormalized(stored map[string]interface{}) map[string]interface{} {
+	if stored == nil {
+		return NormalizeFlatSIEMToOCSF(map[string]interface{}{})
 	}
-
-	// Splunk format: has "result" or "search_name"
-	if _, ok := payload["search_name"]; ok {
-		norm["alert_name"] = payload["search_name"]
-		if result, ok := payload["result"].(map[string]interface{}); ok {
-			if v, ok := result["src_ip"]; ok {
-				norm["source_ip"] = v
-			}
-			if v, ok := result["dest_ip"]; ok {
-				norm["dest_ip"] = v
-			}
-			if v, ok := result["severity"]; ok {
-				norm["severity"] = v
-			}
-			if v, ok := result["rule"]; ok {
-				norm["rule_name"] = v
-			}
-		}
-		return norm
+	if _, ok := stored["class_uid"]; ok {
+		return stored
 	}
-
-	// Elastic format: has "kibana" or "rule" with "id"
-	if ruleObj, ok := payload["rule"].(map[string]interface{}); ok {
-		if _, hasID := ruleObj["id"]; hasID {
-			if name, ok := ruleObj["name"]; ok {
-				norm["alert_name"] = name
-			}
-			if sev, ok := ruleObj["severity"]; ok {
-				norm["severity"] = sev
-			}
-			norm["rule_name"] = ruleObj["name"]
-
-			if kibana, ok := payload["kibana"].(map[string]interface{}); ok {
-				if alert, ok := kibana["alert"].(map[string]interface{}); ok {
-					if origEvent, ok := alert["original_event"].(map[string]interface{}); ok {
-						if v, ok := origEvent["source_ip"]; ok {
-							norm["source_ip"] = v
-						}
-						if v, ok := origEvent["dest_ip"]; ok {
-							norm["dest_ip"] = v
-						}
-					}
-				}
-			}
-			return norm
-		}
-	}
-
-	// Generic format: direct fields
-	if v, ok := payload["alert_name"]; ok {
-		norm["alert_name"] = v
-	}
-	if v, ok := payload["severity"]; ok {
-		norm["severity"] = v
-	}
-	if v, ok := payload["source_ip"]; ok {
-		norm["source_ip"] = v
-	}
-	if v, ok := payload["dest_ip"]; ok {
-		norm["dest_ip"] = v
-	}
-	if v, ok := payload["rule_name"]; ok {
-		norm["rule_name"] = v
-	}
-
-	return norm
+	return NormalizeFlatSIEMToOCSF(stored)
 }
 
 // sanitizeSIEMField strips control characters and truncates SIEM field values
@@ -222,10 +155,10 @@ func sanitizeSIEMField(value string, maxLen int) string {
 	return strings.TrimSpace(cleaned)
 }
 
-func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normalized map[string]interface{}) (string, error) {
+func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, ocsf map[string]interface{}, rawInputJSON []byte) (string, error) {
 	// Map severity to task type
 	taskType := "log_analysis"
-	if sev, ok := normalized["severity"].(string); ok {
+	if sev, ok := ocsf["severity"].(string); ok {
 		switch sev {
 		case "critical", "high":
 			taskType = "incident_response"
@@ -234,12 +167,12 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 		}
 	}
 
-	// Sanitize all SIEM fields to prevent prompt injection (Security P0#10)
-	alertName := sanitizeSIEMField(fmt.Sprintf("%v", normalized["alert_name"]), 200)
-	sourceIP := sanitizeSIEMField(fmt.Sprintf("%v", normalized["source_ip"]), 45)
-	destIP := sanitizeSIEMField(fmt.Sprintf("%v", normalized["dest_ip"]), 45)
-	ruleName := sanitizeSIEMField(fmt.Sprintf("%v", normalized["rule_name"]), 200)
-	severity := sanitizeSIEMField(fmt.Sprintf("%v", normalized["severity"]), 20)
+	an, sevStr, sip, dip, rn := OCSFSIEMColumnValues(ocsf)
+	alertName := sanitizeSIEMField(an, 200)
+	sourceIP := sanitizeSIEMField(sip, 45)
+	destIP := sanitizeSIEMField(dip, 45)
+	ruleName := sanitizeSIEMField(rn, 200)
+	severity := sanitizeSIEMField(sevStr, 20)
 
 	prompt := fmt.Sprintf(
 		"Investigate SIEM alert: %s. Source: %s, Dest: %s. Rule: %s. Severity: %s.",
@@ -247,12 +180,24 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 	)
 
 	taskID := uuid.New().String()
+	traceID := zovarkTraceUUIDFromContext(ctx)
 
+	rawIn := append([]byte(nil), rawInputJSON...)
+	if len(rawIn) == 0 {
+		rawIn, _ = json.Marshal(ocsf)
+	}
 	input := map[string]interface{}{
 		"prompt":        prompt,
 		"siem_alert_id": alertID,
-		"siem_event":    normalized,
+		"siem_event":    ocsf,
+		"trace_id":      traceID,
+		"ingest_source": "siem_webhook",
+		"severity":      severity,
+		"source_ip":     sourceIP,
+		"dest_ip":       destIP,
+		"rule_name":     ruleName,
 	}
+	dedupHash := computeDedupHash(input)
 
 	// Insert task inside explicit transaction
 	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid race condition
@@ -265,8 +210,8 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 	defer tx.Rollback(dbCtx) // no-op after commit
 
 	_, err = tx.Exec(dbCtx,
-		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-		taskID, tenantID, taskType, input, "pending", time.Now(),
+		`INSERT INTO agent_tasks (id, tenant_id, task_type, input, raw_input, dedup_hash, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		taskID, tenantID, taskType, input, rawIn, dedupHash, "pending", time.Now(), traceID,
 	)
 	if err != nil {
 		dbCancel()
@@ -291,25 +236,13 @@ func autoInvestigateAlert(ctx context.Context, tenantID, alertID string, normali
 	}
 	dbCancel()
 
-	// Start Temporal workflow AFTER commit (with timeout detection)
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        "task-" + taskID,
-		TaskQueue: "zovark-tasks",
-	}
-
-	wfStart := time.Now()
-	_, err = tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName, map[string]interface{}{
-		"task_type": taskType,
-		"input":     input,
-	})
-	wfLatency := int(time.Since(wfStart).Milliseconds())
-	if err != nil {
-		if isTemporalTimeout(err) {
-			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/llm", "zovark-fast")
-		}
+	pubCtx, pubCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer pubCancel()
+	if err := publishTaskNew(pubCtx, tenantID, taskID, taskType, input); err != nil {
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
-		return "", fmt.Errorf("failed to start workflow: %w", err)
+		return "", fmt.Errorf("failed to publish task to redpanda: %w", err)
 	}
+	recordWorkflowStart(ctx, "task-"+taskID)
 
 	// Link the alert to the investigation
 	_, _ = dbPool.Exec(ctx,
@@ -553,14 +486,15 @@ func investigateAlertHandler(c *gin.Context) {
 	var alertName, severity, status string
 	var sourceIP, destIP, ruleName *string
 	var normEvent map[string]interface{}
+	var rawEvent []byte
 
 	dbCtx, dbCancel := dbContextWithTimeout(c.Request.Context())
 	defer dbCancel()
 
 	err := dbPool.QueryRow(dbCtx,
-		"SELECT alert_name, severity, source_ip, dest_ip, rule_name, normalized_event, status FROM siem_alerts WHERE id = $1 AND tenant_id = $2",
+		"SELECT alert_name, severity, source_ip, dest_ip, rule_name, normalized_event, raw_event, status FROM siem_alerts WHERE id = $1 AND tenant_id = $2",
 		alertID, tenantID,
-	).Scan(&alertName, &severity, &sourceIP, &destIP, &ruleName, &normEvent, &status)
+	).Scan(&alertName, &severity, &sourceIP, &destIP, &ruleName, &normEvent, &rawEvent, &status)
 	if err != nil {
 		if isLockTimeout(err) {
 			HandlePostgresLock(c, tenantID, alertID, "unknown", "SELECT", "siem_alerts", 5000)
@@ -611,7 +545,8 @@ func investigateAlertHandler(c *gin.Context) {
 		}
 	}
 
-	taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, normEvent)
+	ocsf := ocsfFromStoredNormalized(normEvent)
+	taskID, err := autoInvestigateAlert(c.Request.Context(), tenantID, alertID, ocsf, rawEvent)
 	if err != nil {
 		respondInternalError(c, err, "start investigation")
 		return

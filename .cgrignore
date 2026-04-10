@@ -1,0 +1,22 @@
+# Code Graph RAG (vitali87/code-graph-rag) — shrink index, skip bulky / non-source trees.
+# archive/: intentionally dead code — indexing it poisons call-resolution (e.g. Client.connect → wrong type).
+archive
+files
+node_modules
+.git
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+dist
+build
+.next
+coverage
+htmlcov
+*.egg-info
+models/zovark-dpo-adapter
+local_models
+bundles
+.code-graph-rag
+siem-lab/logs

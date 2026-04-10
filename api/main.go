@@ -4,9 +4,12 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	apihandlers "github.com/hydra-platform/hydra-api/handlers"
 )
 
 var (
@@ -31,8 +34,6 @@ type Config struct {
 	VaultToken string
 	// Redis
 	RedisURL string
-	// NATS
-	NATSURL string
 }
 
 func init() {
@@ -53,8 +54,6 @@ func init() {
 		VaultToken: getEnvOrDefault("VAULT_TOKEN", ""),
 		// Redis
 		RedisURL: getEnvOrDefault("REDIS_URL", "redis:6379"),
-		// NATS
-		NATSURL: getEnvOrDefault("NATS_URL", ""),
 	}
 }
 
@@ -117,14 +116,19 @@ func main() {
 	}
 	defer closeTemporal()
 
+	initAPIOTel(context.Background())
+	defer func() {
+		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		shutdownAPIOTel(sctx)
+	}()
+
 	// Initialize OIDC (SSO)
 	initOIDC()
 
-	// Initialize NATS (alert publishing — optional)
-	natsClient = initNATS()
-	if natsClient != nil {
-		defer natsClient.Close()
-	}
+	// Redpanda writer for tasks.new.{tenant} (canonical dispatch)
+	initRedpandaWriter()
+	defer closeRedpandaWriter()
 
 	// Start backpressure queue drain goroutine
 	drainCtx, drainCancel := context.WithCancel(context.Background())
@@ -134,7 +138,10 @@ func main() {
 	// Setup Gin router
 	router := gin.Default()
 
-	// Middlewares
+	// Middlewares (OTEL first — propagates trace context into handlers / Redpanda publish)
+	router.Use(otelGinMiddleware())
+	router.Use(zovarkTraceHeaderMiddleware())
+	router.Use(otelHTTPMetricsMiddleware())
 	router.Use(corsMiddleware())
 	router.Use(securityHeadersMiddleware())
 	router.Use(loggingMiddleware())
@@ -160,6 +167,18 @@ func main() {
 	// Public webhook route (HMAC-validated, no JWT)
 	router.POST("/api/v1/webhooks/:source_id/alert", webhookAlertHandler)
 
+	// Platform training-data gateway (Ticket 5): HTTPS Bearer → Redis rate:ingest:* → Redpanda raw.training-data.{customer_id} → 204
+	platformTraining := router.Group("/api/v1/platform/training-data")
+	{
+		platformTraining.POST("/ingest", apihandlers.PlatformTrainingIngest(apihandlers.PlatformIngestDeps{
+			BearerSecret: strings.TrimSpace(os.Getenv("ZOVARK_PLATFORM_INGEST_BEARER")),
+			Redis:        redisClient,
+			Publish: func(ctx context.Context, customerID string, body []byte) error {
+				return publishRawTrainingData(ctx, customerID, body)
+			},
+		}))
+	}
+
 	// Protected API routes
 	api := router.Group("/api/v1")
 	api.Use(authMiddleware())
@@ -176,6 +195,8 @@ func main() {
 		api.GET("/tasks/:id/steps", getTaskStepsHandler)
 		api.GET("/tasks/:id/timeline", getTaskTimelineHandler)
 		api.GET("/tasks/:id/stream", taskSSEHandler)
+		api.GET("/entities/:id/neighborhood", entityNeighborhoodHandler)
+		api.GET("/entities", listEntityGraphHandler)
 		api.GET("/stats", getStatsHandler)
 		api.GET("/playbooks", listPlaybooksHandler)
 		api.GET("/skills", listSkillsHandler)
@@ -223,6 +244,10 @@ func main() {
 		api.POST("/api-keys", requireRole("admin"), createAPIKeyHandler)
 		api.GET("/api-keys", requireRole("admin"), listAPIKeysHandler)
 		api.DELETE("/api-keys/:id", requireRole("admin"), deleteAPIKeyHandler)
+
+		api.POST("/mcp-keys", requireRole("admin"), createMCPKeyHandler)
+		api.GET("/mcp-keys", requireRole("admin"), listMCPKeysHandler)
+		api.DELETE("/mcp-keys/:id", requireRole("admin"), revokeMCPKeyHandler)
 
 		// Admin only — DB-backed task-level approvals (Temporal signal gate)
 		api.GET("/approvals/pending", requireRole("admin"), getPendingApprovalsHandler)
@@ -346,6 +371,8 @@ func main() {
 	{
 		siem.POST("/splunk", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), splunkIngestHandler)
 		siem.POST("/elastic", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), elasticIngestHandler)
+		siem.POST("/cef", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), cefIngestHandler)
+		siem.POST("/leef", requireRole("admin", "analyst", "api_key"), checkTokenQuota(), leefIngestHandler)
 		siem.GET("/health", requireRole("admin", "analyst", "api_key"), ingestHealthHandler)
 	}
 
@@ -365,6 +392,7 @@ func main() {
 
 		// System health (combined OOB + diagnostics)
 		adminGroup.GET("/system/health", handleSystemHealth)
+		adminGroup.GET("/health/deep", handleSystemHealth)
 
 		// Config management
 		adminGroup.GET("/config", handleConfigGetAll)

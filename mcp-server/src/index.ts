@@ -3,8 +3,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { query, testConnection, closePool } from "./db.js";
-import { apiPost, apiGet, apiHealthCheck, getJwt, API_URL } from "./api.js";
+import { apiPost, apiGet, apiHealthCheck, API_URL } from "./api.js";
 import { dockerComposeExec, dockerComposeLogs } from "./exec.js";
+import {
+  requireMcpApiKey,
+  mcpAuthErrorResponse,
+  resolveMcpResourceAuth,
+  type McpAuthContext,
+} from "./auth.js";
+
+const mcpSelfTest = process.argv.includes("--test");
 
 // ── Self-test mode ──────────────────────────────────────────────
 if (process.argv.includes("--test")) {
@@ -49,10 +57,27 @@ server.tool(
     prompt: z
       .string()
       .describe("Alert description, raw log data, or investigation prompt"),
-    tenant_slug: z.string().default("zovark-dev").describe("Tenant slug"),
+    tenant_slug: z
+      .string()
+      .optional()
+      .describe(
+        "Ignored when using MCP API key authentication (tenant is bound to the key). Optional for --test self-test only."
+      ),
   },
   async ({ alert_type, prompt, tenant_slug }) => {
     try {
+      let slug: string;
+      if (!mcpSelfTest) {
+        let ctx: McpAuthContext;
+        try {
+          ctx = await requireMcpApiKey();
+        } catch (e) {
+          return mcpAuthErrorResponse(e);
+        }
+        slug = ctx.tenantSlug;
+      } else {
+        slug = (tenant_slug || "zovark-dev").trim() || "zovark-dev";
+      }
       // Map snake_case to API task_type format
       const typeMap: Record<string, string> = {
         brute_force: "Log Analysis",
@@ -72,7 +97,7 @@ server.tool(
           task_type: typeMap[alert_type] || "Log Analysis",
           input: { prompt },
         },
-        tenant_slug
+        slug
       )) as { id: string; status: string };
 
       return {
@@ -119,6 +144,15 @@ server.tool(
   },
   async ({ task_id, investigation_id, latest }) => {
     try {
+      let tenantId: string | null = null;
+      if (!mcpSelfTest) {
+        try {
+          const ctx = await requireMcpApiKey();
+          tenantId = ctx.tenantId;
+        } catch (e) {
+          return mcpAuthErrorResponse(e);
+        }
+      }
       let sql: string;
       let params: unknown[];
 
@@ -131,9 +165,9 @@ server.tool(
                  (SELECT count(*) FROM entity_observations eo WHERE eo.investigation_id = i.id) as entity_count
           FROM investigations i
           LEFT JOIN investigation_reports ir ON ir.investigation_id = i.id
-          WHERE i.task_id = $1
+          WHERE i.task_id = $1${tenantId ? " AND i.tenant_id = $2::uuid" : ""}
           ORDER BY i.created_at DESC LIMIT 1`;
-        params = [task_id];
+        params = tenantId ? [task_id, tenantId] : [task_id];
       } else if (investigation_id) {
         sql = `
           SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
@@ -143,9 +177,9 @@ server.tool(
                  (SELECT count(*) FROM entity_observations eo WHERE eo.investigation_id = i.id) as entity_count
           FROM investigations i
           LEFT JOIN investigation_reports ir ON ir.investigation_id = i.id
-          WHERE i.id = $1
+          WHERE i.id = $1${tenantId ? " AND i.tenant_id = $2::uuid" : ""}
           LIMIT 1`;
-        params = [investigation_id];
+        params = tenantId ? [investigation_id, tenantId] : [investigation_id];
       } else if (latest) {
         sql = `
           SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
@@ -155,8 +189,9 @@ server.tool(
                  (SELECT count(*) FROM entity_observations eo WHERE eo.investigation_id = i.id) as entity_count
           FROM investigations i
           LEFT JOIN investigation_reports ir ON ir.investigation_id = i.id
+          ${tenantId ? "WHERE i.tenant_id = $1::uuid" : ""}
           ORDER BY i.created_at DESC LIMIT 1`;
-        params = [];
+        params = tenantId ? [tenantId] : [];
       } else {
         return {
           content: [
@@ -230,6 +265,30 @@ server.tool(
   },
   async ({ name, slug, admin_email, admin_password }) => {
     try {
+      if (!mcpSelfTest) {
+        try {
+          await requireMcpApiKey();
+        } catch (e) {
+          return mcpAuthErrorResponse(e);
+        }
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  error: "not_permitted",
+                  message:
+                    "zovark_create_tenant is disabled when using an MCP API key. Tenant onboarding must not run under a bound analyst tenant context.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
       // 1. Create tenant via DB (API requires existing admin JWT)
       const tenantResult = await query(
         `INSERT INTO tenants (name, slug, tier) VALUES ($1, $2, 'professional')
@@ -329,6 +388,30 @@ server.tool(
   },
   async ({ sql: sqlInput, format }) => {
     try {
+      if (!mcpSelfTest) {
+        try {
+          await requireMcpApiKey();
+        } catch (e) {
+          return mcpAuthErrorResponse(e);
+        }
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  error: "query_disabled",
+                  message:
+                    "Ad-hoc zovark_query is disabled under MCP API key authentication (cannot guarantee tenant-safe SQL). Use tenant-scoped resources (zovark://...) or the dashboard.",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
       // Safety check
       if (WRITE_PATTERN.test(sqlInput)) {
         return {
@@ -401,6 +484,13 @@ server.tool(
   "Check health status of all Zovark services (API, worker, Postgres, Redis, LiteLLM, Temporal).",
   {},
   async () => {
+    if (!mcpSelfTest) {
+      try {
+        await requireMcpApiKey();
+      } catch (e) {
+        return mcpAuthErrorResponse(e);
+      }
+    }
     const checks: Record<string, string> = {};
 
     // API
@@ -494,6 +584,13 @@ server.tool(
   },
   async ({ service, lines, filter }) => {
     try {
+      if (!mcpSelfTest) {
+        try {
+          await requireMcpApiKey();
+        } catch (e) {
+          return mcpAuthErrorResponse(e);
+        }
+      }
       const output = await dockerComposeLogs(service, lines, filter);
       const lineCount = output.split("\n").filter(Boolean).length;
       return {
@@ -575,10 +672,26 @@ server.tool(
       ),
     tenant_slug: z
       .string()
-      .default("zovark-dev")
-      .describe("Tenant slug for the approval context"),
+      .optional()
+      .describe(
+        "Ignored when using MCP API key (tenant is bound to the key). Optional for --test only."
+      ),
   },
   async ({ workflow, params: paramsStr, dry_run, approval_token, tenant_slug }) => {
+    let slug: string;
+    let tenantIdForApproval: string;
+    if (!mcpSelfTest) {
+      try {
+        const ctx = await requireMcpApiKey();
+        slug = ctx.tenantSlug;
+        tenantIdForApproval = ctx.tenantId;
+      } catch (e) {
+        return mcpAuthErrorResponse(e);
+      }
+    } else {
+      slug = (tenant_slug || "zovark-dev").trim() || "zovark-dev";
+      tenantIdForApproval = slug;
+    }
     const workflowMap: Record<string, string> = {
       detection: "DetectionGenerationWorkflow",
       self_healing: "SelfHealingWorkflow",
@@ -623,9 +736,9 @@ server.tool(
             workflow_id: wfType,
             workflow_args: wfParams,
             requested_by: "mcp:zovark_trigger_workflow",
-            tenant_id: tenant_slug,
+            tenant_id: tenantIdForApproval,
           },
-          tenant_slug
+          slug
         )) as {
           approval_id: string;
           status: string;
@@ -687,7 +800,7 @@ server.tool(
     try {
       const checkResult = (await apiGet(
         `/api/v1/mcp/approvals/check/${encodeURIComponent(approval_token)}`,
-        tenant_slug
+        slug
       )) as { status: string; approval_id?: string; workflow_id?: string };
 
       if (checkResult.status !== "approved") {
@@ -809,12 +922,26 @@ server.resource(
   "zovark://investigations/recent",
   { description: "Last 10 investigations with verdicts and risk scores" },
   async () => {
-    const result = await query(`
+    const auth = await resolveMcpResourceAuth("zovark://investigations/recent");
+    if (!auth.ok) return auth.payload;
+    const result =
+      auth.mode === "selftest"
+        ? await query(`
       SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
              i.summary, i.source, i.created_at::text
       FROM investigations i
       ORDER BY i.created_at DESC LIMIT 10
-    `);
+    `)
+        : await query(
+            `
+      SELECT i.id::text, i.verdict, i.risk_score, i.attack_techniques,
+             i.summary, i.source, i.created_at::text
+      FROM investigations i
+      WHERE i.tenant_id = $1::uuid
+      ORDER BY i.created_at DESC LIMIT 10
+    `,
+            [auth.ctx.tenantId]
+          );
     return {
       contents: [
         {
@@ -832,14 +959,29 @@ server.resource(
   "zovark://entities/top-threats",
   { description: "Top 20 entities by threat score" },
   async () => {
-    const result = await query(`
+    const auth = await resolveMcpResourceAuth("zovark://entities/top-threats");
+    if (!auth.ok) return auth.payload;
+    const result =
+      auth.mode === "selftest"
+        ? await query(`
       SELECT id::text, entity_type, value, threat_score, observation_count,
              tenant_count, last_seen::text
       FROM entities
       WHERE threat_score > 0
       ORDER BY threat_score DESC, observation_count DESC
       LIMIT 20
-    `);
+    `)
+        : await query(
+            `
+      SELECT id::text, entity_type, value, threat_score, observation_count,
+             tenant_count, last_seen::text
+      FROM entities
+      WHERE threat_score > 0 AND tenant_id = $1::uuid
+      ORDER BY threat_score DESC, observation_count DESC
+      LIMIT 20
+    `,
+            [auth.ctx.tenantId]
+          );
     return {
       contents: [
         {
@@ -857,13 +999,27 @@ server.resource(
   "zovark://detection/rules",
   { description: "All active Sigma detection rules" },
   async () => {
-    const result = await query(`
+    const auth = await resolveMcpResourceAuth("zovark://detection/rules");
+    if (!auth.ok) return auth.payload;
+    const result =
+      auth.mode === "selftest"
+        ? await query(`
       SELECT id::text, technique_id, rule_name, rule_version, status,
              tp_rate, fp_rate, investigations_matched, created_at::text
       FROM detection_rules
       WHERE status = 'active'
       ORDER BY created_at DESC
-    `);
+    `)
+        : await query(
+            `
+      SELECT id::text, technique_id, rule_name, rule_version, status,
+             tp_rate, fp_rate, investigations_matched, created_at::text
+      FROM detection_rules
+      WHERE status = 'active' AND tenant_id = $1::uuid
+      ORDER BY created_at DESC
+    `,
+            [auth.ctx.tenantId]
+          );
     return {
       contents: [
         {
@@ -881,13 +1037,27 @@ server.resource(
   "zovark://playbooks/active",
   { description: "Active SOAR response playbooks" },
   async () => {
-    const result = await query(`
+    const auth = await resolveMcpResourceAuth("zovark://playbooks/active");
+    if (!auth.ok) return auth.payload;
+    const result =
+      auth.mode === "selftest"
+        ? await query(`
       SELECT id::text, name, description, trigger_conditions, enabled,
              created_at::text
       FROM response_playbooks
       WHERE enabled = true
       ORDER BY name
-    `);
+    `)
+        : await query(
+            `
+      SELECT id::text, name, description, trigger_conditions, enabled,
+             created_at::text
+      FROM response_playbooks
+      WHERE enabled = true AND tenant_id = $1::uuid
+      ORDER BY name
+    `,
+            [auth.ctx.tenantId]
+          );
     return {
       contents: [
         {
@@ -905,7 +1075,11 @@ server.resource(
   "zovark://health/summary",
   { description: "Current system health overview" },
   async () => {
-    const stats = await query(`
+    const auth = await resolveMcpResourceAuth("zovark://health/summary");
+    if (!auth.ok) return auth.payload;
+    const stats =
+      auth.mode === "selftest"
+        ? await query(`
       SELECT
         (SELECT count(*) FROM agent_tasks) as total_tasks,
         (SELECT count(*) FROM agent_tasks WHERE status = 'completed') as completed_tasks,
@@ -914,7 +1088,20 @@ server.resource(
         (SELECT count(*) FROM entities) as total_entities,
         (SELECT count(*) FROM detection_rules WHERE status = 'active') as active_rules,
         (SELECT count(*) FROM self_healing_events) as healing_events
-    `);
+    `)
+        : await query(
+            `
+      SELECT
+        (SELECT count(*) FROM agent_tasks WHERE tenant_id = $1::uuid) as total_tasks,
+        (SELECT count(*) FROM agent_tasks WHERE tenant_id = $1::uuid AND status = 'completed') as completed_tasks,
+        (SELECT count(*) FROM agent_tasks WHERE tenant_id = $1::uuid AND status = 'failed') as failed_tasks,
+        (SELECT count(*) FROM investigations WHERE tenant_id = $1::uuid) as total_investigations,
+        (SELECT count(*) FROM entities WHERE tenant_id = $1::uuid) as total_entities,
+        (SELECT count(*) FROM detection_rules WHERE status = 'active' AND tenant_id = $1::uuid) as active_rules,
+        (SELECT count(*)::bigint FROM self_healing_events) as healing_events
+    `,
+            [auth.ctx.tenantId]
+          );
     return {
       contents: [
         {
@@ -932,7 +1119,11 @@ server.resource(
   "zovark://metrics/llm",
   { description: "LLM call statistics — cost, latency, token usage" },
   async () => {
-    const result = await query(`
+    const auth = await resolveMcpResourceAuth("zovark://metrics/llm");
+    if (!auth.ok) return auth.payload;
+    const result =
+      auth.mode === "selftest"
+        ? await query(`
       SELECT
         model_id,
         activity_name,
@@ -944,7 +1135,24 @@ server.resource(
       FROM llm_call_log
       GROUP BY model_id, activity_name
       ORDER BY calls DESC
-    `);
+    `)
+        : await query(
+            `
+      SELECT
+        model_id,
+        activity_name,
+        count(*) as calls,
+        round(avg(latency_ms)) as avg_latency_ms,
+        sum(input_tokens) as total_input_tokens,
+        sum(output_tokens) as total_output_tokens,
+        round(sum(estimated_cost_usd)::numeric, 4) as total_cost_usd
+      FROM llm_call_log
+      WHERE tenant_id = $1::uuid
+      GROUP BY model_id, activity_name
+      ORDER BY calls DESC
+    `,
+            [auth.ctx.tenantId]
+          );
     return {
       contents: [
         {
@@ -962,7 +1170,11 @@ server.resource(
   "zovark://feedback/accuracy",
   { description: "Investigation feedback accuracy — analyst verdicts and correction rates" },
   async () => {
-    const result = await query(`
+    const auth = await resolveMcpResourceAuth("zovark://feedback/accuracy");
+    if (!auth.ok) return auth.payload;
+    const result =
+      auth.mode === "selftest"
+        ? await query(`
       SELECT
         COUNT(*) as total_feedback,
         SUM(CASE WHEN verdict_correct THEN 1 ELSE 0 END) as correct,
@@ -972,7 +1184,22 @@ server.resource(
         COALESCE(ROUND(AVG(CASE WHEN verdict_correct THEN 1.0 ELSE 0.0 END), 3), 0) as accuracy_rate,
         COALESCE(ROUND(AVG(analyst_confidence), 3), 0) as avg_analyst_confidence
       FROM investigation_feedback
-    `);
+    `)
+        : await query(
+            `
+      SELECT
+        COUNT(*) as total_feedback,
+        SUM(CASE WHEN verdict_correct THEN 1 ELSE 0 END) as correct,
+        SUM(CASE WHEN NOT verdict_correct THEN 1 ELSE 0 END) as incorrect,
+        SUM(CASE WHEN false_positive THEN 1 ELSE 0 END) as false_positives,
+        SUM(CASE WHEN missed_threat THEN 1 ELSE 0 END) as missed_threats,
+        COALESCE(ROUND(AVG(CASE WHEN verdict_correct THEN 1.0 ELSE 0.0 END), 3), 0) as accuracy_rate,
+        COALESCE(ROUND(AVG(analyst_confidence), 3), 0) as avg_analyst_confidence
+      FROM investigation_feedback
+      WHERE tenant_id = $1::uuid
+    `,
+            [auth.ctx.tenantId]
+          );
     return {
       contents: [
         {

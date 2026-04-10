@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.temporal.io/sdk/client"
+	"go.opentelemetry.io/otel"
 )
 
 // ============================================================
@@ -54,14 +55,18 @@ func mapAlertToTaskType(signature string) string {
 	return sanitized
 }
 
-// createIngestTask is the shared task-creation logic for SIEM ingest endpoints.
-// It inserts the task into agent_tasks, commits the transaction, then starts the
-// Temporal workflow. Returns (taskID, error).
-func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source string, input map[string]interface{}) (string, error) {
+// createIngestTask builds agent_tasks.input (envelope + OCSF siem_event), stores raw_input as exact bytes (valid JSON for JSONB),
+// writes API-computed dedup_hash, then runs dedup / batch / Temporal like other ingest paths.
+// rawInputJSON must be valid UTF-8 JSON for the raw_input JSONB column (JSON bodies: wire copy; CEF/LEEF: json.Marshal(line)).
+func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source string, rawInputJSON []byte, ocsfEvent map[string]interface{}, envelope map[string]interface{}) (taskIDOut string, traceIDOut string, err error) {
 	taskID := uuid.New().String()
-	traceID := uuid.New().String()
+	traceID := zovarkTraceUUIDFromContext(ctx)
 
-	// Ensure required input fields
+	input := map[string]interface{}{}
+	for k, v := range envelope {
+		input[k] = v
+	}
+	input["siem_event"] = ocsfEvent
 	input["prompt"] = prompt
 	input["ingest_source"] = source
 	input["trace_id"] = traceID
@@ -71,52 +76,36 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 		severity = s
 	}
 
+	if len(rawInputJSON) == 0 {
+		rawInputJSON = []byte("null")
+	}
+	dedupHash := computeDedupHash(input)
+
 	// --- Layer 1: Pre-Temporal Redis Dedup ---
 	if isDup, existingID := checkPreDedup(ctx, taskType, input); isDup {
-		// Insert with deduplicated status for audit trail, but skip workflow
 		dbCtx, dbCancel := dbContextWithTimeout(ctx)
 		defer dbCancel()
 		_, _ = dbPool.Exec(dbCtx,
-			"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-			taskID, tenantID, taskType, input, "deduplicated", time.Now(), traceID,
+			`INSERT INTO agent_tasks (id, tenant_id, task_type, input, raw_input, dedup_hash, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			taskID, tenantID, taskType, input, rawInputJSON, dedupHash, "deduplicated", time.Now(), traceID,
 		)
 		log.Printf("[INGEST] Dedup: task %s is duplicate of %s", taskID, existingID)
-		return existingID, nil
+		return existingID, "", nil
 	}
 
 	// --- Layer 2: Pre-Temporal Batch Buffer ---
-	sourceIP := ""
-	if se, ok := input["siem_event"].(map[string]interface{}); ok {
-		if v, ok := se["source_ip"].(string); ok {
-			sourceIP = v
-		}
-	}
-	if v, ok := input["source_ip"].(string); ok && sourceIP == "" {
-		sourceIP = v
-	}
-
-	destIP := ""
-	if se, ok := input["siem_event"].(map[string]interface{}); ok {
-		if v, ok := se["destination_ip"].(string); ok {
-			destIP = v
-		} else if v, ok := se["dest_ip"].(string); ok {
-			destIP = v
-		}
-	}
-	if v, ok := input["dest_ip"].(string); ok && destIP == "" {
-		destIP = v
-	}
+	sourceIP := SourceIPFromTaskInput(input)
+	destIP := DestIPFromTaskInput(input)
 
 	if shouldSkip, batchParentID := tryBatchAlert(ctx, taskType, sourceIP, destIP, severity, taskID); shouldSkip {
-		// Insert with batched status for audit trail, but skip workflow
 		dbCtx, dbCancel := dbContextWithTimeout(ctx)
 		defer dbCancel()
 		_, _ = dbPool.Exec(dbCtx,
-			"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-			taskID, tenantID, taskType, input, "batched", time.Now(), traceID,
+			`INSERT INTO agent_tasks (id, tenant_id, task_type, input, raw_input, dedup_hash, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			taskID, tenantID, taskType, input, rawInputJSON, dedupHash, "batched", time.Now(), traceID,
 		)
 		log.Printf("[INGEST] Batched: task %s absorbed into batch parent %s", taskID, batchParentID)
-		return batchParentID, nil
+		return batchParentID, "", nil
 	}
 
 	// Insert task inside explicit transaction
@@ -125,20 +114,20 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	tx, err := beginTenantTx(dbCtx, tenantID)
 	if err != nil {
 		dbCancel()
-		return "", fmt.Errorf("failed to begin transaction: %w", err)
+		return "", "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(dbCtx) // no-op after commit
 
 	_, err = tx.Exec(dbCtx,
-		"INSERT INTO agent_tasks (id, tenant_id, task_type, input, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-		taskID, tenantID, taskType, input, "pending", time.Now(), traceID,
+		`INSERT INTO agent_tasks (id, tenant_id, task_type, input, raw_input, dedup_hash, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		taskID, tenantID, taskType, input, rawInputJSON, dedupHash, "pending", time.Now(), traceID,
 	)
 	if err != nil {
 		dbCancel()
 		if isLockTimeout(err) {
 			HandlePostgresLock(nil, tenantID, taskID, severity, "INSERT", "agent_tasks", 5000)
 		}
-		return "", fmt.Errorf("failed to create task: %w", err)
+		return "", "", fmt.Errorf("failed to create task: %w", err)
 	}
 
 	// Audit log (inside same transaction)
@@ -156,7 +145,7 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 	// COMMIT — data now visible to all connections (including worker's fetch_task)
 	if err := tx.Commit(dbCtx); err != nil {
 		dbCancel()
-		return "", fmt.Errorf("failed to commit task transaction: %w", err)
+		return "", "", fmt.Errorf("failed to commit task transaction: %w", err)
 	}
 	dbCancel()
 
@@ -169,38 +158,25 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 		if isHardLimitReached(depth) {
 			// Hard limit — mark as failed, caller should return 503
 			_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
-			return "", fmt.Errorf("backpressure hard limit reached (depth=%d)", depth)
+			return "", "", fmt.Errorf("backpressure hard limit reached (depth=%d)", depth)
 		}
 		// Soft limit — queue for later processing by drain goroutine
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'queued' WHERE id = $1", taskID)
 		log.Printf("[INGEST] Backpressure: task %s queued (depth=%d)", taskID, depth)
-		return taskID, nil
+		return taskID, traceID, nil
 	}
 
-	// Start Temporal workflow AFTER commit
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        "task-" + taskID,
-		TaskQueue: "zovark-tasks",
-	}
-
-	wfStart := time.Now()
-	_, err = tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName, TaskRequest{
-		TaskType: taskType,
-		Input:    input,
-	})
-	wfLatency := int(time.Since(wfStart).Milliseconds())
-	if err != nil {
-		if isTemporalTimeout(err) {
-			HandleModelTimeout(ctx, tenantID, taskID, severity, wfLatency, "temporal/llm", "zovark-fast")
-		}
+	// Publish to Redpanda — worker consumes tasks.new.{tenant_id} and starts Temporal
+	pubCtx, pubCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer pubCancel()
+	if err := publishTaskNew(pubCtx, tenantID, taskID, taskType, input); err != nil {
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
-		return "", fmt.Errorf("failed to start workflow: %w", err)
+		return "", "", fmt.Errorf("failed to publish task to redpanda: %w", err)
 	}
 
-	// Track workflow for backpressure
 	recordWorkflowStart(ctx, "task-"+taskID)
 
-	return taskID, nil
+	return taskID, traceID, nil
 }
 
 // ============================================================
@@ -217,7 +193,17 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 //	  "host": "web01"
 //	}
 func splunkIngestHandler(c *gin.Context) {
+	ctx, sp := otel.Tracer("zovark-api").Start(c.Request.Context(), "ingest.splunk")
+	defer sp.End()
+	c.Request = c.Request.WithContext(ctx)
+
 	tenantID := c.MustGet("tenant_id").(string)
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
 
 	var payload struct {
 		Time       float64                `json:"time"`
@@ -227,7 +213,7 @@ func splunkIngestHandler(c *gin.Context) {
 		Host       string                 `json:"host"`
 		Index      string                 `json:"index"`
 	}
-	if err := c.ShouldBindJSON(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON payload: " + err.Error()})
 		return
 	}
@@ -237,7 +223,10 @@ func splunkIngestHandler(c *gin.Context) {
 		return
 	}
 
-	// Extract alert signature for task_type mapping
+	rawCopy := append([]byte(nil), body...)
+
+	ocsf := NormalizeSplunkHEC(payload.Event, payload.SourceType, payload.Host, payload.Source)
+
 	signature := ""
 	if sig, ok := payload.Event["signature"].(string); ok {
 		signature = sig
@@ -246,13 +235,11 @@ func splunkIngestHandler(c *gin.Context) {
 	} else if sig, ok := payload.Event["name"].(string); ok {
 		signature = sig
 	} else {
-		// Fall back to sourcetype
 		signature = payload.SourceType
 	}
 
 	taskType := mapAlertToTaskType(sanitizeSIEMField(signature, 200))
 
-	// Extract IPs
 	sourceIP := ""
 	if v, ok := payload.Event["src_ip"].(string); ok {
 		sourceIP = v
@@ -266,19 +253,16 @@ func splunkIngestHandler(c *gin.Context) {
 		destIP = v
 	}
 
-	// Extract severity
 	severity := "medium"
 	if v, ok := payload.Event["severity"].(string); ok && v != "" {
 		severity = v
 	}
 
-	// Extract user
 	user := ""
 	if v, ok := payload.Event["user"].(string); ok {
 		user = v
 	}
 
-	// Build sanitized prompt
 	prompt := fmt.Sprintf(
 		"Investigate Splunk alert: %s. Source: %s, Dest: %s. User: %s. Sourcetype: %s. Severity: %s.",
 		sanitizeSIEMField(signature, 200),
@@ -289,8 +273,7 @@ func splunkIngestHandler(c *gin.Context) {
 		sanitizeSIEMField(severity, 20),
 	)
 
-	// Build input map for the investigation
-	input := map[string]interface{}{
+	envelope := map[string]interface{}{
 		"severity":    severity,
 		"source_ip":   sourceIP,
 		"dest_ip":     destIP,
@@ -298,25 +281,18 @@ func splunkIngestHandler(c *gin.Context) {
 		"sourcetype":  payload.SourceType,
 		"host":        payload.Host,
 		"siem_vendor": "splunk",
-		"siem_event":  payload.Event,
 	}
-
-	// Include raw event data if present
 	if raw, ok := payload.Event["raw"].(string); ok {
-		input["log_data"] = sanitizeSIEMField(raw, 10000)
+		envelope["log_data"] = sanitizeSIEMField(raw, 10000)
 	}
 
-	taskID, err := createIngestTask(c.Request.Context(), tenantID, taskType, prompt, "splunk_hec", input)
+	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "splunk_hec", rawCopy, ocsf, envelope)
 	if err != nil {
 		log.Printf("[INGEST] Splunk ingest failed for tenant %s: %v", tenantID, err)
 		respondInternalError(c, err, "splunk ingest task creation")
 		return
 	}
-
-	// Set trace ID from input (populated by createIngestTask)
-	if tid, ok := input["trace_id"].(string); ok {
-		c.Header("X-Zovark-Trace-ID", tid)
-	}
+	recordAPIIngest(ctx, "splunk_hec")
 
 	c.JSON(http.StatusOK, gin.H{
 		"task_id": taskID,
@@ -341,15 +317,24 @@ func splunkIngestHandler(c *gin.Context) {
 //	  "event": {"action": "...", "category": "..."}
 //	}
 func elasticIngestHandler(c *gin.Context) {
+	ctx, sp := otel.Tracer("zovark-api").Start(c.Request.Context(), "ingest.elastic")
+	defer sp.End()
+	c.Request = c.Request.WithContext(ctx)
+
 	tenantID := c.MustGet("tenant_id").(string)
 
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+
 	var payload map[string]interface{}
-	if err := c.ShouldBindJSON(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON payload: " + err.Error()})
 		return
 	}
 
-	// Extract rule info
 	ruleName := ""
 	severity := "medium"
 	ruleDescription := ""
@@ -372,7 +357,10 @@ func elasticIngestHandler(c *gin.Context) {
 
 	taskType := mapAlertToTaskType(sanitizeSIEMField(ruleName, 200))
 
-	// Extract source/dest IPs (Elastic nests under source.ip / destination.ip)
+	rawCopy := append([]byte(nil), body...)
+
+	ocsf := NormalizeElasticECS(payload)
+
 	sourceIP := ""
 	if srcObj, ok := payload["source"].(map[string]interface{}); ok {
 		if v, ok := srcObj["ip"].(string); ok {
@@ -385,30 +373,23 @@ func elasticIngestHandler(c *gin.Context) {
 			destIP = v
 		}
 	}
-
-	// Extract user
 	user := ""
 	if userObj, ok := payload["user"].(map[string]interface{}); ok {
 		if v, ok := userObj["name"].(string); ok {
 			user = v
 		}
 	}
-
-	// Extract host
 	host := ""
 	if hostObj, ok := payload["host"].(map[string]interface{}); ok {
 		if v, ok := hostObj["name"].(string); ok {
 			host = v
 		}
 	}
-
-	// Extract message (raw event context)
 	message := ""
 	if v, ok := payload["message"].(string); ok {
 		message = v
 	}
 
-	// Build sanitized prompt
 	prompt := fmt.Sprintf(
 		"Investigate Elastic SIEM alert: %s. Source: %s, Dest: %s. User: %s. Host: %s. Severity: %s. %s",
 		sanitizeSIEMField(ruleName, 200),
@@ -420,39 +401,151 @@ func elasticIngestHandler(c *gin.Context) {
 		sanitizeSIEMField(ruleDescription, 300),
 	)
 
-	// Build input map
-	input := map[string]interface{}{
-		"severity":         severity,
-		"source_ip":        sourceIP,
-		"dest_ip":          destIP,
-		"user":             user,
-		"host":             host,
-		"rule_name":        ruleName,
-		"rule_description": ruleDescription,
-		"siem_vendor":      "elastic",
-		"siem_event":       payload,
+	envelope := map[string]interface{}{
+		"severity":           severity,
+		"source_ip":          sourceIP,
+		"dest_ip":            destIP,
+		"user":               user,
+		"host":               host,
+		"rule_name":          ruleName,
+		"rule_description":   ruleDescription,
+		"siem_vendor":        "elastic",
 	}
-
 	if message != "" {
-		input["log_data"] = sanitizeSIEMField(message, 10000)
+		envelope["log_data"] = sanitizeSIEMField(message, 10000)
 	}
 
-	taskID, err := createIngestTask(c.Request.Context(), tenantID, taskType, prompt, "elastic_siem", input)
+	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "elastic_siem", rawCopy, ocsf, envelope)
 	if err != nil {
 		log.Printf("[INGEST] Elastic ingest failed for tenant %s: %v", tenantID, err)
 		respondInternalError(c, err, "elastic ingest task creation")
 		return
 	}
-
-	if tid, ok := input["trace_id"].(string); ok {
-		c.Header("X-Zovark-Trace-ID", tid)
-	}
+	recordAPIIngest(ctx, "elastic_siem")
 
 	c.JSON(http.StatusOK, gin.H{
 		"task_id": taskID,
 		"status":  "queued",
 		"source":  "elastic_siem",
 	})
+}
+
+// ============================================================
+// POST /api/v1/ingest/cef — ArcSight CEF (single line, text/plain or raw body)
+// ============================================================
+
+func cefIngestHandler(c *gin.Context) {
+	ctx, sp := otel.Tracer("zovark-api").Start(c.Request.Context(), "ingest.cef")
+	defer sp.End()
+	c.Request = c.Request.WithContext(ctx)
+
+	tenantID := c.MustGet("tenant_id").(string)
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+	line := strings.TrimSpace(string(body))
+	if line == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "empty body"})
+		return
+	}
+	ocsf, err := ParseCEF(line)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid CEF: " + err.Error()})
+		return
+	}
+	rule := ""
+	if r, ok := ocsf["rule_name"].(string); ok {
+		rule = r
+	}
+	taskType := mapAlertToTaskType(sanitizeSIEMField(rule, 200))
+	sev := "medium"
+	if s, ok := ocsf["severity"].(string); ok && s != "" {
+		sev = s
+	}
+	src := SourceIPFromTaskInput(map[string]interface{}{"siem_event": ocsf})
+	dst := DestIPFromTaskInput(map[string]interface{}{"siem_event": ocsf})
+	prompt := fmt.Sprintf("Investigate CEF alert: %s. Source: %s. Dest: %s. Severity: %s.",
+		sanitizeSIEMField(rule, 200), sanitizeSIEMField(src, 45), sanitizeSIEMField(dst, 45), sanitizeSIEMField(sev, 20))
+	rawJSON, jerr := json.Marshal(line)
+	if jerr != nil {
+		respondInternalError(c, jerr, "marshal cef raw_input")
+		return
+	}
+	envelope := map[string]interface{}{
+		"severity":    sev,
+		"source_ip":   src,
+		"dest_ip":     dst,
+		"siem_vendor": "arcsight_cef",
+	}
+	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "arcsight_cef", rawJSON, ocsf, envelope)
+	if err != nil {
+		log.Printf("[INGEST] CEF ingest failed for tenant %s: %v", tenantID, err)
+		respondInternalError(c, err, "cef ingest task creation")
+		return
+	}
+	recordAPIIngest(ctx, "arcsight_cef")
+	c.JSON(http.StatusOK, gin.H{"task_id": taskID, "status": "queued", "source": "arcsight_cef"})
+}
+
+// ============================================================
+// POST /api/v1/ingest/leef — QRadar LEEF (single line)
+// ============================================================
+
+func leefIngestHandler(c *gin.Context) {
+	ctx, sp := otel.Tracer("zovark-api").Start(c.Request.Context(), "ingest.leef")
+	defer sp.End()
+	c.Request = c.Request.WithContext(ctx)
+
+	tenantID := c.MustGet("tenant_id").(string)
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+	line := strings.TrimSpace(string(body))
+	if line == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "empty body"})
+		return
+	}
+	ocsf, err := ParseLEEF(line)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid LEEF: " + err.Error()})
+		return
+	}
+	rule := ""
+	if r, ok := ocsf["rule_name"].(string); ok {
+		rule = r
+	}
+	taskType := mapAlertToTaskType(sanitizeSIEMField(rule, 200))
+	sev := "medium"
+	if s, ok := ocsf["severity"].(string); ok && s != "" {
+		sev = s
+	}
+	src := SourceIPFromTaskInput(map[string]interface{}{"siem_event": ocsf})
+	dst := DestIPFromTaskInput(map[string]interface{}{"siem_event": ocsf})
+	prompt := fmt.Sprintf("Investigate LEEF alert: %s. Source: %s. Dest: %s. Severity: %s.",
+		sanitizeSIEMField(rule, 200), sanitizeSIEMField(src, 45), sanitizeSIEMField(dst, 45), sanitizeSIEMField(sev, 20))
+	rawJSON, jerr := json.Marshal(line)
+	if jerr != nil {
+		respondInternalError(c, jerr, "marshal leef raw_input")
+		return
+	}
+	envelope := map[string]interface{}{
+		"severity":    sev,
+		"source_ip":   src,
+		"dest_ip":     dst,
+		"siem_vendor": "qradar_leef",
+	}
+	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "qradar_leef", rawJSON, ocsf, envelope)
+	if err != nil {
+		log.Printf("[INGEST] LEEF ingest failed for tenant %s: %v", tenantID, err)
+		respondInternalError(c, err, "leef ingest task creation")
+		return
+	}
+	recordAPIIngest(ctx, "qradar_leef")
+	c.JSON(http.StatusOK, gin.H{"task_id": taskID, "status": "queued", "source": "qradar_leef"})
 }
 
 // ============================================================

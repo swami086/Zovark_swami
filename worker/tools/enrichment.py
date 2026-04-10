@@ -1,5 +1,6 @@
 """Enrichment tools — MITRE mapping, known-bad lookup, correlation, institutional knowledge."""
 import json
+import os
 from datetime import datetime
 
 
@@ -110,12 +111,11 @@ def correlate_with_history(ioc_values: list, lookback_hours: int, history_contex
         "correlation_count": 0,
     }
 
-    if not ioc_values or not history_context:
+    if not ioc_values:
         return result
 
+    history_context = history_context or {}
     investigations = history_context.get("investigations", [])
-    if not investigations:
-        return result
 
     # Find investigations that share IOCs
     related = []
@@ -151,6 +151,28 @@ def correlate_with_history(ioc_values: list, lookback_hours: int, history_contex
                 "timestamp": inv.get("timestamp", ""),
                 "shared_iocs": list(overlap),
             })
+
+    tenant_id = history_context.get("tenant_id", "")
+    if tenant_id and os.environ.get("ZOVARK_SURREAL_ENABLED", "").lower() in ("1", "true", "yes") and ioc_set:
+        try:
+            from surreal_graph import surreal_entity_reachability_sync
+
+            max_hops = max(1, min(8, (lookback_hours // 24) or 3))
+            extra_ids = surreal_entity_reachability_sync(tenant_id, list(ioc_set), max_hops)
+            seen_inv = {r.get("investigation_id") for r in related if r.get("investigation_id")}
+            for iid in extra_ids:
+                if not iid or iid in seen_inv:
+                    continue
+                related.append({
+                    "task_type": "graph_reachability",
+                    "risk_score": 0,
+                    "timestamp": "",
+                    "shared_iocs": list(ioc_set)[:8],
+                    "investigation_id": iid,
+                })
+                seen_inv.add(iid)
+        except Exception:
+            pass
 
     result["related_investigations"] = related
     result["correlation_count"] = len(related)

@@ -56,7 +56,7 @@ CI pipeline was Sprint 3A (19th sprint), not Sprint 1A. By the time the linter r
 
 ### Near-miss: F821 undefined name
 
-One error — `F821 undefined name '_get_db'` in `activities.py` — was a real bug, not just style. The `check_rate_limit_activity` function called `_get_db()` which didn't exist in that file. Fixed by changing to `get_db_connection()` which is the correct function defined at the top of the file. This would have caused a runtime `NameError` if the rate limit DB lookup path was exercised.
+One error — `F821 undefined name '_get_db'` in `worker/_legacy_activities.py` (historically `activities.py`) — was a real bug, not just style. The `check_rate_limit_activity` function called `_get_db()` which didn't exist in that file. Fixed by changing to `get_db_connection()` which is the correct function defined at the top of the file. This would have caused a runtime `NameError` if the rate limit DB lookup path was exercised.
 
 ## 4. Prevention Measures Implemented
 

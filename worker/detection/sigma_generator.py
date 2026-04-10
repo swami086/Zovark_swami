@@ -6,7 +6,6 @@ from attack pattern candidates and MITRE technique descriptions.
 
 import os
 import time
-import httpx
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from temporalio import activity
@@ -91,8 +90,8 @@ async def generate_sigma_rule(data: dict) -> dict:
     Input: {candidate_id, technique_id, pattern_description, entity_types, edge_patterns}
     Returns: {candidate_id, sigma_yaml, valid, error}
     """
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
     tier_config = get_tier_config("generate_sigma_rule")
     llm_model = tier_config["model"]
 
@@ -159,64 +158,61 @@ async def generate_sigma_rule(data: dict) -> dict:
         finally:
             conn.close()
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                llm_endpoint,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": llm_model,
-                    "messages": [
-                        {"role": "system", "content": SIGMA_SYSTEM_PROMPT},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": tier_config["temperature"],
-                    "max_tokens": tier_config["max_tokens"],
-                },
-            )
-            resp.raise_for_status()
-            result = resp.json()
-            usage = result.get("usage", {})
-            sigma_yaml = result["choices"][0]["message"]["content"].strip()
+        result = await llm_request(
+            llm_model,
+            [
+                {"role": "system", "content": SIGMA_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=tier_config["temperature"],
+            max_tokens=tier_config["max_tokens"],
+            stage="generate_sigma_rule",
+            role="verdict",
+            endpoint_url=chat_endpoint_for_model(llm_model),
+            api_key=resolve_llm_api_key(None),
+        )
+        usage = result.get("usage", {})
+        sigma_yaml = result["choices"][0]["message"]["content"].strip()
 
-            # Strip markdown fences if present
-            if sigma_yaml.startswith("```yaml"):
-                sigma_yaml = sigma_yaml[7:]
-            if sigma_yaml.startswith("```"):
-                sigma_yaml = sigma_yaml[3:]
-            if sigma_yaml.endswith("```"):
-                sigma_yaml = sigma_yaml[:-3]
-            sigma_yaml = sigma_yaml.strip()
+        # Strip markdown fences if present
+        if sigma_yaml.startswith("```yaml"):
+            sigma_yaml = sigma_yaml[7:]
+        if sigma_yaml.startswith("```"):
+            sigma_yaml = sigma_yaml[3:]
+        if sigma_yaml.endswith("```"):
+            sigma_yaml = sigma_yaml[:-3]
+        sigma_yaml = sigma_yaml.strip()
 
-            latency_ms = int((time.time() - start_time) * 1000)
+        latency_ms = int((time.time() - start_time) * 1000)
 
-            log_llm_call(
-                activity_name="generate_sigma_rule",
-                model_tier=tier_config["tier"],
-                model_id=llm_model,
-                prompt_name="sigma_generation",
-                prompt_version=get_version("sigma_generation"),
-                input_tokens=usage.get("prompt_tokens", 0),
-                output_tokens=usage.get("completion_tokens", 0),
-                latency_ms=latency_ms,
-                temperature=tier_config["temperature"],
-                max_tokens=tier_config["max_tokens"],
-            )
+        log_llm_call(
+            activity_name="generate_sigma_rule",
+            model_tier=tier_config["tier"],
+            model_id=llm_model,
+            prompt_name="sigma_generation",
+            prompt_version=get_version("sigma_generation"),
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
+            latency_ms=latency_ms,
+            temperature=tier_config["temperature"],
+            max_tokens=tier_config["max_tokens"],
+        )
 
-            # Basic YAML validation
-            if HAS_YAML:
-                try:
-                    parsed = yaml.safe_load(sigma_yaml)
-                    if isinstance(parsed, dict) and "title" in parsed and "detection" in parsed:
-                        valid = True
-                    else:
-                        error = "Missing required Sigma fields (title, detection)"
-                except yaml.YAMLError as e:
-                    error = f"Invalid YAML: {e}"
-            else:
-                # Basic string validation without pyyaml
-                valid = "title:" in sigma_yaml and "detection:" in sigma_yaml
-                if not valid:
-                    error = "Missing title or detection fields"
+        # Basic YAML validation
+        if HAS_YAML:
+            try:
+                parsed = yaml.safe_load(sigma_yaml)
+                if isinstance(parsed, dict) and "title" in parsed and "detection" in parsed:
+                    valid = True
+                else:
+                    error = "Missing required Sigma fields (title, detection)"
+            except yaml.YAMLError as e:
+                error = f"Invalid YAML: {e}"
+        else:
+            # Basic string validation without pyyaml
+            valid = "title:" in sigma_yaml and "detection:" in sigma_yaml
+            if not valid:
+                error = "Missing title or detection fields"
 
     except Exception as e:
         error = str(e)

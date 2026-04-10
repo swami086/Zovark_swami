@@ -33,6 +33,7 @@ from psycopg2.extras import RealDictCursor
 from temporalio import activity
 
 from stages import AnalyzeOutput, IngestOutput
+from stages.trace_helpers import trace_analyze_apply_result, trace_stage_analyze_span
 from stages.llm_gateway import llm_call, MODEL_FAST, MODEL_CODE
 from stages.model_router import get_model_config
 from stages.code_cache import get_alert_signature, get_cached_code, set_cached_code
@@ -565,7 +566,7 @@ def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
 
 def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
     """Load recent investigations with overlapping IOCs for correlation."""
-    context = {"investigations": []}
+    context = {"investigations": [], "tenant_id": tenant_id}
     try:
         entities = []
         for field_name in ("source_ip", "username", "hostname", "dest_ip"):
@@ -770,13 +771,33 @@ async def _analyze_v3_tools(ingest: IngestOutput) -> AnalyzeOutput:
         # System message: static content only (cached by llama-server prefix cache)
         system_prompt = _TOOL_CALLING_SYSTEM_PREFIX.format(catalog_text=catalog_text)
 
-        # User message: dynamic content (institutional knowledge + alert)
+        # User message: correlation (lowest trim priority) → institutional → alert JSON
+        from context_markers import (
+            CORRELATION_END,
+            CORRELATION_START,
+            INSTITUTIONAL_END,
+            INSTITUTIONAL_START,
+        )
+
+        correlation_ctx = _load_correlation_context(ingest.tenant_id, ingest.siem_event)
         inst_knowledge = _load_institutional_knowledge(ingest.tenant_id, ingest.siem_event)
         user_parts = []
+        if correlation_ctx.get("investigations"):
+            user_parts.append(
+                f"{CORRELATION_START}\n"
+                + json.dumps(correlation_ctx, ensure_ascii=False, default=str)
+                + f"\n{CORRELATION_END}"
+            )
         if inst_knowledge:
-            user_parts.append("Institutional knowledge:")
+            inst_lines = ["Institutional knowledge:"]
             for entity, info in inst_knowledge.items():
-                user_parts.append(f"- {entity}: {info.get('description', '')} (expected: {info.get('expected_behavior', '')})")
+                inst_lines.append(
+                    f"- {entity}: {info.get('description', '')} "
+                    f"(expected: {info.get('expected_behavior', '')})"
+                )
+            user_parts.append(
+                f"{INSTITUTIONAL_START}\n" + "\n".join(inst_lines) + f"\n{INSTITUTIONAL_END}"
+            )
         user_parts.append("\nAlert:\n" + json.dumps(ingest.siem_event))
         user_prompt = "\n".join(user_parts)
 
@@ -827,6 +848,19 @@ async def analyze_alert(data) -> dict:
       B. skill_template  → LLM param fill + template render
       C. no template     → full LLM code generation
     """
+    import time as _time
+    _t0 = _time.perf_counter()
+    try:
+        return await _analyze_alert_impl(data)
+    finally:
+        try:
+            from metrics import record_pipeline_stage
+            record_pipeline_stage("analyze", _time.perf_counter() - _t0)
+        except Exception:
+            pass
+
+
+async def _analyze_alert_impl(data) -> dict:
     if isinstance(data, dict):
         ingest = IngestOutput(
             task_id=data.get("task_id", ""),
@@ -838,53 +872,74 @@ async def analyze_alert(data) -> dict:
             skill_template=data.get("skill_template"),
             skill_params=data.get("skill_params", []),
             skill_methodology=data.get("skill_methodology", ""),
+            trace_id=str(data.get("trace_id", "") or ""),
         )
     else:
         ingest = data
 
     from dataclasses import asdict
 
-    # V3 tool-calling mode — routes to plan-based execution
-    if EXECUTION_MODE == "tools":
-        return asdict(await _analyze_v3_tools(ingest))
+    span_ctx = {
+        "task_id": ingest.task_id,
+        "tenant_id": ingest.tenant_id,
+        "task_type": ingest.task_type,
+        "trace_id": getattr(ingest, "trace_id", "") or "",
+    }
 
-    # === V2 SANDBOX MODE (legacy, behind feature flag) ===
+    with trace_stage_analyze_span(span_ctx) as _span:
+        # V3 tool-calling mode — routes to plan-based execution
+        if EXECUTION_MODE == "tools":
+            out = asdict(await _analyze_v3_tools(ingest))
+            trace_analyze_apply_result(_span, out)
+            return out
 
-    # Path A: stress test mode
-    if FAST_FILL:
-        return asdict(generate_fast_fill_stub(ingest.siem_event, ingest.task_type))
+        # === V2 SANDBOX MODE (legacy, behind feature flag) ===
 
-    # Path B: template available
-    if ingest.skill_template:
-        return asdict(await _analyze_template(ingest))
+        # Path A: stress test mode
+        if FAST_FILL:
+            out = asdict(generate_fast_fill_stub(ingest.siem_event, ingest.task_type))
+            trace_analyze_apply_result(_span, out)
+            return out
 
-    # Template-only mode: skip LLM entirely for unmatched alerts
-    if ZOVARK_MODE == "templates-only":
-        task_type = ingest.task_type
-        activity.logger.info(f"Template-only mode: no template for {task_type}, returning requires_template")
-        return asdict(AnalyzeOutput(
-            code="import json\nresult = {\"findings\": [\"No template for this alert type. Template-only mode active.\"], \"iocs\": [], \"risk_score\": 0, \"recommendations\": [\"Upgrade to Professional tier for AI investigation\"]}\nprint(json.dumps(result))",
-            source="stub",
-            path_taken="A",
-            preflight_passed=True,
-            preflight_fixes=[],
-            tokens_in=0,
-            tokens_out=0,
-            generation_ms=0,
-        ))
+        # Path B: template available
+        if ingest.skill_template:
+            out = asdict(await _analyze_template(ingest))
+            trace_analyze_apply_result(_span, out)
+            return out
 
-    # Path C: LLM fallback — with fail-closed error handling
-    try:
-        return asdict(await _analyze_llm(ingest))
-    except (RuntimeError, httpx.TimeoutException, httpx.ConnectError, Exception) as e:
-        activity.logger.error(f"LLM unavailable for task {ingest.task_id}: {e}")
-        # FAIL-CLOSED: Do NOT classify. Do NOT route to benign. Queue for human review.
-        from stages.circuit_breaker import update_state
-        update_state(999)  # Force RED state on LLM failure
-        return asdict(AnalyzeOutput(
-            code="# LLM UNAVAILABLE - investigation requires manual review\nimport json\nprint(json.dumps({\"findings\": [{\"title\": \"LLM service unavailable\", \"details\": \"Investigation could not be completed automatically\"}], \"iocs\": [], \"risk_score\": 0, \"recommendations\": [\"Manual analysis required - LLM was unavailable\"]}))",
-            source="error",
-            path_taken="error_llm_down",
-            preflight_passed=True,
-            generation_ms=0,
-        ))
+        # Template-only mode: skip LLM entirely for unmatched alerts
+        if ZOVARK_MODE == "templates-only":
+            task_type = ingest.task_type
+            activity.logger.info(f"Template-only mode: no template for {task_type}, returning requires_template")
+            out = asdict(AnalyzeOutput(
+                code="import json\nresult = {\"findings\": [\"No template for this alert type. Template-only mode active.\"], \"iocs\": [], \"risk_score\": 0, \"recommendations\": [\"Upgrade to Professional tier for AI investigation\"]}\nprint(json.dumps(result))",
+                source="stub",
+                path_taken="A",
+                preflight_passed=True,
+                preflight_fixes=[],
+                tokens_in=0,
+                tokens_out=0,
+                generation_ms=0,
+            ))
+            trace_analyze_apply_result(_span, out)
+            return out
+
+        # Path C: LLM fallback — with fail-closed error handling
+        try:
+            out = asdict(await _analyze_llm(ingest))
+            trace_analyze_apply_result(_span, out)
+            return out
+        except (RuntimeError, httpx.TimeoutException, httpx.ConnectError, Exception) as e:
+            activity.logger.error(f"LLM unavailable for task {ingest.task_id}: {e}")
+            # FAIL-CLOSED: Do NOT classify. Do NOT route to benign. Queue for human review.
+            from stages.circuit_breaker import update_state
+            update_state(999)  # Force RED state on LLM failure
+            out = asdict(AnalyzeOutput(
+                code="# LLM UNAVAILABLE - investigation requires manual review\nimport json\nprint(json.dumps({\"findings\": [{\"title\": \"LLM service unavailable\", \"details\": \"Investigation could not be completed automatically\"}], \"iocs\": [], \"risk_score\": 0, \"recommendations\": [\"Manual analysis required - LLM was unavailable\"]}))",
+                source="error",
+                path_taken="error_llm_down",
+                preflight_passed=True,
+                generation_ms=0,
+            ))
+            trace_analyze_apply_result(_span, out)
+            return out

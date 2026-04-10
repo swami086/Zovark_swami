@@ -14,7 +14,6 @@ from datetime import timedelta
 from temporalio import activity, workflow
 
 with workflow.unsafe.imports_passed_through():
-    import httpx
     import psycopg2
     from psycopg2.extras import RealDictCursor
     from llm_logger import log_llm_call
@@ -46,8 +45,7 @@ async def generate_recommendation(params: dict) -> dict:
     tenant_id = params["tenant_id"]
     investigation_data = params.get("investigation_data", {})
 
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
 
     tier_config = get_tier_config("generate_recommendation")
 
@@ -66,25 +64,21 @@ async def generate_recommendation(params: dict) -> dict:
     system_prompt += f"\n\n{inv_safety_instruction}"
     user_prompt = f"Investigation data:\n{safe_investigation}"
 
-    payload = {
-        "model": tier_config["model"],
-        "messages": [
+    start_time = time.time()
+    m = tier_config["model"]
+    result = await llm_request(
+        m,
+        [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "temperature": 0.2,
-        "max_tokens": tier_config["max_tokens"],
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-
-    start_time = time.time()
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(llm_endpoint, json=payload, headers=headers)
-        response.raise_for_status()
-        result = response.json()
+        temperature=0.2,
+        max_tokens=tier_config["max_tokens"],
+        stage="generate_recommendation",
+        role="verdict",
+        endpoint_url=chat_endpoint_for_model(m),
+        api_key=resolve_llm_api_key(None),
+    )
     execution_ms = int((time.time() - start_time) * 1000)
 
     usage = result.get("usage", {})

@@ -1009,7 +1009,7 @@ Both endpoints normalize the incoming alert format, create an `agent_task`, and 
 | AdminPanel | `/admin` | Tenant management, system controls |
 | Settings | `/settings` | User preferences |
 
-### Key Components (16)
+### Key Components (15)
 
 | Component | Purpose |
 |-----------|---------|
@@ -1024,7 +1024,6 @@ Both endpoints normalize the incoming alert format, create an `agent_task`, and 
 | ExecutiveSummary | Key metrics ribbon |
 | Skeleton | Loading placeholder |
 | Notifications | Toast notification system |
-| SovereigntyBanner | Data sovereignty compliance indicator |
 | DataFlowBadge | Visual data flow indicators |
 | TaskFilters | Advanced task filtering controls |
 | IOCTable | IOC list with evidence refs |

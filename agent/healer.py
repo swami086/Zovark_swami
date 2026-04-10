@@ -27,6 +27,7 @@ import json
 import logging
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 import shutil
 import subprocess
 import threading
@@ -56,6 +57,12 @@ POSTGRES_PASSWORD = os.environ.get("ZOVARK_DB_PASSWORD", os.environ.get("POSTGRE
 POSTGRES_DB = os.environ.get("ZOVARK_DB_NAME", os.environ.get("POSTGRES_DB", "zovark"))
 LLM_MODEL = os.environ.get("ZOVARK_LLM_FAST_MODEL", os.environ.get("ZOVARK_MODEL_FAST", "nemotron-mini-4b"))
 LLM_HOST = os.environ.get("ZOVARK_LLM_BASE_URL", "http://zovark-inference:8080")
+LLM_PROVIDER = os.environ.get("ZOVARK_LLM_PROVIDER", "local").lower().strip()
+LLM_API_KEY = (
+    os.environ.get("OPENAI_API_KEY", "").strip()
+    or os.environ.get("ZOVARK_OPENAI_API_KEY", "").strip()
+    or os.environ.get("ZOVARK_LLM_KEY", "").strip()
+)
 OTEL_ENABLED = os.environ.get("ZOVARK_OTEL_ENABLED", os.environ.get("OTEL_ENABLED", "false")).lower() in ("true", "1", "yes")
 LOG_DIR = Path("/var/log/zovark")
 API_PORT = 8081
@@ -152,9 +159,11 @@ SERVICE_TYPE_MAP = {
     "zovark-pgbouncer": "pgbouncer",
     "zovark-egress-proxy": "squid",
     "zovark-healer": "self",
-    # Signoz tracing stack (optional, --profile tracing)
+    # SigNoz tracing stack (docker compose includes zovark-clickhouse + collector + unified signoz)
     "hydra-mvp-zovark-clickhouse-1": "signoz_clickhouse",
     "hydra-mvp-zovark-signoz-collector-1": "signoz_collector",
+    "zovark-signoz": "signoz_app",
+    # Legacy split-stack container names (pre–v0.76 unified binary)
     "hydra-mvp-zovark-signoz-query-1": "signoz_query",
     "hydra-mvp-zovark-signoz-frontend-1": "signoz_frontend",
 }
@@ -348,6 +357,26 @@ def check_container_running(container_name: str) -> tuple[bool, str]:
         return False, str(e)[:200]
 
 
+def check_openai_api() -> tuple[bool, str]:
+    """OpenAI API reachability via GET /v1/models (requires ZOVARK_LLM_KEY)."""
+    try:
+        base = LLM_HOST.rstrip("/")
+        url = f"{base}/v1/models"
+        req = urllib.request.Request(url, method="GET")
+        if LLM_API_KEY:
+            req.add_header("Authorization", f"Bearer {LLM_API_KEY}")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                return True, "OpenAI /v1/models OK"
+            return False, f"HTTP {resp.status}"
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            return False, "OpenAI returned 401 — check ZOVARK_LLM_KEY"
+        return False, f"HTTP {e.code}"
+    except Exception as e:
+        return False, str(e)[:200]
+
+
 def check_tcp(host: str, port: int, timeout: int = 5) -> tuple[bool, str]:
     """TCP connect health check (e.g. ClickHouse native port)."""
     import socket
@@ -374,6 +403,8 @@ def health_check(svc: ServiceState) -> tuple[bool, str]:
         elif svc.svc_type == "temporal":
             return check_container_running(svc.container_name)
         elif svc.svc_type == "inference":
+            if LLM_PROVIDER == "openai":
+                return check_openai_api()
             return check_http(f"{LLM_HOST}/api/tags")
         elif svc.svc_type == "worker":
             return check_container_running(svc.container_name)
@@ -389,6 +420,10 @@ def health_check(svc: ServiceState) -> tuple[bool, str]:
             if not OTEL_ENABLED:
                 return True, "OTEL disabled, skipping"
             return check_tcp("zovark-clickhouse", 9000)
+        elif svc.svc_type == "signoz_app":
+            if not OTEL_ENABLED:
+                return True, "OTEL disabled, skipping"
+            return check_http("http://zovark-signoz:8080/api/v1/health")
         elif svc.svc_type == "signoz_query":
             if not OTEL_ENABLED:
                 return True, "OTEL disabled, skipping"
@@ -514,8 +549,36 @@ def restart_container(svc: ServiceState, reason: str = "health check failure"):
 
 # ── AI Crash Diagnosis ─────────────────────────────────────────────────
 
+def _rule_based_crash_diagnosis(logs: str, reason: str) -> str:
+    blob = f"{reason}\n{logs}".lower()
+    if "out of memory" in blob or "oom" in blob or "cannot allocate memory" in blob:
+        return (
+            "Rule-based diagnosis: memory exhaustion likely. Increase container memory "
+            "or reduce concurrent workloads. Severity: high."
+        )
+    if "connection refused" in blob or "econnrefused" in blob:
+        return (
+            "Rule-based diagnosis: dependency unreachable (connection refused). "
+            "Verify upstream service health and network/DNS. Severity: medium."
+        )
+    if "permission denied" in blob or "eacces" in blob:
+        return (
+            "Rule-based diagnosis: filesystem permission denied. Check volume mounts "
+            "and UID/GID. Severity: medium."
+        )
+    if "exit code 1" in blob or "exited with code 1" in blob:
+        return (
+            "Rule-based diagnosis: generic non-zero exit. Inspect full logs for stack "
+            "trace. Severity: medium."
+        )
+    return (
+        "Rule-based diagnosis: no specific pattern matched. Collect full logs and "
+        "check recent config changes. Severity: low."
+    )
+
+
 def ai_diagnose(service_name: str, container_name: str, reason: str):
-    """Feed last 50 log lines to local LLM for crash diagnosis."""
+    """Feed last 50 log lines to local LLM for crash diagnosis (10s cap), else rule-based."""
     try:
         logs = get_container_logs(container_name, lines=50)
         if not logs or logs.strip() == "(unable to fetch logs)":
@@ -531,30 +594,69 @@ def ai_diagnose(service_name: str, container_name: str, reason: str):
             "3. Severity (low/medium/high/critical)\n"
         )
 
-        payload = json.dumps({
-            "model": LLM_MODEL,
-            "prompt": prompt,
-            "stream": False,
-            "options": {"temperature": 0.3, "num_predict": 300},
-        }).encode("utf-8")
+        def _llm_call() -> str:
+            if LLM_PROVIDER == "openai":
+                url = f"{LLM_HOST.rstrip('/')}/v1/chat/completions"
+                payload = json.dumps({
+                    "model": LLM_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 300,
+                    "temperature": 0.3,
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {LLM_API_KEY}",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    body = json.loads(resp.read().decode("utf-8"))
+                choices = body.get("choices") or []
+                if not choices:
+                    return "(no response)"
+                msg = choices[0].get("message") or {}
+                return (msg.get("content") or "(no response)").strip()
 
-        req = urllib.request.Request(
-            f"{LLM_HOST}/api/generate",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
+            payload = json.dumps({
+                "model": LLM_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.3, "num_predict": 300},
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                f"{LLM_HOST}/api/generate",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            return body.get("response", "(no response)")
 
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-            diagnosis_text = body.get("response", "(no response)")
+        diagnosis_text = None
+        used_fallback = False
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                diagnosis_text = pool.submit(_llm_call).result(timeout=10)
+        except FuturesTimeout:
+            diagnosis_text = _rule_based_crash_diagnosis(logs, reason)
+            used_fallback = True
+            diagnosis_text += " [LLM diagnosis timed out after 10s]"
+        except Exception as e:
+            log.warning("AI diagnosis LLM call failed for %s: %s", service_name, e)
+            diagnosis_text = _rule_based_crash_diagnosis(logs, reason)
+            used_fallback = True
+            diagnosis_text += f" [LLM unavailable: {e}]"
 
         diagnosis = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "service": service_name,
             "reason": reason,
             "diagnosis": diagnosis_text.strip(),
-            "model": LLM_MODEL,
+            "model": LLM_MODEL if not used_fallback else f"{LLM_MODEL}+rules",
             "log_snippet": logs[-500:],
         }
 
@@ -571,7 +673,7 @@ def ai_diagnose(service_name: str, container_name: str, reason: str):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "service": service_name,
             "reason": reason,
-            "diagnosis": f"(LLM unavailable: {e})",
+            "diagnosis": f"(diagnosis error: {e})",
             "model": LLM_MODEL,
             "log_snippet": "",
         }
@@ -698,14 +800,18 @@ def check_connectivity() -> dict:
     # 2. Worker → LLM inference (availability check)
     llm_ok = {"ok": False, "detail": ""}
     try:
-        req = urllib.request.Request(f"{LLM_HOST}/api/tags", method="GET")
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            if resp.status == 200:
-                body = json.loads(resp.read().decode("utf-8"))
-                models = [m.get("name", "?") for m in body.get("models", [])]
-                llm_ok = {"ok": True, "detail": f"models: {', '.join(models[:3])}"}
-            else:
-                llm_ok = {"ok": False, "detail": f"HTTP {resp.status}"}
+        if LLM_PROVIDER == "openai":
+            ok, detail = check_openai_api()
+            llm_ok = {"ok": ok, "detail": detail}
+        else:
+            req = urllib.request.Request(f"{LLM_HOST}/api/tags", method="GET")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    body = json.loads(resp.read().decode("utf-8"))
+                    models = [m.get("name", "?") for m in body.get("models", [])]
+                    llm_ok = {"ok": True, "detail": f"models: {', '.join(models[:3])}"}
+                else:
+                    llm_ok = {"ok": False, "detail": f"HTTP {resp.status}"}
     except Exception as e:
         llm_ok = {"ok": False, "detail": str(e)[:200]}
 

@@ -8,18 +8,24 @@ interface JwtCache {
 
 let cachedJwt: JwtCache | null = null;
 
-export async function getJwt(
-  tenantSlug: string = "zovark-dev"
-): Promise<string> {
+/** JWT is always fetched for an explicit tenant slug (from MCP key context — never caller-supplied hop). */
+export async function getJwt(tenantSlug: string): Promise<string> {
+  const slug = (tenantSlug || "").trim();
+  if (!slug) {
+    throw new Error(
+      "API auth requires a tenant slug from MCP key context (empty slug)"
+    );
+  }
+
   if (
     cachedJwt &&
-    cachedJwt.tenantSlug === tenantSlug &&
+    cachedJwt.tenantSlug === slug &&
     Date.now() < cachedJwt.expiresAt
   ) {
     return cachedJwt.token;
   }
 
-  const email = `mcp-agent@${tenantSlug}.zovark`;
+  const email = `mcp-agent@${slug}.zovark`;
   const password = "mcp-agent-2026!";
 
   // Try login first
@@ -33,7 +39,7 @@ export async function getJwt(
       const data = (await loginResp.json()) as { token: string };
       cachedJwt = {
         token: data.token,
-        tenantSlug,
+        tenantSlug: slug,
         expiresAt: Date.now() + 55 * 60 * 1000, // 55 min
       };
       return data.token;
@@ -50,7 +56,7 @@ export async function getJwt(
       email,
       password,
       display_name: "MCP Agent",
-      tenant_slug: tenantSlug,
+      tenant_slug: slug,
     }),
   });
   if (!regResp.ok) {
@@ -71,7 +77,7 @@ export async function getJwt(
   const data = (await loginResp.json()) as { token: string };
   cachedJwt = {
     token: data.token,
-    tenantSlug,
+    tenantSlug: slug,
     expiresAt: Date.now() + 55 * 60 * 1000,
   };
   return data.token;
@@ -79,7 +85,7 @@ export async function getJwt(
 
 export async function apiGet(
   path: string,
-  tenantSlug?: string
+  tenantSlug: string
 ): Promise<unknown> {
   const token = await getJwt(tenantSlug);
   const resp = await fetch(`${API_URL}${path}`, {
@@ -94,7 +100,7 @@ export async function apiGet(
 export async function apiPost(
   path: string,
   body: unknown,
-  tenantSlug?: string
+  tenantSlug: string
 ): Promise<unknown> {
   const token = await getJwt(tenantSlug);
   const resp = await fetch(`${API_URL}${path}`, {

@@ -70,16 +70,100 @@ func normalizeRawLog(raw string) string {
 	return raw
 }
 
-// computeAlertHash computes a SHA-256 hash of the canonical alert fields.
-// Must produce identical output to Python _compute_alert_hash().
+// ocsfDedupCanon is JSON-marshaled for deterministic pre-Temporal dedup (sorted field order via struct tags).
+type ocsfDedupCanon struct {
+	ActorUserName string `json:"actor.user.name"`
+	ClassUID      string `json:"class_uid"`
+	DstEndpointIP string `json:"dst_endpoint.ip"`
+	RuleName      string `json:"rule_name"`
+	SrcEndpointIP string `json:"src_endpoint.ip"`
+}
+
+func isOCSFEvent(m map[string]interface{}) bool {
+	if m == nil {
+		return false
+	}
+	_, ok := m["class_uid"]
+	return ok
+}
+
+func ocsfClassUIDString(m map[string]interface{}) string {
+	v, ok := m["class_uid"]
+	if !ok {
+		return ""
+	}
+	switch t := v.(type) {
+	case float64:
+		return fmt.Sprintf("%.0f", t)
+	case json.Number:
+		return t.String()
+	case int:
+		return fmt.Sprintf("%d", t)
+	case int64:
+		return fmt.Sprintf("%d", t)
+	default:
+		return strings.TrimSpace(fmt.Sprintf("%v", v))
+	}
+}
+
+func ocsfActorUserName(m map[string]interface{}) string {
+	a, ok := m["actor"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	u, ok := a["user"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	if s, ok := u["name"].(string); ok {
+		return s
+	}
+	return ""
+}
+
+func ocsfRuleNameForDedup(m map[string]interface{}) string {
+	if fi, ok := m["finding_info"].(map[string]interface{}); ok {
+		if t, ok := fi["title"].(string); ok && t != "" {
+			return t
+		}
+	}
+	return getStringField(m, "rule_name")
+}
+
+func computeOCSFCanonicalDedupHash(ocsf map[string]interface{}) string {
+	canon := ocsfDedupCanon{
+		SrcEndpointIP: endpointIPStr(ocsf, "src_endpoint"),
+		DstEndpointIP: endpointIPStr(ocsf, "dst_endpoint"),
+		RuleName:      ocsfRuleNameForDedup(ocsf),
+		ActorUserName: ocsfActorUserName(ocsf),
+		ClassUID:      ocsfClassUIDString(ocsf),
+	}
+	data, _ := json.Marshal(canon)
+	hash := sha256.Sum256(data)
+	return fmt.Sprintf("%x", hash)
+}
+
+func endpointIPStr(m map[string]interface{}, key string) string {
+	if m == nil {
+		return ""
+	}
+	ep, ok := m[key].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	if s, ok := ep["ip"].(string); ok {
+		return s
+	}
+	return ""
+}
+
+// computeAlertHash is the legacy pre-OCSF canonical hash (ZCS-style flat siem_event).
 func computeAlertHash(input map[string]interface{}) string {
-	// Extract siem_event fields (the alert data lives here for API-submitted tasks)
 	siem := input
 	if se, ok := input["siem_event"].(map[string]interface{}); ok {
 		siem = se
 	}
 
-	// Build canonical dict with exact same 6 fields as Python
 	canonical := map[string]string{
 		"destination_ip": getStringField(siem, "destination_ip", "dest_ip"),
 		"hostname":       getStringField(siem, "hostname"),
@@ -92,6 +176,14 @@ func computeAlertHash(input map[string]interface{}) string {
 	data, _ := json.Marshal(canonical)
 	hash := sha256.Sum256(data)
 	return fmt.Sprintf("%x", hash)
+}
+
+// computeDedupHash uses OCSF canonical fields when siem_event carries class_uid; otherwise legacy hash.
+func computeDedupHash(input map[string]interface{}) string {
+	if se, ok := input["siem_event"].(map[string]interface{}); ok && isOCSFEvent(se) {
+		return computeOCSFCanonicalDedupHash(se)
+	}
+	return computeAlertHash(input)
 }
 
 // getStringField extracts a string from a map, trying multiple key names.
@@ -130,7 +222,7 @@ func checkPreDedup(ctx context.Context, taskType string, input map[string]interf
 		return false, ""
 	}
 
-	hash := computeAlertHash(input)
+	hash := computeDedupHash(input)
 	key := "dedup:exact:" + hash
 
 	val, err := redisClient.Get(ctx, key).Result()
@@ -178,7 +270,7 @@ func registerPreDedup(ctx context.Context, taskType string, input map[string]int
 		return
 	}
 
-	hash := computeAlertHash(input)
+	hash := computeDedupHash(input)
 	key := "dedup:exact:" + hash
 
 	entry := DedupEntry{
@@ -216,7 +308,7 @@ func clearDedupEntry(ctx context.Context, input map[string]interface{}) {
 	if redisClient == nil {
 		return
 	}
-	hash := computeAlertHash(input)
+	hash := computeDedupHash(input)
 	key := "dedup:exact:" + hash
 	redisClient.Del(ctx, key)
 }

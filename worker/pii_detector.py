@@ -83,11 +83,32 @@ class PIIDetector:
             regex = rule.get("regex")
             if name and regex:
                 try:
-                    self.patterns[name] = re.compile(regex)
-                except re.error:
-                    logger.warn("Invalid custom PII regex", pattern_name=name)
+                    from governance.suppression import (
+                        log_suppression_eval_failure,
+                        validate_suppression_rule_syntax,
+                    )
 
-    def detect(self, text: str) -> list:
+                    ok, err = validate_suppression_rule_syntax(regex)
+                    if not ok:
+                        log_suppression_eval_failure(
+                            None,
+                            f"pii_masking:{name}",
+                            f"invalid persisted regex: {err}",
+                        )
+                        continue
+                    self.patterns[name] = re.compile(regex)
+                except re.error as e:
+                    logger.warn("Invalid custom PII regex", pattern_name=name, error=str(e))
+                    try:
+                        from governance.suppression import log_suppression_eval_failure
+
+                        log_suppression_eval_failure(
+                            None, f"pii_masking:{name}", f"compile error: {e}"
+                        )
+                    except Exception:
+                        pass
+
+    def detect(self, text: str, tenant_id: str = "") -> list:
         """Detect PII in text.
 
         Returns:
@@ -100,7 +121,22 @@ class PIIDetector:
         seen_spans = set()
 
         for pii_type, pattern in self.patterns.items():
-            for match in pattern.finditer(text):
+            try:
+                it = pattern.finditer(text)
+            except re.error as e:
+                try:
+                    from governance.suppression import log_suppression_eval_failure
+
+                    log_suppression_eval_failure(
+                        tenant_id or None,
+                        f"pii_runtime:{pii_type}",
+                        str(e),
+                        alert_context=text[:400],
+                    )
+                except Exception:
+                    pass
+                continue
+            for match in it:
                 span = (match.start(), match.end())
                 # Skip overlapping detections
                 if any(s <= span[0] < e or s < span[1] <= e for s, e in seen_spans):
@@ -134,7 +170,7 @@ class PIIDetector:
         Returns:
             (masked_text, entity_map) where entity_map maps token -> original value
         """
-        detections = self.detect(text)
+        detections = self.detect(text, tenant_id=tenant_id)
         if not detections:
             return text, {}
 
@@ -176,6 +212,45 @@ _default_detector = PIIDetector()
 # Activities
 # ---------------------------------------------------------------------------
 
+
+def _fetch_validated_pii_rules(tenant_id: str) -> list:
+    """Load tenant PII regex rules; invalid patterns are skipped and audit-logged."""
+    conn = _get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT pattern_name, regex, replacement_prefix, enabled, priority
+                FROM pii_masking_rules
+                WHERE (tenant_id = %s OR tenant_id IS NULL) AND enabled = true
+                ORDER BY priority ASC
+                """,
+                (tenant_id,),
+            )
+            rows = cur.fetchall()
+        from governance.suppression import (
+            log_suppression_eval_failure,
+            validate_suppression_rule_syntax,
+        )
+
+        out = []
+        for r in rows:
+            row = dict(r)
+            rx = row.get("regex") or ""
+            ok, err = validate_suppression_rule_syntax(rx)
+            if not ok:
+                log_suppression_eval_failure(
+                    tenant_id,
+                    f"pii_masking:{row.get('pattern_name', 'unknown')}",
+                    f"load-time invalid regex: {err}",
+                )
+                continue
+            out.append(row)
+        return out
+    finally:
+        conn.close()
+
+
 @activity.defn
 async def detect_pii(params: dict) -> dict:
     """Detect PII in text and log detections.
@@ -190,26 +265,14 @@ async def detect_pii(params: dict) -> dict:
     field_path = params.get("field_path", "unknown")
     direction = params.get("direction", "outbound")
 
-    # Load custom rules for tenant
     custom_rules = []
     try:
-        conn = _get_db()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("""
-                    SELECT pattern_name, regex, replacement_prefix
-                    FROM pii_masking_rules
-                    WHERE (tenant_id = %s OR tenant_id IS NULL) AND enabled = true
-                    ORDER BY priority ASC
-                """, (tenant_id,))
-                custom_rules = [dict(r) for r in cur.fetchall()]
-        finally:
-            conn.close()
+        custom_rules = _fetch_validated_pii_rules(tenant_id or "")
     except Exception as e:
         logger.warn("Failed to load PII rules", error=str(e))
 
     detector = PIIDetector(custom_rules=custom_rules) if custom_rules else _default_detector
-    detections = detector.detect(text)
+    detections = detector.detect(text, tenant_id=tenant_id or "")
     masked_text, entity_map = detector.mask(text, tenant_id)
 
     entity_map_id = None
@@ -339,16 +402,4 @@ async def load_tenant_pii_rules(tenant_id: str) -> list:
     Returns:
         List of rule dicts {pattern_name, regex, replacement_prefix, enabled, priority}
     """
-    conn = _get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""
-                SELECT pattern_name, regex, replacement_prefix, enabled, priority
-                FROM pii_masking_rules
-                WHERE (tenant_id = %s OR tenant_id IS NULL) AND enabled = true
-                ORDER BY priority ASC
-            """, (tenant_id,))
-            rows = cur.fetchall()
-            return [dict(r) for r in rows]
-    finally:
-        conn.close()
+    return _fetch_validated_pii_rules(tenant_id)

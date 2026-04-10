@@ -1,153 +1,236 @@
-"""Model evaluation framework — measures fine-tuned model quality.
+"""Model evaluation — fixed reference investigations and optional pair (quant) stability."""
 
-Runs a set of benchmark prompts through the model and scores outputs
-against reference investigations.
-"""
+from __future__ import annotations
 
+import json
 import os
+import re
 import time
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
 import httpx
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
-ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get(
+    "ZOVARK_LLM_ENDPOINT",
+    "http://zovark-inference:8080/v1/chat/completions",
+)
+ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "sk-zovark-dev-2026")
+
+_REFERENCE_LIMIT = 50
 
 
-BENCHMARK_PROMPTS = [
-    {
-        "id": "eval_brute_force",
-        "prompt": "Investigate a brute force attack from IP 192.168.1.100 targeting SSH on 10.0.0.5. Check auth logs for failed attempts, identify patterns, and determine if any accounts were compromised.",
-        "expected_keywords": ["ssh", "auth", "failed", "login", "brute", "password"],
-        "task_type": "brute_force",
-    },
-    {
-        "id": "eval_c2",
-        "prompt": "Analyze suspicious DNS queries to randomized subdomains of evil-c2.com from host WORKSTATION-42. Check for beaconing patterns, data exfiltration indicators, and lateral movement.",
-        "expected_keywords": ["dns", "beacon", "c2", "command", "control", "exfil"],
-        "task_type": "c2",
-    },
-    {
-        "id": "eval_lateral",
-        "prompt": "Investigate lateral movement detected: admin account used PsExec to access 5 servers in 2 minutes. Check for credential dumping, privilege escalation, and unauthorized access patterns.",
-        "expected_keywords": ["psexec", "lateral", "credential", "privilege", "access"],
-        "task_type": "lateral_movement",
-    },
-    {
-        "id": "eval_phishing",
-        "prompt": "Analyze a phishing email with attachment invoice.pdf.exe received by finance@company.com. Check email headers, attachment hash, sandbox detonation results, and similar emails to other users.",
-        "expected_keywords": ["email", "attachment", "hash", "phishing", "sandbox", "header"],
-        "task_type": "phishing",
-    },
-    {
-        "id": "eval_ransomware",
-        "prompt": "Investigate ransomware indicators: multiple files renamed with .encrypted extension on file server FS-01. Check for encryption processes, ransom notes, network shares affected, and backup status.",
-        "expected_keywords": ["encrypt", "ransom", "backup", "file", "extension", "process"],
-        "task_type": "ransomware",
-    },
-]
+def _plans_path() -> Path:
+    return Path(__file__).resolve().parent.parent / "tools" / "investigation_plans.json"
+
+
+def load_reference_cases(limit: int = _REFERENCE_LIMIT) -> List[Dict[str, Any]]:
+    """Build exactly ``limit`` reference cases from investigation_plans.json (cycles keys if needed)."""
+    path = _plans_path()
+    if not path.is_file():
+        return []
+    with open(path, encoding="utf-8") as f:
+        plans = json.load(f)
+    keys = [(k, v) for k, v in plans.items() if isinstance(v, dict)]
+    if not keys:
+        return []
+    cases: List[Dict[str, Any]] = []
+    idx = 0
+    while len(cases) < limit:
+        plan_key, spec = keys[idx % len(keys)]
+        desc = str(spec.get("description", plan_key))
+        r = (idx % 200) + 1
+        cases.append(
+            {
+                "id": f"ref_{plan_key}_{idx}",
+                "task_type": plan_key,
+                "expect_attack": True,
+                "siem_event": {
+                    "title": plan_key.replace("_", " ").title(),
+                    "rule_name": plan_key,
+                    "task_type": plan_key,
+                    "source_ip": f"10.0.1.{r}",
+                    "raw_log": f"{desc} | test reference event | malicious lateral exfil c2 phishing | 10.0.1.{r}",
+                },
+            }
+        )
+        idx += 1
+    return cases
+
+
+def _parse_verdict_json(content: str) -> Tuple[str, int]:
+    """Extract verdict + risk from model output."""
+    text = (content or "").strip()
+    m = re.search(r"\{[^{}]*\}", text, re.DOTALL)
+    if m:
+        try:
+            obj = json.loads(m.group(0))
+            v = str(obj.get("verdict", "")).lower().strip()
+            r = int(obj.get("risk_score", 0))
+            return v, max(0, min(100, r))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+    vlow = text.lower()
+    for token in (
+        "needs_manual_review",
+        "true_positive",
+        "false_positive",
+        "suspicious",
+        "benign",
+    ):
+        if token in vlow:
+            return token, 50
+    return "unknown", 0
+
+
+def _call_assess(case: Dict[str, Any], model: str) -> Tuple[str, int, int, float]:
+    """Return verdict, risk_score, total_tokens, latency_s."""
+    siem = case["siem_event"]
+    user = (
+        "You are a SOC assistant. Respond with JSON only (no markdown):\n"
+        '{"verdict":"true_positive|false_positive|suspicious|benign|needs_manual_review",'
+        '"risk_score": <integer 0-100>}\n'
+        f"SIEM event: {json.dumps(siem, ensure_ascii=False)}"
+    )
+    body = {
+        "model": model,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Output compact JSON only. No prose.",
+            },
+            {"role": "user", "content": user},
+        ],
+        "max_tokens": 256,
+        "temperature": 0.0,
+    }
+    start = time.time()
+    resp = httpx.post(
+        ZOVARK_LLM_ENDPOINT,
+        headers={
+            "Authorization": f"Bearer {ZOVARK_LLM_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=body,
+        timeout=120.0,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    latency = time.time() - start
+    content = data["choices"][0]["message"]["content"]
+    tokens = data.get("usage", {}).get("total_tokens", 0)
+    v, r = _parse_verdict_json(content)
+    return v, r, tokens, latency
 
 
 def evaluate_model(model_name: str = "fast") -> dict:
-    """Run benchmark prompts and score model outputs.
+    """Run reference investigations on one model; score vs attack/benign expectation."""
+    cases = load_reference_cases()
+    if not cases:
+        return {
+            "model": model_name,
+            "benchmark_count": 0,
+            "average_score": 0.0,
+            "total_tokens": 0,
+            "total_latency_ms": 0,
+            "results": [],
+            "error": "no_reference_cases",
+        }
 
-    Returns evaluation results with per-prompt and aggregate scores.
-    """
     results = []
     total_score = 0.0
     total_tokens = 0
     total_latency = 0.0
 
-    for bench in BENCHMARK_PROMPTS:
-        start = time.time()
+    for case in cases:
         try:
-            response = httpx.post(
-                ZOVARK_LLM_ENDPOINT,
-                headers={
-                    "Authorization": f"Bearer {ZOVARK_LLM_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model_name,
-                    "messages": [
-                        {"role": "system", "content": "You are a security investigation assistant. Generate Python code to investigate the security incident."},
-                        {"role": "user", "content": bench["prompt"]},
-                    ],
-                    "max_tokens": 1024,
-                    "temperature": 0.1,
-                },
-                timeout=60.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            output = data["choices"][0]["message"]["content"]
-            tokens = data.get("usage", {}).get("total_tokens", 0)
+            verdict, risk, tok, lat = _call_assess(case, model_name)
         except Exception as e:
-            results.append({
-                "id": bench["id"],
-                "task_type": bench["task_type"],
-                "score": 0.0,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "id": case["id"],
+                    "task_type": case["task_type"],
+                    "score": 0.0,
+                    "error": str(e)[:300],
+                }
+            )
             continue
 
-        latency = time.time() - start
-
-        # Score the output
-        score = score_output(output, bench["expected_keywords"])
-
-        results.append({
-            "id": bench["id"],
-            "task_type": bench["task_type"],
-            "score": round(score, 3),
-            "tokens": tokens,
-            "latency_ms": round(latency * 1000),
-            "output_length": len(output),
-        })
+        if case.get("expect_attack"):
+            ok = verdict in ("true_positive", "suspicious", "needs_manual_review") or risk >= 40
+            score = 1.0 if ok else 0.0
+        else:
+            ok = verdict in ("benign", "false_positive") and risk <= 35
+            score = 1.0 if ok else 0.3
 
         total_score += score
-        total_tokens += tokens
-        total_latency += latency
+        total_tokens += tok
+        total_latency += lat
+        results.append(
+            {
+                "id": case["id"],
+                "task_type": case["task_type"],
+                "score": round(score, 3),
+                "verdict": verdict,
+                "risk_score": risk,
+                "tokens": tok,
+                "latency_ms": round(lat * 1000),
+            }
+        )
 
-    avg_score = total_score / len(BENCHMARK_PROMPTS) if BENCHMARK_PROMPTS else 0
-
+    n = len(cases)
     return {
         "model": model_name,
-        "benchmark_count": len(BENCHMARK_PROMPTS),
-        "average_score": round(avg_score, 3),
+        "benchmark_count": n,
+        "average_score": round(total_score / n, 3) if n else 0.0,
         "total_tokens": total_tokens,
         "total_latency_ms": round(total_latency * 1000),
         "results": results,
     }
 
 
-def score_output(output: str, expected_keywords: list) -> float:
-    """Score a model output (0.0 - 1.0) based on keyword coverage and code quality."""
-    if not output:
-        return 0.0
+def evaluate_model_pair(
+    baseline_model: str,
+    candidate_model: str,
+    limit: int = _REFERENCE_LIMIT,
+) -> dict:
+    """Compare verdicts between two model IDs (e.g. GGUF F16 vs quantized). Fails on any flip."""
+    cases = load_reference_cases(limit)
+    flips: List[dict] = []
+    errors: List[dict] = []
 
-    score = 0.0
-    output_lower = output.lower()
+    for case in cases:
+        try:
+            vb, _, _, _ = _call_assess(case, baseline_model)
+            vc, _, _, _ = _call_assess(case, candidate_model)
+        except Exception as e:
+            errors.append({"id": case["id"], "error": str(e)[:200]})
+            continue
 
-    # Keyword coverage (0-0.5)
-    if expected_keywords:
-        matches = sum(1 for kw in expected_keywords if kw in output_lower)
-        keyword_score = matches / len(expected_keywords)
-        score += keyword_score * 0.5
+        if vb != vc:
+            flips.append(
+                {
+                    "id": case["id"],
+                    "task_type": case["task_type"],
+                    "baseline_verdict": vb,
+                    "candidate_verdict": vc,
+                }
+            )
 
-    # Contains Python code (0-0.2)
-    code_indicators = ["import ", "def ", "for ", "if ", "print(", "return ", "try:", "except"]
-    code_matches = sum(1 for ci in code_indicators if ci in output)
-    score += min(code_matches / 4, 1.0) * 0.2
-
-    # Reasonable length (0-0.15)
-    if 100 < len(output) < 5000:
-        score += 0.15
-    elif len(output) >= 5000:
-        score += 0.10
-
-    # Structure indicators (0-0.15)
-    structure_indicators = ["# ", "```", "result", "finding", "conclusion"]
-    struct_matches = sum(1 for si in structure_indicators if si in output_lower)
-    score += min(struct_matches / 3, 1.0) * 0.15
-
-    return min(score, 1.0)
+    n = len(cases)
+    compared_ok = n - len(errors)
+    passed = (
+        len(flips) == 0
+        and len(errors) == 0
+        and n == limit
+        and compared_ok == limit
+    )
+    return {
+        "baseline_model": baseline_model,
+        "candidate_model": candidate_model,
+        "reference_case_count": n,
+        "cases_compared": compared_ok,
+        "errors": errors,
+        "verdict_flips": flips,
+        "passed": passed,
+    }

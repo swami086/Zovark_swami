@@ -145,8 +145,8 @@ services:
   # --- GO API ---
   api:
     build:
-      context: ../api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: api/Dockerfile
     container_name: zovark-api
     ports:
       - "${API_PORT:-8090}:8090"

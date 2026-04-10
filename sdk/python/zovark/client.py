@@ -20,6 +20,8 @@ Usage:
 import time
 import json
 from typing import Any, Dict, List, Optional
+
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -32,6 +34,14 @@ from zovark.exceptions import (
     NotFoundError,
     ForbiddenError,
 )
+
+
+def _retryable_zovark_error(exc: BaseException) -> bool:
+    if isinstance(exc, RateLimitError):
+        return True
+    if isinstance(exc, ZovarkAPIError) and (exc.status_code or 0) >= 500:
+        return True
+    return False
 
 
 class ZovarkClient:
@@ -60,6 +70,12 @@ class ZovarkClient:
         self._timeout = timeout
         self._user: Optional[User] = None
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=4),
+        retry=retry_if_exception(_retryable_zovark_error),
+        reraise=True,
+    )
     def _request(
         self,
         method: str,
@@ -67,7 +83,7 @@ class ZovarkClient:
         data: Optional[dict] = None,
         params: Optional[dict] = None,
     ) -> dict:
-        """Make an HTTP request to the API."""
+        """Make an HTTP request to the API (retries 429 and 5xx up to 3 times)."""
         url = f"{self.base_url}{path}"
         if params:
             url += "?" + urlencode(params)

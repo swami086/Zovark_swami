@@ -30,6 +30,11 @@ SCRIPT_DIR = Path(__file__).parent
 ALERTS_FILE = SCRIPT_DIR / "test_alerts.json"
 RESULTS_FILE = SCRIPT_DIR / "results.json"
 
+# Must match Temporal registration in worker/stages/register.py (InvestigationWorkflowV2).
+INVESTIGATION_WORKFLOW = os.environ.get(
+    "ZOVARK_WORKFLOW_VERSION", "InvestigationWorkflowV2"
+)
+
 
 def load_alerts():
     """Load labeled test alerts."""
@@ -63,7 +68,7 @@ async def submit_investigation(client, alert, timeout_s=60):
     }
 
     handle = await client.start_workflow(
-        "ExecuteTaskWorkflow",
+        INVESTIGATION_WORKFLOW,
         task_input,
         id=f"accuracy-test-{alert['id']}-{int(time.time())}",
         task_queue="zovark-tasks",

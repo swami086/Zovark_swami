@@ -1,0 +1,2 @@
+# OpAMP / manager config for signoz-otel-collector v0.111.34+ (matches SigNoz v0.76 deploy).
+server_endpoint: ws://zovark-signoz:4320/v1/opamp

@@ -21,15 +21,23 @@ This file provides context for AI coding agents working on Zovark.
 - go-redis/v9 for Redis access in Go — never raw TCP/RESP parsing
 - psycopg2 ThreadedConnectionPool for DB in Python — never per-call psycopg2.connect()
 
-## Important: Legacy File Layout
+## Investigation workflow (canonical)
 
-The worker has a legacy file layout due to the package/file name conflict:
-- `worker/_legacy_activities.py` — the ACTUAL activities file (was `activities.py`, renamed to avoid conflict with `activities/` package)
-- `worker/_legacy_workflows.py` — the ACTUAL workflows file (same pattern)
-- `worker/activities/__init__.py` — re-exports all functions from `_legacy_activities.py`
-- `worker/workflows/__init__.py` — re-exports `ExecuteTaskWorkflow` from `_legacy_workflows.py`
+- **Temporal workflow name:** `InvestigationWorkflowV2` (default for API dispatch and Redpanda consumers). Optional override: `ZOVARK_WORKFLOW_VERSION`.
+- **Definition:** `worker/stages/investigation_workflow.py` (`@workflow.defn` class `InvestigationWorkflowV2`).
+- **Registration:** `worker/stages/register.py` — `get_v2_workflows()` and `get_v2_activities()`. Imported and passed to the Temporal `Worker` in `worker/main.py`.
+- **Do not use** removed names in new code or docs: `ExecuteTaskWorkflow` (replaced by `InvestigationWorkflowV2`); standalone dashboard components `LiveInvestigationFeed`, `SovereigntyBanner`, `DemoSelector`, `GuardrailScoreBar` (removed — live updates use SSE in `TaskList.tsx` / `TaskDetail.tsx` and demo UI on `/demo`).
 
-When adding new activities/workflows, add them to the `_legacy_*.py` files AND update the `__init__.py` re-exports.
+## Legacy file layout (activities only)
+
+The worker keeps a legacy activities bundle due to a package/file name conflict:
+
+- `worker/_legacy_activities.py` — core non-stage activities (was `activities.py`, renamed to avoid conflict with `worker/activities/` package)
+- `worker/activities/__init__.py` — re-exports from `_legacy_activities.py`
+
+`worker/workflows/__init__.py` is a stub; non-investigation workflows live in domain modules (e.g. `worker/workflows/zovark_workflows.py`) and are registered explicitly in `worker/main.py`.
+
+When adding **pipeline stage** activities, implement them under `worker/stages/` and export them from `worker/stages/register.py` (`get_v2_activities()`). When adding **other** activities, add `@activity.defn` functions to `worker/_legacy_activities.py`, re-export in `worker/activities/__init__.py`, and register in `worker/main.py`.
 
 ## Common Tasks
 
@@ -47,9 +55,9 @@ When adding new activities/workflows, add them to the `_legacy_*.py` files AND u
 5. `docker compose build worker && docker compose up -d worker`
 
 ### Add a new Temporal workflow
-1. Add `@workflow.defn` class to `worker/_legacy_workflows.py` (or a workflows/ submodule)
-2. Re-export in `worker/workflows/__init__.py` if needed
-3. Import and register in `worker/main.py` workflows list
+1. Add `@workflow.defn` in the appropriate module (investigation stages use `worker/stages/investigation_workflow.py`; other features use e.g. `worker/workflows/` or a domain package)
+2. Export the workflow class from `worker/stages/register.py` **only** if it is part of the V2 investigation pipeline; otherwise import it directly in `worker/main.py`
+3. Append the workflow class to the `workflows=[...]` list in `worker/main.py`
 4. `docker compose build worker && docker compose up -d worker`
 
 ### Add a new migration

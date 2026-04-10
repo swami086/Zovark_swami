@@ -7,8 +7,12 @@ import yaml
 from pathlib import Path
 from typing import Optional
 
-ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-ZOVARK_LLM_KEY = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "https://api.openai.com/v1/chat/completions")
+ZOVARK_LLM_KEY = (
+    os.environ.get("OPENAI_API_KEY", "").strip()
+    or os.environ.get("ZOVARK_OPENAI_API_KEY", "").strip()
+    or os.environ.get("ZOVARK_LLM_KEY", "").strip()
+)
 
 _CONFIG_PATH = Path(__file__).parent / "model_config.yaml"
 

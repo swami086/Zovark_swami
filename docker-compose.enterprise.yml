@@ -52,7 +52,8 @@ services:
               count: 1
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "/inference-healthcheck"]
+      # Matches docker/Dockerfile.inference (curl + /health); image has no /inference-healthcheck binary
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
       interval: 15s
       timeout: 10s
       start_period: 60s     # 4B model: fast load + warmup
@@ -116,7 +117,7 @@ services:
       - LLAMA_PORT=8080
       - LLAMA_MODEL_ALIAS=${ZOVARK_CODE_MODEL_ALIAS:-llama-3.1-8b}
     healthcheck:
-      test: ["CMD", "/inference-healthcheck"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
       interval: 15s
       timeout: 30s          # bigger model takes longer per warmup
       start_period: 180s    # 70B model: ~120s load + ~30s warmup

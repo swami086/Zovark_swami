@@ -9,13 +9,8 @@ import (
 )
 
 // metricsHandler returns operational metrics for the ZOVARK platform.
-// GET /api/v1/metrics
-//
-// To register this handler, add the following line to main.go inside the
-// protected API route group (after the authMiddleware):
-//
-//     api.GET("/metrics", requireRole("admin"), metricsHandler)
-//
+// GET /api/v1/metrics — aggregations read via DuckDB postgres_scanner (Ticket 2).
+
 func metricsHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	tenantID, _ := c.Get("tenant_id")
@@ -37,31 +32,26 @@ func metricsHandler(c *gin.Context) {
 }
 
 func getInvestigationMetrics(ctx context.Context, tenantID string) gin.H {
-	var total, completed, failed, pending int64
+	row, err := duckdbMetricsNamedRow(ctx, tenantID, `
+SELECT
+  COUNT(*)::DOUBLE AS total,
+  COUNT(*) FILTER (WHERE status = 'completed')::DOUBLE AS completed,
+  COUNT(*) FILTER (WHERE status = 'failed')::DOUBLE AS failed,
+  COUNT(*) FILTER (WHERE status IN ('pending', 'executing'))::DOUBLE AS pending
+FROM agent_tasks
+WHERE tenant_id = $TENANT::uuid
+`)
+	if err != nil {
+		return gin.H{"error": "duckdb metrics unavailable"}
+	}
+	total := numI64(row, "total")
+	completed := numI64(row, "completed")
+	failed := numI64(row, "failed")
+	pending := numI64(row, "pending")
 	var successRate float64
-
-	if dbPool == nil {
-		return gin.H{"error": "database unavailable"}
-	}
-
-	row := dbPool.QueryRow(ctx, `
-		SELECT
-			COUNT(*) AS total,
-			COUNT(*) FILTER (WHERE status = 'completed') AS completed,
-			COUNT(*) FILTER (WHERE status = 'failed') AS failed,
-			COUNT(*) FILTER (WHERE status IN ('pending', 'executing')) AS pending
-		FROM agent_tasks
-		WHERE tenant_id = $1
-	`, tenantID)
-
-	if err := row.Scan(&total, &completed, &failed, &pending); err != nil {
-		return gin.H{"error": "query failed"}
-	}
-
 	if total > 0 {
 		successRate = float64(completed) / float64(total) * 100
 	}
-
 	return gin.H{
 		"total":        total,
 		"completed":    completed,
@@ -72,79 +62,60 @@ func getInvestigationMetrics(ctx context.Context, tenantID string) gin.H {
 }
 
 func getPerformanceMetrics(ctx context.Context, tenantID string) gin.H {
-	var avgTime, medianTime float64
-
-	if dbPool == nil {
-		return gin.H{"error": "database unavailable"}
-	}
-
-	row := dbPool.QueryRow(ctx, `
-		SELECT
-			COALESCE(AVG(execution_ms) / 1000.0, 0) AS avg_time_s,
-			COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY execution_ms) / 1000.0, 0) AS median_time_s
-		FROM agent_tasks
-		WHERE tenant_id = $1
-			AND status = 'completed'
-			AND execution_ms IS NOT NULL
-			AND execution_ms > 0
-	`, tenantID)
-
-	if err := row.Scan(&avgTime, &medianTime); err != nil {
+	row, err := duckdbMetricsNamedRow(ctx, tenantID, `
+SELECT
+  COALESCE(AVG(execution_ms) / 1000.0, 0)::DOUBLE AS avg_time_s,
+  COALESCE(median(execution_ms) / 1000.0, 0)::DOUBLE AS median_time_s
+FROM agent_tasks
+WHERE tenant_id = $TENANT::uuid
+  AND status = 'completed'
+  AND execution_ms IS NOT NULL
+  AND execution_ms > 0
+`)
+	if err != nil {
 		return gin.H{
 			"avg_investigation_time_s":    0,
 			"median_investigation_time_s": 0,
+			"error":                       "duckdb metrics unavailable",
 		}
 	}
-
 	return gin.H{
-		"avg_investigation_time_s":    avgTime,
-		"median_investigation_time_s": medianTime,
+		"avg_investigation_time_s":    numF64(row, "avg_time_s"),
+		"median_investigation_time_s": numF64(row, "median_time_s"),
 	}
 }
 
 func getLLMMetrics(ctx context.Context, tenantID string) gin.H {
-	var totalCalls int64
-	var avgLatency float64
-	var totalTokensIn, totalTokensOut int64
-
-	if dbPool == nil {
-		return gin.H{"error": "database unavailable"}
-	}
-
-	// Try the llm_audit_log table first (V2 pipeline)
-	row := dbPool.QueryRow(ctx, `
-		SELECT
-			COUNT(*) AS total_calls,
-			COALESCE(AVG(latency_ms), 0) AS avg_latency_ms,
-			COALESCE(SUM(tokens_in), 0) AS total_tokens_in,
-			COALESCE(SUM(tokens_out), 0) AS total_tokens_out
-		FROM llm_audit_log
-		WHERE tenant_id = $1
-	`, tenantID)
-
-	if err := row.Scan(&totalCalls, &avgLatency, &totalTokensIn, &totalTokensOut); err != nil {
-		// Fallback: aggregate from agent_tasks
-		row2 := dbPool.QueryRow(ctx, `
-			SELECT
-				COUNT(*) AS total_calls,
-				COALESCE(AVG(execution_ms), 0) AS avg_latency_ms,
-				COALESCE(SUM(tokens_used_input), 0) AS total_tokens_in,
-				COALESCE(SUM(tokens_used_output), 0) AS total_tokens_out
-			FROM agent_tasks
-			WHERE tenant_id = $1
-				AND status = 'completed'
-		`, tenantID)
-
-		if err2 := row2.Scan(&totalCalls, &avgLatency, &totalTokensIn, &totalTokensOut); err2 != nil {
-			return gin.H{"error": "query failed"}
+	row, err := duckdbMetricsNamedRow(ctx, tenantID, `
+SELECT
+  COUNT(*)::DOUBLE AS total_calls,
+  COALESCE(AVG(latency_ms), 0)::DOUBLE AS avg_latency_ms,
+  COALESCE(SUM(tokens_in), 0)::DOUBLE AS total_tokens_in,
+  COALESCE(SUM(tokens_out), 0)::DOUBLE AS total_tokens_out
+FROM llm_audit_log
+WHERE tenant_id = $TENANT::uuid
+`)
+	if err != nil || numI64(row, "total_calls") == 0 {
+		row2, err2 := duckdbMetricsNamedRow(ctx, tenantID, `
+SELECT
+  COUNT(*)::DOUBLE AS total_calls,
+  COALESCE(AVG(execution_ms), 0)::DOUBLE AS avg_latency_ms,
+  COALESCE(SUM(tokens_used_input), 0)::DOUBLE AS total_tokens_in,
+  COALESCE(SUM(tokens_used_output), 0)::DOUBLE AS total_tokens_out
+FROM agent_tasks
+WHERE tenant_id = $TENANT::uuid
+  AND status = 'completed'
+`)
+		if err2 != nil {
+			return gin.H{"error": "duckdb metrics unavailable"}
 		}
+		row = row2
 	}
-
 	return gin.H{
-		"total_calls":    totalCalls,
-		"avg_latency_ms": avgLatency,
-		"total_tokens_in":  totalTokensIn,
-		"total_tokens_out": totalTokensOut,
+		"total_calls":      numI64(row, "total_calls"),
+		"avg_latency_ms":   numF64(row, "avg_latency_ms"),
+		"total_tokens_in":  numI64(row, "total_tokens_in"),
+		"total_tokens_out": numI64(row, "total_tokens_out"),
 	}
 }
 
@@ -157,7 +128,6 @@ func getSystemMetrics(ctx context.Context) gin.H {
 		poolSize = int(stat.TotalConns())
 	}
 
-	// Check worker connectivity via Temporal
 	workerStatus := "unknown"
 	if tc != nil {
 		workerStatus = "connected"
@@ -171,30 +141,18 @@ func getSystemMetrics(ctx context.Context) gin.H {
 }
 
 func getTemplateMetrics(ctx context.Context, tenantID string) gin.H {
-	var total, active int64
-
-	if dbPool == nil {
-		return gin.H{"error": "database unavailable"}
+	row, err := duckdbMetricsNamedRow(ctx, tenantID, `
+SELECT
+  COUNT(*)::DOUBLE AS total,
+  COUNT(*) FILTER (WHERE is_active = true)::DOUBLE AS active
+FROM agent_skills
+WHERE is_active IS NOT NULL AND (tenant_id = $TENANT::uuid OR tenant_id IS NULL)
+`)
+	if err != nil {
+		return gin.H{"total": 11, "active": 11, "error": "duckdb metrics unavailable"}
 	}
-
-	row := dbPool.QueryRow(ctx, `
-		SELECT
-			COUNT(*) AS total,
-			COUNT(*) FILTER (WHERE is_active = true) AS active
-		FROM agent_skills
-		WHERE is_active IS NOT NULL AND (tenant_id = $1 OR tenant_id IS NULL)
-	`, tenantID)
-
-	if err := row.Scan(&total, &active); err != nil {
-		// skills table may not exist or have different schema
-		return gin.H{
-			"total":  11,
-			"active": 11,
-		}
-	}
-
 	return gin.H{
-		"total":  total,
-		"active": active,
+		"total":  numI64(row, "total"),
+		"active": numI64(row, "active"),
 	}
 }

@@ -9,40 +9,37 @@ import re
 import os
 import sys
 
-import httpx
-
-LLM_URL = os.getenv("LLM_URL", "http://zovark-inference:8080")
-if not os.getenv("LLM_URL"):
-    try:
-        httpx.get("http://zovark-inference:8080/api/tags", timeout=2)
-    except Exception:
-        LLM_URL = "http://zovark-inference:8080"
-
-MODEL = "llama3.1:8b"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_WORKER_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "worker"))
+if _WORKER_DIR not in sys.path:
+    sys.path.insert(0, _WORKER_DIR)
+
+MODEL = os.environ.get("ZOVARK_MODEL_CODE", os.environ.get("ZOVARK_MODEL_FAST", "gpt-4o-mini"))
 TEST_CASES = json.load(open(os.path.join(SCRIPT_DIR, "test_cases.json"), encoding="utf-8"))
 
 
 def call_llm(system_prompt: str, user_content: str) -> tuple:
-    """Call 8B model, return (response_text, elapsed_seconds)."""
+    """Call configured Chat Completions model via worker llm_client."""
+    from llm_client import sync_llm_chat, resolve_llm_api_key, chat_endpoint_for_model
+
     start = time.time()
     try:
-        with httpx.Client(timeout=180) as client:
-            resp = client.post(
-                f"{LLM_URL}/v1/chat/completions",
-                json={
-                    "model": MODEL,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content},
-                    ],
-                    "temperature": 0.1,
-                },
-            )
-            elapsed = time.time() - start
-            data = resp.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return content, elapsed
+        data = sync_llm_chat(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=0.1,
+            max_tokens=4096,
+            stage="assess_prompt_evaluate",
+            role="verdict",
+            endpoint_url=chat_endpoint_for_model(MODEL),
+            api_key=resolve_llm_api_key(None),
+        )
+        elapsed = time.time() - start
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return content, elapsed
     except Exception as e:
         return f"ERROR: {e}", time.time() - start
 

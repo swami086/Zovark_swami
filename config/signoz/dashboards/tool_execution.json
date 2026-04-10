@@ -1,0 +1,23 @@
+{
+  "title": "Zovark — Tool Execution",
+  "description": "Ticket 7 — tool.* spans latency and errors; aligns with worker metrics zovark.worker.tool.*",
+  "schemaVersion": 1,
+  "tags": ["zovark", "ticket-7", "tools"],
+  "panels": [
+    {
+      "title": "Tool span p95 by tool name",
+      "type": "graph",
+      "query": "SELECT name, quantile(0.95)(durationNano)/1e9 AS p95_s, count() AS n FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name LIKE 'tool.%' GROUP BY name ORDER BY p95_s DESC LIMIT 25"
+    },
+    {
+      "title": "Tool error rate",
+      "type": "graph",
+      "query": "SELECT name, countIf(statusCode = 2) AS errs, count() AS total FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name LIKE 'tool.%' GROUP BY name"
+    },
+    {
+      "title": "OTel metric: zovark.worker.tool.executions (Metrics explorer)",
+      "type": "note",
+      "query": "Use SigNoz Metrics tab for zovark.worker.tool.executions and zovark.worker.tool.duration_seconds with group by tool / error"
+    }
+  ]
+}

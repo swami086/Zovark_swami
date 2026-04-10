@@ -4,7 +4,6 @@ import os
 import io
 import json
 import time
-import httpx
 import psycopg2
 from temporalio import activity
 
@@ -103,8 +102,8 @@ async def generate_incident_report(data: dict) -> dict:
             risk_score, verdict, attack_techniques, blast_radius}
     Returns: {report_id, markdown_length, pdf_size_bytes}
     """
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
     tier_config = get_tier_config("generate_incident_report")
     llm_model = tier_config["model"]
 
@@ -156,56 +155,53 @@ async def generate_incident_report(data: dict) -> dict:
     remediation_text = ""
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                llm_endpoint,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": llm_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": wrapped_context},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 2048,
-                    "response_format": {"type": "json_object"},
-                },
-            )
-            resp.raise_for_status()
-            result = resp.json()
-            report_ms = int((time.time() - start_time) * 1000)
+        result = await llm_request(
+            llm_model,
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": wrapped_context},
+            ],
+            temperature=0.3,
+            max_tokens=2048,
+            stage="generate_incident_report",
+            role="verdict",
+            response_format={"type": "json_object"},
+            endpoint_url=chat_endpoint_for_model(llm_model),
+            api_key=resolve_llm_api_key(None),
+        )
+        report_ms = int((time.time() - start_time) * 1000)
 
-            usage = result.get("usage", {})
-            log_llm_call(
-                activity_name="generate_incident_report",
-                model_tier=tier_config["tier"],
-                model_id=llm_model,
-                prompt_name="incident_report",
-                prompt_version=get_version("incident_report"),
-                input_tokens=usage.get("prompt_tokens", 0),
-                output_tokens=usage.get("completion_tokens", 0),
-                latency_ms=report_ms,
-                temperature=0.3,
-                max_tokens=2048,
-                tenant_id=tenant_id,
-            )
+        usage = result.get("usage", {})
+        log_llm_call(
+            activity_name="generate_incident_report",
+            model_tier=tier_config["tier"],
+            model_id=llm_model,
+            prompt_name="incident_report",
+            prompt_version=get_version("incident_report"),
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
+            latency_ms=report_ms,
+            temperature=0.3,
+            max_tokens=2048,
+            tenant_id=tenant_id,
+        )
 
-            content = result["choices"][0]["message"]["content"].strip()
+        content = result["choices"][0]["message"]["content"].strip()
 
-            try:
-                parsed = json.loads(content)
-                exec_summary = parsed.get("executive_summary", content[:500])
-                timeline_text = parsed.get("technical_timeline", "")
-                remediation_text = parsed.get("remediation_steps", "")
-                # Handle if remediation is a list
-                if isinstance(remediation_text, list):
-                    remediation_text = "\n".join(f"- {s}" for s in remediation_text)
-                if isinstance(timeline_text, list):
-                    timeline_text = "\n".join(f"- {s}" for s in timeline_text)
-            except json.JSONDecodeError:
-                exec_summary = content[:500]
-                timeline_text = "Unable to parse structured timeline"
-                remediation_text = "Unable to parse structured remediation"
+        try:
+            parsed = json.loads(content)
+            exec_summary = parsed.get("executive_summary", content[:500])
+            timeline_text = parsed.get("technical_timeline", "")
+            remediation_text = parsed.get("remediation_steps", "")
+            # Handle if remediation is a list
+            if isinstance(remediation_text, list):
+                remediation_text = "\n".join(f"- {s}" for s in remediation_text)
+            if isinstance(timeline_text, list):
+                timeline_text = "\n".join(f"- {s}" for s in timeline_text)
+        except json.JSONDecodeError:
+            exec_summary = content[:500]
+            timeline_text = "Unable to parse structured timeline"
+            remediation_text = "Unable to parse structured remediation"
 
     except Exception as e:
         print(f"Report LLM call failed: {e}")

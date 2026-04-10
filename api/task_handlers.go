@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -17,17 +18,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.temporal.io/sdk/client"
+	"go.opentelemetry.io/otel"
 )
 
-// Workflow version toggle — set ZOVARK_WORKFLOW_VERSION=InvestigationWorkflowV2 for V2 pipeline
+// Canonical investigation workflow: InvestigationWorkflowV2 (worker/stages/register.py).
+// Override only if you register an alternate workflow name: ZOVARK_WORKFLOW_VERSION.
 var workflowName = getWorkflowName()
 
 func getWorkflowName() string {
 	if v := os.Getenv("ZOVARK_WORKFLOW_VERSION"); v != "" {
 		return v
 	}
-	return "ExecuteTaskWorkflow"
+	return "InvestigationWorkflowV2"
 }
 
 // Types
@@ -37,6 +39,10 @@ type TaskRequest struct {
 }
 
 func createTaskHandler(c *gin.Context) {
+	tctx, tspan := otel.Tracer("zovark-api").Start(c.Request.Context(), "task.create")
+	defer tspan.End()
+	c.Request = c.Request.WithContext(tctx)
+
 	var req TaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -133,6 +139,7 @@ func createTaskHandler(c *gin.Context) {
 	// --- Layer 1: Pre-Temporal Redis Dedup (fast path before DB dedup) ---
 	if !forceReinvestigate {
 		if isDup, existingID := checkPreDedup(c.Request.Context(), req.TaskType, req.Input); isDup {
+			recordAPIDedupHit(c.Request.Context())
 			// Increment dedup counter on the original task
 			var dedupCount int
 			_ = dbPool.QueryRow(c.Request.Context(),
@@ -150,27 +157,8 @@ func createTaskHandler(c *gin.Context) {
 	}
 
 	// --- Layer 2: Pre-Temporal Batch Buffer ---
-	sourceIP := ""
-	if se, ok := req.Input["siem_event"].(map[string]interface{}); ok {
-		if v, ok := se["source_ip"].(string); ok {
-			sourceIP = v
-		}
-	}
-	if v, ok := req.Input["source_ip"].(string); ok && sourceIP == "" {
-		sourceIP = v
-	}
-
-	destIP := ""
-	if se, ok := req.Input["siem_event"].(map[string]interface{}); ok {
-		if v, ok := se["destination_ip"].(string); ok {
-			destIP = v
-		} else if v, ok := se["dest_ip"].(string); ok {
-			destIP = v
-		}
-	}
-	if v, ok := req.Input["dest_ip"].(string); ok && destIP == "" {
-		destIP = v
-	}
+	sourceIP := SourceIPFromTaskInput(req.Input)
+	destIP := DestIPFromTaskInput(req.Input)
 
 	severity := extractPriority(req.Input)
 	taskID := uuid.New().String()
@@ -184,9 +172,8 @@ func createTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. Generate trace ID
-	traceID := uuid.New().String()
-	c.Header("X-Zovark-Trace-ID", traceID)
+	// 2. Trace / correlation ID (aligned with OTel trace — Ticket 7)
+	traceID := zovarkTraceUUIDFromContext(c.Request.Context())
 
 	// Insert new fingerprint record (investigation_id will be updated later)
 	rawSample, _ := json.Marshal(req.Input)
@@ -198,8 +185,8 @@ func createTaskHandler(c *gin.Context) {
 	)
 
 	// 3. Insert into agent_tasks inside explicit transaction
-	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid
-	// race condition where the worker's fetch_task can't find the row.
+	// CRITICAL: tx.Commit() MUST happen BEFORE Redpanda publish so the worker
+	// can load the task row when the Temporal workflow starts.
 	priority := severity
 	dbCtx, dbCancel := dbContextWithTimeout(c.Request.Context())
 	defer dbCancel()
@@ -261,33 +248,20 @@ func createTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// 6. Start Temporal Workflow AFTER commit (with timeout detection for model failover)
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        "task-" + taskID,
-		TaskQueue: "zovark-tasks",
-	}
-
-	wfStart := time.Now()
-	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName, req)
-	wfLatency := int(time.Since(wfStart).Milliseconds())
-
-	if err != nil {
-		if isTemporalTimeout(err) {
-			fallbackModel := HandleModelTimeout(c.Request.Context(), tenantID, taskID, priority,
-				wfLatency, "temporal/llm", "zovark-fast")
-			log.Printf("Model timeout on task %s, fallback to %s", taskID, fallbackModel)
-		}
+	// 6. Publish to Redpanda — worker consumes tasks.new.{tenant} and starts Temporal
+	pubCtx, pubCancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer pubCancel()
+	if err := publishTaskNew(pubCtx, tenantID, taskID, req.TaskType, req.Input); err != nil {
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
-		respondInternalError(c, err, "start workflow")
+		respondInternalError(c, err, "publish task")
 		return
 	}
 
-	// Track workflow for backpressure
 	recordWorkflowStart(c.Request.Context(), "task-"+taskID)
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"task_id":     taskID,
-		"workflow_id": we.GetID(),
+		"workflow_id": "task-" + taskID,
 		"status":      "pending",
 		"trace_id":    traceID,
 	})
@@ -353,8 +327,8 @@ func getTaskHandler(c *gin.Context) {
 
 func listTasksHandler(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(string)
+	ctx := c.Request.Context()
 
-	// Parse query params
 	search := c.Query("search")
 	status := c.Query("status")
 	severity := c.Query("severity")
@@ -365,22 +339,17 @@ func listTasksHandler(c *gin.Context) {
 	sortOrder := c.DefaultQuery("order", "desc")
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "20")
+	cursorIn := c.Query("cursor")
 
-	page := 1
 	limit := 20
-	if v, err := fmt.Sscanf(pageStr, "%d", &page); v == 0 || err != nil || page < 1 {
-		page = 1
-	}
 	if v, err := fmt.Sscanf(limitStr, "%d", &limit); v == 0 || err != nil || limit < 1 || limit > 100 {
 		limit = 20
 	}
-	offset := (page - 1) * limit
 
-	// Whitelist sort fields
 	allowedSorts := map[string]string{
 		"created_at": "created_at",
 		"status":     "status",
-		"severity":   "task_type", // proxy sort
+		"severity":   "task_type",
 	}
 	sortCol, ok := allowedSorts[sortField]
 	if !ok {
@@ -390,7 +359,6 @@ func listTasksHandler(c *gin.Context) {
 		sortOrder = "desc"
 	}
 
-	// Build WHERE clauses
 	where := "WHERE tenant_id = $1"
 	args := []interface{}{tenantID}
 	argN := 2
@@ -426,26 +394,57 @@ func listTasksHandler(c *gin.Context) {
 		argN++
 	}
 
-	// Count total
-	var total int
-	countQuery := "SELECT COUNT(*) FROM agent_tasks " + where
-	err := dbPool.QueryRow(c.Request.Context(), countQuery, args...).Scan(&total)
-	if err != nil {
-		respondInternalError(c, err, "count tasks")
-		return
+	// Keyset (cursor) pagination is required for created_at ordering — no OFFSET.
+	useKeyset := sortCol == "created_at"
+	if useKeyset && cursorIn != "" {
+		ct, cid, err := decodeTaskCursor(cursorIn)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cursor"})
+			return
+		}
+		if sortOrder == "desc" {
+			where += fmt.Sprintf(" AND (created_at, id) < ($%d::timestamptz, $%d::uuid)", argN, argN+1)
+		} else {
+			where += fmt.Sprintf(" AND (created_at, id) > ($%d::timestamptz, $%d::uuid)", argN, argN+1)
+		}
+		args = append(args, ct, cid)
+		argN += 2
 	}
 
-	// Fetch page
+	var total int
+	if !useKeyset {
+		countQuery := "SELECT COUNT(*) FROM agent_tasks " + where
+		if err := dbPool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+			respondInternalError(c, err, "count tasks")
+			return
+		}
+	}
+
 	dataArgs := make([]interface{}, len(args))
 	copy(dataArgs, args)
-	dataArgs = append(dataArgs, limit, offset)
+	dataArgs = append(dataArgs, limit)
 
-	query := fmt.Sprintf(
-		"SELECT id, status, COALESCE(task_type, 'code_gen'), created_at, execution_ms, input->>'prompt', output->>'verdict', (output->>'risk_score')::int, COALESCE(path_taken, '') FROM agent_tasks %s ORDER BY %s %s LIMIT $%d OFFSET $%d",
-		where, sortCol, sortOrder, argN, argN+1,
-	)
+	var query string
+	if useKeyset {
+		query = fmt.Sprintf(
+			"SELECT id, status, COALESCE(task_type, 'code_gen'), created_at, execution_ms, input->>'prompt', output->>'verdict', (output->>'risk_score')::int, COALESCE(path_taken, '') FROM agent_tasks %s ORDER BY created_at %s, id %s LIMIT $%d",
+			where, sortOrder, sortOrder, argN,
+		)
+	} else {
+		page := 1
+		if v, err := fmt.Sscanf(pageStr, "%d", &page); v == 0 || err != nil || page < 1 {
+			page = 1
+		}
+		offset := (page - 1) * limit
+		dataArgs = append(dataArgs, offset)
+		query = fmt.Sprintf(
+			"SELECT id, status, COALESCE(task_type, 'code_gen'), created_at, execution_ms, input->>'prompt', output->>'verdict', (output->>'risk_score')::int, COALESCE(path_taken, '') FROM agent_tasks %s ORDER BY %s %s LIMIT $%d OFFSET $%d",
+			where, sortCol, sortOrder, argN, argN+1,
+		)
+		_ = page // page used below in response
+	}
 
-	rows, err := dbPool.Query(c.Request.Context(), query, dataArgs...)
+	rows, err := dbPool.Query(ctx, query, dataArgs...)
 	if err != nil {
 		respondInternalError(c, err, "query tasks")
 		return
@@ -466,7 +465,7 @@ func listTasksHandler(c *gin.Context) {
 			continue
 		}
 
-		task := map[string]interface{}{
+		tasks = append(tasks, map[string]interface{}{
 			"id":           id,
 			"status":       statusVal,
 			"task_type":    taskTypeVal,
@@ -476,23 +475,71 @@ func listTasksHandler(c *gin.Context) {
 			"verdict":      verdict,
 			"risk_score":   riskScore,
 			"path_taken":   pathTaken,
-		}
-		tasks = append(tasks, task)
+		})
 	}
 
 	if tasks == nil {
 		tasks = []map[string]interface{}{}
 	}
 
-	pages := (total + limit - 1) / limit
-
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"tasks": tasks,
-		"total": total,
-		"page":  page,
 		"limit": limit,
-		"pages": pages,
-	})
+	}
+
+	if useKeyset {
+		if len(tasks) == limit && len(tasks) > 0 {
+			last := tasks[len(tasks)-1]
+			la := last["created_at"].(time.Time)
+			lid := last["id"].(string)
+			resp["next_cursor"] = encodeTaskCursor(la, lid)
+		} else {
+			resp["next_cursor"] = nil
+		}
+		resp["total"] = -1
+		resp["page"] = 0
+		resp["pages"] = 0
+		// Temporary shim: offset-based ?page= still accepted but ignored for created_at lists.
+		if pageStr != "1" && cursorIn == "" {
+			resp["deprecated_page_ignored"] = true
+		}
+	} else {
+		page := 1
+		if v, err := fmt.Sscanf(pageStr, "%d", &page); v == 0 || err != nil || page < 1 {
+			page = 1
+		}
+		pages := (total + limit - 1) / limit
+		resp["total"] = total
+		resp["page"] = page
+		resp["pages"] = pages
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func encodeTaskCursor(t time.Time, id string) string {
+	raw := t.UTC().Format(time.RFC3339Nano) + "|" + id
+	return base64.RawURLEncoding.EncodeToString([]byte(raw))
+}
+
+func decodeTaskCursor(s string) (time.Time, string, error) {
+	var zero time.Time
+	b, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return zero, "", err
+	}
+	parts := strings.SplitN(string(b), "|", 2)
+	if len(parts) != 2 {
+		return zero, "", fmt.Errorf("bad cursor")
+	}
+	ts, err := time.Parse(time.RFC3339Nano, parts[0])
+	if err != nil {
+		return zero, "", err
+	}
+	if _, err := uuid.Parse(parts[1]); err != nil {
+		return zero, "", err
+	}
+	return ts, parts[1], nil
 }
 
 func getTaskAuditHandler(c *gin.Context) {
@@ -610,7 +657,7 @@ func uploadTaskHandler(c *gin.Context) {
 	taskID := uuid.New().String()
 
 	// Insert into agent_tasks inside explicit transaction
-	// CRITICAL: tx.Commit() MUST happen BEFORE ExecuteWorkflow() to avoid race condition
+	// CRITICAL: tx.Commit() MUST happen BEFORE Redpanda publish
 	tx, err := dbPool.Begin(c.Request.Context())
 	if err != nil {
 		respondInternalError(c, err, "begin upload task transaction")
@@ -639,27 +686,17 @@ func uploadTaskHandler(c *gin.Context) {
 		return
 	}
 
-	// Start Temporal workflow AFTER commit
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        "task-" + taskID,
-		TaskQueue: "zovark-tasks",
-	}
-
-	req := TaskRequest{
-		TaskType: taskType,
-		Input:    inputMap,
-	}
-
-	we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName, req)
-	if err != nil {
+	pubCtx, pubCancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer pubCancel()
+	if err := publishTaskNew(pubCtx, tenantID, taskID, taskType, inputMap); err != nil {
 		_, _ = dbPool.Exec(c.Request.Context(), "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
-		respondInternalError(c, err, "start upload workflow")
+		respondInternalError(c, err, "publish upload task")
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"task_id":     taskID,
-		"workflow_id": we.GetID(),
+		"workflow_id": "task-" + taskID,
 		"status":      "pending",
 		"filename":    header.Filename,
 		"file_size":   header.Size,
@@ -957,23 +994,17 @@ func bulkCreateTasksHandler(c *gin.Context) {
 		return
 	}
 
-	// Start workflows for all tasks (outside transaction)
+	pubCtx, pubCancel := context.WithTimeout(ctx, 60*time.Second)
+	defer pubCancel()
 	for i, task := range req.Tasks {
 		taskID := taskIDs[i]
-		workflowOptions := client.StartWorkflowOptions{
-			ID:        "task-" + taskID,
-			TaskQueue: "zovark-tasks",
-		}
-
-		we, err := tc.ExecuteWorkflow(context.Background(), workflowOptions, workflowName,
-			TaskRequest{TaskType: task.TaskType, Input: task.Input})
-		if err != nil {
-			log.Printf("Failed to start workflow for bulk task %s: %v", taskID, err)
+		if err := publishTaskNew(pubCtx, tenantID, taskID, task.TaskType, task.Input); err != nil {
+			log.Printf("Failed to publish bulk task %s: %v", taskID, err)
 			_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 			workflowIDs = append(workflowIDs, "")
 			continue
 		}
-		workflowIDs = append(workflowIDs, we.GetID())
+		workflowIDs = append(workflowIDs, "task-"+taskID)
 	}
 
 	// Build response

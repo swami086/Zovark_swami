@@ -1,7 +1,8 @@
 """Auto-retrain trigger activity (Issue #55).
 
-Monitors investigation_feedback for accuracy drops.
-If accuracy < 80% over last 100 investigations, triggers FineTuningPipelineWorkflow.
+Monitors investigation_feedback for accuracy drops and records a retrain recommendation
+in audit_events. Actual FineTuningPipelineWorkflow runs from your platform / operator
+(MCP, CI, or manual start) — the worker does not auto-start GPU training.
 """
 
 import os

@@ -1,10 +1,15 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // --------------------------------------------------------------------------
@@ -119,6 +124,15 @@ func updateGovernanceConfigHandler(c *gin.Context) {
 	}
 	defer tx.Rollback(ctx)
 
+	var prev sql.NullString
+	if err := tx.QueryRow(ctx,
+		`SELECT autonomy_level FROM governance_config WHERE tenant_id = $1 AND task_type = $2`,
+		tenantID, req.TaskType,
+	).Scan(&prev); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		respondInternalError(c, err, "read governance config")
+		return
+	}
+
 	var id string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO governance_config (tenant_id, task_type, autonomy_level, updated_at)
@@ -132,12 +146,40 @@ func updateGovernanceConfigHandler(c *gin.Context) {
 		return
 	}
 
-	// Audit event
-	_, _ = tx.Exec(ctx,
+	prevVal := ""
+	if prev.Valid {
+		prevVal = prev.String
+	}
+	meta, _ := json.Marshal(map[string]interface{}{
+		"task_type":      req.TaskType,
+		"previous_value": prevVal,
+		"new_value":      req.AutonomyLevel,
+	})
+	uid := c.GetString("user_id")
+	var actorUUID *uuid.UUID
+	if uid != "" {
+		if u, err := uuid.Parse(uid); err == nil {
+			actorUUID = &u
+		}
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO audit_events (tenant_id, event_type, actor_id, actor_type, resource_type, resource_id, metadata)
+		 VALUES ($1, 'governance_config_updated', $2, 'user', 'governance_config', $3::uuid, $4)`,
+		tenantID, actorUUID, id, meta,
+	); err != nil {
+		respondInternalError(c, err, "insert governance audit_events")
+		return
+	}
+
+	// Legacy agent_audit_log (compat)
+	if _, err := tx.Exec(ctx,
 		`INSERT INTO agent_audit_log (tenant_id, action, resource_type, resource_id)
 		 VALUES ($1, $2, $3, $4)`,
 		tenantID, "governance_config_updated", "governance_config", id,
-	)
+	); err != nil {
+		respondInternalError(c, err, "insert governance agent_audit_log")
+		return
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		respondInternalError(c, err, "commit governance config transaction")

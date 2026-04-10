@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -169,55 +170,75 @@ func streamAllTaskUpdates(c *gin.Context) {
 	_, _ = conn.Exec(c.Request.Context(), "LISTEN investigation_events")
 
 	ctx := c.Request.Context()
-	// Send a keepalive every 15s to prevent proxy timeouts
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
+	pgxConn := conn.Conn()
+	keepalive := 15 * time.Second
 
-	for {
-		select {
-		case <-ctx.Done():
+	defer func() {
+		unsub, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_, _ = conn.Exec(unsub, "UNLISTEN task_completed")
+		_, _ = conn.Exec(unsub, "UNLISTEN investigation_events")
+	}()
+
+	for ctx.Err() == nil {
+		waitCtx, cancel := context.WithTimeout(ctx, keepalive)
+		notification, err := pgxConn.WaitForNotification(waitCtx)
+		cancel()
+
+		if ctx.Err() != nil {
 			return
-		case <-ticker.C:
-			c.Writer.WriteString(": keepalive\n\n")
-			c.Writer.Flush()
-		default:
-			// Wait for notification with 5s timeout
-			notification, err := conn.Conn().WaitForNotification(context.Background())
-			if err != nil {
+		}
+
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				_, werr := c.Writer.WriteString(": keepalive\n\n")
+				if werr != nil {
+					return
+				}
+				c.Writer.Flush()
 				continue
 			}
+			log.Printf("SSE: WaitForNotification: %v", err)
+			continue
+		}
 
-			// Parse the notification payload
-			var payload map[string]interface{}
-			if json.Unmarshal([]byte(notification.Payload), &payload) == nil {
-				// Filter by tenant_id
-				if payloadTenant, ok := payload["tenant_id"].(string); ok && payloadTenant != tenantID {
-					continue
+		if notification == nil {
+			continue
+		}
+
+		var payload map[string]interface{}
+		if json.Unmarshal([]byte(notification.Payload), &payload) != nil {
+			continue
+		}
+		if payloadTenant, ok := payload["tenant_id"].(string); ok && payloadTenant != tenantID {
+			continue
+		}
+		data, _ := json.Marshal(payload)
+		eventType := "task_completed"
+		if et, ok := payload["event_type"].(string); ok && et != "" {
+			eventType = et
+		}
+		if eventType == "task_completed" {
+			if tid, ok := payload["task_id"].(string); ok {
+				ptid := ""
+				if pt, ok := payload["tenant_id"].(string); ok {
+					ptid = pt
 				}
-				data, _ := json.Marshal(payload)
-				// Use event_type from payload if present (waterfall events), else task_completed
-				eventType := "task_completed"
-				if et, ok := payload["event_type"].(string); ok && et != "" {
-					eventType = et
-				}
-				// Trigger SIEM push-back on task completion
-				if eventType == "task_completed" {
-					if tid, ok := payload["task_id"].(string); ok {
-						ptid := ""
-						if pt, ok := payload["tenant_id"].(string); ok {
-							ptid = pt
-						}
-						triggerPushbackFromNotify(tid, ptid)
-					}
-				}
-				c.Writer.WriteString(fmt.Sprintf("event: %s\n", eventType))
-				if traceID, ok := payload["trace_id"].(string); ok && traceID != "" {
-					c.Writer.WriteString(fmt.Sprintf("id: %s\n", traceID))
-				}
-				c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(data)))
-				c.Writer.Flush()
+				triggerPushbackFromNotify(tid, ptid)
 			}
 		}
+		if _, werr := c.Writer.WriteString(fmt.Sprintf("event: %s\n", eventType)); werr != nil {
+			return
+		}
+		if traceID, ok := payload["trace_id"].(string); ok && traceID != "" {
+			if _, werr := c.Writer.WriteString(fmt.Sprintf("id: %s\n", traceID)); werr != nil {
+				return
+			}
+		}
+		if _, werr := c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", string(data))); werr != nil {
+			return
+		}
+		c.Writer.Flush()
 	}
 }
 

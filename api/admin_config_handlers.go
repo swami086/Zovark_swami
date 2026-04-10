@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -228,6 +230,17 @@ func handleConfigUpsert(c *gin.Context) {
 	if len(req.ConfigValue) > 10000 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "config_value must be <= 10000 characters"})
 		return
+	}
+
+	// Tenant suppression / alert-filter patterns persisted as system_configs (RE2 syntax).
+	if strings.HasPrefix(req.ConfigKey, "governance.suppression") ||
+		strings.HasSuffix(req.ConfigKey, ".suppression_pattern") {
+		if _, err := regexp.Compile(req.ConfigValue); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("invalid suppression regex: %v", err),
+			})
+			return
+		}
 	}
 
 	tx, err := beginTenantTx(ctx, tenantID)

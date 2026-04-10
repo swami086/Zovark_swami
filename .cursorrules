@@ -21,4 +21,4 @@ Key rules:
 - After modifying _legacy_activities.py, ALWAYS rebuild: docker compose build worker && docker compose up -d worker
 - After modifying Go files, ALWAYS rebuild: docker compose build api && docker compose up -d api
 - New activities go in worker/_legacy_activities.py + re-export in worker/activities/__init__.py
-- New workflows go in worker/_legacy_workflows.py + re-export in worker/workflows/__init__.py
+- Investigation workflow: InvestigationWorkflowV2 in worker/stages/investigation_workflow.py, registered via worker/stages/register.py and worker/main.py; other workflows go in domain modules (e.g. worker/workflows/) and are listed in worker/main.py

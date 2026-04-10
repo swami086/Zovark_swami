@@ -267,6 +267,12 @@ def _run_single_step(i: int, step: dict, step_results: dict,
             except Exception:
                 pass
 
+        try:
+            from metrics import record_tool_execution
+            record_tool_execution(tool_name, tool_elapsed, bool(timeout_exceeded))
+        except Exception:
+            pass
+
         # Collect aggregates
         findings, iocs, risk = [], [], None
         if isinstance(result, dict):
@@ -292,6 +298,11 @@ def _run_single_step(i: int, step: dict, step_results: dict,
                 _span.end()
             except Exception:
                 pass
+        try:
+            from metrics import record_tool_execution
+            record_tool_execution(tool_name, 0.0, True)
+        except Exception:
+            pass
         return {"result": None, "tool_name": tool_name, "error": f"{tool_name} error: {str(e)[:200]}"}
 
 

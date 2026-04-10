@@ -39,14 +39,9 @@ Zovark handles long-running, non-deterministic AI tasks asynchronously using Tem
 
 The Python worker (`worker/`) currently implements **10 workflows** and **95 activities**, spanning investigation orchestration, detection engineering, SOAR response, shadow mode validation, and more.
 
-1. `createTaskHandler` (API) inserts a `pending` row in `agent_tasks` and asynchronously triggers `ExecuteTaskWorkflow` via the Temporal gRPC interface.
-2. The Python Worker (`worker/workflows.py`) picks up the workflow, serving as the central orchestration loop.
-3. The workflow executes specialized activities (`worker/activities.py`):
-   - `plan_investigation`
-   - `retrieve_skill` (Interfacing with the Zovark Intelligence Fabric)
-   - `generate_investigation_code` / `render_skill_template`
-   - `request_human_approval`
-   - `execute_sandbox_code` (Interfacing with the Docker Engine API)
+1. `createTaskHandler` (API) inserts a `pending` row in `agent_tasks` and asynchronously starts Temporal workflow **`InvestigationWorkflowV2`** (override with `ZOVARK_WORKFLOW_VERSION` if needed).
+2. The Python worker (`worker/main.py`) registers `InvestigationWorkflowV2` from `worker/stages/register.py` and runs the V2/V3 stage activities (`ingest_alert`, `analyze_alert`, `execute_investigation`, `assess_results`, `apply_governance`, `store_investigation`).
+3. Legacy and auxiliary activities remain in `worker/_legacy_activities.py` (re-exported via `worker/activities/__init__.py`); the V2 investigation stages live under `worker/stages/`. References to a monolithic `ExecuteTaskWorkflow` or single `workflows.py` entrypoint are obsolete—the canonical investigation workflow is **`InvestigationWorkflowV2`**, registered from `worker/stages/register.py` in `worker/main.py`.
 
 ### Key Worker Modules
 

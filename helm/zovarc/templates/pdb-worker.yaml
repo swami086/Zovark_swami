@@ -1,0 +1,14 @@
+{{- if gt (int .Values.worker.replicaCount) 1 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "zovark.fullname" . }}-worker
+  labels:
+    {{- include "zovark.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "zovark.worker.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -1,6 +1,6 @@
 version: "3.8"
 
-# Override file for autoscaler service
+# Override file for autoscaler service (scripts/autoscale.py only; duplicate scripts/autoscaler.py removed)
 # Usage: docker compose -f docker-compose.yml -f docker-compose.autoscaler.yml up autoscaler
 
 services:

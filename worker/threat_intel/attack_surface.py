@@ -4,6 +4,10 @@ Enriches IoCs (IPs, domains) with external intelligence:
 subdomains, open ports, services, cloud exposure, risk scoring.
 
 All HTTP requests go through the egress proxy (v0.12.0 requirement).
+
+When ZOVARK_THREAT_INTEL_ENABLED is false (default), enrichment returns immediately
+without calling outbound APIs (air-gap). When the investigation circuit breaker
+is RED, external enrichment is skipped to shed load.
 """
 import os
 import json
@@ -13,6 +17,11 @@ from typing import Dict, List, Optional
 from temporalio import activity
 
 logger = logging.getLogger(__name__)
+
+try:
+    from settings import settings as _z_settings
+except ImportError:
+    _z_settings = None
 
 REDHUNT_API_KEY = os.environ.get("REDHUNT_API_KEY", "")
 REDHUNT_BASE_URL = "https://devapi.redhuntlabs.com/community/v1"
@@ -43,6 +52,26 @@ class AttackSurfaceRecon:
         Returns:
             Enrichment data with subdomains, ports, services, risk_score
         """
+        if _z_settings is not None:
+            ti_on = bool(_z_settings.threat_intel_enabled)
+        else:
+            ti_on = os.environ.get("ZOVARK_THREAT_INTEL_ENABLED", "false").lower() in (
+                "1", "true", "yes"
+            )
+
+        if not ti_on:
+            return self._empty_enrichment(
+                ioc, "Threat intel disabled (ZOVARK_THREAT_INTEL_ENABLED=false, default air-gap)"
+            )
+
+        try:
+            from stages.circuit_breaker import get_state
+
+            if get_state() == "RED":
+                return self._empty_enrichment(ioc, "Circuit breaker RED — external enrichment skipped")
+        except Exception:
+            pass
+
         if not self.api_key:
             return self._empty_enrichment(ioc, "No API key configured")
 
@@ -124,23 +153,23 @@ async def enrich_alert_with_attack_surface(params: dict) -> dict:
     alert_id = params.get("alert_id")
     tenant_id = params.get("tenant_id")
 
-    import psycopg2
     from psycopg2.extras import RealDictCursor
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
-    conn = psycopg2.connect(db_url)
+    from database.pool_manager import pooled_connection
 
     try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT source_ip, dest_ip, normalized_event FROM siem_alerts "
-                "WHERE id = %s AND tenant_id = %s",
-                (alert_id, tenant_id)
-            )
-            row = cur.fetchone()
-            if not row:
-                return {"enrichments": [], "total_iocs": 0, "error": "Alert not found"}
-    finally:
-        conn.close()
+        with pooled_connection("normal") as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT source_ip, dest_ip, normalized_event FROM siem_alerts "
+                    "WHERE id = %s AND tenant_id = %s",
+                    (alert_id, tenant_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return {"enrichments": [], "total_iocs": 0, "error": "Alert not found"}
+    except Exception as e:
+        logger.warning("enrich_alert_with_attack_surface DB error: %s", e)
+        return {"enrichments": [], "total_iocs": 0, "error": "database_error"}
 
     # Extract IoCs
     iocs = []

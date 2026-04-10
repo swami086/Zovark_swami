@@ -1,0 +1,34 @@
+{
+  "title": "Zovark — API Health",
+  "description": "Ticket 7 — HTTP request rate, duration, ingest and dedup counters (OTel metrics on zovark-api).",
+  "schemaVersion": 1,
+  "tags": ["zovark", "ticket-7", "api"],
+  "panels": [
+    {
+      "title": "HTTP span p95 by route (otelgin)",
+      "type": "graph",
+      "query": "SELECT httpRoute, quantile(0.95)(durationNano)/1e9 AS p95_s FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND kind = 2 GROUP BY httpRoute ORDER BY p95_s DESC LIMIT 30"
+    },
+    {
+      "title": "HTTP 5xx rate",
+      "type": "value",
+      "query": "SELECT countIf(httpStatusCode >= 500) / count() AS ratio FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND kind = 2"
+    },
+    {
+      "title": "Ingest spans (ingest.*)",
+      "type": "graph",
+      "query": "SELECT name, count() FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name LIKE 'ingest.%' GROUP BY name"
+    },
+    {
+      "title": "OTel metrics (Metrics explorer)",
+      "type": "note",
+      "metrics": [
+        "zovark_api_requests_total — labels http.method, http.route, http.status_code",
+        "zovark_api_request_duration_seconds — histogram",
+        "zovark_api_ingest_events_total — label source",
+        "zovark_api_dedup_hits_total — counter",
+        "zovark_api_db_pool_acquired_connections — gauge"
+      ]
+    }
+  ]
+}

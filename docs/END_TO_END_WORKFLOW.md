@@ -169,6 +169,7 @@ workflowOptions := client.StartWorkflowOptions{
 tc.ExecuteWorkflow(ctx, workflowOptions, workflowName, req)
 ```
 
+- **`workflowName`** defaults to **`InvestigationWorkflowV2`** (`api/task_handlers.go`); set `ZOVARK_WORKFLOW_VERSION` only if you register a different workflow name on the worker.
 - Workflow ID is `task-{uuid}` (deterministic, prevents double-start)
 - Task queue: `zovark-tasks` (all types share one queue)
 - If Temporal is down: task marked `failed`, HTTP 500 returned
@@ -557,15 +558,13 @@ data: {"event_type":"verdict_ready","task_id":"bd45ea48","data":{"verdict":"true
 
 ### 5.3 React Dashboard
 
-**File:** `dashboard/src/components/LiveInvestigationFeed.tsx`
+**Files:** `dashboard/src/pages/TaskList.tsx`, `dashboard/src/pages/TaskDetail.tsx`
 
-- Connects to SSE endpoint on component mount
-- Listens for 9 event types: `tool_started`, `tool_completed`, `ioc_discovered`, `mitre_mapped`, `verdict_ready`, etc.
-- Filters events by `task_id`
-- Renders scrollable timeline with icons and colored verdicts:
-  - `true_positive` → red (`text-rose-400`)
-  - `suspicious` → orange (`text-amber-400`)
-  - `benign` → green (`text-emerald-400`)
+- Open `EventSource` to `GET /api/v1/tasks/stream?token=...` (token in query string; see `api/client.ts` for API base URL helpers)
+- Receive SSE events forwarded from `api/sse.go` (`investigation_events` + `task_completed` channels), including `tool_started`, `tool_completed`, `ioc_discovered`, `mitre_mapped`, `verdict_ready`, etc.
+- **Task detail** filters by `task_id`; **task list** uses the global stream for live updates
+- Verdict styling in the UI typically maps `true_positive` / `suspicious` / `benign` to distinct colors in the relevant components
+- **`/demo`** uses `InvestigationWaterfall`, `PipelineVisualization`, and related components for guided pipeline visualization (not a separate standalone feed component)
 
 ---
 
@@ -659,4 +658,4 @@ Client polls `GET /api/v1/tasks/{task_id}` with JWT:
 | `worker/stages/store.py` | Stage 5: DB writes + NOTIFY |
 | `worker/events.py` | PostgreSQL NOTIFY event emitter |
 | `worker/schemas.py` | Pydantic LLM output validation |
-| `dashboard/src/components/LiveInvestigationFeed.tsx` | Real-time SSE consumer |
+| `dashboard/src/pages/TaskList.tsx`, `TaskDetail.tsx` | SSE (`EventSource`) consumers for `/api/v1/tasks/stream` |

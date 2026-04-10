@@ -32,7 +32,15 @@ from detection.rule_validator import validate_sigma_rule
 from detection.workflow import DetectionGenerationWorkflow, _list_candidates_for_generation
 from response.workflow import ResponsePlaybookWorkflow, load_playbook, create_response_execution, update_response_execution, execute_response_action, rollback_response_action, find_matching_playbooks
 from response.auto_trigger import auto_trigger_playbooks
-from finetuning.workflow import FineTuningPipelineWorkflow, export_finetuning_data, score_training_quality, run_model_evaluation, create_finetuning_job, update_finetuning_job
+from finetuning.workflow import (
+    FineTuningPipelineWorkflow,
+    export_finetuning_data,
+    score_training_quality,
+    run_model_evaluation,
+    create_finetuning_job,
+    update_finetuning_job,
+    notify_platform_data_ready,
+)
 from finetuning.evaluation import compute_eval_metrics
 from sre.workflow import SelfHealingWorkflow
 from sre.monitor import scan_for_failures
@@ -76,7 +84,7 @@ from shadow import ShadowInvestigationWorkflow, generate_recommendation, check_a
 from pii_detector import detect_pii, mask_for_llm, unmask_response, load_tenant_pii_rules
 from stampede import coalesced_llm_call, check_stampede_protection
 from token_quota import check_token_quota, record_token_usage, reset_monthly_quota, trip_circuit_breaker
-from nats_consumer import create_nats_consumer
+from redpanda_consumer import start_redpanda_task_consumer
 from prompt_init import init_prompts
 from database.pool_manager import initialize_pools, close_pools
 from health import start_health_server, set_temporal_connected, set_db_reachable
@@ -119,22 +127,33 @@ async def main():
     initialize_pools()
     set_db_reachable(True)
 
-    # Initialize NATS consumer if NATS_URL is configured
-    nats_consumer = None
-    if os.environ.get("NATS_URL"):
-        try:
-            nats_consumer = create_nats_consumer(worker_id=WORKER_ID)
-            logger.info("NATS consumer initialized", worker_id=WORKER_ID)
-        except Exception as e:
-            logger.warn("NATS consumer initialization failed (non-fatal)", error=str(e))
-
     temporal_address = os.environ.get("TEMPORAL_ADDRESS", "temporal:7233")
     logger.info("Connecting to Temporal", address=temporal_address)
+
+    temporal_interceptors = []
+    try:
+        from temporalio.contrib.opentelemetry import TracingInterceptor
+        from opentelemetry import trace as otel_trace
+        from tracing import trace_enabled as otel_worker_tracing_on
+        if otel_worker_tracing_on:
+            temporal_interceptors = [
+                TracingInterceptor(
+                    tracer=otel_trace.get_tracer("zovark-worker"),
+                    always_create_workflow_spans=True,
+                ),
+            ]
+            logger.info("Temporal OpenTelemetry interceptors enabled")
+    except Exception as e:
+        logger.warn("Temporal OpenTelemetry interceptors disabled", error=str(e))
+
+    connect_kw = {}
+    if temporal_interceptors:
+        connect_kw["interceptors"] = temporal_interceptors
 
     # Retry connecting to Temporal since it might take a moment to be ready
     for _ in range(10):
         try:
-            client = await Client.connect(temporal_address)
+            client = await Client.connect(temporal_address, **connect_kw)
             set_temporal_connected(True)
             break
         except Exception as e:
@@ -143,11 +162,20 @@ async def main():
     else:
         raise Exception("Could not connect to Temporal frontend")
 
+    loop = asyncio.get_running_loop()
+    redpanda_shutdown = start_redpanda_task_consumer(loop, client)
+
+    worker_kw = dict(
+        max_concurrent_activities=MAX_CONCURRENT_ACTIVITIES,
+        max_concurrent_workflow_tasks=MAX_CONCURRENT_WORKFLOWS,
+    )
+    if temporal_interceptors:
+        worker_kw["interceptors"] = temporal_interceptors
+
     worker = Worker(
         client,
         task_queue="zovark-tasks",
-        max_concurrent_activities=MAX_CONCURRENT_ACTIVITIES,
-        max_concurrent_workflow_tasks=MAX_CONCURRENT_WORKFLOWS,
+        **worker_kw,
         # 16 workflows
         # V2 investigation pipeline + non-investigation workflows
         workflows=get_v2_workflows() + [
@@ -191,7 +219,7 @@ async def main():
             auto_trigger_playbooks,
             # Fine-tuning pipeline
             export_finetuning_data, score_training_quality, run_model_evaluation,
-            create_finetuning_job, update_finetuning_job,
+            create_finetuning_job, update_finetuning_job, notify_platform_data_ready,
             compute_eval_metrics,
             # SRE self-healing
             scan_for_failures, diagnose_failure, generate_patch, test_patch, apply_patch,
@@ -236,8 +264,8 @@ async def main():
     try:
         await worker.run()
     finally:
-        if nats_consumer:
-            nats_consumer.shutdown()
+        if redpanda_shutdown:
+            redpanda_shutdown()
         close_pools()
 
 

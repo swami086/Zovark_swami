@@ -4,6 +4,8 @@
 **Audited by:** Claude Opus 4.6
 **Scope:** Full-stack audit — Go API, Python Worker, Database, Dashboard, MCP Server, Docker, Security, Observability
 
+> **Archive path note (2026):** Investigation orchestration is now **`InvestigationWorkflowV2`** (`worker/stages/investigation_workflow.py`), not monolithic **`worker/workflows.py`**. References to **`activities.py`** map to **`worker/_legacy_activities.py`**.
+
 ---
 
 ## Executive Summary
@@ -306,7 +308,7 @@ ollama_data, prometheus_data, grafana_data, caddy_data/caddy_config
 |---------|----------|-----------|--------|
 | pip install unvalidated | HIGH | sre/applier.py:215 | Package name not regex-validated |
 | Hardcoded dev creds | MEDIUM | 40 files | `zovark_dev_2026` as defaults (env override exists) |
-| Code scrubbing fragile | MEDIUM | activities.py:194 | Regex-based, bypassable (AST prefilter is real defense) |
+| Code scrubbing fragile | MEDIUM | `worker/_legacy_activities.py` *(audit: activities.py:194)* | Regex-based, bypassable (AST prefilter is real defense) |
 | 24 print() statements | LOW | Various | Should use structured logger |
 | Rate limiter TODO | LOW | rate_limiter.py:129 | Set membership O(N), needs sorted sets for >100 |
 

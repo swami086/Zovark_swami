@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"go.temporal.io/sdk/client"
 )
 
 // ============================================================
@@ -148,7 +147,7 @@ func drainQueuedTasks(ctx context.Context, maxDrain int) {
 	}
 
 	rows, err := dbPool.Query(ctx,
-		`SELECT id, task_type, input FROM agent_tasks
+		`SELECT id, tenant_id, task_type, input FROM agent_tasks
 		 WHERE status = 'queued'
 		 ORDER BY created_at ASC
 		 LIMIT $1`, maxDrain)
@@ -158,9 +157,9 @@ func drainQueuedTasks(ctx context.Context, maxDrain int) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var taskID, taskType string
+		var taskID, tenantID, taskType string
 		var input map[string]interface{}
-		if err := rows.Scan(&taskID, &taskType, &input); err != nil {
+		if err := rows.Scan(&taskID, &tenantID, &taskType, &input); err != nil {
 			continue
 		}
 
@@ -170,24 +169,17 @@ func drainQueuedTasks(ctx context.Context, maxDrain int) {
 			break
 		}
 
-		// Start workflow
-		wfOptions := client.StartWorkflowOptions{
-			ID:        "task-" + taskID,
-			TaskQueue: "zovark-tasks",
-		}
-		_, err := tc.ExecuteWorkflow(ctx, wfOptions, workflowName, TaskRequest{
-			TaskType: taskType,
-			Input:    input,
-		})
+		pubCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		err := publishTaskNew(pubCtx, tenantID, taskID, taskType, input)
+		cancel()
 		if err != nil {
-			log.Printf("[DRAIN] Failed to start workflow for queued task %s: %v", taskID, err)
+			log.Printf("[DRAIN] Failed to publish queued task %s: %v", taskID, err)
 			_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 			continue
 		}
 
-		// Update status from queued to pending
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'pending' WHERE id = $1", taskID)
 		recordWorkflowStart(ctx, "task-"+taskID)
-		log.Printf("[DRAIN] Started workflow for queued task %s (type=%s)", taskID, taskType)
+		log.Printf("[DRAIN] Published queued task %s (type=%s) to Redpanda", taskID, taskType)
 	}
 }

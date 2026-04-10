@@ -31,6 +31,7 @@ func main() {
 	rootCmd.AddCommand(modelCheckCmd())
 	rootCmd.AddCommand(dedupHealthCmd())
 	rootCmd.AddCommand(troubleshootCmd())
+	rootCmd.AddCommand(collectionCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

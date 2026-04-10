@@ -20,7 +20,6 @@ with workflow.unsafe.imports_passed_through():
     from stages.assess import assess_results
     from stages.govern import apply_governance
     from stages.store import store_investigation
-    from tracing import get_tracer
 
 
 @workflow.defn
@@ -29,6 +28,8 @@ class InvestigationWorkflowV2:
 
     @workflow.run
     async def run(self, task_data: dict) -> dict:
+        # Ticket 7: Root span `investigation.pipeline` runs inside ingest_alert (replay-safe).
+        # Temporal TracingInterceptor links analyze/execute/assess/store activities to the same trace.
         # Extract task_id from Temporal workflow ID (same as legacy)
         info = workflow.info()
         task_id = info.workflow_id.replace("task-", "")

@@ -85,7 +85,7 @@ done
 # 7. Run migrations
 echo ""
 echo "=== Applying database migrations ==="
-docker compose exec -T zovark-api ./zovark-api migrate up 2>&1 || echo "  (migrations may already be applied)"
+docker compose exec -T api ./hydra-api migrate up 2>&1 || echo "  (migrations may already be applied)"
 echo "  ✓ Database ready"
 
 # 8. Create PoV admin user

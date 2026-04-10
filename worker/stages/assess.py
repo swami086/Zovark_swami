@@ -25,6 +25,27 @@ from stages.output_validator import validate_investigation_output, safe_default_
 from stages.mitre_mapping import get_mitre_techniques
 
 FAST_FILL = os.environ.get("ZOVARK_FAST_FILL", "false").lower() == "true"
+
+
+def _suppression_pattern_matched(patterns: list, text: str, tenant_id: str, rule_prefix: str) -> bool:
+    """Apply suppression regexes; log audit on evaluation errors (never silent)."""
+    for i, p in enumerate(patterns):
+        try:
+            if re.search(p, text):
+                return True
+        except re.error as e:
+            try:
+                from governance.suppression import log_suppression_eval_failure
+
+                log_suppression_eval_failure(
+                    tenant_id or None,
+                    f"{rule_prefix}_{i}",
+                    f"suppression eval error: {e}",
+                    alert_context=text[:800],
+                )
+            except Exception:
+                pass
+    return False
 ZOVARK_LLM_ENDPOINT = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
 try:
     from settings import settings as _settings
@@ -429,6 +450,16 @@ async def assess_results(data: dict) -> dict:
         out["status"] = "pending_review"
         out["needs_human_review"] = True
         out["review_reason"] = "LLM service was unavailable during investigation"
+        try:
+            from governance.cmmc import evaluate_cmmc_for_techniques
+            from governance.hipaa import evaluate_hipaa_for_techniques
+
+            out["compliance_mapping"] = {
+                "cmmc": evaluate_cmmc_for_techniques([]),
+                "hipaa": evaluate_hipaa_for_techniques([]),
+            }
+        except Exception:
+            out["compliance_mapping"] = {}
         return out
 
     # --- Schema validation of sandbox output ---
@@ -553,7 +584,9 @@ async def assess_results(data: dict) -> dict:
         r'(?i)simulation\s+exercise',
         r'(?i)approved\s+activity',
     ]
-    has_suppression = any(re.search(p, combined_signal) for p in SUPPRESSION_PATTERNS)
+    has_suppression = _suppression_pattern_matched(
+        SUPPRESSION_PATTERNS, combined_signal, tenant_id, "builtin_suppression"
+    )
     if has_suppression and (attack_boost > 0 or risk_score >= 50):
         # Attack indicators + suppression language = adversarial manipulation
         risk_score = max(risk_score, 75)
@@ -698,6 +731,29 @@ async def assess_results(data: dict) -> dict:
     except (ImportError, Exception) as e:
         if not isinstance(e, ImportError):
             activity.logger.warning(f"Verdict validation issue (non-fatal): {e}")
+
+    technique_ids: list[str] = []
+    if out.get("mitre_attack_validated"):
+        technique_ids = [str(t) for t in (out["mitre_attack_validated"] or [])]
+    else:
+        for t in out.get("mitre_attack", []) or []:
+            if isinstance(t, dict):
+                tid = t.get("technique_id") or t.get("id")
+                if tid:
+                    technique_ids.append(str(tid))
+            elif t:
+                technique_ids.append(str(t))
+    try:
+        from governance.cmmc import evaluate_cmmc_for_techniques
+        from governance.hipaa import evaluate_hipaa_for_techniques
+
+        out["compliance_mapping"] = {
+            "cmmc": evaluate_cmmc_for_techniques(technique_ids),
+            "hipaa": evaluate_hipaa_for_techniques(technique_ids),
+        }
+    except Exception as cm_err:
+        activity.logger.warning(f"compliance_mapping skipped: {cm_err}")
+        out["compliance_mapping"] = {}
 
     # End OTEL span
     if _span:

@@ -2,19 +2,21 @@
 
 Parses STIX 2.1 bundles (indicators, malware, attack-patterns).
 Stores in entities table with source="stix_feed".
-Polls TAXII 2.1 endpoints for new bundles.
+Polls TAXII 2.1 endpoints for new bundles using httpx.AsyncClient (non-blocking HTTP).
+DB access uses the shared ThreadedConnectionPool (database.pool_manager).
 """
 
 import os
 import json
 import httpx
-import psycopg2
 from temporalio import activity
 
+from database.pool_manager import pooled_connection
 
-def _get_db():
-    db_url = os.environ.get("DATABASE_URL", "postgresql://zovark:zovark_dev_2026@postgres:5432/zovark")
-    return psycopg2.connect(db_url)
+
+def _get_db_cm():
+    """Use shared pool for STIX ingest (avoid per-call connect)."""
+    return pooled_connection("background")
 
 
 # STIX object type to entity type mapping
@@ -58,8 +60,7 @@ async def ingest_threat_feed(data: dict) -> dict:
     errors = 0
     type_counts = {}
 
-    conn = _get_db()
-    try:
+    with _get_db_cm() as conn:
         with conn.cursor() as cur:
             for obj in objects:
                 stix_type = obj.get("type", "")
@@ -131,8 +132,6 @@ async def ingest_threat_feed(data: dict) -> dict:
                     print(f"stix_ingest: object {obj.get('id', '?')} failed: {e}")
 
         conn.commit()
-    finally:
-        conn.close()
 
     return {
         "ingested": ingested,

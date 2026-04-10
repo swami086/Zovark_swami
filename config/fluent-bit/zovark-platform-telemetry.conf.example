@@ -1,0 +1,31 @@
+# Example: forward host or sidecar logs / HTTP payloads to Redpanda (Kafka API).
+# Ticket 5 — platform ingestion path (Fluent Bit → Redpanda → Flink/ClickHouse, etc.).
+#
+# Usage:
+#   1. Copy beside your fluent-bit.conf and @INCLUDE this file, or merge sections.
+#   2. Set Brokers to your Redpanda bootstrap (e.g. redpanda:9092 or 127.0.0.1:19092).
+#   3. Adjust Match / Path for your input plugin.
+#
+# Docs: https://docs.fluentbit.io/manual/pipeline/outputs/kafka
+
+[INPUT]
+    Name   tail
+    Path   /var/log/zovark/platform/*.log
+    Tag    zovark.platform
+    Mem_Buf_Limit 5MB
+    Skip_Long_Lines On
+
+# Optional: health / metrics scrape → Kafka
+# [INPUT]
+#     Name   http
+#     Listen 0.0.0.0
+#     Port   9880
+
+[OUTPUT]
+    Name        kafka
+    Match       zovark.platform
+    Brokers     redpanda:9092
+    Topics      platform.telemetry.raw
+    Format      json
+    rdkafka.log.connection.close false
+    # TLS/SASL: use rdkafka.* properties as needed for production

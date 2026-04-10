@@ -3,6 +3,7 @@ local_models/
 node_modules/
 __pycache__/
 *.pyc
+worker/.venv/
 k8s/**/secrets.yaml
 data/
 .claude/worktrees/

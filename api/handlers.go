@@ -9,12 +9,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// checkOpenAIReachable verifies OpenAI API with GET /v1/models (Bearer ZOVARK_LLM_KEY).
+func checkOpenAIReachable(chatCompletionsURL, apiKey string) bool {
+	base := strings.TrimSuffix(strings.TrimSpace(chatCompletionsURL), "/")
+	base = strings.TrimSuffix(base, "/v1/chat/completions")
+	if base == "" {
+		return false
+	}
+	u := base + "/v1/models"
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return false
+	}
+	if strings.TrimSpace(apiKey) != "" {
+		req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(apiKey))
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
 func healthCheckHandler(c *gin.Context) {
 	deploymentMode := getEnvOrDefault("ZOVARK_DEPLOYMENT_MODE", "cloud")
 	llmModel := getEnvOrDefault("ZOVARK_LLM_MODEL", "fast")
 
 	llmProvider := "OpenRouter (Cloud)"
-	if llmModel == "zovark-local" {
+	if strings.ToLower(strings.TrimSpace(getEnvOrDefault("ZOVARK_LLM_PROVIDER", "openai"))) == "openai" {
+		llmProvider = "OpenAI API"
+	} else if llmModel == "zovark-local" {
 		llmProvider = "Local LLM"
 	}
 
@@ -28,30 +55,39 @@ func healthCheckHandler(c *gin.Context) {
 	// LLM health — check configured endpoint (best-effort)
 	llmOK := false
 	llmEndpoint := getEnvOrDefault("ZOVARK_LLM_ENDPOINT_FAST",
-		getEnvOrDefault("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions"))
-	// Derive health URL from chat completions endpoint
-	llmHealthURL := strings.TrimSuffix(llmEndpoint, "/v1/chat/completions") + "/health"
-	resp, err := http.Get(llmHealthURL)
-	if err == nil {
-		llmOK = (resp.StatusCode == 200)
-		resp.Body.Close()
+		getEnvOrDefault("ZOVARK_LLM_ENDPOINT", "https://api.openai.com/v1/chat/completions"))
+	llmProviderEnv := strings.ToLower(strings.TrimSpace(getEnvOrDefault("ZOVARK_LLM_PROVIDER", "openai")))
+	llmKey := strings.TrimSpace(getEnvOrDefault("ZOVARK_LLM_KEY", ""))
+	if llmKey == "" {
+		llmKey = strings.TrimSpace(getEnvOrDefault("OPENAI_API_KEY", ""))
 	}
-	if !llmOK {
-		// Fallback: try /api/tags (legacy compatibility)
-		llmTagsURL := strings.TrimSuffix(llmEndpoint, "/v1/chat/completions") + "/api/tags"
-		resp, err = http.Get(llmTagsURL)
+	if llmProviderEnv == "openai" {
+		llmOK = checkOpenAIReachable(llmEndpoint, llmKey)
+	} else {
+		// Derive health URL from chat completions endpoint (llama.cpp)
+		llmHealthURL := strings.TrimSuffix(llmEndpoint, "/v1/chat/completions") + "/health"
+		resp, err := http.Get(llmHealthURL)
 		if err == nil {
 			llmOK = (resp.StatusCode == 200)
 			resp.Body.Close()
+		}
+		if !llmOK {
+			// Fallback: try /api/tags (legacy compatibility)
+			llmTagsURL := strings.TrimSuffix(llmEndpoint, "/v1/chat/completions") + "/api/tags"
+			resp, err = http.Get(llmTagsURL)
+			if err == nil {
+				llmOK = (resp.StatusCode == 200)
+				resp.Body.Close()
+			}
 		}
 	}
 
 	// Check embedding server
 	embeddingOK := false
-	resp, err = http.Get("http://embedding-server:80/health")
-	if err == nil {
-		embeddingOK = (resp.StatusCode == 200)
-		resp.Body.Close()
+	embResp, embErr := http.Get("http://embedding-server:80/health")
+	if embErr == nil {
+		embeddingOK = (embResp.StatusCode == 200)
+		embResp.Body.Close()
 	}
 
 	c.JSON(http.StatusOK, gin.H{

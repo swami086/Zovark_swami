@@ -7,7 +7,7 @@ Aggregates analyst feedback into actionable signals:
 - Per-rule accuracy
 - Flags underperforming detection rules
 - Refreshes materialized views
-- Emits summary event via NATS
+- Emits summary event to Redpanda (feedback.summary.{tenant_id})
 """
 import os
 import json
@@ -138,35 +138,43 @@ async def refresh_materialized_views(params: dict) -> dict:
 
 @activity.defn
 async def emit_feedback_summary(params: dict) -> dict:
-    """Emit feedback summary as a NATS event (if NATS configured)."""
-    nats_url = os.environ.get("NATS_URL")
-    if not nats_url:
-        return {'emitted': False, 'reason': 'NATS not configured'}
+    """Emit feedback summary to Redpanda (replaces NATS)."""
+    import asyncio
+
+    brokers = os.environ.get("ZOVARK_REDPANDA_BROKERS", "").strip()
+    if not brokers:
+        return {"emitted": False, "reason": "redpanda not configured"}
 
     summary = {
-        'type': 'feedback.daily_summary',
-        'tenant_id': params.get('tenant_id'),
-        'total_feedback': params.get('total_feedback', 0),
-        'source_count': len(params.get('sources', [])),
-        'flagged_rules': params.get('flagged_rules', []),
-        'timestamp': datetime.utcnow().isoformat(),
+        "type": "feedback.daily_summary",
+        "tenant_id": params.get("tenant_id"),
+        "total_feedback": params.get("total_feedback", 0),
+        "source_count": len(params.get("sources", [])),
+        "flagged_rules": params.get("flagged_rules", []),
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
+    def _send() -> bool:
+        from kafka import KafkaProducer
+
+        hosts = [b.strip() for b in brokers.split(",") if b.strip()]
+        p = KafkaProducer(
+            bootstrap_servers=hosts,
+            value_serializer=lambda v: json.dumps(v, default=str).encode("utf-8"),
+        )
+        tid = params.get("tenant_id") or "global"
+        topic = f"feedback.summary.{tid}"
+        p.send(topic, value=summary)
+        p.flush(5)
+        p.close()
+        return True
+
     try:
-        import socket
-        host, port = nats_url.replace('nats://', '').split(':')
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
-        sock.connect((host, int(port)))
-        # NATS protocol: PUB subject length\r\npayload\r\n
-        payload = json.dumps(summary)
-        msg = f"PUB zovark.feedback.summary {len(payload)}\r\n{payload}\r\n"
-        sock.sendall(msg.encode())
-        sock.close()
-        return {'emitted': True}
+        await asyncio.to_thread(_send)
+        return {"emitted": True}
     except Exception as e:
-        logger.warning(f"Failed to emit feedback summary via NATS: {e}")
-        return {'emitted': False, 'reason': str(e)}
+        logger.warning("Failed to emit feedback summary via Redpanda: %s", e)
+        return {"emitted": False, "reason": str(e)}
 
 
 @workflow.defn
@@ -204,7 +212,7 @@ class FeedbackAggregationWorkflow:
             start_to_close_timeout=timedelta(minutes=5),
         )
 
-        # Step 4: Emit NATS event
+        # Step 4: Emit Redpanda event
         await workflow.execute_activity(
             emit_feedback_summary,
             {

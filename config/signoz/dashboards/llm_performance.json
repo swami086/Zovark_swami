@@ -1,0 +1,28 @@
+{
+  "title": "Zovark — LLM Performance",
+  "description": "Ticket 7 — LLM latency, tokens, errors (span name llm.call).",
+  "schemaVersion": 1,
+  "tags": ["zovark", "ticket-7", "llm"],
+  "panels": [
+    {
+      "title": "LLM p95 / avg duration (seconds)",
+      "type": "graph",
+      "query": "SELECT quantile(0.95)(durationNano)/1e9 AS p95_s, avg(durationNano)/1e9 AS avg_s, count() AS calls FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name = 'llm.call'"
+    },
+    {
+      "title": "LLM calls by model (tagMap)",
+      "type": "bar",
+      "query": "SELECT tagMap['llm.model'] AS model, count() AS calls FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name = 'llm.call' GROUP BY model ORDER BY calls DESC"
+    },
+    {
+      "title": "LLM errors (statusCode=2)",
+      "type": "value",
+      "query": "SELECT count() FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name = 'llm.call' AND statusCode = 2"
+    },
+    {
+      "title": "Token totals (span attributes — if exported as tags)",
+      "type": "table",
+      "query": "SELECT tagMap['llm.tokens_in'] AS tin, tagMap['llm.tokens_out'] AS tout, count() FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND name = 'llm.call' GROUP BY tin, tout LIMIT 50"
+    }
+  ]
+}

@@ -226,8 +226,8 @@ Note: The TypeScript LOC count of 863K reported by some tools includes node_modu
 | Settings | Settings.tsx | FUNCTIONAL — user preferences |
 | DemoPage | DemoPage.tsx | FUNCTIONAL — demo scenarios |
 
-### Components (11)
-DataFlowBadge, DemoBanner, DemoSelector, ExecutiveSummary, GuardrailScoreBar, InvestigationWaterfall, MitreTimeline, Notifications, Skeleton, SovereigntyBanner, StepDetailPanel
+### Components (8)
+DataFlowBadge, DemoBanner, ExecutiveSummary, InvestigationWaterfall, MitreTimeline, Notifications, Skeleton, StepDetailPanel — live investigation streaming uses `EventSource` on **TaskList** / **TaskDetail** (`/api/v1/tasks/stream`), not a separate feed component
 
 **All pages and components are FUNCTIONAL** — not skeletons. The dashboard compiles with zero errors (Vite build verified).
 

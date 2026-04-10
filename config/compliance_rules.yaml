@@ -1,0 +1,20 @@
+# MITRE technique ID → compliance framework flags (generic evaluators in worker/governance/)
+# Extend per deployment; Python loaders fall back to empty lists for unknown IDs.
+version: 1
+
+cmmc:
+  description: "CMMC Level 2 incident response control hints derived from MITRE coverage"
+  technique_controls:
+    T1078: ["IR.L2-3.6.1", "IR.L2-3.6.2"]
+    T1110: ["IR.L2-3.6.1", "IR.L2-3.6.2"]
+    T1486: ["IR.L2-3.6.1", "IR.L2-3.6.2"]
+    T1566: ["IR.L2-3.6.1", "IR.L2-3.6.2"]
+    T1190: ["IR.L2-3.6.1", "IR.L2-3.6.2"]
+
+hipaa:
+  description: "HIPAA Security Rule cross-walk (illustrative — map to §164.308/312)"
+  technique_sections:
+    T1078: ["164.308(a)(6)(ii)", "164.312(b)"]
+    T1486: ["164.308(a)(6)(ii)", "164.312(a)(2)(iv)"]
+    T1566: ["164.308(a)(5)(ii)(B)", "164.312(a)(2)(i)"]
+    T1041: ["164.312(a)(2)(iv)", "164.308(a)(4)(ii)(B)"]

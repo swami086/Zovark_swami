@@ -1,0 +1,17 @@
+# Bundled with unified signoz/signoz (v0.76+). Paths are resolved inside that container.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 127.0.0.1:9093
+
+rule_files: []
+
+scrape_configs: []
+
+remote_read:
+  - url: tcp://zovark-clickhouse:9000/signoz_metrics

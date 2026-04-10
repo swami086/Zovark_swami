@@ -1,8 +1,8 @@
 """
-Zovark Core — Log Normalizer v1.0
+Zovark Core — Log Normalizer (deprecated).
 
-Transforms vendor-specific SIEM log formats into Zovark Common Schema (ZCS).
-Runs in ingest.py AFTER sanitization, BEFORE skill retrieval.
+SIEM payloads are normalized to OCSF 1.3 at the Go API (api/ocsf_normalizer.go).
+This module is retained for tests and backward compatibility; normalize_siem_event is a no-op passthrough.
 """
 import re
 import logging
@@ -101,45 +101,8 @@ def _extract_event_id(raw_log: str) -> Optional[str]:
 
 
 def normalize_siem_event(event: dict) -> dict:
-    if not isinstance(event, dict):
-        return event
-
-    style = event.get("_field_style") or _detect_field_style(event)
-    flat = _flatten_nested(event) if any(isinstance(v, dict) for v in event.values()) else dict(event)
-
-    normalized = {}
-    original_fields = {}
-
-    for key, value in flat.items():
-        if key.startswith("_"):
-            normalized[key] = value
-            continue
-        canonical = FIELD_MAPPINGS.get(key)
-        if canonical:
-            if canonical not in normalized:
-                normalized[canonical] = value
-                original_fields[canonical] = key
-        else:
-            if key not in normalized:
-                normalized[key] = value
-
-    for port_field in ("source_port", "destination_port"):
-        if port_field in normalized:
-            normalized[port_field] = _coerce_port(normalized[port_field])
-
-    if "event_id" not in normalized and "raw_log" in normalized:
-        extracted = _extract_event_id(str(normalized.get("raw_log", "")))
-        if extracted:
-            normalized["event_id"] = extracted
-
-    if "severity" in normalized and isinstance(normalized["severity"], str):
-        normalized["severity"] = normalized["severity"].lower()
-
-    normalized["_field_style"] = style
-    normalized["_original_fields"] = original_fields
-    normalized["_normalizer_version"] = NORMALIZER_VERSION
-
-    return normalized
+    """Deprecated: API emits OCSF; worker enriches flat fields in ingest. Passthrough only."""
+    return event
 
 
 def get_zcs_field(event: dict, canonical_name: str, default=None):

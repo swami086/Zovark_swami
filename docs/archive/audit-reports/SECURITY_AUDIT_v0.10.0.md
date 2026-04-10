@@ -5,6 +5,8 @@
 **Scope:** Go API, Python Worker, Sandbox, Database, Docker, Dashboard, MCP Server
 **Classification:** CONFIDENTIAL — Internal Use Only
 
+> **Archive path note (2026):** Findings below cite **`worker/workflows.py`** and **`worker/activities.py`** as they existed at **v0.10.0**. The current investigation pipeline is **`InvestigationWorkflowV2`** in **`worker/stages/investigation_workflow.py`**, with stage logic in **`worker/stages/*.py`** and registration in **`worker/stages/register.py`**. Core activities are in **`worker/_legacy_activities.py`** (re-exported from **`worker/activities/__init__.py`**). Treat line numbers as historical; map issues to the equivalent stage or activity module when triaging in HEAD.
+
 ---
 
 ## EXECUTIVE SUMMARY
@@ -143,7 +145,7 @@ Coalescing keys lack tenant_id. Cross-tenant result sharing possible.
 | T9 | Shadow record_human_decision has no tenant check | `worker/shadow.py:189-256` |
 | T10 | Sub-resource queries (steps, approvals) lack tenant_id | `handlers.go:253-264` |
 | T11 | SSE polling queries lack tenant_id | `sse.go:88-99` |
-| T12 | fetch_task fetches by ID alone (no tenant enforcement) | `worker/activities.py:42-55` |
+| T12 | fetch_task fetches by ID alone (no tenant enforcement) | `worker/_legacy_activities.py` *(audit: `activities.py:42-55`)* |
 
 ### MEDIUM (4)
 
@@ -152,7 +154,7 @@ Coalescing keys lack tenant_id. Cross-tenant result sharing possible.
 | T13 | Expired JWT bypass | `middleware.go:57-62` |
 | T14 | OIDC role mapping trusts external claims | `oidc.go:233-245` |
 | T15 | Skills listing is global | `handlers.go:881` |
-| T16 | fetch_task in worker has no tenant enforcement | `activities.py:42-55` |
+| T16 | fetch_task in worker has no tenant enforcement | `worker/_legacy_activities.py` *(audit: `activities.py:42-55`)* |
 
 ---
 
@@ -161,11 +163,11 @@ Coalescing keys lack tenant_id. Cross-tenant result sharing possible.
 ### CRITICAL (4)
 
 **P1. Injection detector logs but does NOT block**
-`worker/workflows.py:176-204`
+`worker/stages/investigation_workflow.py` *(audit: `worker/workflows.py:176-204`)*
 `scan_for_injection()` fires, logs the event, but the workflow continues. Malicious data still flows into LLM prompts unchanged. The `injection_confidence` variable only tags entity graph edges — it never gates execution.
 
 **P2. SIEM alert data injected directly into prompts without sanitization**
-`worker/activities.py:129-138`
+`worker/_legacy_activities.py` *(audit: `worker/activities.py:129-138`)*
 ```python
 augmented_prompt = (
     f"SIEM ALERT DATA:\n{siem_context}\n\n"
@@ -175,7 +177,7 @@ augmented_prompt = (
 Raw `siem_event` dict (all attacker-controlled fields from webhook) JSON-serialized directly into LLM prompt.
 
 **P3. Prompt sanitizer only applied to `log_data`, not SIEM events**
-`worker/workflows.py:206-220`
+`worker/stages/ingest.py` / `worker/stages/investigation_workflow.py` *(audit: `worker/workflows.py:206-220`)*
 `wrap_untrusted_data()` only wraps `log_data` (file upload path). For SIEM-triggered investigations (the most common path), raw alert JSON goes into prompts with zero sanitization.
 
 **P4. `autoInvestigateAlert` constructs prompt from raw SIEM fields**
@@ -192,20 +194,20 @@ All five fields come directly from external webhook payload with zero validation
 
 | # | Finding | Location |
 |---|---------|----------|
-| P5 | Playbook system_prompt_override loaded from DB, injected raw | `activities.py:118-120` |
+| P5 | Playbook system_prompt_override loaded from DB, injected raw | `worker/_legacy_activities.py` *(audit: `activities.py:118-120`)* |
 | P6 | Shadow mode generate_recommendation receives raw data | `shadow.py:63` |
 | P7 | Entity extraction prompt includes raw investigation output | `prompts/entity_extraction.py:52-56` |
 | P8 | Investigation prompt template receives raw alert data | `prompts/investigation_prompt.py:41-46` |
-| P9 | fill_skill_parameters injects raw SIEM context | `activities.py:775-777` |
-| P10 | LLM output drives risk_score and severity with no independent validation | `workflows.py:770-845` |
+| P9 | fill_skill_parameters injects raw SIEM context | `worker/_legacy_activities.py` *(audit: `activities.py:775-777`)* |
+| P10 | LLM output drives risk_score and severity with no independent validation | `worker/stages/assess.py` *(audit: `workflows.py:770-845`)* |
 
 ### DATA FLOW GAP
 
 ```
 SIEM Webhook (untrusted) → api/siem.go (NO sanitization) → DB
-→ worker/workflows.py → scan_for_injection (DETECT ONLY, no block)
+→ worker/stages/investigation_workflow.py (InvestigationWorkflowV2) → scan_for_injection (DETECT ONLY, no block)
 → wrap_untrusted_data (ONLY for log_data, NOT siem_event)
-→ activities.py:generate_code (raw f-string interpolation)
+→ worker/_legacy_activities.py:generate_code (raw f-string interpolation)
 → LLM (injection possible)
 ```
 
@@ -350,8 +352,8 @@ OpenRouter API key `sk-or-v1-...` on disk (gitignored, but present).
 
 | # | Fix | Files | Effort | Status |
 |---|-----|-------|--------|--------|
-| 1 | **Block injection detector** — reject/quarantine when `injection_detected` | `worker/workflows.py:176-212` | 2hr | **FIXED v0.10.2** |
-| 2 | **Wire PII masking into workflows** — call `mask_for_llm` before LLM calls | `worker/workflows.py` | 4hr | **FIXED v0.10.2** |
+| 1 | **Block injection detector** — reject/quarantine when `injection_detected` | `worker/stages/investigation_workflow.py` *(audit: `workflows.py:176-212`)* | 2hr | **FIXED v0.10.2** |
+| 2 | **Wire PII masking into workflows** — call `mask_for_llm` before LLM calls | `worker/stages/*.py` *(audit: `workflows.py`)* | 4hr | **FIXED v0.10.2** |
 | 3 | **Remove expired JWT bypass** | `api/middleware.go:57-62` | 30min | **FIXED v0.10.1** |
 | 4 | **Validate tenant_id in registration** — verify tenant exists + active | `api/auth.go:36-48` | 2hr | **FIXED v0.10.2** |
 | 5 | **Fail startup without JWT_SECRET** — no hardcoded default | `api/main.go:40-43` | 30min | **FIXED v0.10.1** |
@@ -359,7 +361,7 @@ OpenRouter API key `sk-or-v1-...` on disk (gitignored, but present).
 | 7 | **Fix investigation cache tenant isolation** — add tenant_id to cache keys | `worker/investigation_cache.py`, `worker/stampede.py` | 3hr | **FIXED v0.10.2** |
 | 8 | **Scope tenant CRUD to own tenant** | `api/tenants.go` | 3hr | **FIXED v0.10.2** |
 | 9 | **Move dry-run validation into Docker sandbox** | `worker/validation/dry_run.py:84-130` | 4hr | **FIXED v0.10.2** |
-| 10 | **Sanitize SIEM fields before prompt construction** | `api/siem.go:200-221`, `worker/activities.py:130-138` | 2hr | **FIXED v0.10.2** |
+| 10 | **Sanitize SIEM fields before prompt construction** | `api/siem.go:200-221`, `worker/_legacy_activities.py` *(audit: `activities.py:130-138`)* | 2hr | **FIXED v0.10.2** |
 
 ### P1 — Fix Before Pilot Onboarding
 
@@ -405,8 +407,8 @@ OpenRouter API key `sk-or-v1-...` on disk (gitignored, but present).
 | `api/models.go:17-282` | Global model operations, no tenant isolation |
 | `api/siem.go:46,218` | No body size limit + raw fields in prompt |
 | `api/handlers.go:253,683,861` | Sub-resource BOLA + JSON injection |
-| `worker/workflows.py:176` | Injection detector doesn't block |
-| `worker/activities.py:129` | Raw SIEM data in LLM prompts |
+| `worker/stages/investigation_workflow.py` *(audit: `workflows.py:176`)* | Injection detector doesn't block |
+| `worker/_legacy_activities.py` *(audit: `activities.py:129`)* | Raw SIEM data in LLM prompts |
 | `worker/investigation_cache.py:33` | Cache keys lack tenant_id |
 | `worker/validation/dry_run.py:114` | Code execution on worker host |
 | `worker/pii_detector.py` | Built but never called (dead code) |

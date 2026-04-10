@@ -163,8 +163,8 @@ async def generate_synthetic_investigation(data: dict) -> dict:
     Input: {source: 'mitre'|'cisa', source_id, title, description, technique_id?}
     Returns: {source_id, investigation_length, tokens_used}
     """
-    llm_endpoint = os.environ.get("ZOVARK_LLM_ENDPOINT", "http://zovark-inference:8080/v1/chat/completions")
-    api_key = os.environ.get("ZOVARK_LLM_KEY", "zovark-llm-key-2026")
+    from llm_client import llm_request, resolve_llm_api_key, chat_endpoint_for_model
+
     tier_config = get_tier_config("generate_synthetic_investigation")
     llm_model = tier_config["model"]
 
@@ -199,39 +199,36 @@ async def generate_synthetic_investigation(data: dict) -> dict:
     investigation_text = ""
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                llm_endpoint,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": llm_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "temperature": 0.8,
-                    "max_tokens": 1024,
-                    "response_format": {"type": "json_object"}
-                }
-            )
-            resp.raise_for_status()
-            result = resp.json()
-            usage = result.get("usage", {})
-            tokens_used = usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
-            investigation_text = result["choices"][0]["message"]["content"].strip()
+        result = await llm_request(
+            llm_model,
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.8,
+            max_tokens=1024,
+            stage="generate_synthetic_investigation",
+            role="verdict",
+            response_format={"type": "json_object"},
+            endpoint_url=chat_endpoint_for_model(llm_model),
+            api_key=resolve_llm_api_key(None),
+        )
+        usage = result.get("usage", {})
+        tokens_used = usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
+        investigation_text = result["choices"][0]["message"]["content"].strip()
 
-            log_llm_call(
-                activity_name="generate_synthetic_investigation",
-                model_tier=tier_config["tier"],
-                model_id=llm_model,
-                prompt_name="synthetic_investigation",
-                prompt_version=get_version("synthetic_investigation"),
-                input_tokens=usage.get("prompt_tokens", 0),
-                output_tokens=usage.get("completion_tokens", 0),
-                latency_ms=int((time.time() - start_time) * 1000),
-                temperature=0.8,
-                max_tokens=tier_config["max_tokens"],
-            )
+        log_llm_call(
+            activity_name="generate_synthetic_investigation",
+            model_tier=tier_config["tier"],
+            model_id=llm_model,
+            prompt_name="synthetic_investigation",
+            prompt_version=get_version("synthetic_investigation"),
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
+            latency_ms=int((time.time() - start_time) * 1000),
+            temperature=0.8,
+            max_tokens=tier_config["max_tokens"],
+        )
     except Exception as e:
         print(f"LLM call failed for {source_id}: {e}")
         log_llm_call(

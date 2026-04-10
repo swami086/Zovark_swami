@@ -108,6 +108,9 @@ func handleDiagParseTest(c *gin.Context) {
 
 // handleDiagHealth proxies to GET sidecar:8091/health
 func handleDiagHealth(c *gin.Context) {
+	if !enforceAdminDiagnosticRateLimit(c) {
+		return
+	}
 	proxyToDiagnostics(c, http.MethodGet, "/health")
 }
 
@@ -115,6 +118,9 @@ func handleDiagHealth(c *gin.Context) {
 // sidecar health into a single response. Useful for the dashboard to show
 // one-glance system status.
 func handleSystemHealth(c *gin.Context) {
+	if !enforceAdminDiagnosticRateLimit(c) {
+		return
+	}
 	type componentResult struct {
 		name string
 		data interface{}

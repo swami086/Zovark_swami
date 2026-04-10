@@ -1,34 +1,34 @@
+# Build context: repository root (see docker-compose.yml api.build).
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.22-bookworm AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Install build dependencies
-RUN apk add --no-cache git
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 
-# Download Go modules
-COPY go.mod ./
-# Copy source code
-COPY . .
-
-# Generate go.sum and download modules
-RUN go mod tidy
+COPY api/go.mod api/go.sum ./
 RUN go mod download
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o hydra-api .
+COPY api/ ./
 
-# Runtime stage
-FROM alpine:latest
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o hydra-api .
+
+# Runtime — bookworm + DuckDB CLI for metrics (postgres_scanner)
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Add CA certificates, Python3 (for sandbox code execution), timezone data
-RUN apk --no-cache add ca-certificates tzdata python3
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates tzdata curl unzip python3 \
+    && curl -fsSL -o /tmp/duck.zip https://github.com/duckdb/duckdb/releases/download/v1.1.3/duckdb_cli-linux-amd64.zip \
+    && unzip -q -p /tmp/duck.zip duckdb > /usr/local/bin/duckdb \
+    && chmod +x /usr/local/bin/duckdb \
+    && rm -f /tmp/duck.zip \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/hydra-api .
+COPY --from=builder /build/hydra-api .
+COPY migrations/ /app/migrations/
 
-# Expose port (as per requirement, using 8090)
 EXPOSE 8090
 
 ENTRYPOINT ["./hydra-api"]

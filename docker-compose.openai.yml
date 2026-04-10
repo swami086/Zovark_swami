@@ -1,0 +1,28 @@
+# Optional overlay: route worker + healer to OpenAI Chat Completions (e.g. gpt-4o-mini).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.openai.yml up -d
+# Set ZOVARK_LLM_KEY to a real OpenAI API key in .env (never commit secrets).
+
+services:
+  worker:
+    environment:
+      - ZOVARK_LLM_PROVIDER=openai
+      - ZOVARK_LLM_BASE_URL=https://api.openai.com
+      - ZOVARK_LLM_ENDPOINT=https://api.openai.com/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT_FAST=https://api.openai.com/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT_CODE=https://api.openai.com/v1/chat/completions
+      - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY}
+      - ZOVARK_MODEL_FAST=gpt-4o-mini
+      - ZOVARK_MODEL_CODE=gpt-4o-mini
+
+  healer:
+    environment:
+      - ZOVARK_LLM_PROVIDER=openai
+      - ZOVARK_LLM_BASE_URL=https://api.openai.com
+      - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY}
+
+  api:
+    environment:
+      - ZOVARK_LLM_PROVIDER=openai
+      - ZOVARK_LLM_ENDPOINT=https://api.openai.com/v1/chat/completions
+      - ZOVARK_LLM_ENDPOINT_FAST=https://api.openai.com/v1/chat/completions
+      - ZOVARK_LLM_KEY=${ZOVARK_LLM_KEY}

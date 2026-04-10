@@ -30,6 +30,7 @@ class IngestOutput:
     skill_template: Optional[str] = None
     skill_params: List[Dict] = field(default_factory=list)
     skill_methodology: str = ""
+    trace_id: str = ""  # API/OTel correlation (Ticket 7)
 
 
 @dataclass

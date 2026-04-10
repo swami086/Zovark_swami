@@ -21,10 +21,12 @@ from contextlib import contextmanager
 try:
     from settings import settings
     OTEL_ENABLED = settings.otel_enabled
-    OTEL_ENDPOINT = settings.otel_endpoint
+    OTEL_ENDPOINT = settings.otel_endpoint.rstrip("/")
 except Exception:
-    OTEL_ENABLED = os.environ.get("OTEL_ENABLED", "true").lower() == "true"
-    OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://zovark-signoz-collector:4318")
+    OTEL_ENABLED = os.environ.get("OTEL_ENABLED", "false").lower() in ("1", "true", "yes")
+    OTEL_ENDPOINT = os.environ.get(
+        "OTEL_EXPORTER_OTLP_ENDPOINT", "http://zovark-signoz-collector:4318"
+    ).rstrip("/")
 
 # Sentinel for disabled tracing
 trace_enabled = False
@@ -91,6 +93,12 @@ def init_tracing():
         tracer = trace.get_tracer("zovark-worker", "3.0.0")
         trace_enabled = True
         print(f"[OTEL] Tracing enabled → {OTEL_ENDPOINT}", flush=True)
+        init_otel_logging()
+        try:
+            from metrics import init_worker_metrics
+            init_worker_metrics()
+        except Exception as me:
+            print(f"[OTEL] metrics hook failed (non-fatal): {me}", flush=True)
         return tracer
 
     except ImportError:
@@ -102,7 +110,48 @@ def init_tracing():
         print(f"[OTEL] Tracing init failed (non-fatal): {e}", flush=True)
         tracer = _NoOpTracer()
         trace_enabled = False
+        init_otel_logging()
         return tracer
+
+
+def init_otel_logging():
+    """Export worker logs to SigNoz via OTLP HTTP (/v1/logs). No-op if OTEL disabled or deps missing."""
+    if not OTEL_ENABLED:
+        return
+    try:
+        import logging
+
+        from opentelemetry._logs import set_logger_provider
+        from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+        from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+        from opentelemetry.sdk.resources import Resource
+
+        resource = Resource.create({
+            "service.name": "zovark-worker",
+            "service.version": "3.0.0",
+            "deployment.environment": os.environ.get("ZOVARK_ENV", "development"),
+        })
+        provider = LoggerProvider(resource=resource)
+        provider.add_log_record_processor(
+            BatchLogRecordProcessor(
+                OTLPLogExporter(endpoint=f"{OTEL_ENDPOINT}/v1/logs"),
+                max_export_batch_size=256,
+                schedule_delay_millis=2000,
+            )
+        )
+        set_logger_provider(provider)
+        handler = LoggingHandler(logger_provider=provider, level=logging.NOTSET)
+        py_log = logging.getLogger("zovark_worker")
+        py_log.handlers.clear()
+        py_log.setLevel(logging.DEBUG)
+        py_log.propagate = False
+        py_log.addHandler(handler)
+        print(f"[OTEL] Log export enabled → {OTEL_ENDPOINT}/v1/logs", flush=True)
+    except ImportError:
+        print("[OTEL] opentelemetry log exporter not available, log export skipped", flush=True)
+    except Exception as e:
+        print(f"[OTEL] Log export init failed (non-fatal): {e}", flush=True)
 
 
 def get_tracer():

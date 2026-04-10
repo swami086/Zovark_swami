@@ -28,19 +28,54 @@ const (
 func updateCmd() *cobra.Command {
 	var skipBenchmark bool
 	var modelsDir string
+	var check, apply bool
+	var kitRef, bundlePath, cosignIdentity string
+	var skipCosign bool
 
 	cmd := &cobra.Command{
-		Use:   "update <bundle.zvk>",
-		Short: "Apply a .zvk model update bundle with staging and rollback",
-		Long: `Extract a .zvk bundle to a staging directory, back up current models,
-move staged models into place, verify inference health, and optionally run
-the benchmark suite. Automatically rolls back on failure.`,
-		Args: cobra.ExactArgs(1),
+		Use:   "update",
+		Short: "Model update: --check (VRAM + accuracy) or --apply (verified install + hot-swap)",
+		Long: `Ticket 5 contract:
+
+  zvadmin update --check
+    Detects GPU VRAM via nvidia-smi, prints compatibility hints, and runs
+    the model calibration report. For quantized vs full comparison, configure
+    dual inference endpoints (ZOVARK_LLM_ENDPOINT_FAST vs ZOVARK_LLM_ENDPOINT_CODE).
+
+  zvadmin update --apply [--kit <ref>] [--bundle <path.zvk>] [bundle.zvk]
+    KitOps pull (when kit CLI is available), cosign verification, SHA-256 checks,
+    llama-server hot-swap (SIGHUP when supported), health wait, benchmark gate,
+    automatic rollback on failure.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runUpdate(args[0], modelsDir, skipBenchmark)
+			if check == apply {
+				return fmt.Errorf("specify exactly one of --check or --apply")
+			}
+			if check {
+				return runUpdateCheck()
+			}
+			if kitRef != "" && bundlePath != "" {
+				return fmt.Errorf("use only one of --kit or --bundle")
+			}
+			bundleArg := bundlePath
+			if bundleArg == "" && len(args) > 0 {
+				bundleArg = args[0]
+			}
+			if kitRef == "" && bundleArg == "" {
+				return fmt.Errorf("--apply requires --kit <ref>, --bundle <path>, or a positional .zvk path")
+			}
+			if kitRef != "" {
+				return runUpdateApplyKit(kitRef, modelsDir, skipBenchmark, skipCosign, cosignIdentity)
+			}
+			return runUpdateApplyBundle(bundleArg, modelsDir, skipBenchmark, skipCosign, cosignIdentity)
 		},
 	}
 
+	cmd.Flags().BoolVar(&check, "check", false, "VRAM detection + accuracy / calibration report")
+	cmd.Flags().BoolVar(&apply, "apply", false, "Apply update with supply-chain verification and hot-swap")
+	cmd.Flags().StringVar(&kitRef, "kit", "", "KitOps artifact reference (org/pack:tag)")
+	cmd.Flags().StringVar(&bundlePath, "bundle", "", "Local .zvk bundle path")
+	cmd.Flags().StringVar(&cosignIdentity, "cosign-certificate-identity", "", "Optional cosign certificate identity for verify-blob")
+	cmd.Flags().BoolVar(&skipCosign, "skip-cosign", false, "Skip cosign verify-blob (not recommended)")
 	cmd.Flags().BoolVar(&skipBenchmark, "skip-benchmark", false, "Skip post-update benchmark validation")
 	cmd.Flags().StringVar(&modelsDir, "models-dir", "./models", "Path to the models directory")
 	return cmd
@@ -54,7 +89,110 @@ type bundleManifest struct {
 	IncludeModels bool   `json:"include_models"`
 }
 
-func runUpdate(tarPath string, modelsDir string, skipBenchmark bool) error {
+func runUpdateApplyBundle(tarPath string, modelsDir string, skipBenchmark, skipCosign bool, cosignIdentity string) error {
+	if !skipCosign {
+		if err := cosignVerifyBlob(tarPath, cosignIdentity); err != nil {
+			return err
+		}
+	}
+	return runUpdateBundleInstall(tarPath, modelsDir, skipBenchmark)
+}
+
+func runUpdateApplyKit(kitRef, modelsDir string, skipBenchmark, skipCosign bool, cosignIdentity string) error {
+	kitBin, err := exec.LookPath("kit")
+	if err != nil {
+		return fmt.Errorf("kit CLI not found in PATH; install KitOps or use --bundle with a .zvk file")
+	}
+	tmpDir, err := os.MkdirTemp("", "zovark-kit-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	pull := exec.Command(kitBin, "pull", kitRef, "-o", tmpDir)
+	pull.Stdout = os.Stdout
+	pull.Stderr = os.Stderr
+	if err := pull.Run(); err != nil {
+		return fmt.Errorf("kit pull failed: %w", err)
+	}
+	var matches []string
+	_ = filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		if strings.HasSuffix(strings.ToLower(path), ".zvk") {
+			matches = append(matches, path)
+		}
+		return nil
+	})
+	if len(matches) == 0 {
+		return fmt.Errorf("kit pull produced no .zvk in %s", tmpDir)
+	}
+	return runUpdateApplyBundle(matches[0], modelsDir, skipBenchmark, skipCosign, cosignIdentity)
+}
+
+func cosignVerifyBlob(bundlePath, certIdentity string) error {
+	cosignBin, err := exec.LookPath("cosign")
+	if err != nil {
+		fmt.Printf("%s[warn] cosign not in PATH — skipping signature verification%s\n", colorYellow, colorReset)
+		return nil
+	}
+	sigPath := bundlePath + ".sig"
+	if _, err := os.Stat(sigPath); err != nil {
+		fmt.Printf("%s[warn] missing %s — skipping cosign (place signature next to bundle)%s\n",
+			colorYellow, filepath.Base(sigPath), colorReset)
+		return nil
+	}
+	args := []string{"verify-blob", "--signature", sigPath, bundlePath, "--insecure-ignore-tlog=true"}
+	if certIdentity != "" {
+		args = append(args, "--certificate-identity", certIdentity)
+	}
+	cmd := exec.Command(cosignBin, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("cosign verify-blob failed: %w", err)
+	}
+	fmt.Println("      cosign verify-blob: OK")
+	return nil
+}
+
+func runUpdateCheck() error {
+	fmt.Println("ZOVARK MODEL UPDATE — CHECK")
+	fmt.Println("═══════════════════════════")
+
+	out, err := exec.Command("nvidia-smi", "--query-gpu=name,memory.total,memory.free", "--format=csv,noheader").Output()
+	if err != nil {
+		fmt.Printf("%s[warn] nvidia-smi not available (%v)%s\n", colorYellow, err, colorReset)
+	} else {
+		fmt.Println("[GPU] nvidia-smi:")
+		fmt.Print(string(out))
+	}
+
+	fast := strings.TrimSpace(os.Getenv("ZOVARK_LLM_ENDPOINT_FAST"))
+	code := strings.TrimSpace(os.Getenv("ZOVARK_LLM_ENDPOINT_CODE"))
+	if fast != "" && code != "" && fast != code {
+		fmt.Println("\n[compare] Dual LLM endpoints configured — FAST vs CODE can host quantized vs full-precision models.")
+	} else {
+		fmt.Println("\n[compare] Single LLM endpoint — deploy dual endpoints for quantized vs full comparison.")
+	}
+
+	self, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("executable: %w", err)
+	}
+	fmt.Println("\n[accuracy] Running modelcheck (calibration report) ...")
+	mc := exec.Command(self, "modelcheck")
+	mc.Stdout = os.Stdout
+	mc.Stderr = os.Stderr
+	if err := mc.Run(); err != nil {
+		fmt.Printf("%smodelcheck exited with error: %v%s\n", colorYellow, err, colorReset)
+	}
+	fmt.Println("═══════════════════════════")
+	return nil
+}
+
+func runUpdateBundleInstall(tarPath string, modelsDir string, skipBenchmark bool) error {
 	fmt.Println("ZOVARK MODEL UPDATE")
 	fmt.Println("═══════════════════")
 
@@ -169,17 +307,20 @@ func runUpdate(tarPath string, modelsDir string, skipBenchmark bool) error {
 	// Clean staging
 	_ = os.RemoveAll(stagingPath)
 
-	// --- Stage 4: Restart inference container ---
-	fmt.Printf("[5/7] Restarting inference container (%s) ...\n", inferenceContainer)
-	restartErr := restartContainer(inferenceContainer)
+	// --- Stage 4: Hot-swap (SIGHUP) then full restart fallback ---
+	fmt.Printf("[5/7] Reloading inference (%s) — SIGHUP hot-swap when supported ...\n", inferenceContainer)
+	restartErr := reloadInferenceHUP()
 	if restartErr != nil {
-		// Container might not exist (host-mode inference). Try restarting host LLM service.
-		fmt.Printf("      Container restart failed: %v\n", restartErr)
-		fmt.Println("      Attempting host LLM service restart ...")
-		restartErr = restartHostLLM()
+		fmt.Printf("      SIGHUP reload unavailable: %v\n", restartErr)
+		restartErr = restartContainer(inferenceContainer)
+		if restartErr != nil {
+			fmt.Printf("      Container restart failed: %v\n", restartErr)
+			fmt.Println("      Attempting host LLM service restart ...")
+			restartErr = restartHostLLM()
+		}
 	}
 	if restartErr != nil {
-		fmt.Printf("      %sWARNING: Could not restart inference. Verify manually.%s\n", colorYellow, colorReset)
+		fmt.Printf("      %sWARNING: Could not reload inference. Verify manually.%s\n", colorYellow, colorReset)
 		fmt.Println("      Continuing with health check ...")
 	}
 
@@ -402,6 +543,15 @@ func rollbackModels(backupDir, modelsDir string) {
 }
 
 // ─── CONTAINER MANAGEMENT ────────────────────────────────────────────
+
+func reloadInferenceHUP() error {
+	cmd := exec.Command("docker", "kill", "-s", "HUP", inferenceContainer)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker HUP: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
 
 func restartContainer(name string) error {
 	cmd := exec.Command("docker", "restart", name)

@@ -116,7 +116,7 @@ All 55 open GitHub issues were implemented across 5 parallel workstreams and mer
 ### #51 — Auto-Trigger Response Playbooks
 - **File:** `worker/response/auto_trigger.py`
 - Activity `auto_trigger_playbooks` — fires matching playbooks on `true_positive` with high/critical severity
-- Wired into `ExecuteTaskWorkflow` SOAR section in `workflows.py`
+- Invoked as Temporal activity `auto_trigger_playbooks` from the investigation completion path; orchestration today is **`InvestigationWorkflowV2`** (`worker/stages/investigation_workflow.py`) instead of legacy `ExecuteTaskWorkflow` / `workflows.py`
 
 ### #52 — Scheduled Workflow Execution
 - **Files:** `worker/scheduler/__init__.py`, `worker/scheduler/workflow.py`, `migrations/024_scheduled_workflows.sql`

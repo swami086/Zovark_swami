@@ -14,6 +14,7 @@ import psycopg2
 
 from temporalio import activity
 from stages import StoreOutput
+from stages.trace_helpers import trace_stage_store_span, trace_store_apply_outcome
 
 try:
     from settings import settings as _settings
@@ -35,37 +36,33 @@ def _get_redis():
         return None
 
 
-def _update_dedup_entry(task_id: str, verdict: str, risk_score: int, status: str, siem_event: dict):
+def _update_dedup_entry(conn, task_id: str, verdict: str, risk_score: int, status: str, siem_event: dict):
     """Update the Redis dedup entry with investigation results (v2 dedup).
-    Non-fatal — dedup still works via TTL if this fails."""
+    Uses only agent_tasks.dedup_hash (API-computed). Never recomputes hashes in Python."""
     try:
         r = _get_redis()
         if r is None:
             return
-        # Recompute the same hash used by the Go API (alert_dedup.go)
-        import hashlib
-        import re as _re
-        ts_patterns = [
-            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?',
-            r'\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}',
-            r'\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}',
-        ]
-        raw_log = siem_event.get("raw_log", "") if isinstance(siem_event, dict) else ""
-        for pat in ts_patterns:
-            raw_log = _re.sub(pat, "TIMESTAMP", raw_log)
-        se = siem_event if isinstance(siem_event, dict) else {}
-        canonical = {
-            "destination_ip": se.get("destination_ip", se.get("dest_ip", "")),
-            "hostname": se.get("hostname", ""),
-            "raw_log": raw_log,
-            "rule_name": se.get("rule_name", ""),
-            "source_ip": se.get("source_ip", ""),
-            "username": se.get("username", ""),
-        }
-        data = json.dumps(canonical, sort_keys=True).encode()
-        alert_hash = hashlib.sha256(data).hexdigest()
+        alert_hash = None
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT dedup_hash FROM agent_tasks WHERE id = %s",
+                    (task_id,),
+                )
+                row = cur.fetchone()
+                if row and row[0]:
+                    alert_hash = row[0]
+        except Exception:
+            pass
+        if not alert_hash:
+            print(
+                f"[STORE] WARNING: agent_tasks.dedup_hash missing for task_id={task_id}; "
+                "skipping Redis dedup entry update (API-only dedup hash ownership)"
+            )
+            r.close()
+            return
         key = f"dedup:exact:{alert_hash}"
-
         existing = r.get(key)
         if existing:
             entry = json.loads(existing)
@@ -231,6 +228,26 @@ async def store_investigation(data: dict) -> dict:
     Input: merged dict from AssessOutput + ExecuteOutput + task metadata
     Returns: dict (serializable StoreOutput fields)
     """
+    span_ctx = {
+        "task_id": data.get("task_id", "") or "",
+        "tenant_id": data.get("tenant_id", "") or "",
+        "task_type": data.get("task_type", "") or "",
+        "trace_id": str(data.get("trace_id", "") or ""),
+    }
+    import time as _time
+    _t0 = _time.perf_counter()
+    try:
+        with trace_stage_store_span(span_ctx) as _span:
+            return await _store_investigation_body(data, _span)
+    finally:
+        try:
+            from metrics import record_pipeline_stage
+            record_pipeline_stage("store", _time.perf_counter() - _t0)
+        except Exception:
+            pass
+
+
+async def _store_investigation_body(data: dict, _span) -> dict:
     task_id = data.get("task_id", "")
     tenant_id = data.get("tenant_id", "")
     status = data.get("status", "completed")
@@ -352,9 +369,25 @@ async def store_investigation(data: dict) -> dict:
                 print(f"NOTIFY failed (non-fatal): {notify_err}")
 
         # Update Redis dedup entry with investigation results (v2 dedup)
-        _update_dedup_entry(task_id, verdict, risk_score, status, siem_event)
+        _update_dedup_entry(conn, task_id, verdict, risk_score, status, siem_event)
 
         conn.commit()
+
+        try:
+            from data_plane.emit import emit_after_investigation_stored
+
+            await emit_after_investigation_stored(
+                task_id=task_id,
+                tenant_id=tenant_id,
+                verdict=verdict,
+                risk_score=risk_score,
+                task_type=task_type,
+                trace_id=trace_id,
+                investigation_id=investigation_id,
+                status=status,
+            )
+        except Exception as dp_err:
+            print(f"[DATA_PLANE] emit failed (non-fatal): {dp_err}")
     except Exception as e:
         conn.rollback()
         print(f"Store failed: {e}")
@@ -369,5 +402,16 @@ async def store_investigation(data: dict) -> dict:
         memory_saved=status == "completed",
         pattern_saved=status == "completed",
     )
+
+    try:
+        trace_store_apply_outcome(_span, verdict, risk_score, len(iocs) if isinstance(iocs, list) else 0, trace_id)
+    except Exception:
+        pass
+
+    try:
+        from metrics import record_investigation_completed
+        record_investigation_completed(str(verdict or ""), str(status or ""))
+    except Exception:
+        pass
 
     return asdict(result)

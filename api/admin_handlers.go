@@ -39,6 +39,9 @@ func scrubSecrets(input string) string {
 // diagnosticExportHandler creates a .zvk (zip) diagnostic bundle.
 // GET /api/v1/admin/diagnostics/export
 func diagnosticExportHandler(c *gin.Context) {
+	if !enforceAdminDiagnosticRateLimit(c) {
+		return
+	}
 	tenantID := c.MustGet("tenant_id").(string)
 	userID := c.GetString("user_id")
 	ctx := c.Request.Context()

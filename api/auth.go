@@ -25,6 +25,8 @@ type LoginRequest struct {
 	TOTPCode string `json:"totp_code"` // Optional TOTP code for 2FA
 }
 
+// CustomClaims — Bearer JWT payload validated in middleware under OTel span
+// "auth.jwt_validate" (Ticket 7).
 type CustomClaims struct {
 	TenantID string `json:"tenant_id"`
 	UserID   string `json:"user_id"`
