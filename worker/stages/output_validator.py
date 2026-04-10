@@ -11,7 +11,7 @@ from typing import Tuple
 
 # Valid verdicts that the pipeline can produce
 VALID_VERDICTS = {
-    "true_positive", "false_positive", "suspicious",
+    "true_positive", "false_positive", "suspicious", "needs_review",
     "benign", "needs_manual_review", "inconclusive",
 }
 

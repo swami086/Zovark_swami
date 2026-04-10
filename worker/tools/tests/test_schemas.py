@@ -41,7 +41,7 @@ class TestVerdictOutput:
             )
 
     def test_all_verdicts_accepted(self):
-        for v in ["true_positive", "suspicious", "benign", "inconclusive", "error"]:
+        for v in ["true_positive", "suspicious", "needs_review", "benign", "inconclusive", "error"]:
             result = VerdictOutput(
                 verdict=v, risk_score=50, severity="medium", summary="Test",
             )

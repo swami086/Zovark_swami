@@ -55,42 +55,16 @@ except ImportError:
 ASSESS_SUMMARY_TIMEOUT = float(os.getenv("ZOVARK_ASSESS_TIMEOUT", "45"))
 
 
-# --- Verdict derivation ---
+# --- Verdict derivation (shared from worker/verdict.py) ---
+from verdict import derive_verdict as _derive_verdict_impl, severity_from_risk as _severity_from_risk_impl
+
+
 def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int, execution_mode: str = "sandbox") -> str:
-    # Error state: safety wrapper produced risk=0 with a single error finding
-    # Only applies to sandbox mode — v3 tool mode can legitimately produce risk=0 for benign alerts
-    if execution_mode == "sandbox" and risk_score == 0 and finding_count <= 1:
-        return "error"
-    # Benign: unconditional at low risk
-    if risk_score <= 35:
-        return "benign"
-    # True positive: high confidence
-    if risk_score >= 80 and ioc_count >= 3:
-        return "true_positive"
-    if risk_score >= 70:
-        return "true_positive"
-    # Suspicious: moderate signals (covers the 25-49 dead zone)
-    if risk_score >= 50:
-        return "suspicious"
-    if risk_score >= 25 and finding_count >= 1:
-        return "suspicious"
-    # Benign: low risk with no findings
-    if finding_count == 0 and ioc_count == 0:
-        return "benign"
-    # Last resort — should be very rare
-    return "inconclusive"
+    return _derive_verdict_impl(risk_score, ioc_count, finding_count, execution_mode=execution_mode)
 
 
 def _severity_from_risk(risk_score: int) -> str:
-    if risk_score >= 80:
-        return "critical"
-    elif risk_score >= 60:
-        return "high"
-    elif risk_score >= 40:
-        return "medium"
-    elif risk_score >= 20:
-        return "low"
-    return "informational"
+    return _severity_from_risk_impl(risk_score)
 
 
 # --- Template summary (no LLM) ---
@@ -354,6 +328,8 @@ def _generate_plain_english(task_type: str, verdict: str, risk_score: int,
         lines.append(f"• CONFIRMED ATTACK detected from {src}")
     elif verdict == "suspicious":
         lines.append(f"• Suspicious activity detected from {src}")
+    elif verdict == "needs_review":
+        lines.append(f"• Moderate-risk activity from {src} — analyst review recommended")
     elif verdict == "benign":
         lines.append(f"• Routine activity — no threat detected")
     elif verdict == "needs_analyst_review":
@@ -717,7 +693,7 @@ async def assess_results(data: dict) -> dict:
         # Map severity for validation (assess uses "informational", schema uses "info")
         sev_map = {"informational": "info", "critical": "critical", "high": "high", "medium": "medium", "low": "low", "info": "info"}
         # Only validate the core verdicts (needs_analyst_review/needs_manual_review bypass validation)
-        if verdict in ("true_positive", "suspicious", "benign", "inconclusive", "error"):
+        if verdict in ("true_positive", "suspicious", "needs_review", "benign", "inconclusive", "error"):
             verdict_for_validation = {
                 "verdict": verdict,
                 "risk_score": risk_score,

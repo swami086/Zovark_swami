@@ -6,9 +6,9 @@ import sys
 import time
 import os
 
-# Stdlib logger — receives OTLP handler when tracing.init_tracing() / init_otel_logging() runs
+# Stdlib logger — propagates to root; root gets OpenTelemetry LoggingHandler (SigNoz) after init_tracing()
 _pylog = logging.getLogger("zovark_worker")
-_pylog.propagate = False
+_pylog.propagate = True
 _pylog.setLevel(logging.DEBUG)
 
 
@@ -21,14 +21,14 @@ def log(level, message, **kwargs):
     }
     entry.update(kwargs)
     print(json.dumps(entry, default=str), file=sys.stderr, flush=True)
-    if _pylog.handlers:
-        mapping = {"info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR}
-        py_level = mapping.get(level.lower(), logging.INFO)
-        extra = {f"zovark.{k}": str(v) for k, v in kwargs.items()}
-        try:
-            _pylog.log(py_level, message, extra=extra)
-        except Exception:
-            pass
+    # Always emit to stdlib logger so OpenTelemetry root LoggingHandler (SigNoz) receives it.
+    mapping = {"info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR}
+    py_level = mapping.get(level.lower(), logging.INFO)
+    extra = {f"zovark.{k}": str(v) for k, v in kwargs.items()}
+    try:
+        _pylog.log(py_level, message, extra=extra)
+    except Exception:
+        pass
 
 
 def info(msg, **kw):

@@ -99,6 +99,14 @@ func main() {
 		log.Fatal("FATAL: JWT_SECRET must be at least 32 characters. Generate with: openssl rand -base64 64")
 	}
 
+	// OpenTelemetry before DB/Redis so pgx tracer and redisotel see a real TracerProvider (Ticket 9).
+	initAPIOTel(context.Background())
+	defer func() {
+		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		shutdownAPIOTel(sctx)
+	}()
+
 	// Initialize Database connection
 	err := initDB(appConfig.DatabaseURL)
 	if err != nil {
@@ -108,6 +116,7 @@ func main() {
 
 	// Initialize Redis for rate limiting
 	initRedis()
+	instrumentRedisOTel()
 
 	// Initialize Temporal client
 	err = initTemporal(appConfig.TemporalAddress)
@@ -115,13 +124,6 @@ func main() {
 		log.Fatalf("Failed to initialize Temporal client: %v", err)
 	}
 	defer closeTemporal()
-
-	initAPIOTel(context.Background())
-	defer func() {
-		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		shutdownAPIOTel(sctx)
-	}()
 
 	// Initialize OIDC (SSO)
 	initOIDC()

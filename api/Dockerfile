@@ -1,6 +1,6 @@
 # Build context: repository root (see docker-compose.yml api.build).
 # Build stage
-FROM golang:1.22-bookworm AS builder
+FROM golang:1.25-bookworm AS builder
 
 WORKDIR /build
 

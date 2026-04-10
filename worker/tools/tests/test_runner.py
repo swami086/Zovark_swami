@@ -88,7 +88,7 @@ class TestBasicPlanExecution:
         result = execute_plan(plan, {"raw_log": "Attack from 10.0.0.5"})
         assert result["tools_executed"] == 1
         assert len(result["iocs"]) >= 1
-        assert result["verdict"] in ("benign", "inconclusive")
+        assert result["verdict"] in ("benign", "needs_review")
 
     def test_multi_step_plan(self):
         plan = [

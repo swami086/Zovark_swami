@@ -97,7 +97,7 @@ def lookup_known_bad(value: str, ioc_type: str) -> dict:
             result["is_known_bad"] = True
             result["category"] = KNOWN_BAD_DOMAINS[value_lower]
     elif ioc_type == "hash":
-        pass  # No local hash DB yet
+        result["note"] = "hash_lookup_not_implemented"
 
     return result
 

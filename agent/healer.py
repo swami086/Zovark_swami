@@ -88,6 +88,60 @@ logging.basicConfig(
 )
 log = logging.getLogger("healer")
 
+# ── OTLP Log Export (optional — degrades gracefully) ──────────────────
+_otel_log_provider = None
+
+def _init_otel_logging():
+    """Export healer logs to SigNoz via OTLP HTTP when OTEL_ENABLED."""
+    global _otel_log_provider
+    if not OTEL_ENABLED:
+        return
+    otel_endpoint = os.environ.get(
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        os.environ.get("ZOVARK_OTEL_ENDPOINT", "http://zovark-signoz-collector:4318"),
+    ).rstrip("/")
+    try:
+        import atexit
+        from opentelemetry._logs import set_logger_provider
+        from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+        from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+        from opentelemetry.sdk.resources import Resource
+
+        resource = Resource.create({
+            "service.name": "zovark-healer",
+            "service.version": "1.1",
+            "deployment.environment": os.environ.get("ZOVARK_ENV", "development"),
+        })
+        provider = LoggerProvider(resource=resource)
+        provider.add_log_record_processor(
+            BatchLogRecordProcessor(
+                OTLPLogExporter(endpoint=f"{otel_endpoint}/v1/logs"),
+                max_export_batch_size=32,
+                schedule_delay_millis=2000,
+                export_timeout_millis=10_000,
+            )
+        )
+        set_logger_provider(provider)
+        _otel_log_provider = provider
+
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=provider)
+        logging.getLogger().addHandler(handler)
+
+        def _flush():
+            try:
+                provider.shutdown()
+            except Exception:
+                pass
+        atexit.register(_flush)
+        log.info("OTLP log export enabled → %s/v1/logs", otel_endpoint)
+    except ImportError:
+        log.info("opentelemetry log SDK not installed, OTLP log export skipped")
+    except Exception as e:
+        log.warning("OTLP log export init failed (non-fatal): %s", e)
+
+_init_otel_logging()
+
 # ── Global State ───────────────────────────────────────────────────────
 
 services: dict = {}           # name -> ServiceState

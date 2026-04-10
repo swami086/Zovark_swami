@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -11,12 +12,25 @@ import (
 var dbPool *pgxpool.Pool
 
 func initDB(dbURL string) error {
-	var err error
-	dbPool, err = pgxpool.New(context.Background(), dbURL)
+	cfg, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		return fmt.Errorf("parse database url: %w", err)
+	}
+	if otelTracerProvider != nil {
+		opts := []otelpgx.Option{otelpgx.WithTracerProvider(otelTracerProvider)}
+		if otelMeterProvider != nil {
+			opts = append(opts, otelpgx.WithMeterProvider(otelMeterProvider))
+		}
+		cfg.ConnConfig.Tracer = otelpgx.NewTracer(opts...)
+	}
+	dbPool, err = pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
 		return err
 	}
-	return dbPool.Ping(context.Background())
+	if err := dbPool.Ping(context.Background()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func closeDB() {

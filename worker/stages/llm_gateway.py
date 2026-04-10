@@ -248,24 +248,3 @@ def _log_audit(
         pass  # Table may not exist yet — never block pipeline
 
 
-def preload_llm_models():
-    """Pre-load CODE and FAST models into VRAM via Ollama-compatible /api/generate endpoint."""
-    import logging
-    logger = logging.getLogger(__name__)
-    if os.environ.get("ZOVARK_LLM_PROVIDER", "local").lower().strip() == "openai":
-        logger.info("Skipping VRAM preload — ZOVARK_LLM_PROVIDER=openai")
-        return
-    for model, ep in [(MODEL_CODE, ENDPOINT_CODE), (MODEL_FAST, ENDPOINT_FAST)]:
-        base_url = ep.replace("/v1/chat/completions", "").replace("/v1/models", "")
-        try:
-            import httpx
-            resp = httpx.post(f"{base_url}/api/generate", json={
-                "model": model, "prompt": "ok", "keep_alive": "30m", "stream": False,
-            }, timeout=60.0)
-            logger.info(f"Pre-loaded {model} on {base_url} (status={resp.status_code})")
-        except Exception as e:
-            logger.warning(f"Failed to pre-load {model} on {base_url}: {e}")
-
-
-# Backward compatibility alias
-preload_ollama_model = preload_llm_models

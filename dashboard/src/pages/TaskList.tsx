@@ -94,7 +94,7 @@ const TaskList = () => {
     const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const esRef = useRef<EventSource | null>(null);
     const reconnectAttempt = useRef(0);
-    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const reconnectTimerRef = useRef<number | undefined>(undefined);
     const streamHadFailureRef = useRef(false);
     /** For keyset Prev: cursor values that led to the current page (parent chain). */
     const cursorBreadcrumbRef = useRef<string[]>([]);

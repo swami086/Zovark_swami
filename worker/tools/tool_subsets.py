@@ -50,7 +50,7 @@ TOOL_SUBSETS = {
     "insider_threat_detection": [
         "extract_usernames", "extract_ipv4", "extract_emails",
         "count_pattern", "detect_data_exfil", "score_exfiltration",
-        "lookup_institutional_knowledge", "map_mitre",
+        "correlate_with_history", "lookup_institutional_knowledge", "map_mitre",
     ],
     "network_beaconing": [
         "extract_ipv4", "extract_domains", "parse_dns_query",

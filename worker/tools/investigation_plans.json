@@ -55,7 +55,7 @@
             {"tool": "extract_urls", "args": {"text": "$raw_log"}},
             {"tool": "detect_encoding", "args": {"text": "$raw_log"}},
             {"tool": "detect_data_exfil", "args": {"siem_event": "$siem_event"}},
-            {"tool": "score_exfiltration", "args": {"bytes_transferred": 0, "is_external_dest": true, "is_off_hours": false, "is_encrypted": false}},
+            {"tool": "score_exfiltration", "args": {"bytes_transferred": "$siem_event.bytes_transferred", "is_external_dest": true, "is_off_hours": false, "is_encrypted": false}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1041", "T1048", "T1567"]}}
         ]
@@ -70,7 +70,7 @@
             {"tool": "detect_com_hijacking", "args": {"siem_event": "$siem_event"}},
             {"tool": "detect_token_impersonation", "args": {"siem_event": "$siem_event"}},
             {"tool": "detect_appcert_dlls", "args": {"siem_event": "$siem_event"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1548", "T1068", "T1134", "T1078", "T1546.015", "T1546.009", "T1134.001"]}}
         ]
@@ -82,7 +82,7 @@
             {"tool": "extract_domains", "args": {"text": "$raw_log"}},
             {"tool": "calculate_entropy", "args": {"text": "$siem_event.domain"}},
             {"tool": "detect_c2", "args": {"siem_event": "$siem_event"}},
-            {"tool": "score_c2_beacon", "args": {"interval_stddev": 0.0, "avg_interval_seconds": 60.0, "connection_count": "$step1.count", "domain_entropy": "$step3"}},
+            {"tool": "score_c2_beacon", "args": {"interval_stddev": "$step4.interval_stddev", "avg_interval_seconds": "$step4.avg_interval_seconds", "connection_count": "$step1.count", "domain_entropy": "$step3"}},
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 168, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1071", "T1095", "T1573", "T1105"]}}
@@ -113,7 +113,8 @@
             {"tool": "extract_emails", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)download|copy|transfer|export|bulk|staging|archive|zip|tar|compress"}},
             {"tool": "detect_data_exfil", "args": {"siem_event": "$siem_event"}},
-            {"tool": "score_exfiltration", "args": {"bytes_transferred": 0, "is_external_dest": false, "is_off_hours": false, "is_encrypted": false}},
+            {"tool": "score_exfiltration", "args": {"bytes_transferred": "$siem_event.bytes_transferred", "is_external_dest": false, "is_off_hours": false, "is_encrypted": false}},
+            {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 72, "history_context": "$correlation_context"}},
             {"tool": "lookup_institutional_knowledge", "args": {"entities": "$step1", "knowledge_base": "$institutional_knowledge"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1074", "T1114", "T1530", "T1567"]}}
         ]
@@ -126,7 +127,7 @@
             {"tool": "parse_dns_query", "args": {"raw_log": "$raw_log"}},
             {"tool": "calculate_entropy", "args": {"text": "$siem_event.domain"}},
             {"tool": "detect_c2", "args": {"siem_event": "$siem_event"}},
-            {"tool": "score_c2_beacon", "args": {"interval_stddev": 0.0, "avg_interval_seconds": 30.0, "connection_count": "$step1.count", "domain_entropy": "$step4"}},
+            {"tool": "score_c2_beacon", "args": {"interval_stddev": "$step5.interval_stddev", "avg_interval_seconds": "$step5.avg_interval_seconds", "connection_count": "$step1.count", "domain_entropy": "$step4"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 168, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1071.001", "T1071.004", "T1573"]}}
         ]
@@ -138,7 +139,7 @@
             {"tool": "extract_usernames", "args": {"text": "$raw_log"}},
             {"tool": "extract_emails", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)iam|cloudtrail|CreateUser|AttachPolicy|PutBucketPolicy|AssumeRole|ConsoleLogin|StopLogging|DeleteTrail"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 72, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1078.004", "T1098", "T1562.008", "T1537"]}}
@@ -152,7 +153,7 @@
             {"tool": "extract_urls", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)npm|pip|gem|nuget|maven|package|install|dependency|typosquat|hash.mismatch|checksum|CI|pipeline|build"}},
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 168, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1195", "T1195.001", "T1195.002"]}}
         ]
@@ -188,7 +189,7 @@
             {"tool": "extract_ipv4", "args": {"text": "$raw_log"}},
             {"tool": "extract_usernames", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)DRSGetNCChanges|replication|DCSync|4662|1131|DS-Replication|mimikatz|lsadump"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1003.006"]}}
         ]
@@ -201,7 +202,7 @@
             {"tool": "extract_ipv4", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)sideload|unsigned|dll|loadlibrary|appdata|temp|programdata|writable"}},
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 72, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1574.002"]}}
         ]
@@ -214,7 +215,7 @@
             {"tool": "extract_urls", "args": {"text": "$raw_log"}},
             {"tool": "detect_lolbin_abuse", "args": {"siem_event": "$siem_event"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)certutil|mshta|bitsadmin|rundll32|regsvr32|cmstp|msiexec|wscript|cscript|forfiles|pcalua"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step5", "high_severity_count": "$step5", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step5", "high_severity_count": 0, "medium_severity_count": "$step5"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1218", "T1218.001", "T1218.005", "T1218.010", "T1218.011"]}}
         ]
@@ -226,7 +227,7 @@
             {"tool": "extract_ipv4", "args": {"text": "$raw_log"}},
             {"tool": "extract_hashes", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)CreateRemoteThread|NtWriteVirtualMemory|VirtualAllocEx|lsass|inject|hollowing|QueueUserAPC|SetThreadContext"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1055", "T1055.001", "T1055.012"]}}
@@ -251,7 +252,7 @@
             {"tool": "extract_usernames", "args": {"text": "$raw_log"}},
             {"tool": "parse_auth_log", "args": {"raw_log": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)tunnel|plink|putty|ssh.*-L|ssh.*-R|rdp|3389|mstsc|reverse.forward|port.forward|netsh"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 72, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1021.001", "T1572"]}}
@@ -277,8 +278,8 @@
             {"tool": "detect_encoding", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)-enc|-encodedcommand|IEX|Invoke-Expression|Net\\.WebClient|DownloadString|FromBase64|bypass|amsi|ScriptBlock"}},
             {"tool": "detect_lolbin_abuse", "args": {"siem_event": "$siem_event"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
-            {"tool": "correlate_with_history", "args": {"ioc_values": [], "lookback_hours": 48, "history_context": "$correlation_context"}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
+            {"tool": "correlate_with_history", "args": {"ioc_values": "$step2", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1059.001", "T1027", "T1140"]}}
         ]
     },
@@ -290,7 +291,7 @@
             {"tool": "extract_ipv4", "args": {"text": "$raw_log"}},
             {"tool": "extract_hashes", "args": {"text": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)credential|password|lsass|mimikatz|procdump|SAM|NTDS|vault|keylog|dpapi|sekurlsa|hashdump"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step5", "high_severity_count": "$step5", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step5", "high_severity_count": 0, "medium_severity_count": "$step5"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step3", "lookback_hours": 72, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1003", "T1003.001", "T1110", "T1555"]}}
         ]
@@ -303,7 +304,7 @@
             {"tool": "parse_http_request", "args": {"raw_log": "$raw_log"}},
             {"tool": "count_pattern", "args": {"text": "$raw_log", "pattern": "(?i)api.key|token|bearer|authorization|unauthorized|403|401|rate.limit|key.exposed|secret"}},
             {"tool": "lookup_known_bad", "args": {"value": "$siem_event.source_ip", "ioc_type": "ip"}},
-            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": "$step4", "medium_severity_count": 0}},
+            {"tool": "score_generic", "args": {"indicators_found": "$step4", "high_severity_count": 0, "medium_severity_count": "$step4"}},
             {"tool": "correlate_with_history", "args": {"ioc_values": "$step1", "lookback_hours": 48, "history_context": "$correlation_context"}},
             {"tool": "map_mitre", "args": {"technique_ids": ["T1552.004", "T1528"]}}
         ]

@@ -34,6 +34,20 @@ export const clearToken = () => {
 
 export const getUser = () => currentUser;
 
+/** Latest `X-Zovark-Trace-ID` from an API response (Ticket 10). */
+let lastApiTraceId: string | null = null;
+
+export function captureApiTraceId(response: Response): void {
+    const t = response.headers.get('X-Zovark-Trace-ID');
+    if (t) {
+        lastApiTraceId = t.trim();
+    }
+}
+
+export function getLastApiTraceId(): string | null {
+    return lastApiTraceId;
+}
+
 /** For EventSource (SSE) which cannot send Authorization headers. */
 export const getAccessToken = () => jwtToken;
 
@@ -54,6 +68,7 @@ const refreshAccessToken = async (): Promise<boolean> => {
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
             });
+            captureApiTraceId(resp);
             if (!resp.ok) return false;
             const data = await resp.json();
             if (data.token) {
@@ -87,6 +102,7 @@ const fetchWithRefresh = async (url: string, options: RequestInit = {}): Promise
     options.credentials = 'include';
 
     let response = await fetch(url, options);
+    captureApiTraceId(response);
     if (response.status === 401 && !isRefreshing) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
@@ -97,6 +113,7 @@ const fetchWithRefresh = async (url: string, options: RequestInit = {}): Promise
             }
             options.headers = newHeaders;
             response = await fetch(url, options);
+            captureApiTraceId(response);
         }
     }
     return response;
@@ -386,6 +403,7 @@ export const login = async (email: string, password: string): Promise<any> => {
         credentials: 'include',
         body: JSON.stringify({ email, password }),
     });
+    captureApiTraceId(response);
 
     if (!response.ok) {
         throw new Error('Invalid credentials');
@@ -398,11 +416,12 @@ export const login = async (email: string, password: string): Promise<any> => {
 
 export const logout = async (): Promise<void> => {
     try {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
+        const r = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
         });
+        captureApiTraceId(r);
     } catch { /* ignore logout errors */ }
     clearToken();
 };
@@ -413,6 +432,7 @@ export const register = async (email: string, password: string, display_name: st
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, display_name, tenant_id }),
     });
+    captureApiTraceId(response);
 
     if (!response.ok) {
         throw new Error('Failed to register');

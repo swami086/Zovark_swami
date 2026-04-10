@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 func loggingMiddleware() gin.HandlerFunc {
@@ -20,7 +22,20 @@ func loggingMiddleware() gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		latency := time.Since(start)
-		log.Printf("[%s] %s %d %v", c.Request.Method, c.Request.URL.Path, c.Writer.Status(), latency)
+		ctx := c.Request.Context()
+		attrs := []slog.Attr{
+			slog.String("http.method", c.Request.Method),
+			slog.String("http.path", c.Request.URL.Path),
+			slog.Int("http.status", c.Writer.Status()),
+			slog.Duration("duration", latency),
+		}
+		if sc := oteltrace.SpanFromContext(ctx).SpanContext(); sc.IsValid() {
+			attrs = append(attrs, slog.String("trace_id", sc.TraceID().String()))
+		}
+		if route := c.FullPath(); route != "" {
+			attrs = append(attrs, slog.String("http.route", route))
+		}
+		slog.LogAttrs(ctx, slog.LevelInfo, "http_request", attrs...)
 	}
 }
 
@@ -45,7 +60,7 @@ func corsMiddleware() gin.HandlerFunc {
 
 	config.AllowCredentials = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
-	config.ExposeHeaders = []string{"Set-Cookie", "X-Zovark-Trace-ID"}
+	config.ExposeHeaders = []string{"Set-Cookie", "X-Zovark-Trace-ID", "traceparent", "tracestate"}
 	return cors.New(config)
 }
 

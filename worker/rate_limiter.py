@@ -126,5 +126,8 @@ def get_active_count(tenant_id: str) -> int:
         return 0
 
 
-# TODO: For >100 concurrent tasks per tenant, migrate from SET to sorted sets
-# with score=expiry_timestamp for O(log N) cleanup of expired leases.
+# KNOWN_LIMITATION: At >100 concurrent tasks per tenant, SCARD on the active
+# lease SET becomes an O(1) bottleneck for counting but SMEMBERS for cleanup
+# is O(N). Migrate to a sorted set keyed by expiry_timestamp for O(log N)
+# lease expiry if a tenant regularly exceeds 100 concurrent tasks.
+# Current production peak: ~50 concurrent/tenant. Threshold: 100.

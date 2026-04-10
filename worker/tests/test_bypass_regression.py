@@ -199,12 +199,14 @@ class TestRunnerVerdictDerivation:
     def test_verdict_benign_low_score(self):
         assert _derive_verdict(20, 0, 0) == "benign"
 
-    def test_verdict_true_positive_at_50(self):
-        # Lowered threshold from 70 to 50
-        assert _derive_verdict(50, 0, 1) == "true_positive"
+    def test_verdict_suspicious_at_50(self):
+        assert _derive_verdict(50, 0, 1) == "suspicious"
 
-    def test_verdict_suspicious_with_findings(self):
-        assert _derive_verdict(40, 0, 1) == "suspicious"
+    def test_verdict_needs_review_with_findings(self):
+        assert _derive_verdict(40, 0, 1) == "needs_review"
+
+    def test_verdict_needs_review_without_findings(self):
+        assert _derive_verdict(30, 0, 0) == "needs_review"
 
     def test_verdict_true_positive_high_score_many_iocs(self):
         assert _derive_verdict(85, 3, 2) == "true_positive"

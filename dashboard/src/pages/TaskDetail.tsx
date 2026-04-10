@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchTaskDetail, fetchTaskTimeline, fetchTaskSteps, decideApproval, getAccessToken, type TaskDetail as TaskDetailType, type TimelineEvent, type InvestigationStep, getUser } from '../api/client';
+import { fetchTaskDetail, fetchTaskTimeline, fetchTaskSteps, decideApproval, getAccessToken, getLastApiTraceId, type TaskDetail as TaskDetailType, type TimelineEvent, type InvestigationStep, getUser } from '../api/client';
+import { getDashboardTracer } from '../telemetry';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Loader2, ArrowLeft, Terminal, FileCode2, Clock3, Cpu, DollarSign, ListFilter, CheckCircle, Copy, Check, ShieldAlert, Crosshair, AlertTriangle, Info, ListChecks, Target, CheckSquare, ChevronDown, ChevronUp, ChevronRight, Circle, Zap, ShieldCheck, XCircle, MessageSquare, Share2, FileJson } from 'lucide-react';
+import { Loader2, ArrowLeft, Terminal, FileCode2, Clock3, Cpu, DollarSign, ListFilter, CheckCircle, Copy, Check, ShieldAlert, Crosshair, AlertTriangle, Info, ListChecks, Target, CheckSquare, ChevronDown, ChevronUp, ChevronRight, Circle, Zap, ShieldCheck, XCircle, MessageSquare, Share2, FileJson, ExternalLink } from 'lucide-react';
 import { Skeleton } from '../components/Skeleton';
 import MitreTimeline from '../components/MitreTimeline';
 
@@ -217,6 +218,10 @@ const TaskDetail = () => {
     const [approvalComment, setApprovalComment] = useState('');
     const [approvalSubmitting, setApprovalSubmitting] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
+    const [apiTraceId, setApiTraceId] = useState<string | null>(null);
+    const [traceCopied, setTraceCopied] = useState(false);
+
+    const signozUiBase = (import.meta.env.VITE_SIGNOZ_UI_BASE as string | undefined)?.replace(/\/$/, '') ?? '';
 
     useEffect(() => {
         if (!id) return;
@@ -225,6 +230,7 @@ const TaskDetail = () => {
             try {
                 const data = await fetchTaskDetail(id);
                 setTask(data);
+                setApiTraceId(getLastApiTraceId());
                 document.title = `Investigation: ${data.id.split('-')[0]} | Zovark`;
 
                 try {
@@ -266,9 +272,12 @@ const TaskDetail = () => {
         const token = getAccessToken();
         if (!token) return;
 
+        const sseSpan = getDashboardTracer().startSpan('ui.task_detail.sse_connect');
+        sseSpan.setAttribute('task.id', id);
+
         let es: EventSource | null = null;
         let attempt = 0;
-        let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+        let reconnectTimer: number | undefined;
 
         const connect = () => {
             reconnectTimer = undefined;
@@ -276,7 +285,7 @@ const TaskDetail = () => {
             const apiBase = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '');
             const u = `${apiBase}/api/v1/tasks/${encodeURIComponent(id)}/stream?token=${encodeURIComponent(token)}`;
             es = new EventSource(u);
-            es.onopen = () => { attempt = 0; };
+            es.onopen = () => { attempt = 0; sseSpan.addEvent('sse.open'); };
             const bump = () => { loadTask(); };
             es.addEventListener('step_completed', bump);
             es.addEventListener('status_changed', bump);
@@ -293,6 +302,8 @@ const TaskDetail = () => {
         return () => {
             if (reconnectTimer) clearTimeout(reconnectTimer);
             es?.close();
+            sseSpan.setAttribute('sse.cleanup', true);
+            sseSpan.end();
         };
     }, [id]);
 
@@ -466,6 +477,37 @@ ${recommendations.length ? '<h3>Recommendations</h3><ul>' + recommendations.slic
                             Investigation Analysis
                         </h1>
                         <p className="text-sm font-mono text-slate-400 mt-1.5">{task.id}</p>
+                        {apiTraceId && (
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                <span className="text-slate-500 uppercase tracking-wider">API trace</span>
+                                <code className="px-2 py-0.5 rounded bg-slate-800/80 text-cyan-400 font-mono max-w-[280px] truncate" title={apiTraceId}>
+                                    {apiTraceId}
+                                </code>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:border-[#00FF88]/50 hover:text-[#00FF88]"
+                                    onClick={() => {
+                                        void navigator.clipboard.writeText(apiTraceId);
+                                        setTraceCopied(true);
+                                        window.setTimeout(() => setTraceCopied(false), 2000);
+                                    }}
+                                >
+                                    {traceCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                    {traceCopied ? 'Copied' : 'Copy'}
+                                </button>
+                                {signozUiBase && (
+                                    <a
+                                        href={`${signozUiBase}/trace/${encodeURIComponent(apiTraceId)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-slate-600 text-slate-300 hover:border-cyan-500/50 hover:text-cyan-400"
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                        SigNoz
+                                    </a>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center space-x-3">

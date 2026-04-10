@@ -72,7 +72,7 @@ class ExecuteOutput:
 @dataclass
 class AssessOutput:
     """Stage 4 output — verdict and enrichment."""
-    verdict: Literal["true_positive", "suspicious", "benign", "inconclusive", "needs_manual_review", "needs_analyst_review"] = "inconclusive"
+    verdict: Literal["true_positive", "suspicious", "needs_review", "benign", "inconclusive", "needs_manual_review", "needs_analyst_review"] = "inconclusive"
     risk_score: int = 0
     severity: Literal["critical", "high", "medium", "low", "informational"] = "medium"
     confidence: float = 0.5

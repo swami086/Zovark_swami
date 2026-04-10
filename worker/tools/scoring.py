@@ -106,8 +106,12 @@ def score_lateral_movement(method: str, is_admin_share: bool, is_remote_exec: bo
     return min(100, max(0, score))
 
 
-def score_exfiltration(bytes_transferred: int, is_external_dest: bool, is_off_hours: bool, is_encrypted: bool) -> int:
+def score_exfiltration(bytes_transferred=0, is_external_dest: bool = False, is_off_hours: bool = False, is_encrypted: bool = False) -> int:
     """Risk score for data exfiltration. 0-100."""
+    try:
+        bytes_transferred = int(bytes_transferred)
+    except (ValueError, TypeError):
+        bytes_transferred = 0
     score = 0
 
     # Volume-based scoring
@@ -138,8 +142,16 @@ def score_exfiltration(bytes_transferred: int, is_external_dest: bool, is_off_ho
     return min(100, max(0, score))
 
 
-def score_c2_beacon(interval_stddev: float, avg_interval_seconds: float, connection_count: int, domain_entropy: float) -> int:
+def score_c2_beacon(interval_stddev=0.0, avg_interval_seconds=0.0, connection_count: int = 0, domain_entropy: float = 0.0) -> int:
     """Risk score for C2 beaconing. 0-100."""
+    try:
+        interval_stddev = float(interval_stddev or 0)
+    except (ValueError, TypeError):
+        interval_stddev = 0.0
+    try:
+        avg_interval_seconds = float(avg_interval_seconds or 0)
+    except (ValueError, TypeError):
+        avg_interval_seconds = 0.0
     score = 0
 
     # Regular interval (low stddev relative to mean)

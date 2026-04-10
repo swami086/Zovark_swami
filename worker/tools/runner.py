@@ -490,20 +490,8 @@ def execute_plan(plan: list, siem_event: dict,
 
 
 def _derive_verdict(risk_score: int, ioc_count: int, finding_count: int) -> str:
-    """Derive verdict from risk score, IOC count, and finding count."""
-    if risk_score <= 35:
-        return "benign"
-    if risk_score >= 80 and ioc_count >= 3:
-        return "true_positive"
-    if risk_score >= 70:
-        return "true_positive"
-    if risk_score >= 50:
-        return "true_positive"
-    if risk_score >= 36 and finding_count >= 1:
-        return "suspicious"
-    if finding_count == 0 and ioc_count == 0:
-        return "benign"
-    return "inconclusive"
+    from verdict import derive_verdict
+    return derive_verdict(risk_score, ioc_count, finding_count, execution_mode="tools")
 
 
 def _safe_serialize(val):

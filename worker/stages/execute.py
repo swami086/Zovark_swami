@@ -271,89 +271,13 @@ EXECUTION_MODE = os.environ.get("ZOVARK_EXECUTION_MODE", "tools")  # "tools" (v3
 
 
 def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
-    """Load recent investigations with overlapping IOCs for correlation."""
-    context = {"investigations": [], "tenant_id": tenant_id}
-    try:
-        import psycopg2
-        from psycopg2.extras import RealDictCursor
-        try:
-            from settings import settings as _settings
-            DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
-        except ImportError:
-            DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
-        entities = []
-        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
-            val = siem_event.get(field_name)
-            if val:
-                entities.append(val)
-        if not entities:
-            return context
-        conn = psycopg2.connect(DATABASE_URL)
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT task_type, (output->>'risk_score')::int as risk_score, "
-                    "output->>'verdict' as verdict, input->'siem_event'->>'source_ip' as source_ip, "
-                    "created_at::text as timestamp "
-                    "FROM agent_tasks "
-                    "WHERE tenant_id = %s AND status = 'completed' "
-                    "AND created_at > NOW() - INTERVAL '24 hours' "
-                    "AND (input->'siem_event'->>'source_ip' = ANY(%s) "
-                    "     OR input->'siem_event'->>'username' = ANY(%s)) "
-                    "ORDER BY created_at DESC LIMIT 20",
-                    (tenant_id, entities, entities)
-                )
-                rows = cur.fetchall()
-                for row in rows:
-                    context["investigations"].append(dict(row))
-                conn.commit()
-        finally:
-            conn.close()
-    except Exception as e:
-        activity.logger.warning(f"Failed to load correlation context: {e}")
-    return context
+    from stages.context_loader import load_correlation_context
+    return load_correlation_context(tenant_id, siem_event)
 
 
 def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
-    """Load institutional knowledge for entities in the siem_event."""
-    knowledge = {}
-    try:
-        import psycopg2
-        from psycopg2.extras import RealDictCursor
-        try:
-            from settings import settings as _settings
-            DATABASE_URL = os.environ.get("DATABASE_URL", _settings.database_url)
-        except ImportError:
-            DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://zovark:hydra_dev_2026@pgbouncer:5432/zovark")
-        entities = []
-        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
-            val = siem_event.get(field_name)
-            if val:
-                entities.append(val)
-        if not entities:
-            return knowledge
-        conn = psycopg2.connect(DATABASE_URL)
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT entity_value, description, expected_behavior, hours_active, analyst_notes "
-                    "FROM institutional_knowledge WHERE tenant_id = %s AND entity_value = ANY(%s)",
-                    (tenant_id, entities)
-                )
-                for row in cur.fetchall():
-                    knowledge[row["entity_value"]] = {
-                        "description": row.get("description", ""),
-                        "expected_behavior": row.get("expected_behavior", ""),
-                        "hours_active": row.get("hours_active", ""),
-                        "analyst_notes": row.get("analyst_notes", ""),
-                    }
-        finally:
-            conn.close()
-    except Exception as e:
-        activity.logger.warning(f"Failed to load institutional knowledge: {e}")
-    if knowledge:
-        activity.logger.info(f"Institutional knowledge: found {len(knowledge)} known entities")
-    return knowledge
+    from stages.context_loader import load_institutional_knowledge
+    return load_institutional_knowledge(tenant_id, siem_event)
 
 
 def _execute_v3_tools(data: dict) -> dict:

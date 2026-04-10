@@ -205,17 +205,12 @@ def _insert_audit_event(conn, tenant_id: str, event_type: str,
         print(f"Audit event insert failed (non-fatal): {e}")
 
 
-# --- Severity from risk score ---
+# --- Severity from risk score (shared from worker/verdict.py) ---
+from verdict import severity_from_risk as _severity_from_risk_impl
+
+
 def _severity_from_risk(risk_score: int) -> str:
-    if risk_score >= 80:
-        return "critical"
-    elif risk_score >= 60:
-        return "high"
-    elif risk_score >= 40:
-        return "medium"
-    elif risk_score >= 20:
-        return "low"
-    return "informational"
+    return _severity_from_risk_impl(risk_score)
 
 
 # --- Main entry point ---

@@ -531,76 +531,13 @@ _TOOL_CALLING_SYSTEM = _TOOL_CALLING_SYSTEM_PREFIX
 
 
 def _load_institutional_knowledge(tenant_id: str, siem_event: dict) -> dict:
-    """Load institutional knowledge for entities in the siem_event."""
-    knowledge = {}
-    try:
-        entities = []
-        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
-            val = siem_event.get(field_name)
-            if val:
-                entities.append(val)
-        if not entities:
-            return knowledge
-
-        conn = _get_db()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT entity_value, description, expected_behavior, hours_active, analyst_notes "
-                    "FROM institutional_knowledge WHERE tenant_id = %s AND entity_value = ANY(%s)",
-                    (tenant_id, entities)
-                )
-                for row in cur.fetchall():
-                    knowledge[row["entity_value"]] = {
-                        "description": row.get("description", ""),
-                        "expected_behavior": row.get("expected_behavior", ""),
-                        "hours_active": row.get("hours_active", ""),
-                        "analyst_notes": row.get("analyst_notes", ""),
-                    }
-        finally:
-            conn.close()
-    except Exception as e:
-        activity.logger.warning(f"Failed to load institutional knowledge: {e}")
-    return knowledge
+    from stages.context_loader import load_institutional_knowledge
+    return load_institutional_knowledge(tenant_id, siem_event)
 
 
 def _load_correlation_context(tenant_id: str, siem_event: dict) -> dict:
-    """Load recent investigations with overlapping IOCs for correlation."""
-    context = {"investigations": [], "tenant_id": tenant_id}
-    try:
-        entities = []
-        for field_name in ("source_ip", "username", "hostname", "dest_ip"):
-            val = siem_event.get(field_name)
-            if val:
-                entities.append(val)
-        if not entities:
-            return context
-
-        conn = _get_db()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(f"SET LOCAL app.current_tenant = '{tenant_id}'")
-                # Find recent tasks with overlapping IOCs (last 24h)
-                cur.execute(
-                    "SELECT task_type, (output->>'risk_score')::int as risk_score, "
-                    "output->>'verdict' as verdict, input->'siem_event'->>'source_ip' as source_ip, "
-                    "created_at::text as timestamp "
-                    "FROM agent_tasks "
-                    "WHERE tenant_id = %s AND status = 'completed' "
-                    "AND created_at > NOW() - INTERVAL '24 hours' "
-                    "AND (input->'siem_event'->>'source_ip' = ANY(%s) "
-                    "     OR input->'siem_event'->>'username' = ANY(%s)) "
-                    "ORDER BY created_at DESC LIMIT 20",
-                    (tenant_id, entities, entities)
-                )
-                for row in cur.fetchall():
-                    context["investigations"].append(dict(row))
-                conn.commit()
-        finally:
-            conn.close()
-    except Exception as e:
-        activity.logger.warning(f"Failed to load correlation context: {e}")
-    return context
+    from stages.context_loader import load_correlation_context
+    return load_correlation_context(tenant_id, siem_event)
 
 
 def _parse_tool_plan(llm_response: str) -> list:
@@ -683,29 +620,7 @@ async def _analyze_v3_tools(ingest: IngestOutput) -> AnalyzeOutput:
             activity.logger.warning(f"Failed to load saved plan for {ingest.skill_id}: {e}")
 
     # Check investigation_plans.json for built-in plans
-    # Alias map: SIEM task_types → investigation_plans.json keys
-    _PLAN_ALIASES = {
-        "phishing": "phishing_investigation",
-        "ransomware": "ransomware_triage",
-        "data_exfiltration": "data_exfiltration_detection",
-        "data_exfil": "data_exfiltration_detection",
-        "exfiltration": "data_exfiltration_detection",
-        "privilege_escalation": "privilege_escalation_hunt",
-        "priv_esc": "privilege_escalation_hunt",
-        "c2": "c2_communication_hunt",
-        "c2_beacon": "c2_communication_hunt",
-        "command_and_control": "c2_communication_hunt",
-        "lateral_movement": "lateral_movement_detection",
-        "insider_threat": "insider_threat_detection",
-        "beaconing": "network_beaconing",
-        "cloud_attack": "cloud_infrastructure_attack",
-        "supply_chain": "supply_chain_compromise",
-        "credential_dump": "credential_access",
-        "dll_sideload": "dll_sideloading",
-        "lolbin": "lolbin_abuse",
-        "dns_exfil": "dns_exfiltration",
-        "powershell_obfusc": "powershell_obfuscation",
-    }
+    from tools.tool_subsets import ALIASES as _PLAN_ALIASES
     try:
         plans_path = os.path.join(os.path.dirname(__file__), "..", "tools", "investigation_plans.json")
         with open(plans_path) as f:

@@ -387,7 +387,11 @@ def detect_c2(siem_event: dict) -> dict:
     if not findings:
         risk = max(risk, 5)
 
-    return {"findings": findings, "iocs": iocs, "risk_score": min(100, risk)}
+    return {
+        "findings": findings, "iocs": iocs, "risk_score": min(100, risk),
+        "interval_stddev": stddev if stddev != 999 else 0.0,
+        "avg_interval_seconds": avg_interval,
+    }
 
 
 def detect_data_exfil(siem_event: dict) -> dict:

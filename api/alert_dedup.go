@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"regexp"
 	"strings"
@@ -235,7 +235,12 @@ func checkPreDedup(ctx context.Context, taskType string, input map[string]interf
 	var entry DedupEntry
 	if err := json.Unmarshal([]byte(val), &entry); err != nil {
 		// Old v1 plain-string entry — treat as duplicate with existing task_id
-		log.Printf("[DEDUP] Pre-Temporal dedup hit (v1): hash=%s existing_task=%s", hash[:16], val)
+		slog.InfoContext(ctx, "dedup_pre_temporal_hit",
+			slog.String("dedup.version", "v1"),
+			slog.String("dedup.hash_prefix", hash[:16]),
+			slog.String("dedup.existing_task_id", val),
+			slog.String("outcome", "duplicate"),
+		)
 		return true, val
 	}
 
@@ -244,7 +249,12 @@ func checkPreDedup(ctx context.Context, taskType string, input map[string]interf
 
 	// Case 1: Previous investigation FAILED — allow retry
 	if entry.Status == "error" || entry.Status == "failed" {
-		log.Printf("[DEDUP] Retry after failure: hash=%s old_task=%s old_status=%s", hash[:16], entry.TaskID, entry.Status)
+		slog.InfoContext(ctx, "dedup_retry_after_failure",
+			slog.String("dedup.hash_prefix", hash[:16]),
+			slog.String("dedup.old_task_id", entry.TaskID),
+			slog.String("dedup.old_status", entry.Status),
+			slog.String("outcome", "retry"),
+		)
 		redisClient.Del(ctx, key)
 		recordDedupDecision(ctx, "retry_after_failure")
 		return false, ""
@@ -252,13 +262,25 @@ func checkPreDedup(ctx context.Context, taskType string, input map[string]interf
 
 	// Case 2: New alert is HIGHER severity — escalation bypass
 	if severityRank(newSeverity) > severityRank(entry.Severity) {
-		log.Printf("[DEDUP] Severity escalation: hash=%s %s→%s old_task=%s", hash[:16], entry.Severity, newSeverity, entry.TaskID)
+		slog.InfoContext(ctx, "dedup_severity_escalation",
+			slog.String("dedup.hash_prefix", hash[:16]),
+			slog.String("dedup.old_severity", entry.Severity),
+			slog.String("dedup.new_severity", newSeverity),
+			slog.String("dedup.old_task_id", entry.TaskID),
+			slog.String("outcome", "escalation_bypass"),
+		)
 		recordDedupDecision(ctx, "severity_escalation")
 		return false, ""
 	}
 
 	// Case 3: Normal duplicate — dedup
-	log.Printf("[DEDUP] Pre-Temporal dedup hit (v2): hash=%s existing_task=%s status=%s", hash[:16], entry.TaskID, entry.Status)
+	slog.InfoContext(ctx, "dedup_pre_temporal_hit",
+		slog.String("dedup.version", "v2"),
+		slog.String("dedup.hash_prefix", hash[:16]),
+		slog.String("dedup.existing_task_id", entry.TaskID),
+		slog.String("dedup.existing_status", entry.Status),
+		slog.String("outcome", "duplicate"),
+	)
 	recordDedupDecision(ctx, "deduplicated")
 	return true, entry.TaskID
 }
@@ -289,7 +311,11 @@ func registerPreDedup(ctx context.Context, taskType string, input map[string]int
 
 	err := redisClient.SetEx(ctx, key, string(data), time.Duration(ttl)*time.Second).Err()
 	if err != nil {
-		log.Printf("[DEDUP] Failed to register dedup key: %v", err)
+		slog.ErrorContext(ctx, "dedup_register_failed",
+			slog.String("outcome", "error"),
+			slog.String("dedup.hash_prefix", hash[:16]),
+			slog.Any("error", err),
+		)
 	}
 
 	recordDedupDecision(ctx, "new_alert")

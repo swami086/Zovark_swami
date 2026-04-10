@@ -7,7 +7,8 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any, Optional
+from contextlib import contextmanager
+from typing import Any, Iterator, Optional
 
 import httpx
 
@@ -32,6 +33,36 @@ def _headers() -> dict[str, str]:
 
 def _safe_record_suffix(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", s)[:200]
+
+
+@contextmanager
+def _surreal_op_span(op_name: str, **attrs: Any) -> Iterator[Any]:
+    """Ticket 9 — operation-level SurrealDB span with optional attributes."""
+    from tracing import get_tracer, trace_enabled
+
+    tracer = get_tracer()
+    with tracer.start_as_current_span(op_name) as span:
+        span.set_attribute("db.system", "surrealdb")
+        span.set_attribute("surreal.operation", op_name)
+        for k, v in attrs.items():
+            if v is None:
+                continue
+            try:
+                span.set_attribute(k, v)
+            except Exception:
+                pass
+        try:
+            yield span
+        except Exception as e:
+            span.record_exception(e)
+            if trace_enabled:
+                try:
+                    from opentelemetry.trace import Status, StatusCode
+
+                    span.set_status(Status(StatusCode.ERROR, str(e)[:256]))
+                except Exception:
+                    pass
+            raise
 
 
 async def surreal_sql(client: httpx.AsyncClient, sql: str) -> Any:
@@ -102,60 +133,74 @@ async def write_entity_graph_surreal(
     observations_created = 0
     tsafe = _safe_record_suffix(tenant_id)
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        await ensure_schema(client)
-        hash_to_rid: dict[str, str] = {}
+    with _surreal_op_span(
+        "surreal.entity_upsert",
+        tenant_id=tenant_id,
+        investigation_id=str(investigation_id) if investigation_id else "",
+        input_entity_records=len(entity_records),
+        input_raw_edges=len(raw_edges),
+        input_observations=len(all_observations),
+        input_entity_hashes=len(entity_hashes),
+        confidence_source=confidence_source or "",
+    ) as span:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            await ensure_schema(client)
+            hash_to_rid: dict[str, str] = {}
 
-        for h in entity_hashes:
-            rid = f"entity:{tsafe}_{_safe_record_suffix(h)}"
-            hash_to_rid[h] = rid
+            for h in entity_hashes:
+                rid = f"entity:{tsafe}_{_safe_record_suffix(h)}"
+                hash_to_rid[h] = rid
 
-        for rec in entity_records:
-            eh = rec.get("hash")
-            if not eh:
-                continue
-            rid = hash_to_rid.get(eh)
-            if not rid:
-                continue
-            content = {
-                "tenant_id": tenant_id,
-                "entity_hash": eh,
-                "entity_type": rec.get("type"),
-                "value": rec.get("value"),
-                "threat_score": rec.get("threat_score", 0),
-                "last_investigation_id": str(investigation_id) if investigation_id else None,
-                "confidence_source": confidence_source,
-            }
-            q = f"UPSERT {rid} CONTENT {json.dumps(content)};"
-            await surreal_sql(client, q)
-            entities_upserted += 1
+            for rec in entity_records:
+                eh = rec.get("hash")
+                if not eh:
+                    continue
+                rid = hash_to_rid.get(eh)
+                if not rid:
+                    continue
+                content = {
+                    "tenant_id": tenant_id,
+                    "entity_hash": eh,
+                    "entity_type": rec.get("type"),
+                    "value": rec.get("value"),
+                    "threat_score": rec.get("threat_score", 0),
+                    "last_investigation_id": str(investigation_id) if investigation_id else None,
+                    "confidence_source": confidence_source,
+                }
+                q = f"UPSERT {rid} CONTENT {json.dumps(content)};"
+                await surreal_sql(client, q)
+                entities_upserted += 1
 
-        observations_created = len(all_observations)
+            observations_created = len(all_observations)
 
-        for edge in raw_edges:
-            src = edge.get("source", {})
-            tgt = edge.get("target", {})
-            from entity_normalize import normalize_entity, compute_entity_hash
+            for edge in raw_edges:
+                src = edge.get("source", {})
+                tgt = edge.get("target", {})
+                from entity_normalize import normalize_entity, compute_entity_hash
 
-            src_norm = normalize_entity(src.get("type", ""), src.get("value", ""))
-            tgt_norm = normalize_entity(tgt.get("type", ""), tgt.get("value", ""))
-            sh = compute_entity_hash(src.get("type", ""), src_norm)
-            th = compute_entity_hash(tgt.get("type", ""), tgt_norm)
-            srid = hash_to_rid.get(sh)
-            trid = hash_to_rid.get(th)
-            if not srid or not trid:
-                continue
-            ec = {
-                "tenant_id": tenant_id,
-                "edge_type": edge.get("edge_type", "associated_with"),
-                "investigation_id": str(investigation_id) if investigation_id else None,
-                "mitre_technique": edge.get("mitre_technique"),
-                "confidence": float(edge.get("confidence", 0.5)),
-            }
-            eid = f"graph_edge:{tsafe}_{edges_upserted}_{sh[:8]}_{th[:8]}"
-            q = f"CREATE {eid} CONTENT {json.dumps({'source': srid, 'target': trid, **ec})};"
-            await surreal_sql(client, q)
-            edges_upserted += 1
+                src_norm = normalize_entity(src.get("type", ""), src.get("value", ""))
+                tgt_norm = normalize_entity(tgt.get("type", ""), tgt.get("value", ""))
+                sh = compute_entity_hash(src.get("type", ""), src_norm)
+                th = compute_entity_hash(tgt.get("type", ""), tgt_norm)
+                srid = hash_to_rid.get(sh)
+                trid = hash_to_rid.get(th)
+                if not srid or not trid:
+                    continue
+                ec = {
+                    "tenant_id": tenant_id,
+                    "edge_type": edge.get("edge_type", "associated_with"),
+                    "investigation_id": str(investigation_id) if investigation_id else None,
+                    "mitre_technique": edge.get("mitre_technique"),
+                    "confidence": float(edge.get("confidence", 0.5)),
+                }
+                eid = f"graph_edge:{tsafe}_{edges_upserted}_{sh[:8]}_{th[:8]}"
+                q = f"CREATE {eid} CONTENT {json.dumps({'source': srid, 'target': trid, **ec})};"
+                await surreal_sql(client, q)
+                edges_upserted += 1
+
+        span.set_attribute("result.entities_upserted", entities_upserted)
+        span.set_attribute("result.edges_upserted", edges_upserted)
+        span.set_attribute("result.observations_created", observations_created)
 
     return {
         "entities_upserted": entities_upserted,
@@ -181,111 +226,130 @@ async def blast_radius_surreal(
             "summary": "SurrealDB disabled",
         }
 
-    inv_safe = _safe_record_suffix(str(investigation_id))
-    tsafe = _safe_record_suffix(tenant_id)
-
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        await ensure_schema(client)
-        # Entities linked via graph_edge BFS (Python-side to avoid deep SurrealQL variance)
-        q = f"""
+    with _surreal_op_span(
+        "surreal.blast_radius",
+        tenant_id=tenant_id,
+        investigation_id=str(investigation_id),
+        time_window_hours=time_window_hours,
+        max_hops=max_hops,
+    ) as span:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            await ensure_schema(client)
+            q = f"""
 SELECT source, target, edge_type FROM graph_edge
 WHERE tenant_id = '{tenant_id}' AND investigation_id = '{investigation_id}';
 """
-        try:
-            raw = await surreal_sql(client, q)
-        except Exception as e:
-            return {
-                "investigation_id": investigation_id,
-                "affected_entities": [],
-                "affected_investigations": [],
-                "total_entities": 0,
-                "max_threat_score": 0,
-                "summary": f"Error: {e}",
-            }
+            try:
+                raw = await surreal_sql(client, q)
+            except Exception as e:
+                return {
+                    "investigation_id": investigation_id,
+                    "affected_entities": [],
+                    "affected_investigations": [],
+                    "total_entities": 0,
+                    "max_threat_score": 0,
+                    "summary": f"Error: {e}",
+                }
 
-        seeds: set[str] = set()
-        edges_list: list[dict] = []
-        if isinstance(raw, list):
-            for block in raw:
-                if isinstance(block, dict) and block.get("result"):
-                    for row in block["result"]:
-                        if isinstance(row, dict):
-                            edges_list.append(row)
-                            if row.get("source"):
-                                seeds.add(str(row["source"]))
-                            if row.get("target"):
-                                seeds.add(str(row["target"]))
+            seeds: set[str] = set()
+            edges_list: list[dict] = []
+            if isinstance(raw, list):
+                for block in raw:
+                    if isinstance(block, dict) and block.get("result"):
+                        for row in block["result"]:
+                            if isinstance(row, dict):
+                                edges_list.append(row)
+                                if row.get("source"):
+                                    seeds.add(str(row["source"]))
+                                if row.get("target"):
+                                    seeds.add(str(row["target"]))
 
-        visited = set(seeds)
-        frontier = list(seeds)
-        for _ in range(max_hops):
-            next_front: list[str] = []
-            for rid in frontier:
-                q2 = f"SELECT source, target FROM graph_edge WHERE tenant_id = '{tenant_id}' AND (source = '{rid}' OR target = '{rid}');"
+            span.set_attribute("graph.seed_entities", len(seeds))
+            span.set_attribute("graph.initial_edges", len(edges_list))
+
+            visited = set(seeds)
+            frontier = list(seeds)
+            for _ in range(max_hops):
+                next_front: list[str] = []
+                for rid in frontier:
+                    q2 = f"SELECT source, target FROM graph_edge WHERE tenant_id = '{tenant_id}' AND (source = '{rid}' OR target = '{rid}');"
+                    try:
+                        blk = await surreal_sql(client, q2)
+                    except Exception:
+                        continue
+                    if isinstance(blk, list):
+                        for b in blk:
+                            for row in b.get("result") or []:
+                                if not isinstance(row, dict):
+                                    continue
+                                o = row.get("target") if row.get("source") == rid else row.get("source")
+                                if o and str(o) not in visited:
+                                    visited.add(str(o))
+                                    next_front.append(str(o))
+                frontier = next_front
+                if not frontier:
+                    break
+
+            affected_entities = []
+            max_threat = 0
+            for rid in visited:
+                qe = f"SELECT * FROM {rid};"
                 try:
-                    blk = await surreal_sql(client, q2)
+                    er = await surreal_sql(client, qe)
+                    val = None
+                    if isinstance(er, list) and er and isinstance(er[0], dict):
+                        val = (er[0].get("result") or [None])[0]
+                    if isinstance(val, dict):
+                        ts = int(val.get("threat_score") or 0)
+                        max_threat = max(max_threat, ts)
+                        affected_entities.append(
+                            {
+                                "entity_id": rid,
+                                "entity_type": val.get("entity_type"),
+                                "value": val.get("value"),
+                                "threat_score": ts,
+                                "nearest_hop": 0,
+                            }
+                        )
                 except Exception:
                     continue
-                if isinstance(blk, list):
-                    for b in blk:
-                        for row in b.get("result") or []:
-                            if not isinstance(row, dict):
-                                continue
-                            o = row.get("target") if row.get("source") == rid else row.get("source")
-                            if o and str(o) not in visited:
-                                visited.add(str(o))
-                                next_front.append(str(o))
-            frontier = next_front
-            if not frontier:
-                break
 
-        affected_entities = []
-        max_threat = 0
-        for rid in visited:
-            qe = f"SELECT * FROM {rid};"
-            try:
-                er = await surreal_sql(client, qe)
-                val = None
-                if isinstance(er, list) and er and isinstance(er[0], dict):
-                    val = (er[0].get("result") or [None])[0]
-                if isinstance(val, dict):
-                    ts = int(val.get("threat_score") or 0)
-                    max_threat = max(max_threat, ts)
-                    affected_entities.append(
-                        {
-                            "entity_id": rid,
-                            "entity_type": val.get("entity_type"),
-                            "value": val.get("value"),
-                            "threat_score": ts,
-                            "nearest_hop": 0,
-                        }
-                    )
-            except Exception:
-                continue
+            span.set_attribute("result.total_entities", len(affected_entities))
+            span.set_attribute("result.max_threat_score", max_threat)
+            span.set_attribute("result.visited_graph_nodes", len(visited))
 
-        return {
-            "investigation_id": investigation_id,
-            "affected_entities": affected_entities,
-            "affected_investigations": [],
-            "total_entities": len(affected_entities),
-            "max_threat_score": max_threat,
-            "summary": f"Surreal graph: {len(affected_entities)} entities (window {time_window_hours}h, {max_hops} hops)",
-        }
+            out = {
+                "investigation_id": investigation_id,
+                "affected_entities": affected_entities,
+                "affected_investigations": [],
+                "total_entities": len(affected_entities),
+                "max_threat_score": max_threat,
+                "summary": f"Surreal graph: {len(affected_entities)} entities (window {time_window_hours}h, {max_hops} hops)",
+            }
+        return out
 
 
 async def investigation_memory_exact_surreal(entity_type: str, entity_value: str, tenant_id: str) -> Optional[dict]:
     if not _surreal_enabled():
         return None
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        await ensure_schema(client)
-        q = f"""
+    with _surreal_op_span(
+        "surreal.exact_match",
+        tenant_id=tenant_id,
+        entity_type=entity_type,
+        entity_value_len=len(entity_value or ""),
+    ) as span:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            await ensure_schema(client)
+            q = f"""
 SELECT * FROM entity WHERE tenant_id = '{tenant_id}' AND entity_type = '{entity_type}' AND value = '{entity_value.replace("'", "''")}' LIMIT 1;
 """
-        raw = await surreal_sql(client, q)
-        if isinstance(raw, list) and raw and isinstance(raw[0], dict):
-            rows = raw[0].get("result") or []
-            if rows and isinstance(rows[0], dict):
-                return dict(rows[0])
+            raw = await surreal_sql(client, q)
+            if isinstance(raw, list) and raw and isinstance(raw[0], dict):
+                rows = raw[0].get("result") or []
+                if rows and isinstance(rows[0], dict):
+                    span.set_attribute("result.match_count", 1)
+                    return dict(rows[0])
+        span.set_attribute("result.match_count", 0)
     return None
 
 
@@ -295,22 +359,33 @@ async def investigation_memory_semantic_surreal(
     if not _surreal_enabled() or not embedding:
         return None
     emb_json = json.dumps(embedding)
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        await ensure_schema(client)
-        q = f"""
+    with _surreal_op_span(
+        "surreal.vector_search",
+        tenant_id=tenant_id,
+        entity_type=entity_type,
+        similarity_threshold=threshold,
+        embedding_dimensions=len(embedding),
+        limit=1,
+    ) as span:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            await ensure_schema(client)
+            q = f"""
 SELECT * FROM entity WHERE tenant_id = '{tenant_id}' AND entity_type = '{entity_type}'
 AND value != '{entity_value.replace("'", "''")}' AND embedding != NONE
 AND vector::similarity::cosine(embedding, {emb_json}) > {1.0 - threshold}
 ORDER BY vector::similarity::cosine(embedding, {emb_json}) DESC LIMIT 1;
 """
-        try:
-            raw = await surreal_sql(client, q)
-        except Exception:
-            return None
-        if isinstance(raw, list) and raw and isinstance(raw[0], dict):
-            rows = raw[0].get("result") or []
-            if rows and isinstance(rows[0], dict):
-                return dict(rows[0])
+            try:
+                raw = await surreal_sql(client, q)
+            except Exception:
+                span.set_attribute("result.match_count", 0)
+                return None
+            if isinstance(raw, list) and raw and isinstance(raw[0], dict):
+                rows = raw[0].get("result") or []
+                if rows and isinstance(rows[0], dict):
+                    span.set_attribute("result.match_count", 1)
+                    return dict(rows[0])
+        span.set_attribute("result.match_count", 0)
     return None
 
 
@@ -352,41 +427,52 @@ async def semantic_search_surreal(
         return []
     emb_json = json.dumps(query_embedding)
     tenant_clause = f"AND tenant_id = '{tenant_id}'" if tenant_id else ""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        await ensure_schema(client)
-        q = f"""
+    with _surreal_op_span(
+        "surreal.investigation_search",
+        tenant_id=tenant_id or "",
+        query_text_len=len(query_text or ""),
+        search_limit=limit,
+        semantic_weight=semantic_weight,
+        keyword_weight=keyword_weight,
+        embedding_dimensions=len(query_embedding),
+    ) as span:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            await ensure_schema(client)
+            q = f"""
 SELECT pg_investigation_id, summary, verdict, risk_score,
 vector::similarity::cosine(embedding, {emb_json}) AS sim
 FROM investigation_vec WHERE embedding != NONE {tenant_clause}
 ORDER BY sim DESC LIMIT {limit};
 """
-        try:
-            raw = await surreal_sql(client, q)
-        except Exception:
-            return []
-        out = []
-        if isinstance(raw, list) and raw and isinstance(raw[0], dict):
-            for row in raw[0].get("result") or []:
-                if not isinstance(row, dict):
-                    continue
-                sim = float(row.get("sim") or 0)
-                summ = row.get("summary") or ""
-                kw = 0.3 if query_text.lower() in summ.lower() else 0.0
-                combined = semantic_weight * sim + keyword_weight * kw
-                out.append(
-                    {
-                        "investigation_id": str(row.get("pg_investigation_id", "")),
-                        "summary_snippet": summ[:300],
-                        "score": round(combined, 4),
-                        "semantic_score": round(sim, 4),
-                        "keyword_score": round(kw, 4),
-                        "verdict": row.get("verdict"),
-                        "risk_score": row.get("risk_score"),
-                        "match_type": "surreal_vector",
-                        "created_at": "",
-                    }
-                )
-        return out
+            try:
+                raw = await surreal_sql(client, q)
+            except Exception:
+                span.set_attribute("result.row_count", 0)
+                return []
+            out = []
+            if isinstance(raw, list) and raw and isinstance(raw[0], dict):
+                for row in raw[0].get("result") or []:
+                    if not isinstance(row, dict):
+                        continue
+                    sim = float(row.get("sim") or 0)
+                    summ = row.get("summary") or ""
+                    kw = 0.3 if query_text.lower() in summ.lower() else 0.0
+                    combined = semantic_weight * sim + keyword_weight * kw
+                    out.append(
+                        {
+                            "investigation_id": str(row.get("pg_investigation_id", "")),
+                            "summary_snippet": summ[:300],
+                            "score": round(combined, 4),
+                            "semantic_score": round(sim, 4),
+                            "keyword_score": round(kw, 4),
+                            "verdict": row.get("verdict"),
+                            "risk_score": row.get("risk_score"),
+                            "match_type": "surreal_vector",
+                            "created_at": "",
+                        }
+                    )
+            span.set_attribute("result.row_count", len(out))
+            return out
 
 
 async def surreal_entity_reachability(tenant_id: str, ioc_values: list[str], max_hops: int = 3) -> list[str]:

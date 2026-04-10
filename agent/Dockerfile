@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN pip install --no-cache-dir httpx
+RUN pip install --no-cache-dir httpx \
+    opentelemetry-sdk \
+    opentelemetry-exporter-otlp-proto-http
 COPY healer.py .
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

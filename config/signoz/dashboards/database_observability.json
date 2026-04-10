@@ -1,0 +1,38 @@
+{
+  "title": "Zovark — Database observability",
+  "description": "Ticket 9 — PostgreSQL (API pgx pool + worker), Redis client, SurrealDB operation spans, psycopg2. Import panels into SigNoz or adapt queries to your schema version.",
+  "schemaVersion": 1,
+  "tags": ["zovark", "ticket-9", "database", "redis", "surrealdb"],
+  "panels": [
+    {
+      "title": "API: pgx pool acquired / idle / total / max (OTel metrics, 24h)",
+      "type": "graph",
+      "query": "SELECT metric_name, avg(value) AS v FROM signoz_metrics WHERE metric_name IN ('zovark_api_db_pool_acquired_connections','zovark_api_db_pool_idle_connections','zovark_api_db_pool_total_connections','zovark_api_db_pool_max_connections') AND timestamp > now() - INTERVAL 24 HOUR GROUP BY metric_name ORDER BY metric_name"
+    },
+    {
+      "title": "PostgreSQL client spans — count by name (24h)",
+      "type": "table",
+      "query": "SELECT name, count() AS n FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND (name LIKE 'query %' OR name LIKE 'batch %' OR name = 'connect' OR name = 'pool.acquire' OR name LIKE 'prepare %' OR name LIKE 'copy_from %') AND serviceName = 'zovark-api' GROUP BY name ORDER BY n DESC LIMIT 30"
+    },
+    {
+      "title": "Redis: client command spans (zovark-api, 24h)",
+      "type": "graph",
+      "query": "SELECT quantile(0.95)(durationNano) / 1e9 AS p95_s, count() AS n FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND serviceName = 'zovark-api' AND kind = 3 AND (name NOT LIKE '/%' OR name = 'redis.pipeline') GROUP BY name ORDER BY p95_s DESC LIMIT 15"
+    },
+    {
+      "title": "SurrealDB operations (zovark-worker, 24h)",
+      "type": "table",
+      "query": "SELECT name, quantile(0.95)(durationNano) / 1e9 AS p95_s, count() AS n FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND serviceName = 'zovark-worker' AND name IN ('surreal.entity_upsert','surreal.blast_radius','surreal.exact_match','surreal.vector_search','surreal.investigation_search') GROUP BY name ORDER BY n DESC"
+    },
+    {
+      "title": "Worker: HTTP client (httpx) p95 by host/path hint (24h)",
+      "type": "graph",
+      "query": "SELECT http.url AS url, quantile(0.95)(durationNano) / 1e9 AS p95_s FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND serviceName = 'zovark-worker' AND name = 'POST' AND http.url != '' GROUP BY url ORDER BY p95_s DESC LIMIT 12"
+    },
+    {
+      "title": "Worker: PostgreSQL (psycopg2) span count (24h)",
+      "type": "value",
+      "query": "SELECT count() FROM signoz_index_v2 WHERE timestamp > now() - INTERVAL 24 HOUR AND serviceName = 'zovark-worker' AND db.system = 'postgresql'"
+    }
+  ]
+}

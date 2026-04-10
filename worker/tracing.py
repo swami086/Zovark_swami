@@ -31,6 +31,8 @@ except Exception:
 # Sentinel for disabled tracing
 trace_enabled = False
 tracer = None
+_otel_log_provider = None  # shutdown flush for SigNoz
+_otel_logging_initialized = False
 
 
 class _NoOpSpan:
@@ -90,6 +92,33 @@ def init_tracing():
         ))
         trace.set_tracer_provider(provider)
 
+        try:
+            from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+            HTTPXClientInstrumentor().instrument(tracer_provider=provider)
+            print("[OTEL] httpx instrumented (Ticket 9)", flush=True)
+        except Exception as he:
+            print(f"[OTEL] httpx instrumentation skipped: {he}", flush=True)
+
+        try:
+            from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+            Psycopg2Instrumentor().instrument(
+                tracer_provider=provider,
+                enable_commenter=True,
+            )
+            print("[OTEL] psycopg2 instrumented with SQL commenter (Ticket 9)", flush=True)
+        except Exception as pe:
+            print(f"[OTEL] psycopg2 instrumentation skipped: {pe}", flush=True)
+
+        try:
+            from opentelemetry.instrumentation.redis import RedisInstrumentor
+
+            RedisInstrumentor().instrument(tracer_provider=provider)
+            print("[OTEL] redis instrumented (Ticket 10)", flush=True)
+        except Exception as re_:
+            print(f"[OTEL] redis instrumentation skipped: {re_}", flush=True)
+
         tracer = trace.get_tracer("zovark-worker", "3.0.0")
         trace_enabled = True
         print(f"[OTEL] Tracing enabled → {OTEL_ENDPOINT}", flush=True)
@@ -114,11 +143,24 @@ def init_tracing():
         return tracer
 
 
+def _parse_log_level(name: str, default: int) -> int:
+    import logging
+
+    return getattr(logging, name.upper(), None) or default
+
+
 def init_otel_logging():
-    """Export worker logs to SigNoz via OTLP HTTP (/v1/logs). No-op if OTEL disabled or deps missing."""
-    if not OTEL_ENABLED:
+    """Export worker logs to SigNoz via OTLP HTTP (/v1/logs).
+
+    Attaches OpenTelemetry's LoggingHandler to the **root** logger so every
+    ``logging.getLogger(__name__)`` line propagates to SigNoz (not only
+    ``zovark_worker``, which previously missed almost all pipeline logs).
+    """
+    global _otel_log_provider, _otel_logging_initialized
+    if not OTEL_ENABLED or _otel_logging_initialized:
         return
     try:
+        import atexit
         import logging
 
         from opentelemetry._logs import set_logger_provider
@@ -129,25 +171,53 @@ def init_otel_logging():
 
         resource = Resource.create({
             "service.name": "zovark-worker",
-            "service.version": "3.0.0",
+            "service.version": "3.2.1",
             "deployment.environment": os.environ.get("ZOVARK_ENV", "development"),
         })
         provider = LoggerProvider(resource=resource)
         provider.add_log_record_processor(
             BatchLogRecordProcessor(
                 OTLPLogExporter(endpoint=f"{OTEL_ENDPOINT}/v1/logs"),
-                max_export_batch_size=256,
-                schedule_delay_millis=2000,
+                max_export_batch_size=64,
+                schedule_delay_millis=500,
+                export_timeout_millis=10_000,
             )
         )
         set_logger_provider(provider)
-        handler = LoggingHandler(logger_provider=provider, level=logging.NOTSET)
-        py_log = logging.getLogger("zovark_worker")
-        py_log.handlers.clear()
-        py_log.setLevel(logging.DEBUG)
-        py_log.propagate = False
-        py_log.addHandler(handler)
-        print(f"[OTEL] Log export enabled → {OTEL_ENDPOINT}/v1/logs", flush=True)
+        _otel_log_provider = provider
+
+        root = logging.getLogger()
+        otlp_endpoint_marker = f"{OTEL_ENDPOINT}/v1/logs"
+
+        level_name = os.environ.get("ZOVARK_LOG_LEVEL", "INFO")
+        root_level = _parse_log_level(level_name, logging.INFO)
+        root.setLevel(root_level)
+
+        handler = LoggingHandler(level=logging.NOTSET, logger_provider=provider)
+        root.addHandler(handler)
+        _otel_logging_initialized = True
+
+        # logger.py sets zovark_worker.propagate = False — send those records to root/SigNoz too
+        zw = logging.getLogger("zovark_worker")
+        zw.propagate = True
+        zw.setLevel(min(root_level, logging.DEBUG))
+
+        # Third-party noise (still on stderr if configured; OTLP at WARNING+)
+        for noisy in ("urllib3", "kafka", "kafka.conn", "httpx", "httpcore"):
+            logging.getLogger(noisy).setLevel(logging.WARNING)
+
+        def _flush_logs():
+            try:
+                provider.shutdown()
+            except Exception:
+                pass
+
+        atexit.register(_flush_logs)
+
+        print(
+            f"[OTEL] Log export enabled (root logger → {otlp_endpoint_marker}, level={level_name})",
+            flush=True,
+        )
     except ImportError:
         print("[OTEL] opentelemetry log exporter not available, log export skipped", flush=True)
     except Exception as e:

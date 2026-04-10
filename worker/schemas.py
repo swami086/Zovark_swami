@@ -44,7 +44,7 @@ class VerdictOutput(BaseModel):
     true_positive, suspicious, benign, inconclusive, error.
     Does NOT include terms like mal1cious or conf1dence.
     """
-    verdict: Literal["true_positive", "suspicious", "benign", "inconclusive", "error"]
+    verdict: Literal["true_positive", "suspicious", "needs_review", "benign", "inconclusive", "error"]
     risk_score: int = Field(ge=0, le=100)
     severity: Literal["critical", "high", "medium", "low", "info"]
     summary: str = Field(min_length=1, max_length=5000)

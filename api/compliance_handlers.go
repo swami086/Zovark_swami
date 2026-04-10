@@ -89,19 +89,20 @@ func complianceReportHandler(c *gin.Context) {
 	endDateInclusive := endDate.Add(24 * time.Hour)
 
 	// Investigation summary
-	var totalInvestigations, truePositives, benignCount, suspiciousCount, failedCount int
+	var totalInvestigations, truePositives, benignCount, suspiciousCount, needsReviewCount, failedCount int
 	var avgExecutionMs float64
 	_ = dbPool.QueryRow(ctx, `
 		SELECT COUNT(*),
 		       COUNT(*) FILTER (WHERE output->>'verdict' = 'true_positive'),
 		       COUNT(*) FILTER (WHERE output->>'verdict' = 'benign'),
 		       COUNT(*) FILTER (WHERE output->>'verdict' = 'suspicious'),
+		       COUNT(*) FILTER (WHERE output->>'verdict' = 'needs_review'),
 		       COUNT(*) FILTER (WHERE status = 'failed'),
 		       COALESCE(AVG(execution_ms) FILTER (WHERE status = 'completed'), 0)
 		FROM agent_tasks
 		WHERE tenant_id = $1 AND created_at >= $2 AND created_at < $3
 	`, tenantID, startDate, endDateInclusive).Scan(
-		&totalInvestigations, &truePositives, &benignCount, &suspiciousCount, &failedCount, &avgExecutionMs,
+		&totalInvestigations, &truePositives, &benignCount, &suspiciousCount, &needsReviewCount, &failedCount, &avgExecutionMs,
 	)
 
 	// Per-control evidence
@@ -206,6 +207,7 @@ func complianceReportHandler(c *gin.Context) {
 			"true_positives":       truePositives,
 			"benign":               benignCount,
 			"suspicious":           suspiciousCount,
+			"needs_review":         needsReviewCount,
 			"failed":               failedCount,
 			"mean_time_to_investigate_ms": avgExecutionMs,
 			"severity_distribution": gin.H{

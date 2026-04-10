@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +40,11 @@ type CustomClaims struct {
 func registerHandler(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.WarnContext(c.Request.Context(), "auth_register_failed",
+			slog.String("event", "auth.register"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "validation_error"),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -48,10 +55,21 @@ func registerHandler(c *gin.Context) {
 		"SELECT is_active FROM tenants WHERE id = $1", req.TenantID,
 	).Scan(&tenantActive)
 	if err != nil {
+		slog.WarnContext(c.Request.Context(), "auth_register_failed",
+			slog.String("event", "auth.register"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "invalid_tenant"),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
 		return
 	}
 	if !tenantActive {
+		slog.WarnContext(c.Request.Context(), "auth_register_failed",
+			slog.String("event", "auth.register"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "tenant_inactive"),
+			slog.String("tenant_id", req.TenantID),
+		)
 		c.JSON(http.StatusForbidden, gin.H{"error": "tenant is inactive"})
 		return
 	}
@@ -72,6 +90,13 @@ func registerHandler(c *gin.Context) {
 		return
 	}
 
+	slog.InfoContext(c.Request.Context(), "auth_register",
+		slog.String("event", "auth.register"),
+		slog.String("outcome", "success"),
+		slog.String("user_id", userID),
+		slog.String("tenant_id", req.TenantID),
+	)
+
 	c.JSON(http.StatusCreated, gin.H{
 		"user": map[string]interface{}{
 			"id":        userID,
@@ -85,6 +110,11 @@ func registerHandler(c *gin.Context) {
 func loginHandler(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.WarnContext(c.Request.Context(), "auth_login_failed",
+			slog.String("event", "auth.login"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "validation_error"),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -102,18 +132,35 @@ func loginHandler(c *gin.Context) {
 		Scan(&user.ID, &user.TenantID, &user.Email, &user.Role, &user.PasswordHash)
 
 	if err != nil {
+		slog.WarnContext(c.Request.Context(), "auth_login_failed",
+			slog.String("event", "auth.login"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "invalid_credentials"),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
 	// Check account lockout
 	if checkAccountLocked(req.Email) {
+		slog.WarnContext(c.Request.Context(), "auth_login_failed",
+			slog.String("event", "auth.login"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "account_locked"),
+			slog.String("user_id", user.ID),
+		)
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "account temporarily locked due to failed login attempts"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		recordFailedLogin(req.Email)
+		slog.WarnContext(c.Request.Context(), "auth_login_failed",
+			slog.String("event", "auth.login"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "invalid_credentials"),
+			slog.String("user_id", user.ID),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -125,6 +172,16 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 	if !totpValid {
+		totpReason := "totp_invalid"
+		if strings.TrimSpace(req.TOTPCode) == "" {
+			totpReason = "totp_required"
+		}
+		slog.WarnContext(c.Request.Context(), "auth_login_failed",
+			slog.String("event", "auth.login"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", totpReason),
+			slog.String("user_id", user.ID),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":         "TOTP code required",
 			"totp_required": true,
@@ -185,6 +242,14 @@ func loginHandler(c *gin.Context) {
 		Path:     "/",
 	})
 
+	slog.InfoContext(c.Request.Context(), "auth_login",
+		slog.String("event", "auth.login"),
+		slog.String("outcome", "success"),
+		slog.String("user_id", user.ID),
+		slog.String("tenant_id", user.TenantID),
+		slog.String("role", user.Role),
+	)
+
 	c.JSON(http.StatusOK, gin.H{
 		"token": accessTokenString,
 		"user": map[string]interface{}{
@@ -201,6 +266,11 @@ func loginHandler(c *gin.Context) {
 func refreshHandler(c *gin.Context) {
 	cookie, err := c.Cookie("refresh_token")
 	if err != nil || cookie == "" {
+		slog.WarnContext(c.Request.Context(), "auth_refresh_failed",
+			slog.String("event", "auth.refresh"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "missing_refresh_cookie"),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "no refresh token"})
 		return
 	}
@@ -212,12 +282,22 @@ func refreshHandler(c *gin.Context) {
 		return []byte(appConfig.JWTSecret), nil
 	})
 	if err != nil || !token.Valid {
+		slog.WarnContext(c.Request.Context(), "auth_refresh_failed",
+			slog.String("event", "auth.refresh"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "invalid_refresh_token"),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
 		return
 	}
 
 	claims, ok := token.Claims.(*CustomClaims)
 	if !ok || claims.Subject != "refresh" {
+		slog.WarnContext(c.Request.Context(), "auth_refresh_failed",
+			slog.String("event", "auth.refresh"),
+			slog.String("outcome", "failure"),
+			slog.String("reason", "invalid_refresh_token_type"),
+		)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token type"})
 		return
 	}
@@ -242,6 +322,13 @@ func refreshHandler(c *gin.Context) {
 		return
 	}
 
+	slog.InfoContext(c.Request.Context(), "auth_refresh",
+		slog.String("event", "auth.refresh"),
+		slog.String("outcome", "success"),
+		slog.String("user_id", claims.UserID),
+		slog.String("tenant_id", claims.TenantID),
+	)
+
 	c.JSON(http.StatusOK, gin.H{
 		"token": accessTokenString,
 		"user": map[string]interface{}{
@@ -256,6 +343,10 @@ func refreshHandler(c *gin.Context) {
 // logoutHandler clears the refresh token cookie.
 // POST /api/v1/auth/logout
 func logoutHandler(c *gin.Context) {
+	slog.InfoContext(c.Request.Context(), "auth_logout",
+		slog.String("event", "auth.logout"),
+		slog.String("outcome", "success"),
+	)
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",

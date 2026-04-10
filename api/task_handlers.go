@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -132,7 +132,11 @@ func createTaskHandler(c *gin.Context) {
 		forceReinvestigate = v == true || v == "true"
 	}
 	if forceReinvestigate {
-		log.Printf("[DEDUP] Force reinvestigate bypass for task_type=%s", req.TaskType)
+		slog.InfoContext(c.Request.Context(), "task_force_reinvestigate",
+			slog.String("outcome", "bypass"),
+			slog.String("task_type", req.TaskType),
+			slog.String("event", "dedup.force_reinvestigate"),
+		)
 		clearDedupEntry(c.Request.Context(), req.Input)
 	}
 
@@ -461,7 +465,11 @@ func listTasksHandler(c *gin.Context) {
 		var pathTaken string
 
 		if err := rows.Scan(&id, &statusVal, &taskTypeVal, &createdAt, &executionMs, &prompt, &verdict, &riskScore, &pathTaken); err != nil {
-			log.Printf("Error scanning task row: %v", err)
+			slog.WarnContext(ctx, "task_list_scan_row_failed",
+				slog.String("outcome", "warning"),
+				slog.String("tenant_id", tenantID),
+				slog.Any("error", err),
+			)
 			continue
 		}
 
@@ -737,7 +745,11 @@ func getTaskStepsHandler(c *gin.Context) {
 		var parametersUsed *string
 
 		if err := rows.Scan(&stepID, &stepNumber, &stepType, &prompt, &generatedCode, &output, &status, &tokensIn, &tokensOut, &executionMs, &createdAt, &completedAt, &executionMode, &parametersUsed); err != nil {
-			log.Printf("Error scanning step row: %v", err)
+			slog.WarnContext(c.Request.Context(), "task_steps_scan_row_failed",
+				slog.String("outcome", "warning"),
+				slog.String("task_id", taskID),
+				slog.Any("error", err),
+			)
 			continue
 		}
 
@@ -999,7 +1011,13 @@ func bulkCreateTasksHandler(c *gin.Context) {
 	for i, task := range req.Tasks {
 		taskID := taskIDs[i]
 		if err := publishTaskNew(pubCtx, tenantID, taskID, task.TaskType, task.Input); err != nil {
-			log.Printf("Failed to publish bulk task %s: %v", taskID, err)
+			slog.ErrorContext(ctx, "task_bulk_publish_failed",
+				slog.String("outcome", "error"),
+				slog.String("task_id", taskID),
+				slog.String("tenant_id", tenantID),
+				slog.String("task_type", task.TaskType),
+				slog.Any("error", err),
+			)
 			_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'failed' WHERE id = $1", taskID)
 			workflowIDs = append(workflowIDs, "")
 			continue

@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { recordNavigationPageView } from './telemetry';
 import React, { useEffect, useState } from 'react';
 import { LayoutDashboard, Search, PlusCircle, Settings, LogOut, Shield, BookOpen, Database, Play, ShieldAlert, DollarSign, Share2, AlertTriangle, Sun, Moon, Users, Sparkles, Layers } from 'lucide-react';
 import { getUser, clearToken, fetchPendingApprovals, fetchPromotionQueue } from './api/client';
@@ -149,10 +150,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return children;
 };
 
+function NavigationTelemetry() {
+  const location = useLocation();
+  useEffect(() => {
+    recordNavigationPageView(location.pathname);
+  }, [location.pathname]);
+  return null;
+}
+
 function AppContent() {
   const user = getUser();
   return (
     <Router>
+      <NavigationTelemetry />
       <div className="min-h-screen app-bg app-text font-sans flex text-sm">
         <Sidebar />
         <main className="flex-1 ml-[240px] min-h-screen">

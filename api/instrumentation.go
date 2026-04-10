@@ -57,6 +57,55 @@ func initAPIInstruments() {
 		if err != nil {
 			return
 		}
+		_, err = m.Int64ObservableGauge("zovark_api_db_pool_idle_connections",
+			metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
+				if dbPool != nil {
+					obs.Observe(int64(dbPool.Stat().IdleConns()))
+				}
+				return nil
+			}),
+			metric.WithDescription("DB pool idle connections"),
+		)
+		if err != nil {
+			return
+		}
+		_, err = m.Int64ObservableGauge("zovark_api_db_pool_total_connections",
+			metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
+				if dbPool != nil {
+					obs.Observe(int64(dbPool.Stat().TotalConns()))
+				}
+				return nil
+			}),
+			metric.WithDescription("DB pool total connections in use (idle+acquired+constructing)"),
+		)
+		if err != nil {
+			return
+		}
+		_, err = m.Int64ObservableGauge("zovark_api_db_pool_max_connections",
+			metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
+				if dbPool != nil {
+					obs.Observe(int64(dbPool.Stat().MaxConns()))
+				}
+				return nil
+			}),
+			metric.WithDescription("DB pool maximum configured size"),
+		)
+		if err != nil {
+			return
+		}
+		_, err = m.Int64ObservableGauge("zovark_api_redis_pool_total_conns",
+			metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
+				if redisClient != nil {
+					st := redisClient.PoolStats()
+					obs.Observe(int64(st.TotalConns))
+				}
+				return nil
+			}),
+			metric.WithDescription("go-redis connection pool total connections"),
+		)
+		if err != nil {
+			return
+		}
 		apiInstrumentsReady = true
 	})
 }

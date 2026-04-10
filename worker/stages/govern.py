@@ -83,7 +83,7 @@ async def apply_governance(data: dict) -> dict:
             data["needs_human_review"] = False
             data["review_reason"] = ""
     elif autonomy == "autonomous":
-        if verdict in ("inconclusive", "needs_manual_review", "needs_analyst_review", "error"):
+        if verdict in ("inconclusive", "needs_review", "needs_manual_review", "needs_analyst_review", "error"):
             data["needs_human_review"] = True
             data["review_reason"] = f"Autonomous mode: {verdict} requires analyst review"
         else:

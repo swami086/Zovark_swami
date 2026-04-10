@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Share2, Filter, Loader2, Info, X } from 'lucide-react';
 import { fetchEntities, fetchEntityNeighborhood, type Entity, type EntityGraphData } from '../api/client';
+import { runInSpan } from '../telemetry';
 
 const ENTITY_COLORS: Record<string, { fill: string; stroke: string; text: string; bg: string }> = {
     ip: { fill: '#06b6d4', stroke: '#0891b2', text: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' },
@@ -66,6 +67,20 @@ export default function EntityGraph() {
         };
         load();
     }, [filter]);
+
+    useEffect(() => {
+        if (loading || !graphData) return;
+        runInSpan(
+            'ui.entity_graph.render',
+            () => {
+                /* span marks graph paint with entity/edge counts */
+            },
+            {
+                'graph.entity_count': graphData.entities?.length ?? 0,
+                'graph.edge_count': graphData.edges?.length ?? 0,
+            },
+        );
+    }, [loading, graphData]);
 
     const navigateCrumb = (idx: number) => {
         setCrumbs(prev => {

@@ -11,7 +11,13 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8090',
         changeOrigin: true,
-      }
+      },
+      // Browser OTLP → local SigNoz collector (Ticket 10). Strip /otel so /otel/v1/traces → /v1/traces on :4318.
+      '/otel': {
+        target: 'http://127.0.0.1:4318',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/otel/, ''),
+      },
     }
   }
 })

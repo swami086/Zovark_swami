@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
@@ -18,7 +21,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -85,6 +88,7 @@ func initAPIOTel(ctx context.Context) {
 			propagation.TraceContext{},
 			propagation.Baggage{},
 		))
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
 		return
 	}
 
@@ -103,9 +107,12 @@ func initAPIOTel(ctx context.Context) {
 			propagation.TraceContext{},
 			propagation.Baggage{},
 		))
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
 		return
 	}
 
+	// semconv.SchemaURL must match resource.Default() detectors (v1.40.x as of OTel SDK 1.43);
+	// otherwise Merge returns ErrSchemaURLConflict and the merged resource would be discarded below.
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
@@ -113,7 +120,7 @@ func initAPIOTel(ctx context.Context) {
 			semconv.ServiceVersion("3.2.1"),
 		),
 	)
-	if err != nil {
+	if err != nil && !errors.Is(err, resource.ErrSchemaURLConflict) {
 		res = resource.Default()
 	}
 
@@ -150,9 +157,42 @@ func initAPIOTel(ctx context.Context) {
 		initAPIInstruments()
 		log.Printf("[OTEL] API metrics enabled → OTLP HTTP %s/v1/metrics", hostport)
 	}
+
+	initAPIOTelLogsWithResource(ctx, hostport, insecure, res)
+	if apiOtelLoggerProvider == nil {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	}
+}
+
+// instrumentRedisOTel adds go-redis OpenTelemetry tracing and metrics (Ticket 9).
+func instrumentRedisOTel() {
+	if !apiOtelEnabled() || redisClient == nil {
+		return
+	}
+	if otelTracerProvider != nil {
+		topts := []redisotel.TracingOption{
+			redisotel.WithTracerProvider(otelTracerProvider),
+		}
+		if err := redisotel.InstrumentTracing(redisClient, topts...); err != nil {
+			log.Printf("[OTEL] Redis tracing instrumentation failed (non-fatal): %v", err)
+		} else {
+			log.Println("[OTEL] Redis client instrumented (go-redis tracing)")
+		}
+	}
+	if otelMeterProvider != nil {
+		mopts := []redisotel.MetricsOption{
+			redisotel.WithMeterProvider(otelMeterProvider),
+		}
+		if err := redisotel.InstrumentMetrics(redisClient, mopts...); err != nil {
+			log.Printf("[OTEL] Redis metrics instrumentation failed (non-fatal): %v", err)
+		} else {
+			log.Println("[OTEL] Redis client instrumented (go-redis metrics)")
+		}
+	}
 }
 
 func shutdownAPIOTel(ctx context.Context) {
+	shutdownAPIOTelLogs(ctx)
 	if otelMeterProvider != nil {
 		if err := otelMeterProvider.Shutdown(ctx); err != nil {
 			log.Printf("[OTEL] API meter shutdown: %v", err)

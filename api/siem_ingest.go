@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -89,7 +89,13 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 			`INSERT INTO agent_tasks (id, tenant_id, task_type, input, raw_input, dedup_hash, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 			taskID, tenantID, taskType, input, rawInputJSON, dedupHash, "deduplicated", time.Now(), traceID,
 		)
-		log.Printf("[INGEST] Dedup: task %s is duplicate of %s", taskID, existingID)
+		slog.InfoContext(ctx, "ingest_dedup_duplicate",
+			slog.String("outcome", "deduplicated"),
+			slog.String("ingest.task_id", taskID),
+			slog.String("ingest.existing_task_id", existingID),
+			slog.String("ingest.source", source),
+			slog.String("ingest.task_type", taskType),
+		)
 		return existingID, "", nil
 	}
 
@@ -104,7 +110,13 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 			`INSERT INTO agent_tasks (id, tenant_id, task_type, input, raw_input, dedup_hash, status, created_at, trace_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 			taskID, tenantID, taskType, input, rawInputJSON, dedupHash, "batched", time.Now(), traceID,
 		)
-		log.Printf("[INGEST] Batched: task %s absorbed into batch parent %s", taskID, batchParentID)
+		slog.InfoContext(ctx, "ingest_batch_absorbed",
+			slog.String("outcome", "batched"),
+			slog.String("ingest.task_id", taskID),
+			slog.String("ingest.batch_parent_id", batchParentID),
+			slog.String("ingest.source", source),
+			slog.String("ingest.task_type", taskType),
+		)
 		return batchParentID, "", nil
 	}
 
@@ -162,7 +174,12 @@ func createIngestTask(ctx context.Context, tenantID, taskType, prompt, source st
 		}
 		// Soft limit — queue for later processing by drain goroutine
 		_, _ = dbPool.Exec(ctx, "UPDATE agent_tasks SET status = 'queued' WHERE id = $1", taskID)
-		log.Printf("[INGEST] Backpressure: task %s queued (depth=%d)", taskID, depth)
+		slog.WarnContext(ctx, "ingest_backpressure_queued",
+			slog.String("outcome", "queued"),
+			slog.String("ingest.task_id", taskID),
+			slog.Int("backpressure.depth", depth),
+			slog.String("ingest.source", source),
+		)
 		return taskID, traceID, nil
 	}
 
@@ -288,7 +305,12 @@ func splunkIngestHandler(c *gin.Context) {
 
 	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "splunk_hec", rawCopy, ocsf, envelope)
 	if err != nil {
-		log.Printf("[INGEST] Splunk ingest failed for tenant %s: %v", tenantID, err)
+		slog.ErrorContext(ctx, "ingest_splunk_failed",
+			slog.String("outcome", "error"),
+			slog.String("tenant_id", tenantID),
+			slog.String("ingest.vendor", "splunk_hec"),
+			slog.Any("error", err),
+		)
 		respondInternalError(c, err, "splunk ingest task creation")
 		return
 	}
@@ -417,7 +439,12 @@ func elasticIngestHandler(c *gin.Context) {
 
 	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "elastic_siem", rawCopy, ocsf, envelope)
 	if err != nil {
-		log.Printf("[INGEST] Elastic ingest failed for tenant %s: %v", tenantID, err)
+		slog.ErrorContext(ctx, "ingest_elastic_failed",
+			slog.String("outcome", "error"),
+			slog.String("tenant_id", tenantID),
+			slog.String("ingest.vendor", "elastic_siem"),
+			slog.Any("error", err),
+		)
 		respondInternalError(c, err, "elastic ingest task creation")
 		return
 	}
@@ -481,7 +508,12 @@ func cefIngestHandler(c *gin.Context) {
 	}
 	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "arcsight_cef", rawJSON, ocsf, envelope)
 	if err != nil {
-		log.Printf("[INGEST] CEF ingest failed for tenant %s: %v", tenantID, err)
+		slog.ErrorContext(ctx, "ingest_cef_failed",
+			slog.String("outcome", "error"),
+			slog.String("tenant_id", tenantID),
+			slog.String("ingest.vendor", "arcsight_cef"),
+			slog.Any("error", err),
+		)
 		respondInternalError(c, err, "cef ingest task creation")
 		return
 	}
@@ -540,7 +572,12 @@ func leefIngestHandler(c *gin.Context) {
 	}
 	taskID, _, err := createIngestTask(ctx, tenantID, taskType, prompt, "qradar_leef", rawJSON, ocsf, envelope)
 	if err != nil {
-		log.Printf("[INGEST] LEEF ingest failed for tenant %s: %v", tenantID, err)
+		slog.ErrorContext(ctx, "ingest_leef_failed",
+			slog.String("outcome", "error"),
+			slog.String("tenant_id", tenantID),
+			slog.String("ingest.vendor", "qradar_leef"),
+			slog.Any("error", err),
+		)
 		respondInternalError(c, err, "leef ingest task creation")
 		return
 	}
@@ -598,7 +635,11 @@ func ingestHealthHandler(c *gin.Context) {
 			var source *string
 			var createdAt time.Time
 			if err := rows.Scan(&id, &taskType, &status, &source, &createdAt); err != nil {
-				log.Printf("Error scanning ingest health row: %v", err)
+				slog.WarnContext(c.Request.Context(), "ingest_health_scan_row_failed",
+					slog.String("outcome", "warning"),
+					slog.String("tenant_id", tenantID),
+					slog.Any("error", err),
+				)
 				continue
 			}
 			recentAlerts = append(recentAlerts, map[string]interface{}{
