@@ -47,7 +47,7 @@ services:
       valkey-server
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
-      --requirepass ${REDIS_PASSWORD:-zovark-redis-dev-2026}
+      --requirepass ${REDIS_PASSWORD:-hydra-redis-dev-2026}
       --rename-command FLUSHALL ""
       --rename-command CONFIG ""
       --rename-command DEBUG ""
@@ -56,7 +56,7 @@ services:
     expose:
       - "6379"
     healthcheck:
-      test: ["CMD", "valkey-cli", "-a", "${REDIS_PASSWORD:-zovark-redis-dev-2026}", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${REDIS_PASSWORD:-hydra-redis-dev-2026}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -57,7 +57,13 @@ class ZovarkSettings(BaseSettings):
 
     # Operational
     max_investigation_timeout_seconds: int = 300
-    max_concurrent_activities: int = 8
+    max_concurrent_activities: int = 16   # FIX #20: was 8
+    max_concurrent_workflows: int = 32    # FIX #20: new field
+
+    # Feature flags — FIX #20: govern via settings instead of bare os.environ.get
+    fast_fill: bool = False               # ZOVARK_FAST_FILL
+    human_review_threshold: int = 60      # ZOVARK_HUMAN_REVIEW_THRESHOLD
+    dedup_enabled: bool = True            # ZOVARK_DEDUP_ENABLED
 
     # Parallel tool execution (Feature C)
     parallel_tools_enabled: bool = False  # ZOVARK_PARALLEL_TOOLS_ENABLED

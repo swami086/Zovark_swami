@@ -222,7 +222,7 @@ SERVICE_TYPE_MAP = {
     "hydra-mvp-zovark-signoz-frontend-1": "signoz_frontend",
 }
 
-WORKER_PATTERN = re.compile(r"hydra-mvp[-_]worker[-_]\d+")
+WORKER_PATTERN = re.compile(r"zovark[-_]worker[-_]\d+")
 
 
 def classify_container(container_name: str) -> str:
@@ -357,18 +357,18 @@ def check_postgres(container_name: str) -> tuple[bool, str]:
 
 
 def check_redis(container_name: str) -> tuple[bool, str]:
-    """Redis health check via docker exec + redis-cli."""
+    """Valkey health check via docker exec + valkey-cli."""
     try:
         result = subprocess.run(
             ["docker", "exec", container_name,
-             "redis-cli", "-a", REDIS_PASSWORD, "ping"],
+             "valkey-cli", "-a", REDIS_PASSWORD, "ping"],
             capture_output=True, text=True, timeout=10,
         )
         if result.returncode == 0 and "PONG" in result.stdout:
             return True, "PONG"
         return False, result.stderr.strip() or result.stdout.strip()
     except subprocess.TimeoutExpired:
-        return False, "redis-cli timeout"
+        return False, "valkey-cli timeout"
     except Exception as e:
         return False, str(e)[:200]
 
