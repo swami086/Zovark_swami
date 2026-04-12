@@ -290,6 +290,7 @@ func splunkIngestHandler(c *gin.Context) {
 		sanitizeSIEMField(severity, 20),
 	)
 
+	// FIX #5: sanitize all string values in siem_event before storing
 	envelope := map[string]interface{}{
 		"severity":    severity,
 		"source_ip":   sourceIP,
@@ -298,6 +299,7 @@ func splunkIngestHandler(c *gin.Context) {
 		"sourcetype":  payload.SourceType,
 		"host":        payload.Host,
 		"siem_vendor": "splunk",
+		"siem_event":  sanitizeSIEMMap(payload.Event),
 	}
 	if raw, ok := payload.Event["raw"].(string); ok {
 		envelope["log_data"] = sanitizeSIEMField(raw, 10000)
@@ -423,15 +425,17 @@ func elasticIngestHandler(c *gin.Context) {
 		sanitizeSIEMField(ruleDescription, 300),
 	)
 
+	// FIX #5: sanitize all string values in siem_event before storing
 	envelope := map[string]interface{}{
-		"severity":           severity,
-		"source_ip":          sourceIP,
-		"dest_ip":            destIP,
-		"user":               user,
-		"host":               host,
-		"rule_name":          ruleName,
-		"rule_description":   ruleDescription,
-		"siem_vendor":        "elastic",
+		"severity":         severity,
+		"source_ip":        sourceIP,
+		"dest_ip":          destIP,
+		"user":             user,
+		"host":             host,
+		"rule_name":        ruleName,
+		"rule_description": ruleDescription,
+		"siem_vendor":      "elastic",
+		"siem_event":       sanitizeSIEMMap(payload),
 	}
 	if message != "" {
 		envelope["log_data"] = sanitizeSIEMField(message, 10000)
